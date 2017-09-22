@@ -10,7 +10,8 @@ from pprint import pprint
 def refine_fn (func_name):
     return re.sub(r'\s?C?\s*\[.*\]\s*$', '', func_name).replace(" ", "")
 
-def generate_n_grams(file_name = 'trace_entry_exit_0.json', k = 2):
+# call stack
+def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     #
     import json
     from collections import deque
@@ -33,6 +34,26 @@ def generate_n_grams(file_name = 'trace_entry_exit_0.json', k = 2):
                 print "KG={}".format(":".join(kl))
                 #n_grams.append(":".join(kl))
     return n_grams
+# call seq.
+def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
+    #
+    import json
+    from collections import deque
+    #print('Reading file %s' % file_name)
+   
+    n_grams = []
+    d = deque()
+    
+    with open('trace_entry_exit_0.json') as data_file:
+        data = json.load(data_file)
 
-pairs = generate_n_grams('trace_entry_exit_0.json', k=3)
+    for i in range(0,len(data)):
+        if(data[i]['event-type'] == 'entry'):
+            d.append(refine_fn(data[i]['name']))
+            if( len(d) >= k ) :
+                print "KS={}".format(":".join(list(d)))
+                d.popleft()
+    return n_grams
+
+pairs = generate_n_grams_cs('trace_entry_exit_0.json', k=3)
 #pprint(pairs)
