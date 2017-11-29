@@ -1,6 +1,6 @@
 # coding: utf-8
 # Date: Monday, September 18, 2017
-# Author: Alok Singh
+# Authors: Alok Singh, Shinjae Yoo
 # Description: This function generates 2_grams by reason a stack trace from JSON file
 # Entries in JSON must conform to in-order traversal of call-sequence graph
 
@@ -15,10 +15,14 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     #
     import json
     from collections import deque
+    import pandas as pd 
+    import pickle
     #print('Reading file %s' % file_name)
    
     n_grams = []
     d = deque()
+    
+    list_list = []
     
     with open('trace_entry_exit_0.json') as data_file:
         data = json.load(data_file)
@@ -28,6 +32,8 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     thread_id = data[1]['thread-id']
 
     for i in range(0,len(data)):
+        if(i%1000 == 0):
+            print(i)
         if(data[i]['event-type'] == 'entry'):
             d.append(data[i])
         else: #exit
@@ -35,8 +41,28 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
             if(len(d)>0):
                 kl = [ refine_fn(d[-nk]['name']) for nk in range(min(len(d), k), 1, -1)]
                 kl.append(refine_fn(data[i]['name']))
-                print "KG={0}#{3}:{4}#{1}#{2}".format(":".join(kl), float(pdata["time"])/last_time, float(data[i]["time"]) - float(pdata["time"]), node_id, thread_id)
+                '''print("KG={0}#{3}#{4}#{1}#{2}".format(":".join(kl), 
+                    float(pdata["time"])/last_time, 
+                    float(data[i]["time"]) - float(pdata["time"]), 
+                    node_id, 
+                    thread_id))
+                df.loc[len(df)] = [":".join(kl), 
+                    float(pdata["time"])/last_time, 
+                    float(data[i]["time"]) - float(pdata["time"]), 
+                    node_id, 
+                    thread_id]'''
+                list_list.append([":".join(kl), 
+                    float(pdata["time"])/last_time, 
+                    float(data[i]["time"]) - float(pdata["time"]), 
+                    node_id, 
+                    thread_id])
                 #n_grams.append(":".join(kl))
+
+    print('len of data = %d', i)
+    df = pd.DataFrame(list_list,columns = ['kl','time_by_lasttime','time_diff','node_id','thread_id'])
+    with open('n_gram.df','wb') as handle:
+        pickle.dump(df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     return n_grams
 # call seq.
 def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
@@ -59,10 +85,12 @@ def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
         else: # exit
             pdata = g.pop()
             if( len(d) >= k ) :
-                print "KS={}#{}".format(":".join(list(d)),  float(data[i]["time"]) - float(pdata["time"]))
+                print("KS={}#{}".format(":".join(list(d)),  float(data[i]["time"]) - float(pdata["time"])))
                 d.popleft()
         
     return n_grams
 
-pairs = generate_n_grams_ct('trace_entry_exit_0.json', k=3)
-#pprint(pairs)
+
+if __name__ == "__main__":
+    #print("__main__: calling default function")
+    generate_n_grams_ct('trace_entry_exit_0.json', k=3)
