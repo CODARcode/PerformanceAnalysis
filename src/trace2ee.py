@@ -6,7 +6,7 @@ import sys
 eventTypes = ['entry_exit']#, 'send_receive', 'counter'] # three groups
 #nodeID = ['0', '1', '2', '3', '4']
 filename = sys.argv[1] + '.json'
-out_fn = 'ee-' + sys.argv[1] + '-ee.json'
+out_fn = 'ee-' + sys.argv[1] +'.json'
 s0 = datetime.datetime.now()
 for event_type in eventTypes:
             ts = datetime.datetime.now()
