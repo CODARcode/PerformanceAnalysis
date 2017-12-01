@@ -94,4 +94,4 @@ def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
 
 if __name__ == "__main__":
     #print("__main__: calling default function")
-    generate_n_grams_ct(sys.argv[1], sys.argv[2])
+    generate_n_grams_ct(sys.argv[1], int(sys.argv[2]))
