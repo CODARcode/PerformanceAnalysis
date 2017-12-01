@@ -25,7 +25,7 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     
     list_list = []
     
-    with open('trace_entry_exit_0.json') as data_file:
+    with open(file_name) as data_file:
         data = json.load(data_file)
 
     last_time = float(data[-1]['time'])
