@@ -6,6 +6,11 @@
 
 import re 
 from pprint import pprint
+import json
+from collections import deque
+import pandas as pd 
+import pickle
+import sys
 
 def refine_fn (func_name):
     return re.sub(r'\s?C?\s*\[.*\]\s*$', '', func_name).replace(" ", "")
@@ -13,10 +18,6 @@ def refine_fn (func_name):
 # call stack
 def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     #
-    import json
-    from collections import deque
-    import pandas as pd 
-    import pickle
     #print('Reading file %s' % file_name)
    
     n_grams = []
@@ -24,7 +25,7 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
     
     list_list = []
     
-    with open('trace_entry_exit_0.json') as data_file:
+    with open(file_name) as data_file:
         data = json.load(data_file)
 
     last_time = float(data[-1]['time'])
@@ -60,7 +61,7 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
 
     print('len of data = %d', i)
     df = pd.DataFrame(list_list,columns = ['kl','time_by_lasttime','time_diff','node_id','thread_id'])
-    with open('n_gram.df','wb') as handle:
+    with open(file_name+'.df','wb') as handle:
         pickle.dump(df, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return n_grams
@@ -93,4 +94,4 @@ def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
 
 if __name__ == "__main__":
     #print("__main__: calling default function")
-    generate_n_grams_ct('trace_entry_exit_0.json', k=3)
+    generate_n_grams_ct(sys.argv[1], int(sys.argv[2]))
