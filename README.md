@@ -52,3 +52,13 @@ We can merge multiple n\_gram statistics for multiple trace files as follow:
             df_lst.append(ldf)
     df = pd.concat(df_lst)
 
+Another option to process all these steps is using one function:
+
+    from codar.chimbuku.perf_anom import n_gram
+    trace_fn_lst = ["data/reduced-trace.json", "data/reduced-trace2.json"]
+    jid_lst = [1, 2]
+    df = n_gram.detect_anomaly(trace_fn_lst, jid_lst, out_fn_prefix="results", call_depth=3, n_neighbors=10, n_func_call=5, n_anomalies=5)
+
+This will generate final aggreated anomaly detected DataFrame with classified anomaly labels.  You have less freedom to test but it is for the convenience. 'n_neighbors' is the number of neighborhood to estimate density, 'n_func_call' is about how many function call n\_gram to process (top k frequent function call n\_gram will be processed), and n_anomalies is about how many anomalies want to see.
+
+    
