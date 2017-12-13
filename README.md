@@ -32,7 +32,7 @@ Given df, the following detect  performance anomaly using LOF(Local Outlier Fact
 
     an_lst = n_gram.perform_localOutlierFactor(df[df['kl'] == 'ANALYZ:ANA_TASK:UTIL_PRINT'], 10, float(5/4400))
 
-Anomaly instances can be selected by doing simply:
+Anomaly instances can be selected by simply doing the following:
 
     df[an_lst]
 
