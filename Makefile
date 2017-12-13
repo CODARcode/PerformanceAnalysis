@@ -1,4 +1,4 @@
-SERVICE = codar.chimbuku.perf_anom.n_gram
+SERVICE = codar.chimbuku.perf_anom.n_gram 
 SERVICE_CAPS = N_GRAM
 SCRIPTS_DIR = scripts
 LIB_DIR = lib
@@ -8,7 +8,7 @@ TEST_SCRIPT_NAME = run_tests.sh
 
 .PHONY: test
 
-default: test
+default: build-test-script
 
 build-test-script:
 	echo '#!/bin/bash' > $(TEST_DIR)/$(TEST_SCRIPT_NAME)
@@ -16,7 +16,7 @@ build-test-script:
 	echo 'export CODAR_DEPLOYMENT_CONFIG=$$script_dir/../deploy.cfg' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'export PYTHONPATH=$$script_dir/../$(LIB_DIR):$$PATH:$$PYTHONPATH' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'cd $$script_dir/../$(TEST_DIR)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
-	echo 'python3 -m nose --with-coverage --cover-package=$(SERVICE) --cover-html --cover-html-dir=$$script_dir/../docs/test_coverage --nocapture  --nologcapture .' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'python3 -m nose --with-coverage --cover-package=$(SERVICE) --cover-html --cover-html-dir=$$script_dir/../docs/test_coverage --nocapture  --nologcapture n_gram_test.py' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	mkdir -p docs
 
