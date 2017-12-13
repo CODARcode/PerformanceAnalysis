@@ -85,3 +85,39 @@ def perform_localOutlierFactor(df, n_neighbors=10, contamination=0.001, features
     y_pred = clf.fit_predict(df[features])
     
     return y_pred ==-1 
+
+def detect_anomaly(trace_fn_lst, 
+                   jid_lst, 
+                   out_fn = "results.csv",
+                   call_depth=3, 
+                   n_neighbors=10, 
+                   n_func_call=5,
+                   n_anomalies=5, 
+                   adv_params={"algorithm":"auto", 
+                               "leaf_size":30, 
+                               "metric" : "minkowski", 
+                               "metric_params":None, 
+                               "p" : 2, 
+                               "n_jobs" : -1}):
+
+    assert(len(trace_fn_lst) == len(jid_lst))
+    df_lst = []
+    for i in range(len(trace_fn_lst)):
+        print("Processing :" + trace_fn_lst[i])
+        ee_lst = extract_entry_exit(trace_fn_lst[i])
+        ldf = generate_n_grams_ct(ee_lst, jid_lst[i], k=call_depth)
+        df_lst.append(ldf)
+    df = pd.concat(df_lst)
+
+    sf = df.kl.value_counts()
+    sf = sf.nlargest(n_func_call);
+    freq = pd.DataFrame({'n_gram':sf.index, 'numberofcalls':sf.values})
+    fdf_lst = []
+    for ngram in sf.index:
+        ldf = df[df['kl'] == ngram]
+        aidx = perform_localOutlierFactor(ldf, n_neighbors=n_neighbors, contamination=float(n_anomalies / sf[ngram]), params=adv_params)
+        ldf.loc[:,'class']= pd.Series(aidx*1, index=ldf.index)
+        fdf_lst.append(ldf)
+    fdf = pd.concat(fdf_lst)
+    fdf.to_csv(out_fn)
+    return fdf
