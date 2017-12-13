@@ -59,3 +59,9 @@ class codarTest(unittest.TestCase):
 
         self.assertEqual(4400, result.size)
 
+    def test_perform_localOutlierFactor(self):
+        trace_fn_lst = ["data/reduced-trace.json", "data/reduced-trace2.json"]
+        jid_lst = [1, 2]
+        df = n_gram.detect_anomaly(trace_fn_lst, jid_lst)
+
+        self.assertEqual(313166, df.size)
