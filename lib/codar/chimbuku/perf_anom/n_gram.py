@@ -16,6 +16,7 @@ import pickle
 
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
+from slugify import slugify
 
 def extract_entry_exit(filename):
     eventTypes = ['entry_exit']#, 'send_receive', 'counter'] # three groups
@@ -88,7 +89,7 @@ def perform_localOutlierFactor(df, n_neighbors=10, contamination=0.001, features
 
 def detect_anomaly(trace_fn_lst, 
                    jid_lst, 
-                   out_fn = "results.csv",
+                   out_fn_prefix = "results",
                    call_depth=3, 
                    n_neighbors=10, 
                    n_func_call=5,
@@ -118,6 +119,7 @@ def detect_anomaly(trace_fn_lst,
         aidx = perform_localOutlierFactor(ldf, n_neighbors=n_neighbors, contamination=float(n_anomalies / sf[ngram]), params=adv_params)
         ldf.loc[:,'class']= pd.Series(aidx*1, index=ldf.index)
         fdf_lst.append(ldf)
+        ldf.to_csv("{}-{}.csv".format(out_fn_prefix, slugify(ngram)))
     fdf = pd.concat(fdf_lst)
-    fdf.to_csv(out_fn)
+    fdf.to_csv(out_fn_prefix + ".csv")
     return fdf
