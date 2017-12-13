@@ -23,8 +23,7 @@ def extract_entry_exit(filename):
     retList = []
     with open(filename) as json_file:
         objects = ijson.items(json_file, 'trace events.item')
-        entries = (o for o in objects if (o['event-type'] == 'entry' or o['event-type'] == 'exit') and
-                   'node-id' in o)
+        entries = (o for o in objects if (o['event-type'] == 'entry' or o['event-type'] == 'exit') and 'node-id' in o)
         c = 0
         for entry in entries:
             if c % 10000 == 0:
@@ -78,7 +77,7 @@ def generate_n_grams_ct(data, jid, k = 2, file_name=None):
     return df
 
 
-def perform_localOutlierFactor(df, n_neighbors=10, contamination=0.001, features = ['time_by_lasttime','time_diff'], params={"algorithm":"auto", "leaf_size":30, "metric_params":None, "p" : 2, "n_jobs" : -1}):
+def perform_localOutlierFactor(df, n_neighbors=10, contamination=0.001, features = ['time_by_lasttime','time_diff'], params={"algorithm":"auto", "leaf_size":30, "metric" : "minkowski", "metric_params":None, "p" : 2, "n_jobs" : -1}):
     
     clf = LocalOutlierFactor(n_neighbors=n_neighbors, # broader estimation 
                              algorithm=params['algorithm'], leaf_size=params['leaf_size'], metric = params['metric'], p=params['p'], metric_params=params['metric_params'], contamination=contamination, n_jobs=params['n_jobs'])
