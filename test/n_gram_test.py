@@ -1,21 +1,21 @@
+
+# imports
 import unittest
 import os 
 import json  
 import time
-
-from os import environ
-
 import shutil
+import pickle
+import pandas as pd
+from pprint import pprint  
+from os import environ
+from codar.chimbuku.perf_anom import n_gram
+#
+
 try:
     from ConfigParser import ConfigParser  # py2
 except BaseException:
     from configparser import ConfigParser  # py3
-
-from pprint import pprint  
-
-from codar.chimbuku.perf_anom import n_gram
-import pickle
-import pandas as pd
 
 
 class codarTest(unittest.TestCase):
@@ -64,3 +64,5 @@ class codarTest(unittest.TestCase):
         df = n_gram.detect_anomaly(trace_fn_lst, jid_lst)
 
         self.assertEqual(313166, df.size)
+
+# end of file

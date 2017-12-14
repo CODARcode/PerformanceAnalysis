@@ -1,11 +1,13 @@
+# imports
 import ijson
 import json
 import datetime
+#
 
-eventTypes = ['entry_exit', 'send_receive', 'counter'] # three groups
-nodeID = ['0', '1', '2', '3', '4']
-filename = "reduced/tau.json"
-s0 = datetime.datetime.now()
+eventTypes  = ['entry_exit', 'send_receive', 'counter'] # three groups
+nodeID      = ['0', '1', '2', '3', '4']
+filename    = "reduced/tau.json"
+s0          = datetime.datetime.now()
 for event_type in eventTypes:
     print("============================", event_type, "======================================")
     if event_type == 'send_receive':
@@ -73,4 +75,4 @@ for event_type in eventTypes:
 s1 = datetime.datetime.now()
 print(s1 - s0)
 
-
+# end of file
