@@ -1,7 +1,7 @@
 # coding: utf-8
 # Date: Monday, September 18, 2017
 # Author: Alok Singh
-# Description: This function generates 2_grams by reason a stack trace from JSON file
+# Description: This function generates 2_grams by reasoning about a stack trace from JSON file
 # Entries in JSON must conform to in-order traversal of call-sequence graph
 
 from pprint import pprint

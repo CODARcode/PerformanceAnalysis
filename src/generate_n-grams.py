@@ -1,9 +1,10 @@
 # coding: utf-8
 # Date: Monday, September 18, 2017
 # Authors: Alok Singh, Shinjae Yoo
-# Description: This function generates 2_grams by reason a stack trace from JSON file
+# Description: This function generates 2_grams by reasoning about a stack trace from JSON file
 # Entries in JSON must conform to in-order traversal of call-sequence graph
 
+# imports
 import re 
 from pprint import pprint
 import json
@@ -11,6 +12,7 @@ from collections import deque
 import pandas as pd 
 import pickle
 import sys
+#
 
 def refine_fn (func_name):
     return re.sub(r'\s?C?\s*\[.*\]\s*$', '', func_name).replace(" ", "")
@@ -95,3 +97,5 @@ def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
 if __name__ == "__main__":
     #print("__main__: calling default function")
     generate_n_grams_ct(sys.argv[1], int(sys.argv[2]))
+
+# end of file

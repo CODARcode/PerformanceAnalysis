@@ -1,22 +1,22 @@
 # coding: utf-8
 # Date: Monday, September 18, 2017
 # Authors: Alok Singh, Shinjae Yoo
-# Description: This function generates 2_grams by reason a stack trace from JSON file
+# Description: This function generates 2_grams by reasoning about a stack trace from JSON file
 
+# imports
 import ijson
 import json
 import datetime
 import sys
-
 import re 
 from pprint import pprint
 from collections import deque
 import pandas as pd 
 import pickle
-
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 from slugify import slugify
+#
 
 def extract_entry_exit(filename):
     eventTypes = ['entry_exit']#, 'send_receive', 'counter'] # three groups
@@ -123,3 +123,5 @@ def detect_anomaly(trace_fn_lst,
     fdf = pd.concat(fdf_lst)
     fdf.to_csv(out_fn_prefix + ".csv")
     return fdf
+
+# end of file
