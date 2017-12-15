@@ -13,7 +13,6 @@ and `python` and `pip` to be linked to Python 3.5 or higher.
 
 # Installation
 
-Dependency: pip3 must be installed
 Run the following script: 'scripts/install-dependency.sh'
 
     bash scripts/install-dependency.sh
