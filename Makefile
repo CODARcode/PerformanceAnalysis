@@ -21,7 +21,7 @@ build-test-script:
 	echo 'export CODAR_DEPLOYMENT_CONFIG=$$script_dir/../deploy.cfg' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'export PYTHONPATH=$$script_dir/../$(LIB_DIR):$$PATH:$$PYTHONPATH' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'cd $$script_dir/../$(TEST_DIR)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
-	echo 'python3 -m nose --with-coverage --cover-package=$(SERVICE) --cover-html --cover-html-dir=$$script_dir/../docs/test_coverage --nocapture  --nologcapture n_gram_test.py' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'python -m nose --with-coverage --cover-package=$(SERVICE) --cover-html --cover-html-dir=$$script_dir/../docs/test_coverage --nocapture  --nologcapture n_gram_test.py' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	mkdir -p docs
 

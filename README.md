@@ -1,6 +1,4 @@
-###########################################
 # Performance Data Analysis
-###########################################
 
 This library provides a Python API to process [TAU](http://tau.uoregon.edu) performance profile and traces. It supports the following functionality:
 
@@ -8,27 +6,26 @@ This library provides a Python API to process [TAU](http://tau.uoregon.edu) perf
   - Generator: produces call stack with the depth `k', the duration of call, job_id, node_id, and thread_id
   - Detector : Detects anomalies in performance of functions
 
-###########################################
+# Requirement
+
+Our codebase requires Python 3.5 or higher 
+and `python` and `pip` to be linked to Python 3.5 or higher.
+
 # Installation
-###########################################
 
 Dependency: pip3 must be installed
 Run the following script: 'scripts/install-dependency.sh'
 
     bash scripts/install-dependency.sh
 
-###########################################
 # Test
-###########################################
 
 To run tests:
 
     make
     make test
 
-###########################################
 # Example
-###########################################
 
 [[1]]
 
@@ -82,5 +79,3 @@ For convenience, we provide another option to process all these steps using one 
 This will generate final aggregated anomalies in a DataFrame along with classified anomaly labels.  You have less freedom to test but it alternative is provided for the convenience. 
 
 'n_neighbors' is the number of neighborhood to estimate density, 'n_func_call' is about how many function call n\_gram to process (top k frequent function call n\_gram will be processed), and n_anomalies is about how many anomalies want to see.
-    
-# END OF FILE
