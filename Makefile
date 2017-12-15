@@ -12,7 +12,12 @@ default: build-test-script
 
 build-test-script:
 	echo '#!/bin/bash' > $(TEST_DIR)/$(TEST_SCRIPT_NAME)
-	echo 'script_dir=$$(dirname "$$(readlink -f "$$0")")' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'platform=`uname`' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'if [[ $$platform == "Darwin" ]]; then ' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo '    script_dir=$(DIR)/$(TEST_DIR)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'else' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo '    script_dir=$$(dirname "$$(readlink -f "$$0")")' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'fi' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'export CODAR_DEPLOYMENT_CONFIG=$$script_dir/../deploy.cfg' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'export PYTHONPATH=$$script_dir/../$(LIB_DIR):$$PATH:$$PYTHONPATH' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'cd $$script_dir/../$(TEST_DIR)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
