@@ -16,6 +16,7 @@ import pickle
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 from slugify import slugify
+from sklearn import preprocessing
 #
 
 def extract_entry_exit(filename):
@@ -94,6 +95,7 @@ def detect_anomaly(trace_fn_lst,
                    n_neighbors=10, 
                    n_func_call=5,
                    n_anomalies=5, 
+                   normalize="y", # x, y, or both" at the moment
                    adv_params={"algorithm":"auto", 
                                "leaf_size":30, 
                                "metric" : "minkowski", 
@@ -115,8 +117,21 @@ def detect_anomaly(trace_fn_lst,
     freq = pd.DataFrame({'n_gram':sf.index, 'numberofcalls':sf.values})
     fdf_lst = []
     for ngram in sf.index:
-        ldf = df[df['kl'] == ngram]
-        aidx = perform_localOutlierFactor(ldf, n_neighbors=n_neighbors, contamination=float(n_anomalies / sf[ngram]), params=adv_params)
+        ldf = df[df['kl'] == ngram].copy()
+        ldfn = ldf.copy()
+        if normalize is None:
+            pass
+        elif normalize == "y" or  normalize is "both":
+            y = 'time_diff'
+            max_y = ldfn[y].max()
+            min_y = ldfn[y].min()
+            ldfn[y] = (ldf[y] - min_y) / (max_y - min_y)
+        elif normalize == "x":
+            pass # it is already done
+        else:
+            raise Exception("Undefined normalization method")
+            
+        aidx = perform_localOutlierFactor(ldfn, n_neighbors=n_neighbors, contamination=float(n_anomalies / sf[ngram]), params=adv_params)
         ldf.loc[:,'class']= pd.Series(aidx*1, index=ldf.index)
         fdf_lst.append(ldf)
         ldf.to_csv("{}-{}.csv".format(out_fn_prefix, slugify(ngram)))
