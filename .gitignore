@@ -1,0 +1,4 @@
+src/.ipynb_checkpoints/
+*.csv
+*.df
+*.log
