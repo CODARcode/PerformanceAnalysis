@@ -58,6 +58,29 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 					Points.kdist[i-1][j+1:] = [minval] * (len(Points.kdist[i-1]) - j - 1)
 					Points.knn[i-1][j+1:] = [buck+ind] * (len(Points.kdist[i-1]) - j - 1)
 				break
+
+	rNN = []
+	for k in range(0, i-1):
+		distance = ComputeDist(datastream[k, :], datastream[i-1, :])
+		if (Points.kdist[k][-1] >= distance):
+			for kk in range(0, len(Points.knn[k])):
+				if distance <= Points.kdist[k][kk]:
+					if (kk == 0):
+						Points.knn[k]   = [i-1] + Points.knn[k][kk:]
+						Points.kdist[k] = [distance] + Points.kdist[k][kk:]
+					else:
+						Points.knn[k]   = Points.knn[k][0:kk-1] + [i-1] + Points.knn[k][kk:]
+						Points.kdist[k] = Points.kdist[k][0:k-1]+ [distance] + Points.kdist[k][kk:]
+					break
+			for kk in range(kpar, len(Points.knn[k])):
+				if (Points.kdist[k][kk] != Points.kdist[k][kpar-1]):
+					del Points.kdist[k][kk:]
+					del Points.knn[k][kk:] 
+					break
+			rNN = rNN + [k]
+
+	# update the updatelrd set
+
 	return Points
 
 def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
