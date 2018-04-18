@@ -30,6 +30,12 @@ def ComputeDist(A, B):
 	dist = np.linalg.norm(A-B)
 	return dist
 
+def union(list1, list2):
+	set1 = set(list1)
+	set2 = set(list2)
+	list3 = list1 + list(set2 - set1)
+	return list3
+
 def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, width):
 	i = datastream.shape[0]
 	nbrs = NearestNeighbors(n_neighbors=kpar, algorithm='kd_tree', leaf_size=30, metric='euclidean', n_jobs=-1)
@@ -51,10 +57,10 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 	if (len(dist)):
 		minval, ind =  min((dist[j], j) for j in xrange(len(dist)))
 		for j in range(0, len(Points.kdist[i-1])):
-			if (minval < Points.kdist[i-1][j]):
+			if minval < Points.kdist[i-1][j]:
 				Points.kdist[i-1][j] = minval
 				Points.knn[j] = buck+ind
-				if (j < len(Points.kdist[i-1])-1):
+				if j < len(Points.kdist[i-1])-1:
 					Points.kdist[i-1][j+1:] = [minval] * (len(Points.kdist[i-1]) - j - 1)
 					Points.knn[i-1][j+1:] = [buck+ind] * (len(Points.kdist[i-1]) - j - 1)
 				break
@@ -65,7 +71,7 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 		if (Points.kdist[k][-1] >= distance):
 			for kk in range(0, len(Points.knn[k])):
 				if distance <= Points.kdist[k][kk]:
-					if (kk == 0):
+					if kk == 0:
 						Points.knn[k]   = [i-1] + Points.knn[k][kk:]
 						Points.kdist[k] = [distance] + Points.kdist[k][kk:]
 					else:
@@ -73,13 +79,20 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 						Points.kdist[k] = Points.kdist[k][0:k-1]+ [distance] + Points.kdist[k][kk:]
 					break
 			for kk in range(kpar, len(Points.knn[k])):
-				if (Points.kdist[k][kk] != Points.kdist[k][kpar-1]):
+				if Points.kdist[k][kk] != Points.kdist[k][kpar-1]:
 					del Points.kdist[k][kk:]
 					del Points.knn[k][kk:] 
 					break
 			rNN = rNN + [k]
 
 	# update the updatelrd set
+	updatedlrd = rNN
+	if len(rNN) > 0:
+		for j in rNN:
+			for ii in Points.knn[j]:
+				if ii <= len(Points.knn) && ii != i && j in Points.knn[ii]:
+					updatelrd = union(updatelrd, [ii])
+
 
 	return Points
 
@@ -111,5 +124,5 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 #	for i in range(kpar+2, int(buck/2)):
 	for i in range(kpar+2, kpar+3):
 		Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
-#		Scores.extend(Points.LOF)
-#		kdist.append(Points.kdist[i][-1])
+		Scores.extend(Points.LOF)
+		kdist.append(Points.kdist[i][-1])
