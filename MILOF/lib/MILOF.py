@@ -6,10 +6,10 @@ from sklearn.neighbors import LocalOutlierFactor
 
 class Point:
 	def __init__(self):
-		self.LOF = {}
 		self.kdist = {}
 		self.knn = {}
 		self.lrd = {}
+		self.LOF = {}
 
 class Cluster:
 	def __init__(self):
@@ -18,10 +18,10 @@ class Cluster:
 
 def LOF(datastream, kpar):
 	#not sure to use euclidean or minkowski
+	Points = Point()
 	clf = LocalOutlierFactor(n_neighbors=kpar, algorithm="kd_tree", leaf_size=30, metric='euclidean', n_jobs=-1)
 	clf.fit(datastream)
-	Points = Point()
-	Points.LOF = clf.negative_outlier_factor_.tolist()
+	Points.LOF = [-x for x in clf.negative_outlier_factor_.tolist()]
 	Points.lrd = clf._lrd.tolist()
 	dist, ind = clf.kneighbors()
 	Points.kdist = dist.tolist()
@@ -40,13 +40,15 @@ def union(list1, list2):
 
 def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, width):
 	i = datastream.shape[0]
+	print("******************* Processing Data Point", i-1, "*******************")
+	
 	nbrs = NearestNeighbors(n_neighbors=kpar, algorithm='kd_tree', leaf_size=30, metric='euclidean', n_jobs=-1)
 	nbrs.fit(datastream[0:i-1, :])
 	dist, ind = nbrs.kneighbors(datastream[i-1, :].reshape(1, -1))
 	Points.kdist.extend(dist.tolist())
 	Points.knn.extend(ind.tolist())
-	print("Points.kdist = ", Points.kdist)
-	print("Points.knn = ", Points.knn)
+	# print("Points.kdist = ", Points.kdist)
+	# print("Points.knn = ", Points.knn)
 
 	#check the distances of the point i with the cluster centers and pick the nearest cluster
 	dist = []
@@ -55,6 +57,7 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 		if distCI <=0:
 			distCI=PointsC.kdist[j]
 		dist.append(distCI)
+	# print("dist = ", dist)
 
 	if (len(dist)):
 		minval, ind =  min((dist[j], j) for j in xrange(len(dist)))
@@ -70,6 +73,7 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 	rNN = []
 	for k in range(0, i-1):
 		distance = ComputeDist(datastream[k, :], datastream[i-1, :])
+		# print ("distance between point", k, "and point", i-1, "=", distance)
 		if (Points.kdist[k][-1] >= distance):
 			for kk in range(0, len(Points.knn[k])):
 				if distance <= Points.kdist[k][kk]:
@@ -77,24 +81,28 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 						Points.knn[k]   = [i-1] + Points.knn[k][kk:]
 						Points.kdist[k] = [distance] + Points.kdist[k][kk:]
 					else:
-						Points.knn[k]   = Points.knn[k][0:kk-1] + [i-1] + Points.knn[k][kk:]
-						Points.kdist[k] = Points.kdist[k][0:k-1]+ [distance] + Points.kdist[k][kk:]
+						Points.knn[k]   = Points.knn[k][0:kk] + [i-1] + Points.knn[k][kk:]
+						Points.kdist[k] = Points.kdist[k][0:kk]+ [distance] + Points.kdist[k][kk:]
 					break
 			for kk in range(kpar, len(Points.knn[k])):
+				# print(Points.kdist[k][kk], Points.kdist[k][kpar-1])
 				if Points.kdist[k][kk] != Points.kdist[k][kpar-1]:
 					del Points.kdist[k][kk:]
 					del Points.knn[k][kk:] 
 					break
 			rNN = rNN + [k]
+	# print("rNN = ", rNN)
+	# print("Points.kdist = ", Points.kdist)
+	# print("Points.knn = ", Points.knn)
 
 	# update the updatelrd set
-	updatedlrd = rNN
+	updatelrd = rNN
 	if len(rNN) > 0:
 		for j in rNN:
 			for ii in Points.knn[j]:
 				if ii < len(Points.knn) and ii != i-1 and j in Points.knn[ii]:
 					updatelrd = union(updatelrd, [ii])
-
+	# print("updatelrd = ", updatelrd)
 
 	# lrd-i
 	rdist = 0
@@ -102,13 +110,14 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 		if p > buck-1:
 			rdist = rdist + max(ComputeDist(datastream[i-1:], Clusters.center[p-buck])-width, PointsC.kdist[p-buck][-1])
 		else:
-			rdist = rdist + max(ComputeDist(datastream[i-1:], datastream[p,:]), Poists.kdist[p][-1])
-	Points.lrd[i-1] = 1/(rdist/len(Points.knn[i-1]))
+			rdist = rdist + max(ComputeDist(datastream[i-1:], datastream[p,:]), Points.kdist[p][-1])
+	Points.lrd = Points.lrd + [1/(rdist/len(Points.knn[i-1]))]
+	# print("Points.lrd = ", Points.lrd)
 
 	# lrd neighbours
-	updatedLOF = updatedlrd
-	if len(updatedlrd) > 0:
-		for m in updatedlrd:
+	updateLOF = updatelrd
+	if len(updatelrd) > 0:
+		for m in updatelrd:
 			rdist = 0
 			for p in Points.knn[m]:
 				if p > buck-1:
@@ -116,9 +125,11 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 				else:
 					rdist = rdist + max(ComputeDist(datastream[m, :], datastream[p, :]), Points.kdist[p][-1])
 			Points.lrd[m] = 1/(rdist/len(Points.knn[m]))
-			for k in range(0, len(Points)):
-				if k != m and Points.knn[k].count(m) > 0
-				updateLOF = unior(updateLOF, [k])
+			for k in range(0, len(Points.knn)):
+				if k != m and Points.knn[k].count(m) > 0:
+					updateLOF = union(updateLOF, [k])
+	# print("Points.lrd =", Points.lrd)
+	# print("updateLOF =", updateLOF)
 
 	# LOF neighbours
 	if len(updateLOF) > 0:
@@ -129,15 +140,30 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 					lof = lof + PointsC.lrd[ll-buck]/Points.lrd[l]
 				else:
 					lof = lof + Points.lrd[ll]/Points.lrd[l]
-			Points.LOF[l] = lof/len(Points.knn[l])
+			if l == len(Points.LOF):
+				Points.LOF = Points.LOF + [lof/len(Points.knn[l])]
+			else:
+				Points.LOF[l] = lof/len(Points.knn[l])
+	# print("Points.LOF =", Points.LOF)
 
 	# LOF-i
+	lof = 0
 	for ll in Points.knn[i-1]:
 		if ll > buck-1:
 			lof = lof + PointsC.lrd[ll-buck]/Points.lrd[i-1]
 		else:
 			lof = lof + Points.lrd[ll]/Points.lrd[i-1]
-	Points.LOF[i-1] = lof/len(Points.knn[i])
+	Points.LOF[i-1] = lof/len(Points.knn[i-1])
+	# print("Points.LOF =", Points.LOF)
+
+
+	print("Points.kdist =", Points.kdist)
+	print("Points.knn =", Points.knn)
+	print("Points.LOF =", Points.LOF)
+	print("Points.lrd =", Points.lrd)
+	print("rNN = ", rNN)
+	print("updatelrd = ", updatelrd)
+	print("updateLOF =", updateLOF)
 	
 	return Points
 
@@ -147,6 +173,8 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	datastream = sio.loadmat(filepath)
 	datastream = np.array(datastream['DataStream'])
 	datastream = datastream[:, 0:dimension]
+	PointNum = datastream.shape[0]
+	print ("number of data points =", PointNum)
 
 	scaler = MinMaxScaler()
 	scaler.fit(datastream)
@@ -158,17 +186,24 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	Clusters = Cluster()
 	Scores = []
 	Points = LOF(datastream[0:kpar+1, :], kpar)
-	Scores.extend(Points.LOF)
-	print("Scores = ", Scores)
-	print("Points.lrd = ", Points.lrd)
+	Scores = Scores + Points.LOF
+	print(Points.kdist)
 
 	for mm in range(0, kpar+1):
 		kdist.append(Points.kdist[mm][-1])
-	print("kdist = ", kdist)
+
+	print("Scores =", Scores)	
+	print("kdist =", kdist)
+	# print("Points.kdist =", Points.kdist)
+	# print("Points.knn = ", Points.knn)
+	# print("Points.lrd =", Points.lrd)
 
 	# using direct Incremental LOF for the first bucket/2
-#	for i in range(kpar+2, int(buck/2)):
-	for i in range(kpar+2, kpar+3):
+	for i in range(kpar+2, int(buck/2)):
+#	for i in range(kpar+2, kpar+3):
 		Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
-		Scores.extend(Points.LOF)
-#		kdist.append(Points.kdist[i][-1])
+		Scores = Scores + [Points.LOF[i-1]]
+		kdist  = kdist + [Points.kdist[i-1][-1]]
+		print("Scores =", Scores)	
+		print("kdist =", kdist)
+		print ("\n")
