@@ -3,6 +3,7 @@ import scipy.io as sio
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import LocalOutlierFactor
+from sklearn.cluster import KMeans
 
 class Point:
 	def __init__(self):
@@ -36,6 +37,12 @@ def union(list1, list2):
 	set1 = set(list1)
 	set2 = set(list2)
 	list3 = list1 + list(set2 - set1)
+	return list3
+
+def setdiff(list1, list2):
+	set1 = set(list1)
+	set2 = set(list2)
+	list3 = list(set1 - set2)
 	return list3
 
 def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, width):
@@ -185,15 +192,12 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	print ("number of data points =", PointNum)
 	print ("normalized data = ", datastream)
 
-	PointsC=[]
 	Clusters = Cluster()
+	PointsC=[]
 	Scores = []
 	Points = LOF(datastream[0:kpar+1, :], kpar)
 	Scores = Scores + Points.LOF
-	print(Points.kdist)
-
-	for mm in range(0, kpar+1):
-		kdist.append(Points.kdist[mm][-1])
+	kdist = Points.kdist[0:kpar+1, -1]
 
 	print("Scores =", Scores)	
 	print("kdist =", kdist)
@@ -202,7 +206,35 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	for i in range(kpar+2, int(buck/2)+1):
 		Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
 		Scores = Scores + [Points.LOF[i-1]]
-		kdist  = kdist + [Points.kdist[i-1][-1]]
+		kdist  = kdist + [Points.kdist[i-1, -1]]
 
 	print("Scores =", Scores)	
 	print("kdist =", kdist)
+
+	exit = False
+	step = 0
+	while !exit:
+		for i in (int(buck/2)+1, buck):
+			if (i > PointNum):
+				exit = True
+				break
+			Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
+			Scores = Scores + [Points.LOF[i-1]]
+			kdist  = kdist + [Points.kdist[i-1, -1]]
+		if !exit:
+			indexNormal = list(range(0, int(buck/2)))
+			kmeans = KMeans(n_clusters=num_k, n_jobs=-1)  # Considering precompute_distances for faster but more memory
+			kmeans.fit(datastream[indexNormal, :])
+			center = kmeans.cluster_centers_.tolist()
+			clusterindex = kmeans.labels_.tolist()
+			remClustLbl = list(range(0, num_k))
+			step = step + 1
+			lof_scores = np.array(Points.kdist[0:int(buck/2), -1])
+			lof_threshold = np.mean(lof_scores) + 3 * np.std(lof_scores) # Not sure if calcuating for each i is necessary
+			for kk in range(0, num_k):
+				clusterMembers = [ii for ii, x in enumerate(clusterindex) if x == kk]
+				clusterindex.count(kk)
+				if np.sum( lof_scores(np.where(lof_scores[clusterMembers]>lof_threshold)) > 0.5 * len(clusterMembers)):
+					indexNormal = setdiff(, clusterMembers)
+					remClustLbl = setdiff(remClustLbl, kk)
+			
