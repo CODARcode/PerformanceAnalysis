@@ -197,7 +197,9 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	Scores = []
 	Points = LOF(datastream[0:kpar+1, :], kpar)
 	Scores = Scores + Points.LOF
-	kdist = Points.kdist[0:kpar+1, -1]
+	
+	for mm in range(0, kpar+1):
+		kdist = kdist + [Points.kdist[mm][-1]]
 
 	print("Scores =", Scores)	
 	print("kdist =", kdist)
@@ -206,35 +208,51 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	for i in range(kpar+2, int(buck/2)+1):
 		Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
 		Scores = Scores + [Points.LOF[i-1]]
-		kdist  = kdist + [Points.kdist[i-1, -1]]
+		kdist  = kdist + [Points.kdist[i-1][-1]]
 
-	print("Scores =", Scores)	
-	print("kdist =", kdist)
+	# print("Scores =", Scores)	
+	# print("kdist =", kdist)
 
 	exit = False
 	step = 0
-	while !exit:
-		for i in (int(buck/2)+1, buck):
+	while not exit:
+		for i in range(int(buck/2)+1, buck+1):
 			if (i > PointNum):
 				exit = True
 				break
 			Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
 			Scores = Scores + [Points.LOF[i-1]]
-			kdist  = kdist + [Points.kdist[i-1, -1]]
-		if !exit:
+			kdist  = kdist + [Points.kdist[i-1][-1]]
+
+		# print("Scores =", Scores)
+		# print("kdist =", kdist)
+
+		if not exit:
+			step = step + 1
 			indexNormal = list(range(0, int(buck/2)))
 			kmeans = KMeans(n_clusters=num_k, n_jobs=-1)  # Considering precompute_distances for faster but more memory
 			kmeans.fit(datastream[indexNormal, :])
-			center = kmeans.cluster_centers_.tolist()
-			clusterindex = kmeans.labels_.tolist()
-			remClustLbl = list(range(0, num_k))
-			step = step + 1
-			lof_scores = np.array(Points.kdist[0:int(buck/2), -1])
+			center = kmeans.cluster_centers_ #.tolist()
+			clusterindex = kmeans.labels_ #.tolist()
+			# print("label =", clusterindex)
+			# print("center =", center)
+			remClustLbl = list(range(0, num_k)) #remClustLbl = np.arange(num_k)
+			lof_scores = []
+			for itr in range(0, int(buck/2)):
+				lof_scores = lof_scores + [Points.kdist[itr][-1]] # need to optimize later, same as line 201
+			lof_scores = np.array(lof_scores)
 			lof_threshold = np.mean(lof_scores) + 3 * np.std(lof_scores) # Not sure if calcuating for each i is necessary
+			# print("lof_scores=", lof_scores)
+			# print("lof_threshold=", lof_threshold)
 			for kk in range(0, num_k):
-				clusterMembers = [ii for ii, x in enumerate(clusterindex) if x == kk]
-				clusterindex.count(kk)
-				if np.sum( lof_scores(np.where(lof_scores[clusterMembers]>lof_threshold)) > 0.5 * len(clusterMembers)):
-					indexNormal = setdiff(, clusterMembers)
-					remClustLbl = setdiff(remClustLbl, kk)
-			
+				clusterMembers = np.where(clusterindex==kk) #[ii for ii, x in enumerate(clusterindex) if x == kk]
+				if np.sum( lof_scores[np.where(lof_scores[clusterMembers]>lof_threshold)] ) > 0.5 * len(clusterMembers):
+					indexNormal = setdiff(indexNormal, clusterMembers.tolist())
+					remClustLbl = setdiff(remClustLbl, [kk])
+			clusterindex = clusterindex[indexNormal]
+			center = center[remClustLbl,:]
+			# print("label =", clusterindex)
+			# print("center =", center)
+		exit = True
+
+			# make summerization of clusters
