@@ -271,4 +271,15 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 			del Points.knn[0:hbuck]
 			del Points.lrd[0:hbuck]
 			del Points.LOF[0:hbuck]
+
+			# Merge clusterings and PointsC
+			initialClusters = len(Clusters.center) # need to double check the correctness
+			if len(Clusters.center) > 0:
+				old_center = np.array(Clusters.center)
+				cluster_num = max(old_center.shape[0], center.shape[0])
+				if center_num == center.shape[0]:
+					initial_center = center
+				else:
+					initial_center = old_center
+
 		# exit = True
