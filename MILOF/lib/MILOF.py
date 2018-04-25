@@ -196,9 +196,7 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	PointsC= Point()
 	Points = LOF(datastream[0:kpar+1, :], kpar)
 	Scores = Scores + Points.LOF
-	
-	for mm in range(0, kpar+1):
-		kdist = kdist + [Points.kdist[mm][-1]]
+	kdist = np.array(Points.kdist)[0:kpar+1,:][:,-1].tolist()
 
 	print("Scores =", Scores)	
 	print("kdist =", kdist)
@@ -227,17 +225,14 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 		if not exit:
 			step = step + 1
 			indexNormal = list(range(0, hbuck))
-			kmeans = KMeans(n_clusters=num_k, n_jobs=-1)  # Considering precompute_distances for faster but more memory
+			kmeans = KMeans(n_clusters=num_k, init='k-means++', max_iter=100, n_jobs=-1)  # Considering precompute_distances for faster but more memory
 			kmeans.fit(datastream[indexNormal, :]) # need to check how to configure to match result of matlab code 
 			center = kmeans.cluster_centers_
 			clusterindex = kmeans.labels_
 			# print("label =", clusterindex)
 			# print("center =", center)
 			remClustLbl = list(range(0, num_k))
-			lof_scores = []
-			for itr in range(0, hbuck):
-				lof_scores = lof_scores + [Points.kdist[itr][-1]] # need to optimize later, same as line 201
-			lof_scores = np.array(lof_scores)
+			lof_scores = np.array(Points.kdist)[0:hbuck,:][:,-1]
 			lof_threshold = np.mean(lof_scores) + 3 * np.std(lof_scores) # Not sure if calcuating for each i is necessary
 			# print("lof_scores=", lof_scores)
 			# print("lof_threshold=", lof_threshold)
@@ -249,6 +244,8 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 					remClustLbl = setdiff(remClustLbl, [kk])
 			clusterindex = clusterindex[indexNormal]
 			center = center[remClustLbl,:]
+			# print("center = ", center)
+			# print("lable = ", clusterindex)
 		
 			# make summerization of clusters
 			for j in range(0, len(remClustLbl)):
@@ -260,18 +257,18 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 					Ckdist = Ckdist + Points.kdist[k][-1]
 					Clrd   = Clrd   + Points.lrd[k]
 					CLOF   = CLOF   + Points.LOF[k]
+
 				PointsC.kdist = PointsC.kdist + [Ckdist/num]
 				PointsC.lrd   = PointsC.lrd   + [Clrd/num]
 				PointsC.LOF   = PointsC.LOF   + [CLOF/num]
 
-				print(PointsC.kdist)
-				print(PointsC.lrd)
-				print(PointsC.LOF)
+				# print(PointsC.kdist)
+				# print(PointsC.lrd)
+				# print(PointsC.LOF)
 
 			np.delete(datastream, range(0,hbuck), axis=0)
 			del Points.kdist[0:hbuck]
 			del Points.knn[0:hbuck]
 			del Points.lrd[0:hbuck]
 			del Points.LOF[0:hbuck]
-
 		# exit = True
