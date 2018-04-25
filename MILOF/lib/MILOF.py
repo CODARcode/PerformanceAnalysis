@@ -7,15 +7,16 @@ from sklearn.cluster import KMeans
 
 class Point:
 	def __init__(self):
-		self.kdist = {}
-		self.knn = {}
-		self.lrd = {}
-		self.LOF = {}
+		self.kdist = []
+		self.knn = []
+		self.lrd = []
+		self.LOF = []
+		# self.rdist = {}
 
 class Cluster:
 	def __init__(self):
-		self.center = {}
-		self.LS = {}
+		self.center = []
+		self.LS = []
 
 def LOF(datastream, kpar):
 	#not sure to use euclidean or minkowski
@@ -164,9 +165,6 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 		Points.LOF = Points.LOF + [lof/len(Points.knn[i-1])]
 	else:
 		Points.LOF[i-1] = lof/len(Points.knn[i-1])
-
-	# print("Points.LOF =", Points.LOF)
-
 	# print("Points.kdist =", Points.kdist)
 	# print("Points.knn =", Points.knn)
 	# print("Points.LOF =", Points.LOF)
@@ -178,8 +176,6 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 	return Points
 
 def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
-	kdist = []
-	clusterLog = []
 	datastream = sio.loadmat(filepath)
 	datastream = np.array(datastream['DataStream'])
 	datastream = datastream[:, 0:dimension]
@@ -192,9 +188,12 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	print ("number of data points =", PointNum)
 	print ("normalized data = ", datastream)
 
-	Clusters = Cluster()
-	PointsC=[]
+	hbuck = int(buck/2) # half of buck
+	kdist = []
 	Scores = []
+	clusterLog = []
+	Clusters = Cluster()
+	PointsC= Point()
 	Points = LOF(datastream[0:kpar+1, :], kpar)
 	Scores = Scores + Points.LOF
 	
@@ -205,54 +204,74 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 	print("kdist =", kdist)
 
 	# using direct Incremental LOF for the first bucket/2
-	for i in range(kpar+2, int(buck/2)+1):
+	for i in range(kpar+2, hbuck+1):
 		Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
 		Scores = Scores + [Points.LOF[i-1]]
 		kdist  = kdist + [Points.kdist[i-1][-1]]
-
 	# print("Scores =", Scores)	
 	# print("kdist =", kdist)
 
 	exit = False
 	step = 0
 	while not exit:
-		for i in range(int(buck/2)+1, buck+1):
+		for i in range(hbuck+1, buck+1):
 			if (i > PointNum):
 				exit = True
 				break
 			Points = IncrementalLOF_Fixed(Points, datastream[0:i, :], PointsC, Clusters, kpar, buck, width)
 			Scores = Scores + [Points.LOF[i-1]]
 			kdist  = kdist + [Points.kdist[i-1][-1]]
-
 		# print("Scores =", Scores)
 		# print("kdist =", kdist)
 
 		if not exit:
 			step = step + 1
-			indexNormal = list(range(0, int(buck/2)))
+			indexNormal = list(range(0, hbuck))
 			kmeans = KMeans(n_clusters=num_k, n_jobs=-1)  # Considering precompute_distances for faster but more memory
-			kmeans.fit(datastream[indexNormal, :])
-			center = kmeans.cluster_centers_ #.tolist()
-			clusterindex = kmeans.labels_ #.tolist()
+			kmeans.fit(datastream[indexNormal, :]) # need to check how to configure to match result of matlab code 
+			center = kmeans.cluster_centers_
+			clusterindex = kmeans.labels_
 			# print("label =", clusterindex)
 			# print("center =", center)
-			remClustLbl = list(range(0, num_k)) #remClustLbl = np.arange(num_k)
+			remClustLbl = list(range(0, num_k))
 			lof_scores = []
-			for itr in range(0, int(buck/2)):
+			for itr in range(0, hbuck):
 				lof_scores = lof_scores + [Points.kdist[itr][-1]] # need to optimize later, same as line 201
 			lof_scores = np.array(lof_scores)
 			lof_threshold = np.mean(lof_scores) + 3 * np.std(lof_scores) # Not sure if calcuating for each i is necessary
 			# print("lof_scores=", lof_scores)
 			# print("lof_threshold=", lof_threshold)
 			for kk in range(0, num_k):
-				clusterMembers = np.where(clusterindex==kk) #[ii for ii, x in enumerate(clusterindex) if x == kk]
-				if np.sum( lof_scores[np.where(lof_scores[clusterMembers]>lof_threshold)] ) > 0.5 * len(clusterMembers):
-					indexNormal = setdiff(indexNormal, clusterMembers.tolist())
+				clusterMembers = np.where(clusterindex==kk)
+				clusterMembersList = np.asarray(clusterMembers).flatten().tolist()
+				if np.sum(lof_scores[clusterMembers]>lof_threshold) > 0.5*len(clusterMembersList):
+					indexNormal = setdiff(indexNormal, clusterMembersList)
 					remClustLbl = setdiff(remClustLbl, [kk])
 			clusterindex = clusterindex[indexNormal]
 			center = center[remClustLbl,:]
-			# print("label =", clusterindex)
-			# print("center =", center)
-		exit = True
-
+		
 			# make summerization of clusters
+			for j in range(0, len(remClustLbl)):
+				# PointsC.rdist = PointsC.rdist + []
+				num = np.sum(clusterindex == remClustLbl[j])
+				PointsC.knn = PointsC.knn + [num]
+				Ckdist = Clrd = CLOF = 0
+				for k in np.array(indexNormal)[np.where(clusterindex==remClustLbl[j])]:
+					Ckdist = Ckdist + Points.kdist[k][-1]
+					Clrd   = Clrd   + Points.lrd[k]
+					CLOF   = CLOF   + Points.LOF[k]
+				PointsC.kdist = PointsC.kdist + [Ckdist/num]
+				PointsC.lrd   = PointsC.lrd   + [Clrd/num]
+				PointsC.LOF   = PointsC.LOF   + [CLOF/num]
+
+				print(PointsC.kdist)
+				print(PointsC.lrd)
+				print(PointsC.LOF)
+
+			np.delete(datastream, range(0,hbuck), axis=0)
+			del Points.kdist[0:hbuck]
+			del Points.knn[0:hbuck]
+			del Points.lrd[0:hbuck]
+			del Points.LOF[0:hbuck]
+
+		# exit = True
