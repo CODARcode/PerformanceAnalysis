@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.io as sio
+import wkmeans as wkm
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import LocalOutlierFactor
@@ -281,5 +282,15 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 					initial_center = center
 				else:
 					initial_center = old_center
+
+				wkmeans = wkm.KPlusPlus(cluster_num, X=np.concatenate((old_center, center), axis=0), c=PointsC.knn[0, old_center.shape[0]+center.shape[0]], max_runs=5, verbose=False)
+				wkmeans.init_centers() # change this line to existing initialClusters
+				wkmeans.find_centers(method='++')
+				# need to check how to get mergedindex, merge_center, cluster_population, cluster_energy,it_num
+
+				clusterLog = clusterLog + [cluster_num]
+
+				# update PointsC by using extra parameter PC
+
 
 		# exit = True
