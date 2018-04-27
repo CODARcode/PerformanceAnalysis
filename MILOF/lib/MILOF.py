@@ -245,7 +245,7 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 					remClustLbl = setdiff(remClustLbl, [kk])
 			clusterindex = clusterindex[indexNormal]
 			center = center[remClustLbl,:]
-			# print("center = ", center)
+			print("center = ", center)
 			# print("lable = ", clusterindex)
 		
 			# make summerization of clusters
@@ -278,19 +278,36 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 			if len(Clusters.center) > 0:
 				old_center = np.array(Clusters.center)
 				cluster_num = max(old_center.shape[0], center.shape[0])
+				initial_center = []
 				if center_num == center.shape[0]:
-					initial_center = center
+					for x in center.tolist():
+						initial_center.append(np.array(x))
 				else:
-					initial_center = old_center
+					for x in old_center.tolist():
+						initial_center.append(np.array(x))
 
-				wkmeans = wkm.KPlusPlus(cluster_num, X=np.concatenate((old_center, center), axis=0), c=PointsC.knn[0, old_center.shape[0]+center.shape[0]], max_runs=5, verbose=False)
-				wkmeans.init_centers() # change this line to existing initialClusters
+				wkmeans = wkm.KPlusPlus(cluster_num, X=np.concatenate((old_center, center), axis=0), c=PointsC.knn[0, old_center.shape[0]+center.shape[0]], max_runs=5, verbose=False, mu=initial_center)
 				wkmeans.find_centers(method='++')
-				# need to check how to get mergedindex, merge_center, cluster_population, cluster_energy,it_num
-
+				merge_center = np.array(wkmeans.mu)
+				mergedindex = wkmeans.cluster_indices
 				clusterLog = clusterLog + [cluster_num]
 
 				# update PointsC by using extra parameter PC
+				PC = Point()
+				for j in range(0, cluster_num):
+					num = np.sum(mergedindex==j)
+					PC.kdist.append(0)
+					PC.knn.append(0)
+					PC.lrd.append(0)
+					PC.LOF.append(0)
+					for k in np.asarray(np.where(mergedindex==j)).flatten().tolist():
+						PC.knn[j]   = PC.knn[j] + PointsC.knn[k]
+						PC.kdist[j] = PC.kdist[j] + PointsC.knn[k] * PointsC.kdist[k]
+						PC.lrd[j]   = PC.lrd[j] + PointsC.knn[k] * PointsC.lrd[k]
+						PC.LOF[j]   = PC.LOF + PointsC.knn[k] * PointsC.LOF[k]
+					PC.kdist[j] = PC.kdist[j] / PC[j].knn
+					PC.lrd[j]   = PC.lrd[j] / PC[j].knn
+					PC.LOF[j]   = PC.LOF[j] / PC[j].knn
+				PointsC = PC
 
-
-		# exit = True
+			exit = True
