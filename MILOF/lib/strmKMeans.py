@@ -58,7 +58,7 @@ def StrmKMmeans(x, Centroids, Assign, cof_f, max_Cen, beta):
 			Assign =  np.append(Assign, idx_y)
 			# print Assign
 
-	print Centroids, Assign
+	print (Centroids, Assign)
 
 	## When the number of facilities is larger than the certain constraint max_Cen
 	while Centroids.shape[0]>max_Cen: 
