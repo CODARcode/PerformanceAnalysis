@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
-import wkmeans as wkm
+import wKmeans as wkm
+import strmKMeans as skm
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import LocalOutlierFactor
@@ -317,7 +318,7 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 			# update the Points (knn) as old datastream is deleted
 			for j in range(0, len(Points.knn)):
 				for k in range(0, len(Points.knn[j])):
-					if Points.knn[i][k] >= hbuck:
+					if Points.knn[j][k] >= hbuck:
 						if Points.knn[j][k] < buck:
 							Points.knn[j][k] = Points[j][k] - hbuck
 						else:
@@ -338,5 +339,5 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 								mindist = mindist + [ComputeDist(datastream[j,:], Clusters.center[kk])]
 							mindistVal, ci =  min((mindist[x], x) for x in range(len(mindist)))
 							Points[j][k] = ci + buck
-			center
+		
 			exit = True

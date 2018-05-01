@@ -1,7 +1,7 @@
 import sys
 import time
 import os
-import MILOF
+import MiLOF
 
 filepath = 'data/testdata.mat'
 dimension = 2

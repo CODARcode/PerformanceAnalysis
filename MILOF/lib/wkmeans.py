@@ -1,11 +1,9 @@
-"""Weighted k-means algorithm.
-Code: Olivia Guest (weighted k-means) and
-      The Data Science Lab (k-means and k-means++)
-Algorithm: Bradley C. Love (weighted k-means)
-Original code for vanilla k-means and k-means++ can be found at:
-https://datasciencelab.wordpress.com/2013/12/12/clustering-with-k-means-in-python/
-https://datasciencelab.wordpress.com/2014/01/15/improved-seeding-for-clustering-with-k-means/
-"""
+# Weighted k-means algorithm
+# Code: Olivia Guest (weighted k-means) and The Data Science Lab (k-means and k-means++)
+# Algorithm: Bradley C. Love (weighted k-means)
+# Original code for vanilla k-means and k-means++ can be found at:
+# https://datasciencelab.wordpress.com/2013/12/12/clustering-with-k-means-in-python/
+# https://datasciencelab.wordpress.com/2014/01/15/improved-seeding-for-clustering-with-k-means/
 
 from __future__ import division, print_function
 
