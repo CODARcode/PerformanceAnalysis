@@ -69,7 +69,7 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 	# print("dist = ", dist)
 
 	if (len(dist)):
-		minval, ind =  min((dist[j], j) for j in xrange(len(dist)))
+		minval, ind =  min((dist[j], j) for j in range(len(dist)))
 		for j in range(0, len(Points.kdist[i-1])):
 			if minval < Points.kdist[i-1][j]:
 				Points.kdist[i-1][j] = minval
@@ -267,7 +267,7 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 				# print(PointsC.lrd)
 				# print(PointsC.LOF)
 
-			np.delete(datastream, range(0,hbuck), axis=0)
+			datastream = np.delete(datastream, range(0,hbuck), axis=0)
 			del Points.kdist[0:hbuck]
 			del Points.knn[0:hbuck]
 			del Points.lrd[0:hbuck]
@@ -309,5 +309,34 @@ def MILOF_Kmeans_Merge(kpar, dimension, buck, filepath, num_k, width):
 					PC.lrd[j]   = PC.lrd[j] / PC[j].knn
 					PC.LOF[j]   = PC.LOF[j] / PC[j].knn
 				PointsC = PC
+				# update Clusters
+				Cluster.center = merge_center.tolist()
+			else:
+				Cluster.center = center.tolist()
 
+			# update the Points (knn) as old datastream is deleted
+			for j in range(0, len(Points.knn)):
+				for k in range(0, len(Points.knn[j])):
+					if Points.knn[i][k] >= hbuck:
+						if Points.knn[j][k] < buck:
+							Points.knn[j][k] = Points[j][k] - hbuck
+						else:
+							Points.knn[j][k] = mergedindex[Points.knn[j][k]-buck] + buck
+					else:
+						indarr = np.where(np.array(indexNormal)==Points.knn[j][k])
+						ind = np.asarray(indarr).flatten().tolist()
+						if len(ind):
+							cLabel = clusterindex[indarr]
+							ci = np.asarray(np.where(np.array(remClustLbl)==cLabel)).flatten().tolist()[0]
+							if not initialClusters:
+								Points[j][k] = ci + buck
+							else:
+								Points[j][k] = mergedindex[ci+initialClusters] + buck
+						else:
+							mindist = []
+							for kk in range(0, len(Clusters.center)):
+								mindist = mindist + [ComputeDist(datastream[j,:], Clusters.center[kk])]
+							mindistVal, ci =  min((mindist[x], x) for x in range(len(mindist)))
+							Points[j][k] = ci + buck
+			center
 			exit = True
