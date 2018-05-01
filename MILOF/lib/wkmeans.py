@@ -5,6 +5,26 @@
 # https://datasciencelab.wordpress.com/2013/12/12/clustering-with-k-means-in-python/
 # https://datasciencelab.wordpress.com/2014/01/15/improved-seeding-for-clustering-with-k-means/
 
+# Required argument:
+    # K       -- the number of clusters.
+    # Keyword arguments:
+    # X        -- the data (default None; thus auto-generated, see below);
+    # N        -- number of unique data points to generate (default: 0);
+    # c        -- number of non-unique points represented by a data point
+    #                 (default: None; to mean every data point is unique);
+    # alpha    -- the exponent used to calculate the scaling factor (default: 0);
+    # beta     -- the stickiness parameter used during time-averaging
+    #                 (default: 0);
+    # dist     -- custom distance metric for calculating distances between points
+    #                 (default: great circle distance);
+    # max_runs -- When to stop clustering, to avoid infinite loop (default: 200);
+    # label    -- offer extra information at runtime about what is being
+    #                 clustered (default: 'My Clustering');
+    # verbose  -- how much information to print (default: True).
+    # mu       -- seed clusters, i.e., define a starting state (default: None).
+    # max_diff -- maximum perceptible change between present and previous
+    #             centroids when checking if solution is stable (default: 0.001).
+    
 from __future__ import division, print_function
 
 import random
@@ -23,28 +43,7 @@ def euclidean(a, b):
 
 
 class WKMeans():
-    """Class for running weighted k-means.
-    Required argument:
-    K       -- the number of clusters.
-    Keyword arguments:
-    X        -- the data (default None; thus auto-generated, see below);
-    N        -- number of unique data points to generate (default: 0);
-    c        -- number of non-unique points represented by a data point
-                (default: None; to mean every data point is unique);
-    alpha    -- the exponent used to calculate the scaling factor (default: 0);
-    beta     -- the stickiness parameter used during time-averaging
-                (default: 0);
-    dist     -- custom distance metric for calculating distances between points
-                (default: great circle distance);
-    max_runs -- When to stop clustering, to avoid infinite loop (default: 200);
-    label    -- offer extra information at runtime about what is being
-                clustered (default: 'My Clustering');
-    verbose  -- how much information to print (default: True).
-    mu       -- seed clusters, i.e., define a starting state (default: None).
-    max_diff -- maximum perceptible change between present and previous
-                centroids when checking if solution is stable (default: 0.001).
-    """
-
+    # Class for running weighted k-means.
     def counted(f):
         """Decorator for returning number of times a function has been called.
         Code: FogleBird

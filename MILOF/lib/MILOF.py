@@ -1,3 +1,17 @@
+# MiLOF - This is the Fast Memory Efficient Local Outlier Detection algorithm generated based on TKDE paper. 
+# For more information, please check
+# https://ieeexplore.ieee.org/document/7530918/
+
+# Inputs:
+	# kpar: numbe of nearest neighbours
+	# dimension: dimension of data points
+	# buck: bucket size (memory limit)
+	# filepath: path of input data file
+	# num_k: number of clusters used in kmeans, streaming kmeans and weighted kmeans
+	# width: N/A
+
+# Authors: Dingwen Tao (ustc.dingwentao@gmail.com), Xi Zhang (xizhang1@cs.stonybrook.edu), Shinjae Yoo (sjyoo@bnl.gov)
+
 import numpy as np
 import scipy.io as sio
 import wKmeans as wkm
