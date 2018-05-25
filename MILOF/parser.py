@@ -6,7 +6,7 @@ import scipy.io as sio
 
 method = "BP"
 init = "verbose=3;"
-queue_size = 500000
+queue_size = 400000
 
 ad.read_init(method, parameters=init)
 fin = ad.file("data/tau-metrics-updated/tau-metrics.bp", method, is_stream=True, timeout_sec=10.0)
