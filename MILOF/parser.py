@@ -23,16 +23,23 @@ import pickle
 import adios as ad
 import numpy as np
 import scipy.io as sio
+import configparser
 
 method = "BP"
 init = "verbose=3;"
-queue_size = 400000 # provenance data size
-int_func_size = 10 # interested function size
 
+# read parameters from configuration file
+config = configparser.ConfigParser()
+config.read('parser.cfg')
+queue_size = int(config['DEFAULT']['QueueSize']) # provenance data size
+int_func_num = int(config['DEFAULT']['InterestFuncNum']) # interested function size
+
+# initialize adios streaming mode
 ad.read_init(method, parameters=init)
 fin = ad.file("data/tau-metrics-updated/tau-metrics.bp", method, is_stream=True, timeout_sec=10.0)
 fout = open("data.pkl", "wb")
 
+# read attributes
 db = dq(maxlen=queue_size)
 name = np.array(['prog_names', 'comm_ranks', 'threads', 'event_types', 'func_names', 'counters', 'counter_value', 'event_types_comm', 'tag', 'partner', 'num_bytes', 'timestamp']).reshape(1, 12)
 attr = fin.attr
@@ -43,12 +50,12 @@ num_func = 0
 func_name = []
 for i in range(0, len(attr_name)):
 	attr_value[i] = attr[attr_name[i]].value
+	# count function number and names
 	if attr_name[i].startswith('timer'):
 		num_func = num_func + 1
 		func_name.append(attr_value[i])
 attr_name = np.array(attr_name)
 func_name = np.array(func_name)
-# print(func_name)
 
 i = 0
 while True:
@@ -63,7 +70,8 @@ while True:
 		data_event[:, 0:5] = event[:, 0:5]
 		data_event[:, 11] = event[:, 5]
 		data_step = data_event
-		int_func = ct(data_event[:, 4]).most_common(int_func_size) # e.g., [(16, 14002), (15, 14000), (13, 6000),...]
+		# count most common functions
+		int_func = ct(data_event[:, 4]).most_common(int_func_num) # e.g., [(16, 14002), (15, 14000), (13, 6000),...]
 		# if i == 0:
 		# 	data_step = data_event
 		# else:
