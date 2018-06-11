@@ -74,13 +74,13 @@ def Parser(configFile):
 			data_event = np.zeros((event.shape[0], 12), dtype=object) + np.nan
 			data_event[:, 0:5] = event[:, 0:5]
 			data_event[:, 11] = event[:, 5]
-			# data_step = data_event
+			data_step = data_event
 			# count most common functions
 			int_func = ct(data_event[:, 4]).most_common(int_func_num) # e.g., [(16, 14002), (15, 14000), (13, 6000),...]
-			if i == 0:
-				data_step = data_event
-			else:
-				data_step = np.concatenate((data_step, data_event), axis=0)
+			# if i == 0:
+			# 	data_step = data_event
+			# else:
+			# 	data_step = np.concatenate((data_step, data_event), axis=0)
 
 		vname = "counter_values"
 		if vname in fin.vars:
@@ -107,7 +107,7 @@ def Parser(configFile):
 		print("Size of current timestep =", data_step.shape)
 
 		# sort data in this step by timestamp
-		# data_step = data_step[data_step[:, 11].argsort()]
+		data_step = data_step[data_step[:, 11].argsort()]
 
 		# lauch anomaly detection
 		flag = False
