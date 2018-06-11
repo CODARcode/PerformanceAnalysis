@@ -74,13 +74,13 @@ def Parser(configFile):
 			data_event = np.zeros((event.shape[0], 12), dtype=object) + np.nan
 			data_event[:, 0:5] = event[:, 0:5]
 			data_event[:, 11] = event[:, 5]
-			data_step = data_event
+			# data_step = data_event
 			# count most common functions
 			int_func = ct(data_event[:, 4]).most_common(int_func_num) # e.g., [(16, 14002), (15, 14000), (13, 6000),...]
-			# if i == 0:
-			# 	data_step = data_event
-			# else:
-			# 	data_step = np.concatenate((data_step, data_event), axis=0)
+			if i == 0:
+				data_step = data_event
+			else:
+				data_step = np.concatenate((data_step, data_event), axis=0)
 
 		vname = "counter_values"
 		if vname in fin.vars:
@@ -107,7 +107,7 @@ def Parser(configFile):
 		print("Size of current timestep =", data_step.shape)
 
 		# sort data in this step by timestamp
-		data_step = data_step[data_step[:, 11].argsort()]
+		# data_step = data_step[data_step[:, 11].argsort()]
 
 		# lauch anomaly detection
 		flag = False
@@ -150,20 +150,23 @@ def Parser(configFile):
 		i += 1
 
 	fin.close()
+	fout.close()
 
 	print(">>> Complete passing data.")
 	print(">>> Test of deserialization.")
 	print(">>> Load data ...")
-	fin = open("data.pkl", "rb")
+	fin = open(prov_db_path, "rb")
 	db2 = pickle.load(fin)
 	print("**** Print info ****")
 	print("Number of attributes =", db2[0])
 	print("First 20 Names of attributes =", db2[1][0:20])
 	print("First 20 Values of attributes =", db2[2][0:20])
 	print("First 20 trace data =", np.array(list(itertools.islice(db2, 3, 20))))
+	fin.close()
 
-# import json
-# file_path = "data.json"
-# data_step = data_step[data_step[:, 11].argsort()]
-# with open('data.json', 'w') as outfile:
-# 	json.dump(data_step.tolist(), outfile)
+	# import json
+	# file_path = "data.json"
+	# data_step = data_step[data_step[:, 11].argsort()]
+	# with open('data.json', 'w') as outfile:
+	# 	json.dump(data_step.tolist(), outfile)
+	# outfile.close()
