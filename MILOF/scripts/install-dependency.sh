@@ -1,1 +1,1 @@
-sudo pip3 install numpy scipy sklearn adios adios_mpi
+sudo pip3 install configparser numpy scipy sklearn adios adios_mpi
