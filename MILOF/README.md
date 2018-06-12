@@ -21,9 +21,9 @@ To run tests:
 
 # Example
 
-[[1]] The following example code illustrates the basic usage of online anomaly detection function.
+[[1]] The following example code illustrates the basic usage of our online anomaly detection function.
 
-First, configure the parameters in the analyzer section of the configuration file (e.g., chimbuko.cfg). 
+First, configure the parameters in the [Analyzer] section of the configuration file (e.g., chimbuko.cfg). 
 
 Then, call the only anomaly detection API by:
 
@@ -33,9 +33,9 @@ Then, call the only anomaly detection API by:
 It will generate local outlier factor for each incoming data point.
 
 	
-[[2]] The following example code illustrates the basic usage of dynamic event parser.
+[[2]] The following example code illustrates the basic usage of our dynamic event parser function.
 
-First, configure the parameters in the parser section of the configuration file (e.g., chimbuko.cfg). 
+First, configure the parameters in the [Parser] section of the configuration file (e.g., chimbuko.cfg). 
 
 Then, call the dynamic event parser API by:
 
