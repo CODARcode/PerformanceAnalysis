@@ -163,7 +163,7 @@ def Parser(configFile):
 	print("First 20 Values of attributes =", db2[2][0:20])
 	print("First 20 trace data =", np.array(list(itertools.islice(db2, 3, 20))))
 	fin.close()
-
+	
 	# import json
 	# file_path = "data.json"
 	# data_step = data_step[data_step[:, 11].argsort()]

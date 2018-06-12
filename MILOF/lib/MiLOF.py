@@ -198,7 +198,7 @@ def MILOF_Kmeans_Merge(configFile):
 	# read parameters from configuration file
 	config = configparser.ConfigParser()
 	config.read(configFile)
-	filepath = config['Analyzer']['FilePath']
+	filepath = config['Analyzer']['InputMatFile']
 	dimension = int(config['Analyzer']['Dimension'])
 	num_k = int(config['Analyzer']['NumK'])
 	kpar = int(config['Analyzer']['KPar'])
