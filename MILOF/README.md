@@ -27,8 +27,8 @@ First, configure the parameters in the [Analyzer] section of the configuration f
 
 Then, call the only anomaly detection API by:
 
-	import MiLOF
-	MiLOF.MILOF_Kmeans_Merge("chimbuko.cfg")
+	from MiLOF import MILOF
+	MILOF("chimbuko.cfg")
 	
 It will generate local outlier factor for each incoming data point.
 
@@ -39,8 +39,8 @@ First, configure the parameters in the [Parser] section of the configuration fil
 
 Then, call the dynamic event parser API by:
 
-	import strmParser
-	strmParser.Parser("chimbuko.cfg")
+	from strmParser import Parser
+	Parser("chimbuko.cfg")
 	
 It will output some information step by step as follows.
 

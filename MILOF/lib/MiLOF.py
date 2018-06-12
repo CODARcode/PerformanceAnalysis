@@ -194,7 +194,7 @@ def IncrementalLOF_Fixed(Points, datastream, PointsC, Clusters, kpar, buck, widt
 	
 	return Points
 
-def MILOF_Kmeans_Merge(configFile):
+def MILOF(configFile):
 	# read parameters from configuration file
 	config = configparser.ConfigParser()
 	config.read(configFile)
