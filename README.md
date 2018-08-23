@@ -30,7 +30,7 @@ To run tests:
 
 The following example code demonstrates the basic usage of performance anomaly detection steps:
 
-    from codar.chimbuku.perf_anom import n_gram
+    from codar.chimbuko.perf_anom import n_gram
 
     ee_lst = n_gram.extract_entry_exit('test/data/reduced-trace.json')
 
@@ -70,7 +70,7 @@ We can merge multiple n\_gram statistics for multiple trace files as follow:
 
 For convenience, we provide another option to process all these steps using one function:
 
-    from codar.chimbuku.perf_anom import n_gram
+    from codar.chimbuko.perf_anom import n_gram
     trace_fn_lst = ["data/reduced-trace.json", "data/reduced-trace2.json"]
     jid_lst = [1, 2]
     df = n_gram.detect_anomaly(trace_fn_lst, jid_lst, out_fn_prefix="results", call_depth=3, n_neighbors=10, n_func_call=5, n_anomalies=5)
