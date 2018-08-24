@@ -47,8 +47,17 @@ class Parser():
             
     def getStream(self):
         strm = self.stream
-        status = self.stream.advance()
+        self.status = self.stream.advance()
         return strm
+    
+    
+    def getFunData(self): # get function call data from adios
+        if "event_timestamps" in self.stream.vars:
+            var = self.stream.var["event_timestamps"]
+            numSteps = var.nsteps
+            return var.read(nsteps=numSteps)
+        else:
+            raise Exception("\nNo function data\n")
     
     
     def getStatus(self):
