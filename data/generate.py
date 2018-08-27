@@ -19,24 +19,24 @@ evn = event.Event(prs.getFunMap(), "gen.cfg")
 ctrl = 1
 outct = 0
 cuminct = 0
-while ctrl >= 0 and outct < 1:
-    print("ctrl = ", ctrl)
-    print("outct = ", outct)
-    print("cuminct = ", cuminct)
-    funStream = prs.getFunData()
+while ctrl >= 0:
+    funStream = prs.getFunData() # Stream function call data
     inct = 0
     for i in funStream:  
-        evn.addFun(i)
-        print("inct = ", inct)
+        evn.addFun(i) # Store function call data in event object
+        inct = inct + 1
     cuminct = cuminct + inct    
     outct = outct + 1
-    prs.getStream()
-    ctrl = prs.getStatus()
+    prs.getStream() # Advance stream
+    ctrl = prs.getStatus() # Check stream status
 
+print("Total number of advance operations: ", outct)
+print("Total number of events: ", cuminct, "\n\n")
 
-print("Function execution time: \n", evn.getFunExecTime())
-
+# Get dictionary of lists [program id,  mpi rank, thread id, function id, entry timestamp, execution time] from event object
 funData = evn.getFunExecTime()
+#Debug
+#print("Function execution time: \n", funData)
 
 # Store data (serialize)
 with open('funtime.pickle', 'wb') as handle:
@@ -46,6 +46,10 @@ with open('funtime.pickle', 'wb') as handle:
 with open('funtime.pickle', 'rb') as handle:
     usFunData = pickle.load(handle)
 
-print(funData == usFunData)
+# Validate data serialization
+if funData == usFunData:
+    print("Pickle serialization successful...\n\n")
+else:
+    raise Exception("Pickle serialization unsuccessful...\n\n")
 
 
