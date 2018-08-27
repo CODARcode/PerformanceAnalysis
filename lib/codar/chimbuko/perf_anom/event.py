@@ -30,19 +30,19 @@ class  Event():
       
       if event[3] == 0:
         self.funstack[event[0]][event[1]][event[2]].append(event) # If entry event, add event to call stack
-        return 0
+        return True
       elif event[3] == 1:
         pevent = self.funstack[event[0]][event[1]][event[2]].pop() # If exit event, remove corresponding entry event from call stack
         if pevent[4] != event[4]:
-          raise Exception("\nCall Stack Violation!\n")
-          return 1
+          #raise Exception("\nCall Stack Violation!\n")
+          return False
         if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
           if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
           self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5]])
-          return 0
+          return True
       else:
-        return 0 # Event is not an exit or entry event
+        return True # Event is not an exit or entry event
     
     
     def getFunExecTime(self): # Returns the result dictionary

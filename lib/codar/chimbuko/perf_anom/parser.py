@@ -34,13 +34,15 @@ class Parser():
                     self.numFun = self.numFun + 1
                     self.funMap[int(iter.split()[1])] = self.bpAttrib[iter].value # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
     
-            print("Adios stream ready... \n\n\n")
+            print("\nAdios stream ready... \n\n")
               
             # Debug
-            print("Num attributes: ", self.bpNumAttrib, "\n")
-            print("Attribute names: \n", self.bpAttrib, "\n\n\n")
-            print("Num functions: ", self.numFun, "\n")
-            print("Function map: \n", self.funMap, "\n\n\n" )
+            #===================================================================
+            # print("Num attributes: ", self.bpNumAttrib, "\n")
+            # print("Attribute names: \n", self.bpAttrib, "\n\n\n")
+            # print("Num functions: ", self.numFun, "\n")
+            # print("Function map: \n", self.funMap, "\n\n\n" )
+            #===================================================================
       else:
           raise Exception("\nInput file format not supported...\n")
                         

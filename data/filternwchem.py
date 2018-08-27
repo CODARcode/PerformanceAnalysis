@@ -1,5 +1,5 @@
 """
-Generate anomaly detection data
+Filter NWChem data and generate anomaly detection data 
 Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
@@ -8,24 +8,37 @@ import sys
 import time
 import os
 import pickle
+from collections import defaultdict
+import operator
+import configparser
 import parser
 import event
+
 
 # Initialize parser and event classes
 prs = parser.Parser("gen.cfg")
 evn = event.Event(prs.getFunMap(), "gen.cfg")
 
+# Initialize filter method
+config = configparser.ConfigParser()
+config.read("gen.cfg")
+thr = int(config['Filter']['Threshold'])
+mcFun = []
+
 # Stream events
+ctFun = defaultdict(int)
 dataOK = True
 ctrl = 1
 outct = 0
 cuminct = 0
 while ctrl >= 0:
+    print("\noutct = ", outct, "\n\n")
     funStream = prs.getFunData() # Stream function call data
     inct = 0
     for i in funStream:  
         if evn.addFun(i): # Store function call data in event object
             inct = inct + 1
+            ctFun[i[4]] += 1
         else:
             dataOK = False
             break
@@ -41,6 +54,19 @@ while ctrl >= 0:
 
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", cuminct, "\n\n")
+ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
+print("ctFun = ", ctFun)
+
+count = 0
+for i in ctFun:
+    if count >= thr:
+        break
+    mcFun.append(i[0])
+    count = count + 1
+
+print("mcFun = ", mcFun)
+    
+raise Exception("\n\n\n Just quit \n\n\n")
 
 # Get dictionary of lists [program id,  mpi rank, thread id, function id, entry timestamp, execution time] from event object
 funData = evn.getFunExecTime()
@@ -57,8 +83,7 @@ with open('funtime.pickle', 'rb') as handle:
 
 # Validate data serialization
 if funData == usFunData:
-    print("Pickle serialization successful...\n\n")
+    print("\nPickle serialization successful...\n\n")
 else:
-    raise Exception("Pickle serialization unsuccessful...\n\n")
-
+    raise Exception("\nPickle serialization unsuccessful...\n\n")
 
