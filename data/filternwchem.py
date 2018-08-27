@@ -24,6 +24,7 @@ config = configparser.ConfigParser()
 config.read("gen.cfg")
 thr = int(config['Filter']['Threshold'])
 mcFun = []
+numMcFun = []
 
 # Stream events
 ctFun = defaultdict(int)
@@ -47,7 +48,7 @@ while ctrl >= 0:
     if dataOK:
         pass
     else:
-        print("\n\n\nCall stack violation at ",outct," ",cuminct,"... \n\n\n")
+        print("\n\n\nCall stack violation at ", outct, " ", cuminct, "... \n\n\n")
         break
     prs.getStream() # Advance stream
     ctrl = prs.getStatus() # Check stream status
@@ -55,34 +56,39 @@ while ctrl >= 0:
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", cuminct, "\n\n")
 ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
-print("ctFun = ", ctFun)
+# Debug
+#print("ctFun = ", ctFun)
 
 count = 0
 for i in ctFun:
     if count >= thr:
         break
     mcFun.append(i[0])
+    numMcFun.append(i[1])
     count = count + 1
 
-print("mcFun = ", mcFun)
-    
-raise Exception("\n\n\n Just quit \n\n\n")
-
+# Debug
+print("\n\nmcFun = ", mcFun)
+print("\n\nnumMcFun = ", numMcFun)
 # Get dictionary of lists [program id,  mpi rank, thread id, function id, entry timestamp, execution time] from event object
 funData = evn.getFunExecTime()
 #Debug
 #print("Function execution time: \n", funData)
 
+mcFunData = {k: funData[k] for k in mcFun}
+#Debug
+#print("\n\nMost Common Function execution time: \n", mcFunData)
+
 # Store data (serialize)
 with open('funtime.pickle', 'wb') as handle:
-    pickle.dump(funData, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump(mcFunData, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Load data (deserialize)
 with open('funtime.pickle', 'rb') as handle:
-    usFunData = pickle.load(handle)
+    usMcFunData = pickle.load(handle)
 
 # Validate data serialization
-if funData == usFunData:
+if mcFunData == usMcFunData:
     print("\nPickle serialization successful...\n\n")
 else:
     raise Exception("\nPickle serialization unsuccessful...\n\n")
