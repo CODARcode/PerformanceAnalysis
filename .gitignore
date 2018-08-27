@@ -3,4 +3,4 @@ src/.ipynb_checkpoints/
 *.df
 *.log
 *.pickle
-
+datasets/
