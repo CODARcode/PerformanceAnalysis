@@ -1,5 +1,5 @@
 """
-Tests parser.py module
+Tests parser.py, event.py, outlier.py modules
 Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
