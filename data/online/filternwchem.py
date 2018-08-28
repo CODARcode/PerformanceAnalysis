@@ -16,12 +16,12 @@ import event
 
 
 # Initialize parser and event classes
-prs = parser.Parser("gen.cfg")
-evn = event.Event(prs.getFunMap(), "gen.cfg")
+prs = parser.Parser(sys.argv[1])
+evn = event.Event(prs.getFunMap(), sys.argv[1])
 
 # Initialize filter method
 config = configparser.ConfigParser()
-config.read("gen.cfg")
+config.read(sys.argv[1])
 thr = int(config['Filter']['Threshold'])
 mcFun = []
 numMcFun = []
@@ -72,7 +72,7 @@ print("\n\nmcFun = ", mcFun)
 print("\n\nnumMcFun = ", numMcFun)
 # Get dictionary of lists [program id,  mpi rank, thread id, function id, entry timestamp, execution time] from event object
 funData = evn.getFunExecTime()
-#Debug
+# Debug
 #print("Function execution time: \n", funData)
 
 mcFunData = {k: funData[k] for k in mcFun}
@@ -80,16 +80,20 @@ mcFunData = {k: funData[k] for k in mcFun}
 #print("\n\nMost Common Function execution time: \n", mcFunData)
 
 # Store data (serialize)
-with open('funtime.pickle', 'wb') as handle:
+outfile = config['Parser']['OutputFile'] + "funtime.pickle"
+with open(outfile, 'wb') as handle:
     pickle.dump(mcFunData, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+# Debug
 # Load data (deserialize)
-with open('funtime.pickle', 'rb') as handle:
-    usMcFunData = pickle.load(handle)
-
-# Validate data serialization
-if mcFunData == usMcFunData:
-    print("\nPickle serialization successful...\n\n")
-else:
-    raise Exception("\nPickle serialization unsuccessful...\n\n")
+#===============================================================================
+# with open('funtime.pickle', 'rb') as handle:
+#     usMcFunData = pickle.load(handle)
+# 
+# # Validate data serialization
+# if mcFunData == usMcFunData:
+#     print("\nPickle serialization successful...\n\n")
+# else:
+#     raise Exception("\nPickle serialization unsuccessful...\n\n")
+#===============================================================================
 

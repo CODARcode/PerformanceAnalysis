@@ -1,5 +1,5 @@
 """
-Generate anomaly detection data
+Generate anomaly detection data (it assumes that the bp trace is accurate)
 Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
@@ -7,13 +7,14 @@ Create: August, 2018
 import sys
 import time
 import os
+import configparser
 import pickle
 import parser
 import event
 
 # Initialize parser and event classes
-prs = parser.Parser("gen.cfg")
-evn = event.Event(prs.getFunMap(), "gen.cfg")
+prs = parser.Parser(sys.argv[1])
+evn = event.Event(prs.getFunMap(), sys.argv[1])
 
 # Stream events
 dataOK = True
@@ -48,17 +49,21 @@ funData = evn.getFunExecTime()
 #print("Function execution time: \n", funData)
 
 # Store data (serialize)
-with open('funtime.pickle', 'wb') as handle:
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+outfile = config['Parser']['OutputFile'] + "funtime.pickle"
+with open(outfile, 'wb') as handle:
     pickle.dump(funData, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Load data (deserialize)
-with open('funtime.pickle', 'rb') as handle:
-    usFunData = pickle.load(handle)
-
-# Validate data serialization
-if funData == usFunData:
-    print("Pickle serialization successful...\n\n")
-else:
-    raise Exception("Pickle serialization unsuccessful...\n\n")
-
-
+# Debug
+#===============================================================================
+# with open('funtime.pickle', 'rb') as handle:
+#     usFunData = pickle.load(handle)
+# 
+# # Validate data serialization
+# if funData == usFunData:
+#     print("Pickle serialization successful...\n\n")
+# else:
+#     raise Exception("Pickle serialization unsuccessful...\n\n")
+#===============================================================================
