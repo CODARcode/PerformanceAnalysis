@@ -1,5 +1,5 @@
 """
-Run anomaly detection algorithms on various data sets
+Run anomaly detection algorithms on data
 Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
@@ -10,6 +10,8 @@ import os
 import configparser
 import pickle
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 import outlier
 
 
@@ -31,10 +33,27 @@ if dataType == 'funtime':
     else:
         raise Exception("Invalid function id ...")
     
+    # Extract timestamp and exectuion time
     X = np.array(data[funId])
-    print("X = ", X, "\n\n\n")
-
+    X = X[:,4:6]
+    
+    # Scale data
+    scaler = MinMaxScaler()
+    X = scaler.fit_transform(X)
+    
 otl = outlier.Outlier(sys.argv[1])
+otl.lofComp(X)
+score = otl.getScore()
+outl = otl.getOutlier()
+
+plt.title("Local Outlier Factor (LOF)")
+a = plt.scatter(X[outl == 1, 0], X[outl == 1, 1], c='white', edgecolor='k', s=20)
+b = plt.scatter(X[outl == -1, 0], X[outl == -1, 1], c='red', edgecolor='k', s=20)
+plt.axis('tight')
+plt.xlim((-0.1, 1.1))
+plt.ylim((-0.1, 1.1))
+plt.legend([a, b], ["inlier", "outlier"], loc="upper right")
+plt.show()
 
 
 
