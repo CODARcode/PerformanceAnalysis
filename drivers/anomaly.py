@@ -9,21 +9,32 @@ import time
 import os
 import configparser
 import pickle
-import parser
-import event
+import numpy as np
 import outlier
 
 
-# Initialize parser and event classes
-prs = parser.Parser(sys.argv[1])
-evn = event.Event(prs.getFunMap(), sys.argv[1])
+# Proces config file
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+pickleFile = config['Parser']['PickleFile']
+dataType = config['Parser']['DataType']
+funId = int(config['Parser']['FunId'])
 
-Points = Point()
-clf = LocalOutlierFactor(n_neighbors=kpar, algorithm="kd_tree", leaf_size=30, metric='euclidean')
-clf.fit(datastream)
-Points.LOF = [-x for x in clf.negative_outlier_factor_.tolist()]
-Points.lrd = clf._lrd.tolist()
-dist, ind = clf.kneighbors()
-Points.kdist = dist.tolist()
-Points.knn = ind.tolist()
-return Points
+# Load data (deserialize)
+with open(pickleFile, 'rb') as handle:
+    data = pickle.load(handle)
+
+if dataType == 'funtime':
+    funIds = list(data.keys())
+    if funId in funIds:
+        pass
+    else:
+        raise Exception("Invalid function id ...")
+    
+    X = np.array(data[funId])
+    print("X = ", X, "\n\n\n")
+
+otl = outlier.Outlier(sys.argv[1])
+
+
+
