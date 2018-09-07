@@ -1,0 +1,9 @@
+data/offline
+data/online/datasets/tau-nwchem
+jupyter/
+MILOF/
+scripts/
+slide/
+test/
+./deploy.cfg
+

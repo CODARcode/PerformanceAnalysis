@@ -1,6 +1,6 @@
 """
 Filter NWChem data and generate anomaly detection data 
-Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
 
@@ -18,6 +18,7 @@ import event
 # Initialize parser and event classes
 prs = parser.Parser(sys.argv[1])
 evn = event.Event(prs.getFunMap(), sys.argv[1])
+funMap = prs.getFunMap()
 
 # Initialize filter method
 config = configparser.ConfigParser()
@@ -75,14 +76,18 @@ funData = evn.getFunExecTime()
 # Debug
 #print("Function execution time: \n", funData)
 
+# Get actual function names
+mcFunMap = {k: funMap[k] for k in mcFun}
+print("mcFunMap = ", mcFunMap)
+
 mcFunData = {k: funData[k] for k in mcFun}
 #Debug
 #print("\n\nMost Common Function execution time: \n", mcFunData)
 
 # Store data (serialize)
-outfile = config['Parser']['OutputFile'] + "funtime.pickle"
+outfile = config['Parser']['OutputFile'] + "funtimep2.pickle"
 with open(outfile, 'wb') as handle:
-    pickle.dump(mcFunData, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump(mcFunData, handle, protocol=2)
 
 # Debug
 # Load data (deserialize)
