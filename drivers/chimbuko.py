@@ -20,16 +20,17 @@ if os.environ.get('DISPLAY','') == '':
     mpl.use('Agg')
 import matplotlib.pyplot as plt
 #import seaborn as sns
-import outlier
 import parser
+import event
+import outlier
+
 
 
 # Proces config file
 config = configparser.ConfigParser()
 config.read(sys.argv[1])
-pickleFile = config['Parser']['PickleFile']
 dataType = config['Parser']['DataType']
-#funId = int(config['Parser']['FunId'])
+funId = int(config['Parser']['FunId'])
 numNeighbors = config['Lof']['n_neighbors']
 contamination = float(config['Lof']['contamination'])
 fixcontamination = int(config['Lof']['fixcontamination'])
@@ -38,76 +39,109 @@ fixcontamination = int(config['Lof']['fixcontamination'])
 if fixcontamination > 0:
     conp = fixcontamination
 
-# Get function id function name map from parser object
+# Initialize parser object, get function id function name map 
 prs = parser.Parser(sys.argv[1])
 funMap = prs.getFunMap()
+
+# Initialize event object
+evn = event.Event(funMap, sys.argv[1])
+
+#Initialize outlier object
+otl = outlier.Outlier(sys.argv[1])
+
+# Set lineid so we can track which lines are anomalous
+lineId = np.empty(1, np.uint64)
 
 with open("function.json", 'w') as outfile:
     json.dump(funMap, outfile, indent=4)
     outfile.close()
 
-traceFileName = "trace.json"
-with open(traceFileName, 'w') as outfile:
 
-    # Stream events
-    ctFun = defaultdict(int)
-    dataOK = True
-    ctrl = 1
-    outct = 0
-    cuminct = 0
-    while ctrl >= 0:
-        print("\noutct = ", outct, "\n\n")
-        funStream = prs.getFunData() # Stream function call data
+# Stream events
+ctFun = defaultdict(int)
+dataOK = True
+ctrl = 1
+outct = 0
+cuminct = 0
+while ctrl >= 0:
+    print("\noutct = ", outct, "\n\n")
+    
+    traceFileName = "trace." + str(outct) + ".json"
+    with open(traceFileName, 'w') as outfile:
+        
+        # Stream function call data
+        funStream = prs.getFunData() 
         funDataOut = np.full((funStream.shape[0], 12), np.nan)
         funDataOut[:,0:5] = funStream[:,0:5]
         funDataOut[:,11] = funStream[:,5]
         funDataOut.astype(int)
-        json.dump(funDataOut.tolist(), outfile, indent=4)
+        funDataList = funDataOut.tolist()
         
-        countStream = prs.getCountData() # Stream counter data
+        inct = 0
+        for i in funStream:
+            # Create lineId and append so we can backtrack which event in the trace was anomalous
+            lineId[0] = np.uint64(inct+cuminct)
+            i = np.append(i,lineId)  
+            if evn.addFun(i): # Store function call data in event object
+                inct = inct + 1
+                ctFun[i[4]] += 1
+            else:
+                dataOK = False
+                break
+        if dataOK:
+            pass
+        else:
+            print("\n\n\nCall stack violation at ", outct, " ", cuminct, "... \n\n\n")
+            break
+        
+        data = evn.getFunExecTime()
+        funId = 5 #max(ctFun, key=ctFun.get)
+        funData = X = np.array(data[funId])
+        X = X[:,4:6]
+        print("X = ", X)
+        print("X[:,1] = ", X[:,1])
+        otl.sstdComp(X[:,1])
+        
+        # Stream counter data
+        countStream = prs.getCountData() 
         countDataOut = np.full((countStream.shape[0], 12), np.nan)
         countDataOut[:,0:3] = countStream[:,0:3]
         countDataOut[:,5:7] = countStream[:,3:5]
         countDataOut[:,11] = countStream[:,5]
         countDataOut.astype(int)
-        json.dump(countDataOut.tolist(), outfile, indent=4)
-        
+        countDataList = countDataOut.tolist()
+         
+        # Stream communication data
         commStream = prs.getCommData()
         commDataOut = np.full((commStream.shape[0], 12), np.nan)
         commDataOut[:,0:4] = commStream[:,0:4]
         commDataOut[:,8:11] = commStream[:,4:7]
         commDataOut[:,11] = commStream[:,7]
         commDataOut.astype(int)
-        json.dump(commDataOut.tolist(), outfile, indent=4)
+        commDataList = commDataOut.tolist()
         
+        # Update counters
+        cuminct = cuminct + inct    
+        outct = outct + 1 
+        
+        # Dump trace data
+        json.dump(funDataList + countDataList + commDataList, outfile)
+        
+        # Advance stream and check status
+        prs.getStream()
+        ctrl = prs.getStatus()
+        
+        # Debug
         ctrl = -1
     outfile.close()
+
+
+with open(traceFileName, 'r') as outfile:
+    json.load(outfile)
     
-    
-    #===========================================================================
-    #     inct = 0
-    #     for i in funStream:  
-    #         if evn.addFun(i): # Store function call data in event object
-    #             inct = inct + 1
-    #             ctFun[i[4]] += 1
-    #         else:
-    #             dataOK = False
-    #             break
-    #     cuminct = cuminct + inct    
-    #     outct = outct + 1
-    #     if dataOK:
-    #         pass
-    #     else:
-    #         print("\n\n\nCall stack violation at ", outct, " ", cuminct, "... \n\n\n")
-    #         break
-    #     prs.getStream() # Advance stream
-    #     ctrl = prs.getStatus() # Check stream status
-    # 
-    # print("Total number of advance operations: ", outct)
-    # print("Total number of events: ", cuminct, "\n\n")
-    # ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
-    #===========================================================================
-    
+print("Total number of advance operations: ", outct)
+print("Total number of events: ", cuminct, "\n\n")
+ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
     
     
     #===========================================================================

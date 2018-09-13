@@ -12,6 +12,7 @@ class  Event():
       self.funstack = {} # A dictionary of function calls; keys: program, mpi rank, thread
       self.funmap = funMap # A dictionary of function ids; key: function id
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
+      self.lineid = 0
     
     
     def checkCallStack(self, p, r, t): # As events arrive build necessary data structure
@@ -39,7 +40,7 @@ class  Event():
         if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
           if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
-          self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5]])
+          self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
           return True
       else:
         return True # Event is not an exit or entry event

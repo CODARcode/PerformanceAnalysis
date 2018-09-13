@@ -6,6 +6,7 @@ Create: August, 2018
 
 import configparser
 import numpy as np
+from runstats import Statistics
 from sklearn.neighbors import LocalOutlierFactor
 
 class Outlier():
@@ -14,6 +15,7 @@ class Outlier():
         self.config.read(configFile)
         
         # Lof parameters
+        self.runLof = self.config['Lof']['RunLof']
         self.numNeighbors = int(self.config['Lof']['n_neighbors'])
         self.algorithm = self.config['Lof']['algorithm']
         self.leafSize = int(self.config['Lof']['leaf_size'])
@@ -27,6 +29,15 @@ class Outlier():
         # Lof objects
         self.clf = None
         
+        # Streaming standard deviation parameters
+        self.runSstd = self.config['Sstd']['RunSstd']
+        if self.runSstd == 'True':
+            self.stats = Statistics()
+        else:
+            self.stats = None
+        self.sigma = int(self.config['Sstd']['Sigma'])
+        self.numPoints = 0
+        
         # Outliers and scores
         self.outl = None
         self.score = None
@@ -36,6 +47,7 @@ class Outlier():
 
 
     def maxTimeDiff(self, data): # determine which function has the biggest difference between min and max execution time
+        # TODO rewrite to consitently expect numpy array
         maxDiffExecTime = 0
         maxFunId = None
         funtime = data.getFunExecTime()
@@ -55,7 +67,17 @@ class Outlier():
         self.clf = LocalOutlierFactor(self.numNeighbors, self.algorithm, self.leafSize, self.metric, self.p, self.metricParams, self.contamination, self.numJobs)
         self.outl = self.clf.fit_predict(data)
         self.score = -1.0 * self.clf.negative_outlier_factor_
+        
     
+    def sstdComp(self, data):
+        for i in data:
+            self.stats.push(i)
+        print('Count:', len(self.stats))
+        print('Mean:', self.stats.mean())
+        print('Variance:', self.stats.variance())
+        print('Standard Deviation:', self.stats.stddev())
+        print('Skewness:', self.stats.skewness())
+        print('Kurtosis:', self.stats.kurtosis())
     
     def getClf(self):
         return self.clf
