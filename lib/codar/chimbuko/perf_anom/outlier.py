@@ -70,14 +70,14 @@ class Outlier():
         
     
     def sstdComp(self, data):
-        for i in data:
+        self.outl = []
+        for i in data[:,0]:
             self.stats.push(i)
-        print('Count:', len(self.stats))
-        print('Mean:', self.stats.mean())
-        print('Variance:', self.stats.variance())
-        print('Standard Deviation:', self.stats.stddev())
-        print('Skewness:', self.stats.skewness())
-        print('Kurtosis:', self.stats.kurtosis())
+        sigma = self.stats.mean() + 3*self.stats.stddev() 
+        for i in range(0, len(data[:,0])):
+            if data[i,0] >= sigma:
+                self.outl.append(data[i,1])
+    
     
     def getClf(self):
         return self.clf

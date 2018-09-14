@@ -48,6 +48,7 @@ evn = event.Event(funMap, sys.argv[1])
 
 #Initialize outlier object
 otl = outlier.Outlier(sys.argv[1])
+outl = [] # List that records eventId-s of anomalous events
 
 # Set lineid so we can track which lines are anomalous
 #lineId = np.empty(1, np.uint64)
@@ -93,17 +94,15 @@ while ctrl >= 0:
             print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
             break
         
-        #=======================================================================
-        # data = evn.getFunExecTime()
-        # funId = 5 #max(ctFun, key=ctFun.get)
-        # funData = X = np.array(data[funId])
-        # X = X[:,4:6]
-        # print("X = ", X)
-        # print("X[:,1] = ", X[:,1])
-        # otl.sstdComp(X[:,1])
-        #=======================================================================
-        
-        
+        data = evn.getFunExecTime()
+        for funId in data:
+            funData = X = np.array(data[funId])
+            otl.sstdComp(X[:,5:7])
+            local = otl.getOutlier()
+            if len(local) > 0:
+                for i in range(0,len(local)):
+                    outl.append(local[i])
+         
         # Stream counter data
         countStream = prs.getCountData() 
         countDataOut = np.full((countStream.shape[0], 13), np.nan)
@@ -133,7 +132,7 @@ while ctrl >= 0:
 
         
         # Update outer loop counter   
-        outct = outct + 1 
+        outct += 1 
         
         # Dump trace data
         funDataOut.astype(int)
@@ -150,10 +149,10 @@ while ctrl >= 0:
         # Advance stream and check status
         prs.getStream()
         ctrl = prs.getStatus()
-        
-        # Debug
-        ctrl = -1
+    
     outfile.close()
+    
+    print("anomaly ids: ", outl)
 
 
 with open(traceFileName, 'r') as outfile:
