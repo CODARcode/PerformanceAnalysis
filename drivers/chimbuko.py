@@ -50,7 +50,7 @@ evn = event.Event(funMap, sys.argv[1])
 otl = outlier.Outlier(sys.argv[1])
 
 # Set lineid so we can track which lines are anomalous
-lineId = np.empty(1, np.uint64)
+#lineId = np.empty(1, np.uint64)
 
 with open("function.json", 'w') as outfile:
     json.dump(funMap, outfile, indent=4)
@@ -62,7 +62,7 @@ ctFun = defaultdict(int)
 dataOK = True
 ctrl = 1
 outct = 0
-cuminct = 0
+eventId = 0
 while ctrl >= 0:
     print("\noutct = ", outct, "\n\n")
     
@@ -70,62 +70,82 @@ while ctrl >= 0:
     with open(traceFileName, 'w') as outfile:
         
         # Stream function call data
-        funStream = prs.getFunData() 
-        funDataOut = np.full((funStream.shape[0], 12), np.nan)
-        funDataOut[:,0:5] = funStream[:,0:5]
-        funDataOut[:,11] = funStream[:,5]
-        funDataOut.astype(int)
-        funDataList = funDataOut.tolist()
-        
-        inct = 0
+        funStream = prs.getFunData()
+        funDataOut = np.full((funStream.shape[0], 13), np.nan)
+                 
+        idx = 0
         for i in funStream:
-            # Create lineId and append so we can backtrack which event in the trace was anomalous
-            lineId[0] = np.uint64(inct+cuminct)
-            i = np.append(i,lineId)  
+            # Append eventId so we can backtrack which event in the trace was anomalous
+            i = np.append(i,np.uint64(eventId))  
             if evn.addFun(i): # Store function call data in event object
-                inct = inct + 1
-                ctFun[i[4]] += 1
+                pass
             else:
                 dataOK = False
-                break
+                break        
+            funDataOut[idx,0:5] = i[0:5]
+            funDataOut[idx,11:13] = i[5:7]
+            idx += 1
+            eventId += 1
+            ctFun[i[4]] += 1
         if dataOK:
             pass
         else:
-            print("\n\n\nCall stack violation at ", outct, " ", cuminct, "... \n\n\n")
+            print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
             break
         
-        data = evn.getFunExecTime()
-        funId = 5 #max(ctFun, key=ctFun.get)
-        funData = X = np.array(data[funId])
-        X = X[:,4:6]
-        print("X = ", X)
-        print("X[:,1] = ", X[:,1])
-        otl.sstdComp(X[:,1])
+        #=======================================================================
+        # data = evn.getFunExecTime()
+        # funId = 5 #max(ctFun, key=ctFun.get)
+        # funData = X = np.array(data[funId])
+        # X = X[:,4:6]
+        # print("X = ", X)
+        # print("X[:,1] = ", X[:,1])
+        # otl.sstdComp(X[:,1])
+        #=======================================================================
+        
         
         # Stream counter data
         countStream = prs.getCountData() 
-        countDataOut = np.full((countStream.shape[0], 12), np.nan)
-        countDataOut[:,0:3] = countStream[:,0:3]
-        countDataOut[:,5:7] = countStream[:,3:5]
-        countDataOut[:,11] = countStream[:,5]
-        countDataOut.astype(int)
-        countDataList = countDataOut.tolist()
+        countDataOut = np.full((countStream.shape[0], 13), np.nan)
+        
+        idx = 0
+        for i in countStream:
+            i = np.append(i,np.uint64(eventId))
+            countDataOut[idx,0:3] = i[0:3]
+            countDataOut[idx,5:7] = i[3:5]
+            countDataOut[idx,11:13] = i[5:7]
+            idx += 1
+            eventId += 1 
+        
          
         # Stream communication data
         commStream = prs.getCommData()
-        commDataOut = np.full((commStream.shape[0], 12), np.nan)
-        commDataOut[:,0:4] = commStream[:,0:4]
-        commDataOut[:,8:11] = commStream[:,4:7]
-        commDataOut[:,11] = commStream[:,7]
-        commDataOut.astype(int)
-        commDataList = commDataOut.tolist()
+        commDataOut = np.full((commStream.shape[0], 13), np.nan)
         
-        # Update counters
-        cuminct = cuminct + inct    
+        idx = 0
+        for i in commStream:
+            i = np.append(i,np.uint64(eventId))
+            commDataOut[:,0:4] = commStream[:,0:4]
+            commDataOut[:,8:11] = commStream[:,4:7]
+            commDataOut[:,11] = commStream[:,7]
+            idx += 1
+            eventId += 1
+
+        
+        # Update outer loop counter   
         outct = outct + 1 
         
         # Dump trace data
+        funDataOut.astype(int)
+        funDataList = funDataOut.tolist()
+        countDataOut.astype(int)
+        countDataList = countDataOut.tolist()
+        commDataOut.astype(int)
+        commDataList = commDataOut.tolist()
         json.dump(funDataList + countDataList + commDataList, outfile)
+        del funDataOut
+        del countDataOut
+        del commDataList
         
         # Advance stream and check status
         prs.getStream()
@@ -140,8 +160,8 @@ with open(traceFileName, 'r') as outfile:
     json.load(outfile)
     
 print("Total number of advance operations: ", outct)
-print("Total number of events: ", cuminct, "\n\n")
-ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
+print("Total number of events: ", eventId, "\n\n")
+#ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
     
     
     #===========================================================================
