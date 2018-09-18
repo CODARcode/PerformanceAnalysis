@@ -47,11 +47,15 @@ class  Event():
     
     
     def getFunExecTime(self): # Returns the result dictionary
-        if len(self.funtime) > 0:
+        if len(self.funtime) > 0: 
             return self.funtime
         else:
-          raise Exception("\nNo result dictionary!\n")
-      
+            raise Exception("\nNo result dictionary!\n")
+    
+    
+    def clearFunDict(self):
+        self.funtime.clear()
+    
 
     def getFunStack(self):
         return self.funstack

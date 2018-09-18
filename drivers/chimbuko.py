@@ -48,7 +48,6 @@ evn = event.Event(funMap, sys.argv[1])
 
 #Initialize outlier object
 otl = outlier.Outlier(sys.argv[1])
-outl = [] # List that records eventId-s of anomalous events
 
 # Set lineid so we can track which lines are anomalous
 #lineId = np.empty(1, np.uint64)
@@ -67,96 +66,175 @@ eventId = 0
 while ctrl >= 0:
     print("\noutct = ", outct, "\n\n")
     
-    traceFileName = "trace." + str(outct) + ".json"
-    with open(traceFileName, 'w') as outfile:
-        
-        # Stream function call data
-        funStream = prs.getFunData()
-        funDataOut = np.full((funStream.shape[0], 13), np.nan)
-                 
-        idx = 0
-        for i in funStream:
-            # Append eventId so we can backtrack which event in the trace was anomalous
-            i = np.append(i,np.uint64(eventId))  
-            if evn.addFun(i): # Store function call data in event object
-                pass
-            else:
-                dataOK = False
-                break        
-            funDataOut[idx,0:5] = i[0:5]
-            funDataOut[idx,11:13] = i[5:7]
-            idx += 1
-            eventId += 1
-            ctFun[i[4]] += 1
-        if dataOK:
+    # Stream function call data
+    funStream = prs.getFunData()
+    funDataOut = np.full((funStream.shape[0], 13), np.nan)
+             
+    idx = 0
+    for i in funStream:
+        # Append eventId so we can backtrack which event in the trace was anomalous
+        i = np.append(i,np.uint64(eventId))  
+        if evn.addFun(i): # Store function call data in event object
             pass
         else:
-            print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
-            break
-        
-        data = evn.getFunExecTime()
-        for funId in data:
-            funData = X = np.array(data[funId])
-            otl.sstdComp(X[:,5:7])
-            local = otl.getOutlier()
-            if len(local) > 0:
-                for i in range(0,len(local)):
-                    outl.append(local[i])
-         
-        # Stream counter data
-        countStream = prs.getCountData() 
-        countDataOut = np.full((countStream.shape[0], 13), np.nan)
-        
-        idx = 0
-        for i in countStream:
-            i = np.append(i,np.uint64(eventId))
-            countDataOut[idx,0:3] = i[0:3]
-            countDataOut[idx,5:7] = i[3:5]
-            countDataOut[idx,11:13] = i[5:7]
-            idx += 1
-            eventId += 1 
-        
-         
-        # Stream communication data
-        commStream = prs.getCommData()
-        commDataOut = np.full((commStream.shape[0], 13), np.nan)
-        
-        idx = 0
-        for i in commStream:
-            i = np.append(i,np.uint64(eventId))
-            commDataOut[:,0:4] = commStream[:,0:4]
-            commDataOut[:,8:11] = commStream[:,4:7]
-            commDataOut[:,11] = commStream[:,7]
-            idx += 1
-            eventId += 1
+            dataOK = False
+            break        
+        funDataOut[idx,0:5] = i[0:5]
+        funDataOut[idx,11:13] = i[5:7]
+        idx += 1
+        eventId += 1
+        ctFun[i[4]] += 1
+    if dataOK:
+        pass
+    else:
+        print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
+        break
+    
+    # Detect anomalies in function call data
+    data = evn.getFunExecTime()
+    outlId = []
+    for funId in data:
+        X = np.array(data[funId])
+        numPoints = X.shape[0]
+        otl.sstdComp(X[:,5])
+        funOutl = np.array(otl.getOutlier())        
+        funOutlId = X[funOutl == -1][:,6]
+        for i in range(0,len(funOutlId)):
+            outlId.append(str(funOutlId[i]))
+            
+        # Plot graphs
+        if len(funOutlId) > 0:
+            X = X[:,4:6]
+            scaler = MinMaxScaler()
+            X = scaler.fit_transform(X)
+            
+            f = plt.figure()
+            pltitle = "STDB Method on NWChem \n" + "(Function ID: " + str(funId) + ", Number of Data Points: " + str(numPoints) + ")" 
+             
+            main = plt.subplot(211)
+            main.set_title(pltitle)
+            main.set_xlabel('Function entry time (scaled)')
+            main.set_ylabel('Function exec. time (scaled)')
+            a = main.scatter(X[funOutl == 1][:,0], X[funOutl == 1][:,1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
+            b = main.scatter(X[funOutl == -1][:,0], X[funOutl == -1][:,1], c='red', edgecolor='k', s=20)
+            main.axis('tight')
+            main.set_xlim((-0.1, 1.1))
+            main.set_ylim((-0.1, 1.1))
+             
+            #=======================================================================
+            # # Create a legend
+            # main.legend([a, b], ["inlier", "outlier"], loc="upper center", bbox_to_anchor=(0.1, -0.4))
+            #  
+            # if fixcontamination > 0:
+            #     params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" top "+str(fixcontamination), xy=(1, 0),  xycoords='data', 
+            #         xytext=(0.99, -0.5), textcoords='axes fraction',
+            #         bbox=dict(boxstyle="round", fc="w", alpha=0.25),
+            #         horizontalalignment='right', verticalalignment='top', multialignment='left')
+            # else:
+            #     params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" "+str(contamination*100)+"%", xy=(1, 0),  xycoords='data', 
+            #         xytext=(0.99, -0.5), textcoords='axes fraction',
+            #         bbox=dict(boxstyle="round", fc="w", alpha=0.25),
+            #         horizontalalignment='right', verticalalignment='top', multialignment='left')
+            #  
+            # #params.set_alpha(.75)
+            #  
+            # zoom = plt.subplot(212)
+            # zoom.set_title("Zoom")
+            # zoom.set_xlabel('Function entry time (scaled)')
+            # zoom.set_ylabel('Function exec. time (scaled)')
+            # a = zoom.scatter(X[conp:, 0], X[conp:, 1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
+            # b = zoom.scatter(X[:conp, 0], X[:conp, 1], c='red', edgecolor='k', s=20)
+            # #a = zoom.scatter(X[outl == 1, 0], X[outl == 1, 1], c='white', edgecolor='k', s=20)
+            # #b = zoom.scatter(X[outl == -1, 0], X[outl == -1, 1], c='red', edgecolor='k', s=20)
+            # zoom.axis('tight')
+            # zoom.set_xlim((-0.1, 1.1))
+            # zoom.set_ylim(((ymean-(0.15*ystd)), (ymean+ystd)))
+            # 
+            # 
+            # plt.subplots_adjust(hspace=1.1)
+            # if fixcontamination > 0:
+            #     figfile = "NWChem_F" + str(funId) + "_" + "Nn" + numNeighbors + "_" + "ConTop" + str(fixcontamination) + ".png"
+            # else:
+            #=======================================================================
+            figfile = "NWChem_F" + str(funId) + "_" + "Sigma" + "_" + "%.png"
+                 
+            f.savefig(figfile)
+            plt.close(f)
+    
+
 
         
-        # Update outer loop counter   
-        outct += 1 
         
-        # Dump trace data
-        funDataOut.astype(int)
-        funDataList = funDataOut.tolist()
-        countDataOut.astype(int)
-        countDataList = countDataOut.tolist()
-        commDataOut.astype(int)
-        commDataList = commDataOut.tolist()
-        json.dump(funDataList + countDataList + commDataList, outfile)
-        del funDataOut
-        del countDataOut
-        del commDataList
-        
-        # Advance stream and check status
-        prs.getStream()
-        ctrl = prs.getStatus()
     
+    
+    
+    # Stream counter data
+    countStream = prs.getCountData() 
+    countDataOut = np.full((countStream.shape[0], 13), np.nan)
+    
+    idx = 0
+    for i in countStream:
+        i = np.append(i,np.uint64(eventId))
+        countDataOut[idx,0:3] = i[0:3]
+        countDataOut[idx,5:7] = i[3:5]
+        countDataOut[idx,11:13] = i[5:7]
+        idx += 1
+        eventId += 1 
+    
+     
+    # Stream communication data
+    commStream = prs.getCommData()
+    commDataOut = np.full((commStream.shape[0], 13), np.nan)
+    
+    idx = 0
+    for i in commStream:
+        i = np.append(i,np.uint64(eventId))
+        commDataOut[:,0:4] = commStream[:,0:4]
+        commDataOut[:,8:11] = commStream[:,4:7]
+        commDataOut[:,11] = commStream[:,7]
+        idx += 1
+        eventId += 1
+
+
+    # Dump trace data
+    funDataOut.astype(int)
+    funDataList = funDataOut.tolist()
+    countDataOut.astype(int)
+    countDataList = countDataOut.tolist()
+    commDataOut.astype(int)
+    commDataList = commDataOut.tolist()
+    traceFileName = "trace." + str(outct) + ".json"
+    with open(traceFileName, 'w') as outfile:
+        json.dump(funDataList + countDataList + commDataList, outfile)
+    outfile.close()    
+    
+    
+    # Dump anomaly data
+    print("anomaly ids: ", outlId)
+    anomalyFileName = "anomaly." + str(outct) + ".json"
+    with open(anomalyFileName, 'w') as outfile:
+        json.dump(outlId, outfile)
     outfile.close()
     
-    print("anomaly ids: ", outl)
-
-
-with open(traceFileName, 'r') as outfile:
-    json.load(outfile)
+    
+    # Free memory
+    evn.clearFunDict()
+    outlId.clear()
+    del funDataOut
+    del countDataOut
+    del commDataList
+    
+    
+    # Update outer loop counter   
+    outct += 1 
+    
+    
+    # Advance stream and check status
+    prs.getStream()
+    ctrl = prs.getStatus()
+    if outct > 2:
+        ctrl = -1
+    
     
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", eventId, "\n\n")

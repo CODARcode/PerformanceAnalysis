@@ -70,13 +70,22 @@ class Outlier():
         
     
     def sstdComp(self, data):
-        self.outl = []
-        for i in data[:,0]:
+        if self.outl is None and self.score is None:
+            self.outl = []
+            self.score = []
+        else:
+            self.outl.clear()
+            self.score.clear()
+        for i in data[:]:
             self.stats.push(i)
-        sigma = self.stats.mean() + 3*self.stats.stddev() 
-        for i in range(0, len(data[:,0])):
-            if data[i,0] >= sigma:
-                self.outl.append(data[i,1])
+        sigma = self.stats.mean() + self.sigma*self.stats.stddev() 
+        for i in range(0, len(data[:])):
+            if data[i] >= sigma:
+                self.outl.append(-1)
+                self.score.append(abs(data[i] - self.stats.stddev()))
+            else:
+                 self.outl.append(1)
+                 self.score.append(abs(data[i] - self.stats.stddev()))
     
     
     def getClf(self):
@@ -84,14 +93,14 @@ class Outlier():
     
         
     def getScore(self):
-        if type(self.score) == None:
+        if self.score is None:
             raise Exception("No scores computed ...")
         else:
             return self.score
         
         
     def getOutlier(self):
-        if type(self.outl) == None:
+        if self.outl is None:
             raise Exception("No outliers computed ...")
         else:
             return self.outl
