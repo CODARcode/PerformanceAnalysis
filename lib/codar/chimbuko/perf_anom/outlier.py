@@ -14,36 +14,36 @@ class Outlier():
         self.config = configparser.ConfigParser()
         self.config.read(configFile)
         
-        # Lof parameters
-        self.runLof = self.config['Lof']['RunLof']
-        self.numNeighbors = int(self.config['Lof']['n_neighbors'])
-        self.algorithm = self.config['Lof']['algorithm']
-        self.leafSize = int(self.config['Lof']['leaf_size'])
-        self.metric = self.config['Lof']['metric']
-        self.p = int(self.config['Lof']['p'])
-        if self.config['Lof']['metric_params'] == "None":
-            self.metricParams = None
-        self.contamination = float(self.config['Lof']['contamination'])
-        self.numJobs = int(self.config['Lof']['n_jobs'])
+        # Outlier detection algorithm
+        self.algorithm = self.config['Outlier']['Algorithm']
         
-        # Lof objects
-        self.clf = None
+        # Local outlier factor
+        if self.algorithm == 'Lof':
+            self.runLof = self.config['Lof']['RunLof']
+            self.numNeighbors = int(self.config['Lof']['n_neighbors'])
+            self.leafSize = int(self.config['Lof']['leaf_size'])
+            self.metric = self.config['Lof']['metric']
+            self.p = int(self.config['Lof']['p'])
+            if self.config['Lof']['metric_params'] == "None":
+                self.metricParams = None
+            self.contamination = float(self.config['Lof']['contamination'])
+            self.numJobs = int(self.config['Lof']['n_jobs'])
+            
+            # Lof objects
+            self.clf = None
+            
         
-        # Streaming standard deviation parameters
-        self.runSstd = self.config['Sstd']['RunSstd']
-        if self.runSstd == 'True':
+        # Streaming standard deviation     
+        if self.algorithm == 'Sstd':
             self.stats = Statistics()
-        else:
-            self.stats = None
-        self.sigma = int(self.config['Sstd']['Sigma'])
-        self.numPoints = 0
+            self.sigma = int(self.config['Sstd']['Sigma'])
+            self.numPoints = 0
+        
         
         # Outliers and scores
         self.outl = None
         self.score = None
         
-        # Data
-        # self.data = None # For now it may be better if we pass the data to the methods   
 
 
     def maxTimeDiff(self, data): # determine which function has the biggest difference between min and max execution time
@@ -86,6 +86,14 @@ class Outlier():
             else:
                  self.outl.append(1)
                  self.score.append(abs(data[i] - self.stats.stddev()))
+    
+    
+    def compOutlier(self, data):
+        if self.algorithm == 'Sstd':
+            self.sstdComp(data[:,5])
+            
+        if self.algorithm == 'Lof':
+            self.lofComp(data[:,4:6])
     
     
     def getClf(self):

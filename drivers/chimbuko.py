@@ -19,11 +19,11 @@ if os.environ.get('DISPLAY','') == '':
     print('No display found; using non-interactive Agg backend...\n')
     mpl.use('Agg')
 import matplotlib.pyplot as plt
-#import seaborn as sns
+# import seaborn as sns
 import parser
 import event
 import outlier
-
+import visualizer
 
 
 # Proces config file
@@ -46,15 +46,14 @@ funMap = prs.getFunMap()
 # Initialize event object
 evn = event.Event(funMap, sys.argv[1])
 
-#Initialize outlier object
+# Initialize outlier object
 otl = outlier.Outlier(sys.argv[1])
 
-# Set lineid so we can track which lines are anomalous
-#lineId = np.empty(1, np.uint64)
+# Initialize visualizer object
+viz = visualizer.Visualizer(sys.argv[1])
 
-with open("function.json", 'w') as outfile:
-    json.dump(funMap, outfile, indent=4)
-    outfile.close()
+# Dump function data
+viz.sendFunMap(funMap)
 
 
 # Stream events
@@ -62,7 +61,7 @@ ctFun = defaultdict(int)
 dataOK = True
 ctrl = 1
 outct = 0
-eventId = 0
+eventId = np.uint64(0)
 while ctrl >= 0:
     print("\noutct = ", outct, "\n\n")
     
@@ -72,6 +71,7 @@ while ctrl >= 0:
              
     idx = 0
     for i in funStream:
+        # print("funStream len:", len(i))
         # Append eventId so we can backtrack which event in the trace was anomalous
         i = np.append(i,np.uint64(eventId))  
         if evn.addFun(i): # Store function call data in event object
@@ -90,82 +90,18 @@ while ctrl >= 0:
         print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
         break
     
+    
     # Detect anomalies in function call data
     data = evn.getFunExecTime()
     outlId = []
-    for funId in data:
+    for funId in data: 
         X = np.array(data[funId])
         numPoints = X.shape[0]
-        otl.sstdComp(X[:,5])
+        otl.compOutlier(X)
         funOutl = np.array(otl.getOutlier())        
         funOutlId = X[funOutl == -1][:,6]
         for i in range(0,len(funOutlId)):
             outlId.append(str(funOutlId[i]))
-            
-        # Plot graphs
-        if len(funOutlId) > 0:
-            X = X[:,4:6]
-            scaler = MinMaxScaler()
-            X = scaler.fit_transform(X)
-            
-            f = plt.figure()
-            pltitle = "STDB Method on NWChem \n" + "(Function ID: " + str(funId) + ", Number of Data Points: " + str(numPoints) + ")" 
-             
-            main = plt.subplot(211)
-            main.set_title(pltitle)
-            main.set_xlabel('Function entry time (scaled)')
-            main.set_ylabel('Function exec. time (scaled)')
-            a = main.scatter(X[funOutl == 1][:,0], X[funOutl == 1][:,1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
-            b = main.scatter(X[funOutl == -1][:,0], X[funOutl == -1][:,1], c='red', edgecolor='k', s=20)
-            main.axis('tight')
-            main.set_xlim((-0.1, 1.1))
-            main.set_ylim((-0.1, 1.1))
-             
-            #=======================================================================
-            # # Create a legend
-            # main.legend([a, b], ["inlier", "outlier"], loc="upper center", bbox_to_anchor=(0.1, -0.4))
-            #  
-            # if fixcontamination > 0:
-            #     params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" top "+str(fixcontamination), xy=(1, 0),  xycoords='data', 
-            #         xytext=(0.99, -0.5), textcoords='axes fraction',
-            #         bbox=dict(boxstyle="round", fc="w", alpha=0.25),
-            #         horizontalalignment='right', verticalalignment='top', multialignment='left')
-            # else:
-            #     params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" "+str(contamination*100)+"%", xy=(1, 0),  xycoords='data', 
-            #         xytext=(0.99, -0.5), textcoords='axes fraction',
-            #         bbox=dict(boxstyle="round", fc="w", alpha=0.25),
-            #         horizontalalignment='right', verticalalignment='top', multialignment='left')
-            #  
-            # #params.set_alpha(.75)
-            #  
-            # zoom = plt.subplot(212)
-            # zoom.set_title("Zoom")
-            # zoom.set_xlabel('Function entry time (scaled)')
-            # zoom.set_ylabel('Function exec. time (scaled)')
-            # a = zoom.scatter(X[conp:, 0], X[conp:, 1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
-            # b = zoom.scatter(X[:conp, 0], X[:conp, 1], c='red', edgecolor='k', s=20)
-            # #a = zoom.scatter(X[outl == 1, 0], X[outl == 1, 1], c='white', edgecolor='k', s=20)
-            # #b = zoom.scatter(X[outl == -1, 0], X[outl == -1, 1], c='red', edgecolor='k', s=20)
-            # zoom.axis('tight')
-            # zoom.set_xlim((-0.1, 1.1))
-            # zoom.set_ylim(((ymean-(0.15*ystd)), (ymean+ystd)))
-            # 
-            # 
-            # plt.subplots_adjust(hspace=1.1)
-            # if fixcontamination > 0:
-            #     figfile = "NWChem_F" + str(funId) + "_" + "Nn" + numNeighbors + "_" + "ConTop" + str(fixcontamination) + ".png"
-            # else:
-            #=======================================================================
-            figfile = "NWChem_F" + str(funId) + "_" + "Sigma" + "_" + "%.png"
-                 
-            f.savefig(figfile)
-            plt.close(f)
-    
-
-
-        
-        
-    
     
     
     # Stream counter data
@@ -189,56 +125,99 @@ while ctrl >= 0:
     idx = 0
     for i in commStream:
         i = np.append(i,np.uint64(eventId))
-        commDataOut[:,0:4] = commStream[:,0:4]
-        commDataOut[:,8:11] = commStream[:,4:7]
-        commDataOut[:,11] = commStream[:,7]
+        commDataOut[idx,0:4] = i[0:4]
+        commDataOut[idx,8:11] = i[4:7]
+        commDataOut[idx,11:13] = i[7:9]
         idx += 1
         eventId += 1
 
 
     # Dump trace data
-    funDataOut.astype(int)
-    funDataList = funDataOut.tolist()
-    countDataOut.astype(int)
-    countDataList = countDataOut.tolist()
-    commDataOut.astype(int)
-    commDataList = commDataOut.tolist()
-    traceFileName = "trace." + str(outct) + ".json"
-    with open(traceFileName, 'w') as outfile:
-        json.dump(funDataList + countDataList + commDataList, outfile)
-    outfile.close()    
-    
-    
+    viz.sendTraceData(funDataOut, countDataOut, commDataOut, outct)
     # Dump anomaly data
-    print("anomaly ids: ", outlId)
-    anomalyFileName = "anomaly." + str(outct) + ".json"
-    with open(anomalyFileName, 'w') as outfile:
-        json.dump(outlId, outfile)
-    outfile.close()
-    
+    viz.sendOutlIds(outlId, outct)
     
     # Free memory
     evn.clearFunDict()
     outlId.clear()
     del funDataOut
     del countDataOut
-    del commDataList
-    
-    
+    del commDataOut
+
     # Update outer loop counter   
     outct += 1 
-    
-    
+        
     # Advance stream and check status
     prs.getStream()
     ctrl = prs.getStatus()
-    if outct > 2:
-        ctrl = -1
     
     
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", eventId, "\n\n")
+
 #ctFun = sorted(ctFun.items(), key=operator.itemgetter(1), reverse=True)
+    
+        #=======================================================================
+        # # Plot graphs
+        # if len(funOutlId) > 0:
+        #     X = X[:,4:6]
+        #     scaler = MinMaxScaler()
+        #     X = scaler.fit_transform(X)
+        #     
+        #     f = plt.figure()
+        #     pltitle = "STDB Method on NWChem \n" + "(Function ID: " + str(funId) + ", Number of Data Points: " + str(numPoints) + ")" 
+        #      
+        #     main = plt.subplot(211)
+        #     main.set_title(pltitle)
+        #     main.set_xlabel('Function entry time (scaled)')
+        #     main.set_ylabel('Function exec. time (scaled)')
+        #     a = main.scatter(X[funOutl == 1][:,0], X[funOutl == 1][:,1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
+        #     b = main.scatter(X[funOutl == -1][:,0], X[funOutl == -1][:,1], c='red', edgecolor='k', s=20)
+        #     main.axis('tight')
+        #     main.set_xlim((-0.1, 1.1))
+        #     main.set_ylim((-0.1, 1.1))
+        #      
+        #     # Create a legend
+        #     main.legend([a, b], ["inlier", "outlier"], loc="upper center", bbox_to_anchor=(0.1, -0.4))
+        #       
+        #     if fixcontamination > 0:
+        #         params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" top "+str(fixcontamination), xy=(1, 0),  xycoords='data', 
+        #             xytext=(0.99, -0.5), textcoords='axes fraction',
+        #             bbox=dict(boxstyle="round", fc="w", alpha=0.25),
+        #             horizontalalignment='right', verticalalignment='top', multialignment='left')
+        #     else:
+        #         params = main.annotate("nearest neighb. k: "+numNeighbors+"\n"+"contamination: "+" "+str(contamination*100)+"%", xy=(1, 0),  xycoords='data', 
+        #             xytext=(0.99, -0.5), textcoords='axes fraction',
+        #             bbox=dict(boxstyle="round", fc="w", alpha=0.25),
+        #             horizontalalignment='right', verticalalignment='top', multialignment='left')
+        #       
+        #     #params.set_alpha(.75)
+        #       
+        #     zoom = plt.subplot(212)
+        #     zoom.set_title("Zoom")
+        #     zoom.set_xlabel('Function entry time (scaled)')
+        #     zoom.set_ylabel('Function exec. time (scaled)')
+        #     a = zoom.scatter(X[conp:, 0], X[conp:, 1], c='white', edgecolor='k', s=20) #sns.kdeplot(X[outl == 1, 0], X[outl == 1, 1], cmap="Blues", shade=True)
+        #     b = zoom.scatter(X[:conp, 0], X[:conp, 1], c='red', edgecolor='k', s=20)
+        #     #a = zoom.scatter(X[outl == 1, 0], X[outl == 1, 1], c='white', edgecolor='k', s=20)
+        #     #b = zoom.scatter(X[outl == -1, 0], X[outl == -1, 1], c='red', edgecolor='k', s=20)
+        #     zoom.axis('tight')
+        #     zoom.set_xlim((-0.1, 1.1))
+        #     zoom.set_ylim(((ymean-(0.15*ystd)), (ymean+ystd)))
+        #      
+        #      
+        #     plt.subplots_adjust(hspace=1.1)
+        #     if fixcontamination > 0:
+        #         figfile = "NWChem_F" + str(funId) + "_" + "Nn" + numNeighbors + "_" + "ConTop" + str(fixcontamination) + ".png"
+        #     else:
+        #     figfile = "NWChem_F" + str(funId) + "_" + "Sigma" + "_" + "%.png"
+        #          
+        #     f.savefig(figfile)
+        #     plt.close(f)
+        #=======================================================================
+    
+    
+    
     
     
     #===========================================================================
