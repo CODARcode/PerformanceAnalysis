@@ -6,13 +6,15 @@ Create: August, 2018
 
 from collections import deque
 import configparser
+import numpy as np
 
 class  Event():
     def __init__(self, funMap, configFile):
       self.funstack = {} # A dictionary of function calls; keys: program, mpi rank, thread
       self.funmap = funMap # A dictionary of function ids; key: function id
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
-      self.lineid = 0
+      self.funData = None
+      self.fidx = 0
     
     
     def checkCallStack(self, p, r, t): # As events arrive build necessary data structure
@@ -31,6 +33,9 @@ class  Event():
       
       if event[3] == 0:
         self.funstack[event[0]][event[1]][event[2]].append(event) # If entry event, add event to call stack
+        self.funData[self.fidx,0:5] = event[0:5]
+        self.funData[self.fidx,11:13] = event[5:7]
+        self.fidx += 1
         return True
       elif event[3] == 1:
         pevent = self.funstack[event[0]][event[1]][event[2]].pop() # If exit event, remove corresponding entry event from call stack
@@ -41,10 +46,23 @@ class  Event():
           if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
           self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
+          self.funData[self.fidx,0:5] = event[0:5]
+          self.funData[self.fidx,11:13] = event[5:7]
+          self.fidx += 1
           return True
       else:
         return True # Event is not an exit or entry event
     
+    
+    def initFunData(self, numEvent):
+        self.funData = np.full((numEvent, 13), np.nan)
+        
+    def getFunData(self):
+        return self.funData
+    
+    def clearFunData(self):
+        self.fidx = 0
+        del self.funData
     
     def getFunExecTime(self): # Returns the result dictionary
         if len(self.funtime) > 0: 

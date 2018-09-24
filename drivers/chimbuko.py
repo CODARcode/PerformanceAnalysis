@@ -53,8 +53,9 @@ otl = outlier.Outlier(sys.argv[1])
 viz = visualizer.Visualizer(sys.argv[1])
 
 # Dump function data
-viz.sendFunMap(funMap)
-
+viz.sendFunMap(list(funMap.values()))
+eventType = ['ENTRY', 'EXIT', 'SEND', 'RECV']
+viz.sendEventType(eventType)
 
 # Stream events
 ctFun = defaultdict(int)
@@ -67,11 +68,9 @@ while ctrl >= 0:
     
     # Stream function call data
     funStream = prs.getFunData()
-    funDataOut = np.full((funStream.shape[0], 13), np.nan)
+    evn.initFunData(funStream.shape[0])
              
-    idx = 0
     for i in funStream:
-        # print("funStream len:", len(i))
         # Append eventId so we can backtrack which event in the trace was anomalous
         i = np.append(i,np.uint64(eventId))  
         if evn.addFun(i): # Store function call data in event object
@@ -79,9 +78,6 @@ while ctrl >= 0:
         else:
             dataOK = False
             break        
-        funDataOut[idx,0:5] = i[0:5]
-        funDataOut[idx,11:13] = i[5:7]
-        idx += 1
         eventId += 1
         ctFun[i[4]] += 1
     if dataOK:
@@ -102,6 +98,13 @@ while ctrl >= 0:
         funOutlId = X[funOutl == -1][:,6]
         for i in range(0,len(funOutlId)):
             outlId.append(str(funOutlId[i]))
+        
+    
+    # Determine function of interest
+    
+    #r = req.post(self.vizUrl, json={'type':'foi', 'value':['adios_close', 'adios_open']})
+    
+
     
     
     # Stream counter data
@@ -133,14 +136,14 @@ while ctrl >= 0:
 
 
     # Dump trace data
-    viz.sendTraceData(funDataOut, countDataOut, commDataOut, outct)
+    viz.sendTraceData(evn.getFunData(), countDataOut, commDataOut, outct)
     # Dump anomaly data
     viz.sendOutlIds(outlId, outct)
     
     # Free memory
     evn.clearFunDict()
     outlId.clear()
-    del funDataOut
+    evn.clearFunData()
     del countDataOut
     del commDataOut
 

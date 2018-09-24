@@ -7,6 +7,7 @@ Create: September, 2018
 import os
 import json
 import configparser
+import time
 import requests as req
 import matplotlib as mpl
 if os.environ.get('DISPLAY','') == '':
@@ -33,12 +34,11 @@ class Visualizer():
     def sendTraceData(self, funData, countData, commData, outct):
         if self.vizMethod == "online":
             # Send data to viz server
-            r = req.post(self.vizUrl, 
-                        data=json.dumps(funData.tolist() + 
-                        countData.tolist() + 
-                        commData.tolist()))
-            if r.status_code != 201:
-                raise ApiError('Trace post error:'.format(r.status_code))
+            dataList = funData.tolist() + countData.tolist() + commData.tolist()
+            r = req.post(self.vizUrl, json={'type':'events', 'value': dataList})
+            time.sleep(5)
+            #if r.status_code != 201:
+            #    raise ApiError('Trace post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
             traceFileName = "trace." + str(outct) + ".json"
@@ -49,9 +49,10 @@ class Visualizer():
     def sendOutlIds(self, outlId, outct):
         if self.vizMethod == "online":
             # Send data to viz server
-            r = req.post(self.vizUrl, data=json.dumps(outlId))
-            if r.status_code != 201:
-                raise ApiError('Anomaly post error:'.format(r.status_code))
+            r = req.post(self.vizUrl, json = {'type':'labels', 'value': outlId})
+            time.sleep(1)
+           # if r.status_code != 201:
+           #     raise ApiError('Anomaly post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
             print("anomaly ids: ", outlId)
@@ -63,13 +64,34 @@ class Visualizer():
     def sendFunMap(self, funMap):
         if self.vizMethod == "online":
             # Send data to viz server
-            r = req.post(self.vizUrl, data=json.dumps(funMap))
-            if r.status_code != 201:
-                raise ApiError('Function map post error:'.format(r.status_code))
+            r = req.post(self.vizUrl, json={'type':'functions', 'value': funMap})
+            time.sleep(1)
+           # if r.status_code != 201:
+           #     raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data   
             with open("function.json", 'w') as outfile:
-                json.dump(funMap, outfile, indent=4)
+                json.dump(funMap, outfile)
+            outfile.close()
+    
+    def sendFunOfInt(self, funOfInt):
+        if self.vizMethod == "online":
+            r = req.post(self.vizUrl, json={'type':'foi', 'value':funOfInt})
+            # if r.status_code != 201:
+            #     raise ApiError('Function map post error:'.format(r.status_code))
+        if self.vizMethod == "offline":
+            with open("foi.json", 'w') as outfile:
+                json.dump(funOfInt, outfile)
+            outfile.close()
+            
+    def sendEventType(self, eventType):
+        if self.vizMethod == "online":
+            r = req.post(self.vizUrl, json={'type':'event_types', 'value':eventType})
+            #if r.status_code != 201:
+            #    raise ApiError('Function map post error:'.format(r.status_code))
+        if self.vizMethod == "offline":
+            with open("et.json", 'w') as outfile:
+                json.dump(eventType, outfile)
             outfile.close()
     
     def addFunData(self, funData):
