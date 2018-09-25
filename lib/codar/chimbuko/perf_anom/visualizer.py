@@ -74,13 +74,16 @@ class Visualizer():
                 json.dump(funMap, outfile)
             outfile.close()
     
-    def sendFunOfInt(self, funOfInt):
+    def sendFunOfInt(self, funOfInt, outct):
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json={'type':'foi', 'value':funOfInt})
             # if r.status_code != 201:
             #     raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
-            with open("foi.json", 'w') as outfile:
+            # Dump data
+            print("function of interest ids: ", funOfInt)
+            funOfIntFileName = "foi." + str(outct) + ".json"
+            with open(funOfIntFileName, 'w') as outfile:
                 json.dump(funOfInt, outfile)
             outfile.close()
             

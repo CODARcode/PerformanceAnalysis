@@ -59,6 +59,8 @@ viz.sendEventType(eventType)
 
 # Stream events
 ctFun = defaultdict(int)
+ctCount = defaultdict(int)
+ctComm = defaultdict(int)
 dataOK = True
 ctrl = 1
 outct = 0
@@ -90,6 +92,7 @@ while ctrl >= 0:
     # Detect anomalies in function call data
     data = evn.getFunExecTime()
     outlId = []
+    funOfInt = []
     for funId in data: 
         X = np.array(data[funId])
         numPoints = X.shape[0]
@@ -98,55 +101,59 @@ while ctrl >= 0:
         funOutlId = X[funOutl == -1][:,6]
         for i in range(0,len(funOutlId)):
             outlId.append(str(funOutlId[i]))
-        
+        if numPoints > np.sum(funOutl):
+            funOfInt.append(str(funId))
     
-    # Determine function of interest
     
-    #r = req.post(self.vizUrl, json={'type':'foi', 'value':['adios_close', 'adios_open']})
+    # Dump function of interest data
+    viz.sendFunOfInt(funOfInt, outct)
     
+    # Dump anomaly data
+    viz.sendOutlIds(outlId, outct)
 
     
     
     # Stream counter data
-    countStream = prs.getCountData() 
-    countDataOut = np.full((countStream.shape[0], 13), np.nan)
+    countStream = prs.getCountData()
+    evn.initCountData(countStream.shape[0])
     
-    idx = 0
     for i in countStream:
         i = np.append(i,np.uint64(eventId))
-        countDataOut[idx,0:3] = i[0:3]
-        countDataOut[idx,5:7] = i[3:5]
-        countDataOut[idx,11:13] = i[5:7]
-        idx += 1
+        if evn.addCount(i):
+            pass
+        else:
+            dataOK = False
+            break
         eventId += 1 
-    
+        ctCount[i[3]] += 1
+     
      
     # Stream communication data
     commStream = prs.getCommData()
-    commDataOut = np.full((commStream.shape[0], 13), np.nan)
+    evn.initCommData(commStream.shape[0])
     
-    idx = 0
     for i in commStream:
         i = np.append(i,np.uint64(eventId))
-        commDataOut[idx,0:4] = i[0:4]
-        commDataOut[idx,8:11] = i[4:7]
-        commDataOut[idx,11:13] = i[7:9]
-        idx += 1
-        eventId += 1
-
+        if evn.addComm(i):
+            pass
+        else:
+            dataOK = False
+            break
+        eventId += 1 
+        ctComm[i[3]] += 1
 
     # Dump trace data
-    viz.sendTraceData(evn.getFunData(), countDataOut, commDataOut, outct)
-    # Dump anomaly data
-    viz.sendOutlIds(outlId, outct)
+    viz.sendTraceData(evn.getFunData(), evn.getCountData(), evn.getCommData(), outct)
+
     
     # Free memory
     evn.clearFunDict()
-    outlId.clear()
     evn.clearFunData()
-    del countDataOut
-    del commDataOut
-
+    evn.clearCountData()
+    evn.clearCommData()
+    outlId.clear()
+    funOfInt.clear()
+    
     # Update outer loop counter   
     outct += 1 
         
