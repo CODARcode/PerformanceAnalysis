@@ -92,10 +92,12 @@ if dataType == 'funtime':
                     
                 
                 # Print funData
-                print("Anomaly info\n")
-                if fixcontamination > 0:
-                    for i in range(0,conp):
-                        print(i, ", ", funData[i,:])
+                #===============================================================
+                # print("Anomaly info\n")
+                # if fixcontamination > 0:
+                #     for i in range(0,conp):
+                #         print(i, ", ", funData[i,:])
+                #===============================================================
                  
                 # Plot with function ID 
                 f = plt.figure()
