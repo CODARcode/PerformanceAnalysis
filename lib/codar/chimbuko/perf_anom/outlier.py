@@ -19,9 +19,9 @@ class Outlier():
         
         # Local outlier factor
         if self.algorithm == 'Lof':
-            self.runLof = self.config['Lof']['RunLof']
             self.numNeighbors = int(self.config['Lof']['n_neighbors'])
             self.leafSize = int(self.config['Lof']['leaf_size'])
+            self.lofAlgorithm = self.config['Lof']['algorithm']
             self.metric = self.config['Lof']['metric']
             self.p = int(self.config['Lof']['p'])
             if self.config['Lof']['metric_params'] == "None":
@@ -31,14 +31,12 @@ class Outlier():
             
             # Lof objects
             self.clf = None
-            
-        
+                  
         # Streaming standard deviation     
         if self.algorithm == 'Sstd':
             self.stats = Statistics()
             self.sigma = int(self.config['Sstd']['Sigma'])
             self.numPoints = 0
-        
         
         # Outliers and scores
         self.outl = None
@@ -64,7 +62,7 @@ class Outlier():
     
     
     def lofComp(self, data):
-        self.clf = LocalOutlierFactor(self.numNeighbors, self.algorithm, self.leafSize, self.metric, self.p, self.metricParams, self.contamination, self.numJobs)
+        self.clf = LocalOutlierFactor(self.numNeighbors, self.lofAlgorithm, self.leafSize, self.metric, self.p, self.metricParams, self.contamination, self.numJobs)
         self.outl = self.clf.fit_predict(data)
         self.score = -1.0 * self.clf.negative_outlier_factor_
         
@@ -84,8 +82,8 @@ class Outlier():
                 self.outl.append(-1)
                 self.score.append(abs(data[i] - self.stats.stddev()))
             else:
-                 self.outl.append(1)
-                 self.score.append(abs(data[i] - self.stats.stddev()))
+                self.outl.append(1)
+                self.score.append(abs(data[i] - self.stats.stddev()))
     
     
     def compOutlier(self, data):
@@ -116,5 +114,14 @@ class Outlier():
         
     def getContamination(self):
         return self.contamination
+    
+    def getLofNumNeighbors(self):
+        return self.numNeighbors
+    
+    def getAlgorithm(self):
+        return self.algorithm
+    
+    def getSigma(self):
+        return self.sigma
    
     
