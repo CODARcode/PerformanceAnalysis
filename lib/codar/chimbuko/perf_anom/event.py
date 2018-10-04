@@ -66,12 +66,14 @@ class  Event():
           if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
           self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
+          # Needed to filter exit entry
           #self.funList.append(pevent)
           #self.funList.append(event)
           return True
       else:
         return True # Event is not an exit or entry event
     
+    # Needed to filter exit entry
     #def initFunData(self, numEvent):
     #    self.funList = []
         
@@ -79,6 +81,7 @@ class  Event():
         self.funData = np.full((numEvent, 13), np.nan)
         
     def getFunData(self):
+        # Needed to filter exit entry
         #self.funList.sort(key=lambda x: x[6])
         #self.funData = np.full((len(self.funList), 13), np.nan)
         #self.funDataTemp = np.array(self.funList)
