@@ -1,6 +1,6 @@
 """
 Outlier detection class
-Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
 
@@ -34,7 +34,7 @@ class Outlier():
                   
         # Streaming standard deviation     
         if self.algorithm == 'Sstd':
-            self.stats = Statistics()
+            self.stats = {}
             self.sigma = int(self.config['Sstd']['Sigma'])
             self.numPoints = 0
         
@@ -67,31 +67,36 @@ class Outlier():
         self.score = -1.0 * self.clf.negative_outlier_factor_
         
     
-    def sstdComp(self, data):
+    def sstdComp(self, data, id):
         if self.outl is None and self.score is None:
             self.outl = []
             self.score = []
         else:
             self.outl.clear()
             self.score.clear()
+        if id not in self.stats:
+            self.stats[id] = Statistics()
         for i in data[:]:
-            self.stats.push(i)
-        sigma = self.stats.mean() + self.sigma*self.stats.stddev() 
-        for i in range(0, len(data[:])):
-            if data[i] >= sigma:
-                self.outl.append(-1)
-                self.score.append(abs(data[i] - self.stats.stddev()))
-            else:
-                self.outl.append(1)
-                self.score.append(abs(data[i] - self.stats.stddev()))
+            self.stats[id].push(i)
+        if self.stats[id].get_state()[0] > 1.0:
+            sigma = self.stats[id].mean() + self.sigma*self.stats[id].stddev() 
+            for i in range(0, len(data[:])):
+                if data[i] >= sigma:
+                    self.outl.append(-1)
+                    self.score.append(abs(data[i] - self.stats[id].stddev()))
+                else:
+                    self.outl.append(1)
+                    self.score.append(abs(data[i] - self.stats[id].stddev()))
     
     
-    def compOutlier(self, data):
+    def compOutlier(self, data, id):
         if self.algorithm == 'Sstd':
-            self.sstdComp(data[:,5])
+            self.sstdComp(data[:,5], id)
+            return
             
         if self.algorithm == 'Lof':
             self.lofComp(data[:,4:6])
+            return
     
     
     def getClf(self):
@@ -103,6 +108,9 @@ class Outlier():
             raise Exception("No scores computed ...")
         else:
             return self.score
+    
+    def checkNumPoints(self):
+        return self.numPoints
         
         
     def getOutlier(self):

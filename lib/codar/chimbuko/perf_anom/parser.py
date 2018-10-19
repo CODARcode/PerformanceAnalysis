@@ -1,6 +1,6 @@
 """
 Parses files (currently .bp)
-Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
 
@@ -32,10 +32,9 @@ class Parser():
             for iter in self.bpAttrib: # extract funciton names and ids
                 if iter.startswith('timer'):
                     self.numFun = self.numFun + 1
-                    self.funMap[int(iter.split()[1])] = self.bpAttrib[iter].value # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
+                    self.funMap[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8")) # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
     
             print("\nAdios stream ready... \n\n")
-              
             # Debug
             #===================================================================
             # print("Num attributes: ", self.bpNumAttrib, "\n")
@@ -52,14 +51,23 @@ class Parser():
         self.status = self.stream.advance()
         return strm
     
-    
     def getFunData(self): # get function call data from adios
-        if "event_timestamps" in self.stream.vars:
-            var = self.stream.var["event_timestamps"]
-            numSteps = var.nsteps
-            return var.read(nsteps=numSteps)
-        else:
-            raise Exception("\nNo function data\n")
+        assert("event_timestamps" in self.stream.vars), "Frame has no function call data (Assertion)..."
+        var = self.stream.var["event_timestamps"]
+        numSteps = var.nsteps
+        return var.read(nsteps=numSteps)
+    
+    def getCountData(self): # get counter data from adios
+        assert("counter_values" in self.stream.vars), "Frame has no counter data (Assertion)..."
+        var = self.stream.var["counter_values"]
+        num_steps = var.nsteps
+        return var.read(nsteps=num_steps)
+
+    def getCommData(self): # get comm data from adios
+        assert("comm_timestamps" in self.stream.vars), "Frame has no communication data (Assertion)..."
+        var = self.stream.var["comm_timestamps"]
+        num_steps = var.nsteps
+        return var.read(nsteps=num_steps)
     
     
     def getStatus(self):
@@ -79,7 +87,7 @@ class Parser():
     
     
     def getFunMap(self):
-        return self.funMap    
-    
+        return self.funMap
+        
     
     

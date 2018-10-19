@@ -1,6 +1,6 @@
 """
 Keeps track of events such as function calls, communication and processor counters as streamed from adios 
-Authors: Shinjae Yoo (sjyoo@bnl.gov), Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Create: August, 2018
 """
 
@@ -16,8 +16,9 @@ class  Event():
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
       #self.funList = None # or initialize to []
       self.maxFunDepth = defaultdict(int)
+      self.stackSize = 0
       self.funData = None
-      self.funDataTemp = None
+      #self.funDataTemp = None # Needed to filter exit entry
       self.countData = None
       self.commData = None
       self.fidx = 0
@@ -81,27 +82,32 @@ class  Event():
         self.funData = np.full((numEvent, 13), np.nan)
         
     def getFunData(self):
+        try:
+            assert(self.funData is not None)
+            return self.funData
+        except:
+            return [] 
         # Needed to filter exit entry
         #self.funList.sort(key=lambda x: x[6])
         #self.funData = np.full((len(self.funList), 13), np.nan)
         #self.funDataTemp = np.array(self.funList)
         #self.funData[:,0:5] = self.funDataTemp[:,0:5]
         #self.funData[:,11:13] = self.funDataTemp[:,5:7]
-        return self.funData
-    
+        
     def clearFunData(self):
         self.fidx = 0
-        #self.funList.clear()
-        if self.funDataTemp is None:
-            pass
-        else:
-            del self.funDataTemp
-            
-        if self.funData is None:
-            pass
-        else:
+        try:
+            assert(self.funData is not None)
             del self.funData
-        
+            self.funData = None
+        except:
+            self.funData = None
+        # Needed to filter exit entry
+        #self.funList.clear()
+        #if self.funDataTemp is None:
+        #    pass
+        #else:
+        #    del self.funDataTemp
         
     def addCount(self, event):       
         self.countData[self.ctidx,0:3] = event[0:3]
@@ -114,11 +120,20 @@ class  Event():
         self.countData = np.full((numEvent, 13), np.nan)
     
     def getCountData(self):
-        return self.countData
+        try:
+            assert(self.countData is not None)
+            return self.countData
+        except:
+            return [] 
     
     def clearCountData(self):
         self.ctidx = 0
-        del self.countData
+        try:
+            assert(self.countData is not None)
+            del self.countData
+            self.countData = None
+        except:
+            self.countData = None
         
         
     def addComm(self, event):       
@@ -132,37 +147,53 @@ class  Event():
         self.commData = np.full((numEvent, 13), np.nan)
     
     def getCommData(self):
-        return self.commData
+        try:
+            assert(self.commData is not None)
+            return self.commData
+        except:
+            return [] 
     
     def clearCommData(self):
         self.coidx = 0
-        del self.commData
+        try:
+            assert(self.commData is not None)
+            del self.commData
+            self.commData = None
+        except:
+            self.commData = None
     
     
-    def getFunExecTime(self): # Returns the result dictionary
+    def getFunTime(self): # Returns the result dictionary
         if len(self.funtime) > 0: 
             return self.funtime
         else:
             raise Exception("\nNo result dictionary!\n")
     
-    
-    def clearFunDict(self):
+    def clearFunTime(self):
         self.funtime.clear()
     
 
     def getFunStack(self):
         return self.funstack
-
+    
+    
+    def countStackSize(self, d, s):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                self.countStackSize(v,s)
+            else:
+                s += len(v)
     
     def getFunStackSize(self):
-        return len(self.funstack)
-    
-    
-    def getMaxFunDepth(self):
-        return self.maxFunDepth
-    
+        self.stackSize = 0
+        self.countStackSize(self.funstack, self.stackSize)        
+        return self.stackSize   
 
     def printFunStack(self):
        print("self.funstack = ", self.funstack)
 
+
+    def getMaxFunDepth(self):
+        return self.maxFunDepth
+ 
     

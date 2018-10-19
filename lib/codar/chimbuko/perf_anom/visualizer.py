@@ -10,6 +10,7 @@ import configparser
 import time
 import requests as req
 import matplotlib as mpl
+import numpy as np
 if os.environ.get('DISPLAY','') == '':
     print('No display found; using non-interactive Agg backend...\n')
     mpl.use('Agg')
@@ -30,6 +31,69 @@ class Visualizer():
         self.commData = []
         self.anomalyData = []
         
+        
+    def sendCombinedData(self, funData, countData, commData, funOfInt, outlId, outct):
+        if self.vizMethod == "online":
+            # Send data to viz server
+            dataList = []
+            try:
+                assert(type(funData) is np.ndarray)
+                dataList += funData.tolist()
+            except:
+                print("\nNo function call data to visualize...\n")
+            
+            try:
+                assert(type(countData) is np.ndarray)
+                dataList += countData.tolist()
+            except:
+                print("\nNo counter data to visualize...\n")
+            
+            try:
+                assert(type(commData) is np.ndarray)
+                dataList += commData.tolist()
+            except:
+                print("\nNo communication data to visualize...\n")
+            
+            r = req.post(self.vizUrl, json={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}})
+            time.sleep(3)
+            #if r.status_code != 201:
+            #    raise ApiError('Trace post error:'.format(r.status_code))
+            
+        if self.vizMethod == "offline":
+            # Dump data
+            dataList = []
+            try:
+                assert(type(funData) is np.ndarray)
+                dataList += funData.tolist()
+            except:
+                print("\nNo function call data to visualize...\n")
+            
+            try:
+                assert(type(countData) is np.ndarray)
+                dataList += countData.tolist()
+            except:
+                print("\nNo counter data to visualize...\n")
+            
+            try:
+                assert(type(commData) is np.ndarray)
+                dataList += commData.tolist()
+            except:
+                print("\nNo communication data to visualize...\n")
+            
+            traceDict={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}}
+            traceFileName = "trace." + str(outct) + ".json"
+            with open(traceFileName, 'w') as outfile:
+                json.dump(traceDict, outfile)
+            outfile.close()
+            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
+            #===================================================================
+            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
+            # for i in range(0,countData.shape[0]):
+            #     if str(countData[i][7]) != str('nan'):
+            #         print(type(countData[i][7]))
+            #         print(str(countData[i][7]))
+            #         raise Exception("countData has non nan entry in column 7")
+            #===================================================================
     
     def sendTraceData(self, funData, countData, commData, outct):
         if self.vizMethod == "online":

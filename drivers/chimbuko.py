@@ -22,6 +22,7 @@ import visualizer
 # Proces config file
 config = configparser.ConfigParser()
 config.read(sys.argv[1])
+stopLoop = int(config['Debug']['StopLoop'])
 
 # Initialize parser object, get function id function name map 
 prs = parser.Parser(sys.argv[1])
@@ -42,12 +43,13 @@ eventType = ['ENTRY', 'EXIT', 'SEND', 'RECV']
 viz.sendEventType(eventType)
 
 # This is so that we can get something reasonable from the viz people
-fixFunOfInt = []
-foiid = [532, 148, 482]
-for i in foiid:
-    fixFunOfInt.append(funMap[i])
-outct = 0
-viz.sendFunOfInt(fixFunOfInt, outct)
+#print(funMap)
+#fixFunOfInt = []
+#foiid = [512, 513, 260]
+#for i in foiid:
+#    fixFunOfInt.append(funMap[i])
+#outct = 0
+#viz.sendFunOfInt(fixFunOfInt, outct)
 # This is so that we can get something reasonable from the viz people  
 
 
@@ -62,93 +64,108 @@ outct = 0
 eventId = np.uint64(0)
 while ctrl >= 0:
     print("\nStream step: ", outct, "\n\n")
-    #print('funstack :', evn.getFunStack())
+     
     # Stream function call data
-    funStream = prs.getFunData()
-    evn.initFunData(funStream.shape[0])
-             
-    for i in funStream:
-        # Append eventId so we can backtrack which event in the trace was anomalous
-        i = np.append(i,np.uint64(eventId))  
-        if evn.addFun(i): # Store function call data in event object
+    try:
+        funStream = prs.getFunData()
+        evn.initFunData(funStream.shape[0])
+                 
+        for i in funStream:
+            # Append eventId so we can backtrack which event in the trace was anomalous
+            i = np.append(i,np.uint64(eventId))  
+            if evn.addFun(i): # Store function call data in event object
+                pass
+            else:
+                dataOK = False
+                break        
+            eventId += 1
+            ctFun[i[4]] += 1
+        if dataOK:
             pass
         else:
-            dataOK = False
-            break        
-        eventId += 1
-        ctFun[i[4]] += 1
-    if dataOK:
-        pass
-    else:
-        print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
-        break
-    
-    
-    # Detect anomalies in function call data
-    data = evn.getFunExecTime()
-    outlId = []
-    funOfInt = []
-    for funId in data: 
-        X = np.array(data[funId])
-        numPoints = X.shape[0]
-        otl.compOutlier(X)
-        funOutl = np.array(otl.getOutlier())        
-        funOutlId = X[funOutl == -1][:,6]
-        for i in range(0,len(funOutlId)):
-            outlId.append(str(funOutlId[i]))
-        #if numPoints > np.sum(funOutl):
-            #funOfInt.append(str(funMap[funId]))
-        if len(funOutlId) > 0:
-            anomFun[funId] += 1
+            print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
+            break
+ 
+        # Detect anomalies in function call data
+        data = evn.getFunTime()
+        outlId = []
+        funOfInt = []
+        for funId in data: 
+            X = np.array(data[funId])
+            numPoints = X.shape[0]
+            otl.compOutlier(X, funId)
+            funOutl = np.array(otl.getOutlier())        
+            funOutlId = X[funOutl == -1][:,6]
+            for i in range(0,len(funOutlId)):
+                outlId.append(str(funOutlId[i]))
+            if numPoints > np.sum(funOutl):
+                funOfInt.append(str(funMap[funId]))
+            if len(funOutlId) > 0:
+                anomFun[funId] += 1
+                #if funId in foiid:
+                #    print("Function id: ", funId, " has anomaly\n")          
         
-    
-    # Dump function of interest data
-    #viz.sendFunOfInt(funOfInt, outct)
-    
-    # Dump anomaly data
-    viz.sendOutlIds(outlId, outct)
+        
+        # Dump function of interest data
+        #viz.sendFunOfInt(funOfInt, outct)
+        
+        # Dump anomaly data
+        #viz.sendOutlIds(outlId, outct)
+    except:
+        print("\nFrame has no function data...\n")
 
     
     # Stream counter data
-    countStream = prs.getCountData()
-    evn.initCountData(countStream.shape[0])
-    
-    for i in countStream:
-        i = np.append(i,np.uint64(eventId))
-        if evn.addCount(i):
-            pass
-        else:
-            dataOK = False
-            break
-        eventId += 1 
-        ctCount[i[3]] += 1
+    try:
+        countStream = prs.getCountData()
+        evn.initCountData(countStream.shape[0])
+        
+        for i in countStream:
+            i = np.append(i,np.uint64(eventId))
+            if evn.addCount(i):
+                pass
+            else:
+                dataOK = False
+                break
+            eventId += 1 
+            ctCount[i[3]] += 1
+    except:
+        print("\nFrame has no counter data...\n")
      
      
     # Stream communication data
-    commStream = prs.getCommData()
-    evn.initCommData(commStream.shape[0])
-    
-    for i in commStream:
-        i = np.append(i,np.uint64(eventId))
-        if evn.addComm(i):
-            pass
-        else:
-            dataOK = False
-            break
-        eventId += 1 
-        ctComm[i[3]] += 1
+    try:
+        commStream = prs.getCommData()
+        evn.initCommData(commStream.shape[0])
+        
+        for i in commStream:
+            i = np.append(i,np.uint64(eventId))
+            if evn.addComm(i):
+                pass
+            else:
+                dataOK = False
+                break
+            eventId += 1 
+            ctComm[i[3]] += 1
+    except:
+        print("\nFrame has no comm data...\n")
 
     # Dump trace data
-    viz.sendTraceData(evn.getFunData(), evn.getCountData(), evn.getCommData(), outct)
-
+    #viz.sendTraceData(evn.getFunData(), evn.getCountData(), evn.getCommData(), outct)
+    viz.sendCombinedData(evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)
     
     # Free memory
-    evn.clearFunDict()
+    evn.clearFunTime()
     evn.clearFunData()
     evn.clearCountData()
     evn.clearCommData()
     outlId.clear()
     funOfInt.clear()
+    
+    # Debug
+    if stopLoop > -1:
+        if outct >= stopLoop:
+            break
     
     # Update outer loop counter   
     outct += 1 
@@ -157,7 +174,7 @@ while ctrl >= 0:
     prs.getStream()
     ctrl = prs.getStatus()
         
-    
+assert(evn.getFunStackSize() == 0), "\nFunction stack not empty...\n"
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", eventId, "\n\n")
 
