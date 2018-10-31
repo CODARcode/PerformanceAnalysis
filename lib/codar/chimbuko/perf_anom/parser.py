@@ -22,6 +22,7 @@ class Parser():
       self.bpNumAttrib = None
       self.numFun = 0
       self.funMap = defaultdict(int)
+      self.eventType = defaultdict(int)
       
       if self.fileType == "bp":
           ad.read_init("BP", parameters="verbose=3") # initialize adios streaming mode
@@ -33,6 +34,9 @@ class Parser():
                 if iter.startswith('timer'):
                     self.numFun = self.numFun + 1
                     self.funMap[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8")) # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
+                if iter.startswith('event_type'):
+                    self.eventType[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8"))  
+                    
     
             print("\nAdios stream ready... \n\n")
             # Debug
@@ -88,6 +92,10 @@ class Parser():
     
     def getFunMap(self):
         return self.funMap
+    
+    
+    def getEventType(self):
+        return self.eventType
         
     
     
