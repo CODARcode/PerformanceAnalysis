@@ -160,6 +160,17 @@ class Visualizer():
             with open("et.json", 'w') as outfile:
                 json.dump(eventType, outfile)
             outfile.close()
+            
+    def sendReset(self):
+        if self.vizMethod == "online":
+            r = req.post(self.vizUrl, json={'type':'reset'})
+            #if r.status_code != 201:
+            #    raise ApiError('Function map post error:'.format(r.status_code))
+        if self.vizMethod == "offline":
+            resetDict ={'type':'reset'}
+            with open("reset.json", 'w') as outfile:
+                json.dump(resetDict, outfile)
+            outfile.close()
     
     def addFunData(self, funData):
         self.funData.extend(funData.tolist())

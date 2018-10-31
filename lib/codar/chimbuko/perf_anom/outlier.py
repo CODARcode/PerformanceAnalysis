@@ -106,6 +106,8 @@ class Outlier():
     def getScore(self):
         if self.score is None:
             raise Exception("No scores computed ...")
+        elif type(self.score) is list:
+            return np.array(self.score)
         else:
             return self.score
     

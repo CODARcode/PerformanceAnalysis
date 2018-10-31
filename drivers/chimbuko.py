@@ -174,7 +174,7 @@ while ctrl >= 0:
     prs.getStream()
     ctrl = prs.getStatus()
         
-assert(evn.getFunStackSize() == 0), "\nFunction stack not empty...\n"
+assert(evn.getFunStackSize() == 0), "\nFunction stack not empty... Possible call stack violation...\n"
 print("Total number of advance operations: ", outct)
 print("Total number of events: ", eventId, "\n\n")
 
