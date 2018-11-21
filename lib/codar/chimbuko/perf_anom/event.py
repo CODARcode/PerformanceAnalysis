@@ -1,7 +1,7 @@
-"""
-Keeps track of events such as function calls, communication and processor counters as streamed from adios 
-Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
-Create: August, 2018
+"""@package Chimbuko
+This module processes events such as function calls, communication and processor counters 
+Author(s): Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Created: August, 2018
 """
 
 from collections import deque
@@ -10,7 +10,17 @@ import configparser
 import numpy as np
 
 class  Event():
+    """Event class keeps track of event information such as function names and their associated id-s (funmap), 
+    function call stack (funstack) and function execution times (funtime). 
+    In addition the class contains methods for processing events and event related information.  
+    """
+    
     def __init__(self, funMap, eventType, configFile):
+      """This is the constructor for the Event class.
+      
+      Args:
+          funMap (dict): Receives a dictionary containing function id-s and associated function names
+          eventType (dict): """
       self.funstack = {} # A dictionary of function calls; keys: program, mpi rank, thread
       self.funmap = funMap # A dictionary of function ids; key: function id
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
