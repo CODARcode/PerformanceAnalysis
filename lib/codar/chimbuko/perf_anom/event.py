@@ -18,7 +18,7 @@ class  Event():
     
     Attributes:
         Each event is associated with:: 
-            A work flow component or program indicated by p
+            A work flow component or program, indicated by p
             A node or MPI rank indicated by r
             A thread indicated by t 
     """
