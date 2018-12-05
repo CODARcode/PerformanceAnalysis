@@ -8,7 +8,7 @@ Created:
 
 import configparser
 import logging
-import adios as ad
+import adios_mpi as ad
 from collections import defaultdict
 
 class Parser():
@@ -46,7 +46,6 @@ class Parser():
       self.Method = self.config['Adios']['Method']
       self.Parameters = self.config['Adios']['Parameters']
       self.inputFile = self.config['Adios']['InputFile']
-      self.timeout = self.config['Adios']['Timeout']
       self.stream = None
       self.status = None
       self.bpAttrib = None
@@ -56,39 +55,35 @@ class Parser():
       self.eventType = defaultdict(int)
       
       if self.parseMode == "Adios":
-          if self.Method == "BP"
-              ad.read_init(self.Method, parameters=self.Parameters)
-              self.stream = ad.file(self.inputFile, self.Method, is_stream=True, self.timeout)
-              self.bpAttrib = self.stream.attr
-              self.bpNumAttrib = self.stream.nattrs
-              for iter in self.bpAttrib: # extract function names and ids
+        ad.read_init(self.Method, parameters=self.Parameters)
+        self.stream = ad.file(self.inputFile, self.Method, is_stream=True, timeout_sec=-1.0)
+ 
+        # Info
+        msg = "Adios handle initialized with method: " + self.Method
+        self.log.info(msg)
+        
+        if self.Method == "BP":
+            self.bpAttrib = self.stream.attr
+            self.bpNumAttrib = self.stream.nattrs
+            for iter in self.bpAttrib: # extract function names and ids
                 if iter.startswith('timer'):
                     self.numFun = self.numFun + 1
                     self.funMap[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8")) # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
                 if iter.startswith('event_type'):
                     self.eventType[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8"))  
-                            
-               # Info
-               self.log.info("Adios handle initialized...")
-                
-                # Debug
-                msg = "Number of attributes: " + str(self.bpNumAttrib)
-                self.log.debug(msg)
-                msg = "Attribute names: \n" + str(self.bpAttrib)
-                self.log.debug(msg)
-                msg = "Number of functions: " + str(self.numFun)
-                self.log.debug(msg)
-                msg = "Function map: \n" + str(self.funMap)
-                self.log.debug(msg)   
-          elif self.Method == "DATASPACES" or self.Method == "FLEXPATH":
-          
-          else:
-              msg = "Adios method not supported..."
-              self.log.error(msg)
-              raise Exception(msg)
-      
-      elif self.parseMode == "stream":
-          
+                        
+            # Debug
+            msg = "Number of attributes: " + str(self.bpNumAttrib)
+            self.log.debug(msg)
+            msg = "Attribute names: \n" + str(self.bpAttrib)
+            self.log.debug(msg)
+            msg = "Number of functions: " + str(self.numFun)
+            self.log.debug(msg)
+            msg = "Function map: \n" + str(self.funMap)
+            self.log.debug(msg)   
+        else:
+            # Info 
+            self.log.info("Adios using non BP method...")   
       else:
           msg = "Parse mode not supported..."
           self.log.error(msg)
@@ -97,7 +92,7 @@ class Parser():
             
     def getStream(self):
         strm = self.stream
-        self.status = self.stream.advance()
+        self.status = self.stream.advance() #timeout_sec=-1.0
         return strm
     
     def getFunData(self): # get function call data from adios
@@ -141,6 +136,77 @@ class Parser():
     
     def getEventType(self):
         return self.eventType
+
+
+
+
+# Run parser 
+if __name__ == "__main__":
+    
+    import sys
+    
+    prs = Parser(sys.argv[1])
+    ctrl = 0
+    outct = 0
+    
+    while ctrl >= 0:
+        print("\n\nFrame: ", outct)
+
+        # Stream function call data
+        try:
+            funStream = prs.getFunData()
+            funDataOK = True
+        except:
+            funDataOK = False
+            print("\nFrame has no function data...\n")
+    
+        if funDataOK:
+            print("Function stream:")
+            ct = 0                          
+            for i in funStream:
+                ct += 1
+            print("Number of function events: ", ct, "\n")
+            
+        # Stream counter data
+        try:
+            countStream = prs.getCountData()
+            countDataOK = True
+        except:
+            countDataOK = False
+            print("\nFrame has no counter data...\n")
         
+        if countDataOK:
+            print("Counter stream:")
+            ct = 0                         
+            for i in countStream:
+                ct += 1
+            print("Number of counter events: ", ct, "\n")
+        
+        # Stream communication data
+        try:
+            commStream = prs.getCommData()
+            commDataOK = True
+        except:
+            commDataOK = False
+            print("\nFrame has no comm data...\n")
+        
+        if commDataOK:
+            print("Comm stream:")  
+            ct = 0                       
+            for i in commStream:
+                ct += 1
+            print("Number of communication events: ", ct, "\n")
+            
+        outct += 1
+        prs.getStream()
+        ctrl = prs.getStatus()
+        
+    
+    
+    
+    
+    
+    
+    
     
     
