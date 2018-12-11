@@ -19,9 +19,9 @@ import outlier
 import visualizer
 
 #MGY
-import pprint
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+#import pprint
+#import matplotlib.pyplot as plt
+#from sklearn.preprocessing import MinMaxScaler
 
 # Proces config file
 config = configparser.ConfigParser()
@@ -30,8 +30,9 @@ stopLoop = int(config['Debug']['StopLoop'])
 
 # Initialize parser object, get function id function name map 
 prs = parser.Parser(sys.argv[1])
-funMap = prs.getFunMap()
-pprint.pprint(funMap)
+# NONSTREAMING
+#funMap = prs.getFunMap()
+#pprint.pprint(funMap)
 
 #MGY
 #outfile = "funMap.pickle"
@@ -40,12 +41,13 @@ pprint.pprint(funMap)
 #    handle.close()
 #MGY
 
-eventTypeDict = prs.getEventType()
-numEventTypes = len(eventTypeDict)
-eventTypeList = [None] * numEventTypes 
-assert(numEventTypes > 0), "No event types detected (Assertion)...\n"
-for i in range(0,numEventTypes):
-    eventTypeList[i] = eventTypeDict[i]
+# NONSTREAMING
+#eventTypeDict = prs.getEventType()
+#numEventTypes = len(eventTypeDict)
+#eventTypeList = [None] * numEventTypes 
+#assert(numEventTypes > 0), "No event types detected (Assertion)...\n"
+#for i in range(0,numEventTypes):
+#    eventTypeList[i] = eventTypeDict[i]
 #print("eventType:", eventTypeList, "\n")
     
 #MGY
@@ -58,7 +60,8 @@ for i in range(0,numEventTypes):
 
 
 # Initialize event object
-evn = event.Event(funMap, eventTypeList, sys.argv[1])
+# NONSTREAMING evn = event.Event(funMap, eventTypeList, sys.argv[1])
+evn = event.Event(sys.argv[1])
 
 # Initialize outlier object
 otl = outlier.Outlier(sys.argv[1])
@@ -69,8 +72,9 @@ viz = visualizer.Visualizer(sys.argv[1])
 viz.sendReset()
 
 # Dump function data
-viz.sendFunMap(list(funMap.values()))
-viz.sendEventType(eventTypeList)
+# NONSTREAMING
+#viz.sendFunMap(list(funMap.values()))
+#viz.sendEventType(eventTypeList)
 
 
 
@@ -101,15 +105,32 @@ outct = 0
 eventId = np.uint64(0)
 
 #MGY
-fig = plt.figure()
-ax = fig.add_subplot(111)
-scaler = MinMaxScaler()
-funTrue = 0
+#fig = plt.figure()
+#ax = fig.add_subplot(111)
+#scaler = MinMaxScaler()
+#funTrue = 0
 #MGY
 
 while ctrl >= 0:
+    
     print("\n\nFrame: ", outct)
-     
+    
+    funMap = prs.getFunMap()
+    
+    eventTypeDict = prs.getEventType()
+    numEventTypes = len(eventTypeDict)
+    eventTypeList = [None] * numEventTypes 
+    assert(numEventTypes > 0), "No event types detected (Assertion)..."
+    for i in range(0,numEventTypes):
+        eventTypeList[i] = eventTypeDict[i]
+        
+    # Dump function data
+    viz.sendFunMap(list(funMap.values()), outct)
+    viz.sendEventType(eventTypeList, outct)
+    
+    # Set event types for Event class
+    evn.setEventType(eventTypeList)
+
     # Stream function call data
     outlId = []
     funOfInt = []
@@ -161,19 +182,21 @@ while ctrl >= 0:
                     outlId.append(str(funOutlId[i]))
                     
                 #MGY
-                if funId == 26:
-                    if funTrue == 0:
-                        points = X[:,4:6]
-                        outliers = funOutl
-                        avg = np.full((len(X),1),otl.getMean(funId))
-                        mx = np.amax(X[:,5])
-                    else:
-                        points = np.append(points, X[:,4:6], axis=0)
-                        outliers = np.append(outliers, funOutl, axis=0)
-                        avg = np.append(avg, np.full((len(X),1),otl.getMean(funId)))
-                        if mx < np.amax(X[:,5]):
-                            mx = np.amax(X[:,5])
-                    funTrue += 1
+                #===============================================================
+                # if funId == 26:
+                #     if funTrue == 0:
+                #         points = X[:,4:6]
+                #         outliers = funOutl
+                #         avg = np.full((len(X),1),otl.getMean(funId))
+                #         mx = np.amax(X[:,5])
+                #     else:
+                #         points = np.append(points, X[:,4:6], axis=0)
+                #         outliers = np.append(outliers, funOutl, axis=0)
+                #         avg = np.append(avg, np.full((len(X),1),otl.getMean(funId)))
+                #         if mx < np.amax(X[:,5]):
+                #             mx = np.amax(X[:,5])
+                #     funTrue += 1
+                #===============================================================
                 
                 # Filter functions that are deep
                 maxFunDepth = evn.getMaxFunDepth()
@@ -250,6 +273,9 @@ while ctrl >= 0:
     evn.clearCommData()
     outlId.clear()
     funOfInt.clear()
+    #eventTypeDict.clear()
+    #eventTypeList.clear()
+    #funMap.clear() 
     
     # Debug
     if stopLoop > -1:
@@ -264,22 +290,29 @@ while ctrl >= 0:
     ctrl = prs.getStatus()
 
 
+
+prs.adiosClose()
+prs.adiosFinalize()
+
+
 #MGY
-points = scaler.fit_transform(points)
-avg /= mx
-
-
-plt.xlabel('Scaled entry timestamp')
-plt.ylabel('Scaled function exec. time')
-ax.scatter(points[outliers == -1][:,0], points[outliers == -1][:,1] , alpha=0.8, c="red", edgecolors='none', s=30, label="outlier")
-ax.scatter(points[outliers == 1][:,0], points[outliers == 1][:,1] , alpha=0.8, c="w", edgecolors='green', s=30, label="regular") 
-ax.plot(points[:,0], avg, color='blue', linestyle='-', linewidth=2, label="mean")
-
-
-#ax.plot(points[outliers == 1][:,0], points[outliers == 1][:,1], color='blue', linestyle='--', linewidth=2, marker='s')
-plt.title('NWChem function: ga_get_()')
-plt.legend(loc=1)
-plt.savefig('mva.png', bbox_inches='tight')
+#===============================================================================
+# points = scaler.fit_transform(points)
+# avg /= mx
+# 
+# 
+# plt.xlabel('Scaled entry timestamp')
+# plt.ylabel('Scaled function exec. time')
+# ax.scatter(points[outliers == -1][:,0], points[outliers == -1][:,1] , alpha=0.8, c="red", edgecolors='none', s=30, label="outlier")
+# ax.scatter(points[outliers == 1][:,0], points[outliers == 1][:,1] , alpha=0.8, c="w", edgecolors='green', s=30, label="regular") 
+# ax.plot(points[:,0], avg, color='blue', linestyle='-', linewidth=2, label="mean")
+# 
+# 
+# #ax.plot(points[outliers == 1][:,0], points[outliers == 1][:,1], color='blue', linestyle='--', linewidth=2, marker='s')
+# plt.title('NWChem function: ga_get_()')
+# plt.legend(loc=1)
+# plt.savefig('mva.png', bbox_inches='tight')
+#===============================================================================
 #MGY
 
 assert(evn.getFunStackSize() == 0), "\nFunction stack not empty... Possible call stack violation...\n"

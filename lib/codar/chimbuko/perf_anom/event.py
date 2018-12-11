@@ -23,12 +23,13 @@ class  Event():
             A thread indicated by t 
     """
     
-    def __init__(self, funMap, eventType, configFile):
+    # NONSTREAMING def __init__(self, funMap, eventType, configFile):
+    def __init__(self, configFile):
       """This is the constructor for the Event class.
       
       Args:
-          funMap (dict): A dictionary containing function id-s and associated function names
-          eventType (dict): A list containing event types such as EXIT, ENTRY the position of the event type indicates the event's id
+          NONSTREAMING funMap (dict): A dictionary containing function id-s and associated function names
+          NONSTREAMING eventType (dict): A list containing event types such as EXIT, ENTRY the position of the event type indicates the event's id
           configFile (string): The configuration files's name.
           
       Returns:
@@ -36,12 +37,12 @@ class  Event():
       """
           
       self.funstack = {} # A dictionary of function calls; keys: program, mpi rank, thread
-      self.funmap = funMap # A dictionary of function ids; key: function id
+      self.funmap = {} # NONSTREAMING funMap # A dictionary of function ids; key: function id
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
       #self.funList = None # or initialize to []
       self.maxFunDepth = defaultdict(int)
-      self.entry = int(eventType.index('ENTRY'))
-      self.exit = int(eventType.index('EXIT'))
+      self.entry = None # NONSTREAMING int(eventType.index('ENTRY'))
+      self.exit = None # NONSTREAMING int(eventType.index('EXIT'))
       self.stackSize = 0
       self.funData = None
       #self.funDataTemp = None # Needed to filter exit entry
@@ -51,6 +52,20 @@ class  Event():
       self.ctidx = 0
       self.coidx = 0
     
+    
+    def setEventType(self, eventType):
+        """Sets entry and exit variables.
+        
+        Args:
+            eventType (list): where the index corresponding to the ENTRY/EXIT entries is the respective id for that event
+                              i.e. if we have a list: ['ENTRY', 'EXIT'] then entry events have id 0 and exit id 1  
+            
+        Returns:
+            No return value.
+        """
+        self.entry = eventType.index('ENTRY')
+        self.exit = eventType.index('EXIT')
+        
     
     def createCallStack(self, p, r, t): 
       """Creates a stack for each p,r,t combination.
@@ -105,15 +120,16 @@ class  Event():
         else:
             if len(self.funstack[event[0]][event[1]][event[2]]) > self.maxFunDepth[event[4]]:
                 self.maxFunDepth[event[4]] = len(self.funstack[event[0]][event[1]][event[2]])
-                
-        if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
-          if pevent[4] not in self.funtime:
+        
+        # TODO I think the first if condition can be removed since we're computing anomalies for all functions        
+        # if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
+        if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
-          self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
+        self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
           #This portion is only needed if the visualization requires to send function calls that have exited
           #self.funList.append(pevent)
           #self.funList.append(event)
-          return True
+        return True
       else:
         return True # Event is not an exit or entry event
     

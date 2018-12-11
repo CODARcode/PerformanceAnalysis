@@ -133,5 +133,8 @@ class Outlier():
     
     def getSigma(self):
         return self.sigma
+    
+    def getMean(self, id):
+        return self.stats[id].mean()
    
     

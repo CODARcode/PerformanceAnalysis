@@ -55,7 +55,7 @@ class Visualizer():
                 print("\nNo communication data to visualize...\n")
             
             r = req.post(self.vizUrl, json={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}})
-            time.sleep(3)
+            #time.sleep(3)
             #if r.status_code != 201:
             #    raise ApiError('Trace post error:'.format(r.status_code))
             
@@ -100,7 +100,7 @@ class Visualizer():
             # Send data to viz server
             dataList = funData.tolist() + countData.tolist() + commData.tolist()
             r = req.post(self.vizUrl, json={'type':'events', 'value': dataList})
-            time.sleep(5)
+            # time.sleep(5)
             #if r.status_code != 201:
             #    raise ApiError('Trace post error:'.format(r.status_code))
         if self.vizMethod == "offline":
@@ -114,27 +114,28 @@ class Visualizer():
         if self.vizMethod == "online":
             # Send data to viz server
             r = req.post(self.vizUrl, json = {'type':'labels', 'value': outlId})
-            time.sleep(1)
+           # time.sleep(1)
            # if r.status_code != 201:
            #     raise ApiError('Anomaly post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
-            print("anomaly ids: ", outlId)
             anomalyFileName = "anomaly." + str(outct) + ".json"
             with open(anomalyFileName, 'w') as outfile:
                 json.dump(outlId, outfile)
             outfile.close()   
     
-    def sendFunMap(self, funMap):
+    def sendFunMap(self, funMap, outct):
         if self.vizMethod == "online":
             # Send data to viz server
             r = req.post(self.vizUrl, json={'type':'functions', 'value': funMap})
-            time.sleep(1)
+           # time.sleep(1)
            # if r.status_code != 201:
            #     raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
-            # Dump data   
-            with open("function.json", 'w') as outfile:
+            # Dump data            
+            funDict={'type': 'functions', 'value': funMap}    
+            funMapFileName = "functions." + str(outct) + ".json"  
+            with open(funMapFileName, 'w') as outfile:
                 json.dump(funMap, outfile)
             outfile.close()
     
@@ -145,19 +146,20 @@ class Visualizer():
             #     raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
-            print("function of interest ids: ", funOfInt)
             funOfIntFileName = "foi." + str(outct) + ".json"
             with open(funOfIntFileName, 'w') as outfile:
                 json.dump(funOfInt, outfile)
             outfile.close()
             
-    def sendEventType(self, eventType):
+    def sendEventType(self, eventType, outct):
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json={'type':'event_types', 'value':eventType})
             #if r.status_code != 201:
             #    raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
-            with open("et.json", 'w') as outfile:
+            eventTypeFileName = "et." + str(outct) + ".json" 
+            eventDict = {'type':'event_types', 'value':eventType}
+            with open(eventTypeFileName, 'w') as outfile:
                 json.dump(eventType, outfile)
             outfile.close()
             
@@ -172,13 +174,13 @@ class Visualizer():
                 json.dump(resetDict, outfile)
             outfile.close()
     
-    def addFunData(self, funData):
-        self.funData.extend(funData.tolist())
+    #def addFunData(self, funData):
+    #    self.funData.extend(funData.tolist())
         
-    def addCountData(self, countData):
-        self.countData.extend(countData.tolist())
+    #def addCountData(self, countData):
+    #    self.countData.extend(countData.tolist())
         
-    def addCommData(self, commData):
-        self.commData.extend(commData.tolist())
+    #def addCommData(self, commData):
+    #    self.commData.extend(commData.tolist())
         
     
