@@ -277,6 +277,7 @@ class Parser():
             self.log.debug(msg)
             return self.funMap
         else:
+            self.funMap.clear()
             self.bpAttrib = self.stream.attr
             for iter in self.bpAttrib: # extract function names and ids
                 if iter.startswith('timer'):
@@ -303,6 +304,7 @@ class Parser():
             self.log.debug(msg)
             return self.eventType
         else:
+            self.eventType.clear()
             self.bpAttrib = self.stream.attr
             for iter in self.bpAttrib: # extract event types  
                 if iter.startswith('event_type'):
