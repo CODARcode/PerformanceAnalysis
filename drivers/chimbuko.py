@@ -266,6 +266,7 @@ while ctrl >= 0:
     #viz.sendTraceData(evn.getFunData(), evn.getCountData(), evn.getCommData(), outct)
     viz.sendCombinedData(evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)
     
+    
     # Free memory
     evn.clearFunTime()
     evn.clearFunData()
@@ -288,7 +289,6 @@ while ctrl >= 0:
     # Advance stream and check status
     prs.getStream()
     ctrl = prs.getStatus()
-
 
 
 prs.adiosClose()

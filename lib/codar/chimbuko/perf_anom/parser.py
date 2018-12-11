@@ -105,7 +105,10 @@ class Parser():
         Returns:
             Reference to self.stream, which is essentially the return value of adios.file() method.
         """
-        self.status = self.stream.advance(timeout_sec=-1.0) #timeout_sec=-1.0
+        if self.Method == "BP":
+            self.status = self.stream.advance()
+        else:
+            self.status = self.stream.advance(timeout_sec=-1.0)
         # Info
         msg = "Adios stream status: " + str(self.status)
         self.log.info(msg)
