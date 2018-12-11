@@ -5,9 +5,11 @@ Create: September, 2018
 """
 
 import sys
-import time
 import os
+import time
+from datetime import datetime, timezone
 import configparser
+import logging
 import json
 import pickle
 import numpy as np
@@ -18,75 +20,92 @@ import event
 import outlier
 import visualizer
 
+
 #MGY
 #import pprint
 #import matplotlib.pyplot as plt
 #from sklearn.preprocessing import MinMaxScaler
 
-# Proces config file
-config = configparser.ConfigParser()
+start = time.time()
+
+# Proces config file and set up logger
+config = configparser.ConfigParser(interpolation=None)
 config.read(sys.argv[1])
+# Logger init
+logFile = config['Debug']['LogFile']
+logFormat = config['Debug']['Format']
+logLevel = config['Debug']['LogLevel']
+logging.basicConfig(level=logLevel, format=logFormat, filename=logFile)
+log = logging.getLogger('PARSER')
+msg = "\n\n\n\nLog run -- " + datetime.now(timezone.utc).strftime("%c%Z") + "\n"
+log.info(msg)
+# Dump config file contents
+configContents = {}
+for sectionName in config.sections():
+    configContents[sectionName] = config.items(sectionName)
+msg = "Run's config file: \n" + json.dumps(configContents, indent=2) + "\n"
+log.info(msg)
+
+# Set stopLoop allowing for early termination
 stopLoop = int(config['Debug']['StopLoop'])
 
 # Initialize parser object, get function id function name map 
 prs = parser.Parser(sys.argv[1])
-# NONSTREAMING
-#funMap = prs.getFunMap()
-#pprint.pprint(funMap)
+parseMethod = prs.getParseMethod()
 
-#MGY
+
+if parseMethod == "BP":
+    # Determine event types
+    eventTypeDict = prs.getEventType()
+    numEventTypes = len(eventTypeDict)
+    eventTypeList = [None] * numEventTypes 
+    assert(numEventTypes > 0), "No event types detected (Assertion)...\n"
+    for i in range(0,numEventTypes):
+        eventTypeList[i] = eventTypeDict[i]
+    
+    # Initialize event class
+    evn = event.Event(sys.argv[1])
+    evn.setEventType(eventTypeList)
+    
+    # Initialize outlier class
+    otl = outlier.Outlier(sys.argv[1])
+    
+    # Initialize visualizer class
+    maxDepth = int(config['Visualizer']['MaxFunDepth'])
+    viz = visualizer.Visualizer(sys.argv[1])
+    
+    # Reset visualization server
+    viz.sendReset()
+    
+    # In nonstreaming mode send function map and event type to the visualization server 
+    viz.sendEventType(eventTypeList, 0)
+    funMap = prs.getFunMap()
+    viz.sendFunMap(list(funMap.values()), 0) 
+else:
+    # Initialize event object
+    evn = event.Event(sys.argv[1])
+
+    # Initialize outlier object
+    otl = outlier.Outlier(sys.argv[1])
+
+    # Initialize visualizer object
+    maxDepth = int(config['Visualizer']['MaxFunDepth'])
+    viz = visualizer.Visualizer(sys.argv[1])
+    viz.sendReset()
+
+#MGY 
 #outfile = "funMap.pickle"
 #with open(outfile, 'wb') as handle:
 #    pickle.dump(funMap, handle, protocol=pickle.HIGHEST_PROTOCOL)
 #    handle.close()
 #MGY
 
-# NONSTREAMING
-#eventTypeDict = prs.getEventType()
-#numEventTypes = len(eventTypeDict)
-#eventTypeList = [None] * numEventTypes 
-#assert(numEventTypes > 0), "No event types detected (Assertion)...\n"
-#for i in range(0,numEventTypes):
-#    eventTypeList[i] = eventTypeDict[i]
-#print("eventType:", eventTypeList, "\n")
-    
 #MGY
 #outfile = "eventType.pickle"
 #with open(outfile, 'wb') as handle:
 #    pickle.dump(eventTypeList, handle, protocol=pickle.HIGHEST_PROTOCOL)
 #    handle.close()
 #MGY
-
-
-
-# Initialize event object
-# NONSTREAMING evn = event.Event(funMap, eventTypeList, sys.argv[1])
-evn = event.Event(sys.argv[1])
-
-# Initialize outlier object
-otl = outlier.Outlier(sys.argv[1])
-
-# Initialize visualizer object
-maxDepth = int(config['Visualizer']['MaxFunDepth'])
-viz = visualizer.Visualizer(sys.argv[1])
-viz.sendReset()
-
-# Dump function data
-# NONSTREAMING
-#viz.sendFunMap(list(funMap.values()))
-#viz.sendEventType(eventTypeList)
-
-
-
-# This is so that we can get something reasonable from the viz people
-#print(funMap)
-#fixFunOfInt = []
-#foiid = [512, 513, 260]
-#for i in foiid:
-#    fixFunOfInt.append(funMap[i])
-#outct = 0
-#viz.sendFunOfInt(fixFunOfInt, outct)
-# This is so that we can get something reasonable from the viz people  
 
 
 # Stream events
@@ -103,6 +122,7 @@ commDataOK = False
 ctrl = 1
 outct = 0
 eventId = np.uint64(0)
+numOutl = 0
 
 #MGY
 #fig = plt.figure()
@@ -113,23 +133,27 @@ eventId = np.uint64(0)
 
 while ctrl >= 0:
     
-    print("\n\nFrame: ", outct)
+    msg = "\n\nFrame: " + str(outct)
+    print(msg)
+    log.info(msg)
     
-    funMap = prs.getFunMap()
-    
-    eventTypeDict = prs.getEventType()
-    numEventTypes = len(eventTypeDict)
-    eventTypeList = [None] * numEventTypes 
-    assert(numEventTypes > 0), "No event types detected (Assertion)..."
-    for i in range(0,numEventTypes):
-        eventTypeList[i] = eventTypeDict[i]
+    if parseMethod != "BP":        
+        # For each frame determine the event type
+        eventTypeDict = prs.getEventType()
+        numEventTypes = len(eventTypeDict)
+        eventTypeList = [None] * numEventTypes 
+        assert(numEventTypes > 0), "No event types detected (Assertion)..."
+        for i in range(0,numEventTypes):
+            eventTypeList[i] = eventTypeDict[i]
+            
+        # In event class set event types for each frame 
+        evn.setEventType(eventTypeList)
         
-    # Dump function data
-    viz.sendFunMap(list(funMap.values()), outct)
-    viz.sendEventType(eventTypeList, outct)
+        # In streaming mode send function map and event type to the visualization server for each frame
+        viz.sendEventType(eventTypeList, outct)
+        funMap = prs.getFunMap()
+        viz.sendFunMap(list(funMap.values()), outct)
     
-    # Set event types for Event class
-    evn.setEventType(eventTypeList)
 
     # Stream function call data
     outlId = []
@@ -139,7 +163,9 @@ while ctrl >= 0:
         funDataOK = True
     except:
         funDataOK = False
-        print("\nFrame has no function data...\n")
+        msg = "Frame has no function data..."
+        print(msg)
+        log.info(msg)
 
     if funDataOK:        
         evn.initFunData(funStream.shape[0])
@@ -158,7 +184,9 @@ while ctrl >= 0:
         if stackOK:
             pass
         else:
-            print("\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n")
+            msg = "\n\n\nCall stack violation at ", outct, " ", eventId, "... \n\n\n"
+            print(msg)
+            log.error(msg)
             break
  
         
@@ -166,18 +194,24 @@ while ctrl >= 0:
         try:
             data = evn.getFunTime()
             funTimeOK = True
+            msg = "Anomaly detection..."
+            print(msg)
+            log.info(msg)
         except:
             funTimeOK = False
-            print("\nFrame only contains open functions, no anomaly detection...\n\n")
+            msg = "Frame only contains open functions, no anomaly detection..."
+            print(msg)
+            log.info(msg)
         
-        if funTimeOK: 
-            #MGY   
+        numOutlFrame = 0
+        if funTimeOK:    
             for funId in data: 
                 X = np.array(data[funId])
                 numPoints = X.shape[0]
                 otl.compOutlier(X, funId)
                 funOutl = np.array(otl.getOutlier())        
                 funOutlId = X[funOutl == -1][:,6]
+                numOutlFrame += len(funOutlId)
                 for i in range(0,len(funOutlId)):
                     outlId.append(str(funOutlId[i]))
                     
@@ -206,24 +240,20 @@ while ctrl >= 0:
                     anomFun[funId] += 1
                     #if funId in foiid:
                     #    print("Function id: ", funId, " has anomaly\n")          
-            
-        
-
-        #print("anomaly detection passed\n")
-        # Dump function of interest data
-        #viz.sendFunOfInt(funOfInt, outct)
-        
-        # Dump anomaly data
-        #viz.sendOutlIds(outlId, outct)
     
-
+    numOutl += numOutlFrame
+    msg = "Number of outliers per frame: " + str(numOutlFrame)
+    print(msg)
+    log.info(msg)
     # Stream counter data
     try:
         countStream = prs.getCountData()
         countDataOK = True
     except:
         countDataOK = False
-        print("\nFrame has no counter data...\n")
+        msg = "Frame has no counter data..."
+        print(msg)
+        log.info(msg)
         
     if countDataOK:
         evn.initCountData(countStream.shape[0])
@@ -246,7 +276,9 @@ while ctrl >= 0:
         commDataOK = True
     except:
         commDataOK = False
-        print("\nFrame has no comm data...\n")
+        msg = "Frame has no comm data..."
+        print(msg)
+        log.info(msg)
     
     if commDataOK:
         evn.initCommData(commStream.shape[0])
@@ -263,7 +295,6 @@ while ctrl >= 0:
      
 
     # Dump trace data
-    #viz.sendTraceData(evn.getFunData(), evn.getCountData(), evn.getCommData(), outct)
     viz.sendCombinedData(evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)
     
     
@@ -274,9 +305,8 @@ while ctrl >= 0:
     evn.clearCommData()
     outlId.clear()
     funOfInt.clear()
-    #eventTypeDict.clear()
-    #eventTypeList.clear()
-    #funMap.clear() 
+    if parseMethod != "BP":
+        eventTypeList.clear()
     
     # Debug
     if stopLoop > -1:
@@ -289,11 +319,14 @@ while ctrl >= 0:
     # Advance stream and check status
     prs.getStream()
     ctrl = prs.getStatus()
-
+    msg = "Adios stream status: " + str(ctrl)
+    print(msg)
+    sys.stdout.flush()
+    log.info(msg)
+    
 
 prs.adiosClose()
 prs.adiosFinalize()
-
 
 #MGY
 #===============================================================================
@@ -315,9 +348,25 @@ prs.adiosFinalize()
 #===============================================================================
 #MGY
 
-assert(evn.getFunStackSize() == 0), "\nFunction stack not empty... Possible call stack violation...\n"
-print("Total number of advance operations: ", outct)
-print("Total number of events: ", eventId, "\n\n")
+assert(evn.getFunStackSize() == 0), "Function stack not empty... Possible call stack violation..."
+msg = "\n\nOutlier detection done..."
+print(msg)
+log.info(msg)
+msg = "Total number of frames: " + str(outct)
+print(msg)
+log.info(msg)
+msg = "Total number of events: " + str(eventId)
+print(msg)
+log.info(msg)
+msg = "Total number of outliers: " + str(numOutl)
+print(msg)
+log.info(msg)
+end = time.time()
+rt = end - start
+msg = "Running time: " + str(rt) + "\n\n"
+print(msg)
+sys.stdout.flush()
+log.info(msg)
 
 # Generate Candidate functions
 #maxFunDepth = evn.getMaxFunDepth()

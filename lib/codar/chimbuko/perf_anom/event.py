@@ -12,8 +12,8 @@ import configparser
 import numpy as np
 
 class  Event():
-    """Event class keeps track of event information such as function names and their associated id-s (funmap), 
-    function call stack (funstack) and function execution times (funtime).
+    """Event class keeps track of event information such as function call stack (funStack) and 
+    function execution times (funtime).
     In addition the class contains methods for processing events and event related information.
     
     Attributes:
@@ -23,29 +23,26 @@ class  Event():
             A thread indicated by t 
     """
     
-    # NONSTREAMING def __init__(self, funMap, eventType, configFile):
     def __init__(self, configFile):
       """This is the constructor for the Event class.
       
       Args:
-          NONSTREAMING funMap (dict): A dictionary containing function id-s and associated function names
-          NONSTREAMING eventType (dict): A list containing event types such as EXIT, ENTRY the position of the event type indicates the event's id
           configFile (string): The configuration files's name.
           
       Returns:
           No return value.
       """
           
-      self.funstack = {} # A dictionary of function calls; keys: program, mpi rank, thread
-      self.funmap = {} # NONSTREAMING funMap # A dictionary of function ids; key: function id
+      self.funStack = {} # A dictionary of function calls; keys: program, mpi rank, thread
+      self.funMap = None # If set, this is a dictionary of function ids; key: function id (int) value function name (string)
       self.funtime = {} # A result dictionary containing a list for each function id which has the execution time; key: function id, 
-      #self.funList = None # or initialize to []
+      #self.funList = None # or initialize to [] # For sending events to the viz server that have already exited
       self.maxFunDepth = defaultdict(int)
-      self.entry = None # NONSTREAMING int(eventType.index('ENTRY'))
-      self.exit = None # NONSTREAMING int(eventType.index('EXIT'))
+      self.entry = None
+      self.exit = None 
       self.stackSize = 0
       self.funData = None
-      #self.funDataTemp = None # Needed to filter exit entry
+      #self.funDataTemp = None # For sending events to the viz server that have already exited
       self.countData = None
       self.commData = None
       self.fidx = 0
@@ -63,9 +60,24 @@ class  Event():
         Returns:
             No return value.
         """
-        self.entry = eventType.index('ENTRY')
-        self.exit = eventType.index('EXIT')
+        try:
+            self.entry = eventType.index('ENTRY')
+            self.exit = eventType.index('EXIT')
+        except ValueError:
+            print("ENTRY or EXIT event not present...")
         
+        
+    def setFunMap(self, funMap):
+        """Sets funMap variable.
+        
+        Args:
+            funMap (dictionary): a dictionary where key (int) is the function id and value (string) is the function name
+            
+        Returns:
+            No return value.
+        """
+        self.funMap = funMap
+              
     
     def createCallStack(self, p, r, t): 
       """Creates a stack for each p,r,t combination.
@@ -79,12 +91,12 @@ class  Event():
           No return value.
       """
       
-      if p not in self.funstack:
-        self.funstack[p] = {}
-      if r not in self.funstack[p]:
-        self.funstack[p][r] = {}
-      if t not in self.funstack[p][r]:
-        self.funstack[p][r][t] = deque()
+      if p not in self.funStack:
+        self.funStack[p] = {}
+      if r not in self.funStack[p]:
+        self.funStack[p][r] = {}
+      if t not in self.funStack[p][r]:
+        self.funStack[p][r][t] = deque()
    
     
     
@@ -100,13 +112,13 @@ class  Event():
       self.createCallStack(event[0],event[1],event[2]) # Make sure stack corresponding to (program, mpi rank, thread) is created
       
       if event[3] == self.entry:
-        self.funstack[event[0]][event[1]][event[2]].append(event) # If entry event, add event to call stack
+        self.funStack[event[0]][event[1]][event[2]].append(event) # If entry event, add event to call stack
         self.funData[self.fidx,0:5] = event[0:5]
         self.funData[self.fidx,11:13] = event[5:7]
         self.fidx += 1
         return True
       elif event[3] == self.exit:
-        pevent = self.funstack[event[0]][event[1]][event[2]].pop() # If exit event, remove corresponding entry event from call stack
+        pevent = self.funStack[event[0]][event[1]][event[2]].pop() # If exit event, remove corresponding entry event from call stack
         if pevent[4] != event[4] or pevent[5] > event[5]:
           print("entry event:", pevent)
           print("exit event:", event)
@@ -116,10 +128,10 @@ class  Event():
         self.funData[self.fidx,11:13] = event[5:7]
         self.fidx += 1
         if event[4] not in self.maxFunDepth:  
-            self.maxFunDepth[event[4]] = len(self.funstack[event[0]][event[1]][event[2]])
+            self.maxFunDepth[event[4]] = len(self.funStack[event[0]][event[1]][event[2]])
         else:
-            if len(self.funstack[event[0]][event[1]][event[2]]) > self.maxFunDepth[event[4]]:
-                self.maxFunDepth[event[4]] = len(self.funstack[event[0]][event[1]][event[2]])
+            if len(self.funStack[event[0]][event[1]][event[2]]) > self.maxFunDepth[event[4]]:
+                self.maxFunDepth[event[4]] = len(self.funStack[event[0]][event[1]][event[2]])
         
         # TODO I think the first if condition can be removed since we're computing anomalies for all functions        
         # if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
@@ -342,9 +354,9 @@ class  Event():
             No arguments.
             
         Returns:
-            Reference to funstack a dictionary of stacks (deque-s).
+            Reference to funStack a dictionary of stacks (deque-s).
         """
-        return self.funstack
+        return self.funStack
     
     
     def countStackSize(self, d, s):
@@ -373,7 +385,7 @@ class  Event():
             Integer, corresponding to the total number of function calls still in in the stack.
         """
         self.stackSize = 0
-        self.countStackSize(self.funstack, self.stackSize)        
+        self.countStackSize(self.funStack, self.stackSize)        
         return self.stackSize   
 
     def printFunStack(self):
@@ -385,7 +397,7 @@ class  Event():
         Returns:
             No return value.
         """
-        print("self.funstack = ", self.funstack)
+        print("self.funStack = ", self.funStack)
 
 
     def getMaxFunDepth(self):

@@ -36,8 +36,8 @@ class Parser():
       # Initialize logger
       self.logFile = self.config['Debug']['LogFile']
       self.logFormat = self.config['Debug']['Format']
-      
-      self.logLevel = 'NOTSET' 
+      self.logLevel = self.config['Debug']['LogLevel']
+       
       logging.basicConfig(level=self.logLevel, format=self.logFormat, filename=self.logFile)
       self.log = logging.getLogger('PARSER')
       
@@ -95,7 +95,21 @@ class Parser():
           self.log.error(msg)
           raise Exception(msg)
                         
+    
+    
+    def getParseMethod(self):
+        """Get method for accessing parse method.
+        
+        Args:
+            No arguments.
             
+        Returns:
+            Reference to self.Method (string).
+        """       
+        return self.Method
+    
+    
+    
     def getStream(self):
         """Get method for accessing Adios handle.
         

@@ -40,19 +40,19 @@ class Visualizer():
                 assert(type(funData) is np.ndarray)
                 dataList += funData.tolist()
             except:
-                print("\nNo function call data to visualize...\n")
+                print("No function call data to visualize...")
             
             try:
                 assert(type(countData) is np.ndarray)
                 dataList += countData.tolist()
             except:
-                print("\nNo counter data to visualize...\n")
+                print("No counter data to visualize...")
             
             try:
                 assert(type(commData) is np.ndarray)
                 dataList += commData.tolist()
             except:
-                print("\nNo communication data to visualize...\n")
+                print("No communication data to visualize...")
             
             r = req.post(self.vizUrl, json={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}})
             #time.sleep(3)
@@ -66,19 +66,19 @@ class Visualizer():
                 assert(type(funData) is np.ndarray)
                 dataList += funData.tolist()
             except:
-                print("\nNo function call data to visualize...\n")
+                print("No function call data to visualize...")
             
             try:
                 assert(type(countData) is np.ndarray)
                 dataList += countData.tolist()
             except:
-                print("\nNo counter data to visualize...\n")
+                print("No counter data to visualize...")
             
             try:
                 assert(type(commData) is np.ndarray)
                 dataList += commData.tolist()
             except:
-                print("\nNo communication data to visualize...\n")
+                print("No communication data to visualize...")
             
             traceDict={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}}
             traceFileName = "trace." + str(outct) + ".json"
