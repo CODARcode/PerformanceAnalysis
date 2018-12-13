@@ -1,10 +1,11 @@
 # Performance Data Analysis
 
-This library provides a Python API to process [TAU](http://tau.uoregon.edu) performance profile and traces. It supports the following functionality:
+This library provides a Python API to process [TAU](http://tau.uoregon.edu) performance profile and traces. Its modules support the following functionalities:
 
-  - Extractor: function to filter entry and exit events from a given TAU trace
-  - Generator: produces call stack with the depth `k', the duration of call, job_id, node_id, and thread_id
-  - Detector : Detects anomalies in performance of functions
+  - Parser: processes a given TAU trace (both streaming and batch through Adios).
+  - Event: keeps track of event information such as function call stack and function execution times.
+  - Outlier: detects outliers in performance of functions.
+  - Visualizer: provides an interface to Chimbuko's visualization software (both online and offline through requests API).
 
 # Requirement
 
