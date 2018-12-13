@@ -1,17 +1,15 @@
 # Performance Data Analysis
 
-This library provides a Python API to process [TAU](http://tau.uoregon.edu) performance profile and traces. Its modules support the following functionalities:
-
-  - Parser: processes a given TAU trace (both streaming and batch through Adios).
-  - Event: keeps track of event information such as function call stack and function execution times.
-  - Outlier: detects outliers in performance of functions.
-  - Visualizer: provides an interface to Chimbuko's visualization [software](https://github.com/CODARcode/ChimbukoVisualization) (both online and offline through requests API).
+This library is part of the [Chimbuko](https://github.com/CODARcode/Chimbuko) software framework and provides the Python API to process [TAU](http://tau.uoregon.edu) performance traces produced by multiple workflow components, processes, and threads. Its purpose is to detect events in the trace data that reveal useful information to developers of High Performance Computing applications. The library is composed of the following modules:
+  - Parser: parses a given TAU trace (both streaming and batch through Adios).
+  - Event: keeps track of event information such as function call stacks and function execution times for various programs, processes and threads.
+  - Outlier: detects outliers in the trace data.
+  - Visualizer: provides an interface to Chimbuko's visualization [software](https://github.com/CODARcode/ChimbukoVisualization) (both online and offline through Python's `requests` API).
 
 # Requirement
 
-Our codebase requires Python 3.5 or higher 
-and `python` and `pip` to be linked to Python 3.5 or higher.
-All additional requirements can be found in the requirements.txt file.
+Our codebase requires Python 3.5 or higher and `python` and `pip` to be linked to Python 3.5 or higher.
+All additional requirements can be found in the `requirements.txt` file.
 
 # Installation
 
