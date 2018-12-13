@@ -73,13 +73,11 @@ class TestAddFun(unittest.TestCase):
         with open(pfile, 'rb') as handle:
             passFunCall = pickle.load(handle)
         
-        print("Pass")
         passStack = True
         passEvn = event.Event("test.cfg")
         passEvn.setEventType(et)
         passEvn.initFunData(passFunCall.shape[0])
         for i in passFunCall:
-            print(i)
             if passEvn.addFun(i): # Store function call data in event object
                 pass
             else:
@@ -92,13 +90,11 @@ class TestAddFun(unittest.TestCase):
         with open(pfile, 'rb') as handle:
             failFunCall = pickle.load(handle)
         
-        print("Fail")
         failStack = True
         failEvn = event.Event("test.cfg")
         failEvn.setEventType(et)
         failEvn.initFunData(failFunCall.shape[0])
         for i in failFunCall:
-            print(i)
             if failEvn.addFun(i): # Store function call data in event object
                 pass
             else:

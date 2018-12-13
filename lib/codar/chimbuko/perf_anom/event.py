@@ -120,8 +120,8 @@ class  Event():
       elif event[3] == self.exit:
         pevent = self.funStack[event[0]][event[1]][event[2]].pop() # If exit event, remove corresponding entry event from call stack
         if pevent[4] != event[4] or pevent[5] > event[5]:
-          print("entry event:", pevent)
-          print("exit event:", event)
+          #print("entry event:", pevent)
+          #print("exit event:", event)
           #raise Exception("\nCall Stack Violation!\n") TODO remove
           return False
         self.funData[self.fidx,0:5] = event[0:5]
