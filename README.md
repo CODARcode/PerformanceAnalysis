@@ -5,12 +5,13 @@ This library provides a Python API to process [TAU](http://tau.uoregon.edu) perf
   - Parser: processes a given TAU trace (both streaming and batch through Adios).
   - Event: keeps track of event information such as function call stack and function execution times.
   - Outlier: detects outliers in performance of functions.
-  - Visualizer: provides an interface to Chimbuko's visualization software (both online and offline through requests API).
+  - Visualizer: provides an interface to Chimbuko's visualization [software](https://github.com/CODARcode/ChimbukoVisualization) (both online and offline through requests API).
 
 # Requirement
 
 Our codebase requires Python 3.5 or higher 
 and `python` and `pip` to be linked to Python 3.5 or higher.
+All additional requirements can be found in the requirements.txt file.
 
 # Installation
 
