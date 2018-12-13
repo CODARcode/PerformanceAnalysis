@@ -1,5 +1,9 @@
 #!/bin/bash
 
-export PYTHONPATH=../lib/codar/chimbuko/perf_anom:$PATH:$PYTHONPATH
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-python3 peo_test.py
+export PYTHONPATH=$DIR:$PATH:$PYTHONPATH
+
+python3 -W ignore test_parser.py
+python3 -W ignore test_outlier.py
+python3 -W ignore test_event.py
