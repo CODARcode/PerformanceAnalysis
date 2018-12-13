@@ -1,6 +1,8 @@
 import sys
 import os
 import pickle
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import outlier
@@ -75,9 +77,10 @@ class TestCompOutlier(unittest.TestCase):
         self.assertEqual(failNumOutl, 0)
         
         # Plot if needed
-        fig = plt.figure()
-        plt.subplots_adjust(hspace=0.75)
         #=======================================================================
+        # fig = plt.figure()
+        # plt.subplots_adjust(hspace=0.75)
+        #
         # ax1 = fig.add_subplot(211)
         # ax1.set_xlabel('Scaled entry timestamp')
         # ax1.set_ylabel('Scaled function exec. time')

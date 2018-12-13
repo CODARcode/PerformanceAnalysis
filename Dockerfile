@@ -1,41 +1,31 @@
-FROM ubuntu:latest
+FROM ubuntu:16.04
 
+# Create directory
+RUN mkdir -p /PerformanceAnalysis
+RUN mkdir -p /Downloads
+RUN mkdir -p /Install
 
-# install ADIOS
-RUN \
-  mkdir -p /Chimbuko
+# Install necessary ubuntu packages
+RUN apt-get update && apt-get install -y build-essential wget openmpi-bin libopenmpi-dev g++ gfortran python3 python3-pip vim python3-tk
 
-WORKDIR /Chimbuko
-
-RUN \ 
-  apt-get update && \
-  apt-get install -y build-essential wget openmpi-bin libopenmpi-dev g++ gfortran python3 python3-pip
-
-RUN \
-  wget https://users.nccs.gov/~pnorbert/adios-1.13.1.tar.gz && \
-  tar xvfz adios-1.13.1.tar.gz && \
-  cd adios-1.13.1 && \
-  mkdir -p build  && \
-  cd build/ && \
-  ../configure -prefix=/opt/adios1/1.13.1/gnu/openmpi CFLAGS="-fPIC" && \
-  make && \
-  make install 
-
-
-# install python
-ENV PATH=${PATH}:/opt/adios1/1.13.1/gnu/openmpi/bin
-
-RUN \
-  pip3 install --upgrade pip && \
-  echo "pip3 install configparser " | bash && \
-  echo "pip3 install numpy " | bash &&\
-  echo "pip3 install scipy sklearn adios adios_mpi" | bash
-
-RUN \
-  apt-get install -y vim python3-tk && \
-  echo "pip3 install matplotlib " | bash
-  
+# Install ADIOS
+WORKDIR /Downloads
+RUN wget https://users.nccs.gov/~pnorbert/adios-1.13.1.tar.gz
+RUN tar xvfz adios-1.13.1.tar.gz
+WORKDIR /Downloads/adios-1.13.1
+RUN ./configure CFLAGS="-fPIC" --prefix=/Install/adios-1.13.1
+RUN make
+RUN make install 
+ENV PATH=${PATH}:/Install/adios-1.13.1/bin
+WORKDIR /PerformanceAnalysis
 
 # Copy current directory contents into the container
-ADD \
-  . /Chimbuko
+ADD . /PerformanceAnalysis
+
+# Install any needed packages specified in requirements.txt
+RUN pip3 install numpy
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+
+RUN mkdir -p untracked/results
+# Run run perfanal.py when the container launches
+CMD ["bash", "/PerformanceAnalysis/scripts/run_perfanal.sh", "perfanal.cfg"]

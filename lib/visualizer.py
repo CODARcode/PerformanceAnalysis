@@ -23,8 +23,7 @@ class Visualizer():
         self.config.read(configFile)
         self.vizMethod = self.config['Visualizer']['VizMethod']
         self.vizUrl = self.config['Visualizer']['VizUrl']
-        self.vizPath = self.config['Visualizer']['VizPath']
-        self.dumpFile = self.config['Visualizer']['DumpFile']
+        self.outFile = self.config['Visualizer']['OutputFile']
         self.traceHeader = {'data': 'trace'}
         self.funData = []
         self.countData = []
@@ -81,7 +80,7 @@ class Visualizer():
                 print("No communication data to visualize...")
             
             traceDict={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}}
-            traceFileName = "trace." + str(outct) + ".json"
+            traceFileName = self.outFile + "trace." + str(outct) + ".json"
             with open(traceFileName, 'w') as outfile:
                 json.dump(traceDict, outfile)
             outfile.close()
@@ -105,7 +104,7 @@ class Visualizer():
             #    raise ApiError('Trace post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
-            traceFileName = "trace." + str(outct) + ".json"
+            traceFileName = self.outFile + "trace." + str(outct) + ".json"
             with open(traceFileName, 'w') as outfile:
                 json.dump(funData.tolist() + countData.tolist() + commData.tolist(), outfile)
             outfile.close()  
@@ -119,7 +118,7 @@ class Visualizer():
            #     raise ApiError('Anomaly post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
-            anomalyFileName = "anomaly." + str(outct) + ".json"
+            anomalyFileName = self.outFile + "anomaly." + str(outct) + ".json"
             with open(anomalyFileName, 'w') as outfile:
                 json.dump(outlId, outfile)
             outfile.close()   
@@ -134,7 +133,7 @@ class Visualizer():
         if self.vizMethod == "offline":
             # Dump data            
             funDict={'type': 'functions', 'value': funMap}    
-            funMapFileName = "functions." + str(outct) + ".json"  
+            funMapFileName = self.outFile + "functions." + str(outct) + ".json"  
             with open(funMapFileName, 'w') as outfile:
                 json.dump(funMap, outfile)
             outfile.close()
@@ -146,7 +145,7 @@ class Visualizer():
             #     raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             # Dump data
-            funOfIntFileName = "foi." + str(outct) + ".json"
+            funOfIntFileName = self.outFile + "foi." + str(outct) + ".json"
             with open(funOfIntFileName, 'w') as outfile:
                 json.dump(funOfInt, outfile)
             outfile.close()
@@ -157,7 +156,7 @@ class Visualizer():
             #if r.status_code != 201:
             #    raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
-            eventTypeFileName = "et." + str(outct) + ".json" 
+            eventTypeFileName = self.outFile + "et." + str(outct) + ".json" 
             eventDict = {'type':'event_types', 'value':eventType}
             with open(eventTypeFileName, 'w') as outfile:
                 json.dump(eventType, outfile)
@@ -170,7 +169,8 @@ class Visualizer():
             #    raise ApiError('Function map post error:'.format(r.status_code))
         if self.vizMethod == "offline":
             resetDict ={'type':'reset'}
-            with open("reset.json", 'w') as outfile:
+            resetFileName = self.outFile + "reset.json"
+            with open(resetFileName, 'w') as outfile:
                 json.dump(resetDict, outfile)
             outfile.close()
     

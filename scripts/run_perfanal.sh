@@ -1,13 +1,9 @@
 #!/bin/bash
 
-#cd /Chimbuko/drivers/
+cd /PerformanceAnalysis/scripts
 
-pwd
-
-#cd drivers/
-
-export PYTHONPATH=../lib/codar/chimbuko/perf_anom:$PATH:$PYTHONPATH
+export PYTHONPATH=../lib:$PATH:$PYTHONPATH
 
 ARG1="$1"
 
-python3 chimbuko.py $ARG1
+python3 perfanal.py $ARG1

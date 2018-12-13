@@ -8,11 +8,11 @@ class TestGetStream(unittest.TestCase):
     """Test parser for correctly catching the Adios stream.
     """
     
-    def tearDown(self):
-        """Delete log files
-        """
-        logFile = "chimbuko.log"
-        os.remove(logFile)    
+    #def tearDown(self):
+    #    """Delete log files
+    #    """
+    #    logFile = "test.log"
+    #    os.remove(logFile)    
       
     def test_getStream(self):
         """Test getStream() function, which performs an Adios advance operation.
