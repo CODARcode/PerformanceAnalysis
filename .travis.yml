@@ -1,0 +1,8 @@
+language: python
+python:
+  - "3.6"
+services:
+  - docker
+before_install:
+  - docker build -t chimbuko/pan .
+script: docker run -it chimbuko/pan bash -c "make test"
