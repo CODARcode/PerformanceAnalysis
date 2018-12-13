@@ -64,6 +64,8 @@ class TestAddFun(unittest.TestCase):
         
     
     def test_addFun(self):
+        """Test function call data for call stack violations.
+        """
         
         et = ['ENTRY', 'EXIT']
         
@@ -108,12 +110,8 @@ class TestAddFun(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    #addFun = TestAddFun()
-    #addFun.setUp()
-    #addFun.test_addFun()
     
 #if __name__ == '__main__':
-    #unittest.main()
     #addFun = TestAddFun()
     #addFun.setUp()
     #addFun.tearDown()     

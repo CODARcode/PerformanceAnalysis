@@ -10,6 +10,13 @@ from runstats import Statistics
 from sklearn.neighbors import LocalOutlierFactor
 
 class Outlier():
+    """Outlier class computes outliers by assigning scores to each data point. 
+    The higher the score the more likely the data point is an outlier.
+    Depending on the configuration settings it will then create a vector of 1 and -1,
+    where each entry of the vector corresponds to a data point and -1 indicates that
+    the associated data point is an outlier whereas 1 indicates it is an inlier.   
+    """
+    
     def __init__(self, configFile):
         self.config = configparser.ConfigParser()
         self.config.read(configFile)
@@ -81,12 +88,12 @@ class Outlier():
         if self.stats[id].get_state()[0] > 1.0:
             sigma = self.stats[id].mean() + self.sigma*self.stats[id].stddev() 
             for i in range(0, len(data[:])):
-                if data[i] >= sigma:
+                if data[i] > sigma:
                     self.outl.append(-1)
-                    self.score.append(abs(data[i] - self.stats[id].stddev()))
+                    self.score.append(abs(data[i] - self.stats[id].mean()))
                 else:
                     self.outl.append(1)
-                    self.score.append(abs(data[i] - self.stats[id].stddev()))
+                    self.score.append(abs(data[i] - self.stats[id].mean()))
     
     
     def compOutlier(self, data, id):
