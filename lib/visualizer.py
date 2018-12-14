@@ -1,9 +1,12 @@
-"""@package Chimbuko
+"""@package Perfanal
 This module implements the interface between the analysis code and the visualization server. 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
     September, 2018
+    
+    pydoc -w visualizer
+    
 """
 
 import os

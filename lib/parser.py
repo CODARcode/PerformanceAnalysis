@@ -1,9 +1,12 @@
-"""@package Chimbuko
+"""@package Perfanal
 This is the parser module currently capable of parsing Adios generated .bp files and stream through Dataspaces
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
     August, 2018
+    
+    pydoc -w parser
+    
 """
 
 import configparser

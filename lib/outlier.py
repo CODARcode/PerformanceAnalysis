@@ -1,9 +1,12 @@
-"""@package Chimbuko
+"""@package Perfanal
 This module detects outliers in trace data 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
     August, 2018
+    
+    pydoc -w outlier
+    
 """
 
 import configparser

@@ -1,7 +1,12 @@
-"""
-Run anomaly detection and output data for visualization
-Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
-Create: September, 2018
+"""@package Perfanal
+This is the main driver script for the anlysis code 
+Author(s): 
+    Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Created: 
+    August, 2018
+
+    pydoc -w perfanal
+
 """
 
 import sys
