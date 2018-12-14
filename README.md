@@ -1,6 +1,6 @@
 # Performance Data Analysis
 
-This library is part of the [Chimbuko](https://github.com/CODARcode/Chimbuko) software framework and provides the Python API to process [TAU](http://tau.uoregon.edu) performance traces produced by multiple workflow components, processes, and threads. Its purpose is to detect events in the trace data that reveal useful information to developers of High Performance Computing applications. The library is composed of the following modules:
+This library is part of the [CHIMBUKO](https://github.com/CODARcode/Chimbuko) software framework and provides the Python API to process [TAU](http://tau.uoregon.edu) performance traces produced by multiple workflow components, processes, and threads. Its purpose is to detect events in the trace data that reveal useful information to developers of High Performance Computing applications. The library is composed of the following modules:
   - Parser: parses a given TAU trace (both streaming and batch through [ADIOS](https://www.olcf.ornl.gov/software_package/adios/)).
   - Event: keeps track of event information such as function call stacks and function execution times for various programs, processes and threads.
   - Outlier: detects outliers in the trace data.
@@ -9,20 +9,34 @@ This library is part of the [Chimbuko](https://github.com/CODARcode/Chimbuko) so
 # Requirements
 
 Our codebase requires Python 3.5 or higher, and `python` and `pip` need to be linked to Python 3.5 or higher.
-All required Python packages can be found in the `requirements.txt` file. The `adios` and `adios_mpi` Python packages require [ADIOS 1.13.1](https://users.nccs.gov/~pnorbert/adios-1.13.1.tar.gz) to be installed.   
+All required Python packages can be found in the `requirements.txt` file. The `adios` and `adios_mpi` Python packages require [ADIOS 1.13.1](https://users.nccs.gov/~pnorbert/adios-1.13.1.tar.gz) to be installed.  
 
 # Installation
 
-Run the following script: 'scripts/install-dependency.sh'
+## Docker
+The easiest way :wink: to get started with the package is by [building a Docker image](https://docs.docker.com/get-started/part2/#build-the-app) with the following command:
 
-    bash scripts/install-dependency.sh
+    docker build -t imagename .
 
-# Test
+## Native
+  - Install ADIOS by running the following commands:
+    - `wget https://users.nccs.gov/~pnorbert/adios-1.13.1.tar.gz`
+    - `tar xvfz adios-1.13.1.tar.gz`
+    - `cd adios-1.13.1`
+    - `./configure CFLAGS="-fPIC" --prefix=/path/to/install/location`
+    - `make && make install`
+    - `export PATH=$PATH:/path/to/install/location`
+    - `pip3 install numpy`
+    - `pip3 install --trusted-host pypi.python.org -r requirements.txt`
 
-To run tests:
+# Testing
 
-    make
+To run tests simply type:
+
     make test
+
+# Usage
+
 
 # Example
 
