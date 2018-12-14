@@ -4,6 +4,9 @@ Author(s):
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
     August, 2018
+    
+    pydoc -w event
+    
 """
 
 from collections import deque

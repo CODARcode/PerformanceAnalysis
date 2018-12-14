@@ -4,6 +4,9 @@ Author(s):
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
     August, 2018
+    
+    pydoc -w parser
+    
 """
 
 import configparser
@@ -215,7 +218,7 @@ class Parser():
             No arguments.
             
         Returns:        
-            Reference to self.bpAttrib (i.e. return value of Adios self.stream.attr).
+            Reference to self.bpAttrib (dictionary) i.e. return value of Adios self.stream.attr.
         """   
         if self.Method == "BP":
             # Debug
@@ -237,7 +240,7 @@ class Parser():
             No arguments.
             
         Returns:        
-            Reference to self.bpNumAttrib (i.e. the number of attributes).
+            Reference to self.bpNumAttrib (int) i.e. the number of attributes.
         """
         if self.Method == "BP":
             # Debug
@@ -259,7 +262,7 @@ class Parser():
             No arguments.
             
         Returns:        
-            Reference to self.numFun (i.e. the number of different functions).
+            Reference to self.numFun (int) i.e. the number of different functions.
         """
         if self.Method == "BP":
             # Debug
@@ -286,7 +289,7 @@ class Parser():
             No arguments.
             
         Returns:        
-            Reference to self.funMap.
+            Reference to self.funMap (dictionary).
         """
         if self.Method == "BP":
             # Debug
@@ -313,7 +316,7 @@ class Parser():
             No arguments.
             
         Returns:        
-            Reference to self.funMap.
+            Reference to self.eventType (dictionary).
         """
         if self.Method == 'BP':
             # Debug

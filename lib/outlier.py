@@ -1,7 +1,12 @@
-"""
-Outlier detection class
-Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
-Create: August, 2018
+"""@package Chimbuko
+This module detects outliers in trace data 
+Author(s): 
+    Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Created: 
+    August, 2018
+    
+    pydoc -w outlier
+    
 """
 
 import configparser
@@ -12,12 +17,23 @@ from sklearn.neighbors import LocalOutlierFactor
 class Outlier():
     """Outlier class computes outliers by assigning scores to each data point. 
     The higher the score the more likely the data point is an outlier.
-    Depending on the configuration settings it will then create a vector of 1 and -1,
+    Depending on the configuration settings it will then create a vector of 1(s) and -1(s),
     where each entry of the vector corresponds to a data point and -1 indicates that
-    the associated data point is an outlier whereas 1 indicates it is an inlier.   
+    the associated data point is an outlier, whereas 1 indicates it is an inlier.
+    At present the only algorithm that works for both streaming and batch is Streaming Standard Deviation (Sstd).   
     """
     
     def __init__(self, configFile):
+        """This is the constructor for the Outlier class. 
+        Using the provided configuration file it determines which algorithm to use to detect outliers in the data.
+        
+        Args:
+            configFile (string): The configuration files's name.
+          
+        Returns:
+            No return value.
+        """
+        
         self.config = configparser.ConfigParser()
         self.config.read(configFile)
         
@@ -51,13 +67,20 @@ class Outlier():
         
 
 
-    def maxTimeDiff(self, data): # determine which function has the biggest difference between min and max execution time
-        # TODO rewrite to consitently expect numpy array
+    def maxTimeDiff(self, data): 
+        """It computes min and max execution times for each function and determines
+        which function has the biggest difference between min and max execution time. 
+        
+        Args:
+            data (numpy array): Holding function execution time table as received from Event class.
+          
+        Returns:
+            Function id (int) of the function that had the biggest difference between min and max execution times.
+        """
         maxDiffExecTime = 0
         maxFunId = None
-        funtime = data.getFunExecTime()
-        for ii in funtime:
-            ll = funtime[ii]
+        for ii in data:
+            ll = data[ii]
             maxEvent = max(ll, key=lambda ll: ll[4]) 
             minEvent = min(ll, key=lambda ll: ll[4])
             diffExecTime = maxEvent[4] - minEvent[4]
@@ -69,12 +92,29 @@ class Outlier():
     
     
     def lofComp(self, data):
+        """ Run Local Outlier Factor algorithm on the data. 
+        
+        Args:
+            data (numpy array): Holding function execution time table as received from Event class.
+          
+        Returns:
+            No return value.
+        """
         self.clf = LocalOutlierFactor(self.numNeighbors, self.lofAlgorithm, self.leafSize, self.metric, self.p, self.metricParams, self.contamination, self.numJobs)
         self.outl = self.clf.fit_predict(data)
         self.score = -1.0 * self.clf.negative_outlier_factor_
         
     
     def sstdComp(self, data, id):
+        """ Run Streaming Standard Deviation algorithm on the data. 
+        
+        Args:
+            data (numpy array): Holding function execution time table as received from Event class.
+            id (int): Specifying the function id which indicates which function the data belongs to.
+          
+        Returns:
+            No return value.
+        """
         if self.outl is None and self.score is None:
             self.outl = []
             self.score = []
@@ -97,6 +137,17 @@ class Outlier():
     
     
     def compOutlier(self, data, id):
+        """Generic function call to compute outliers in function execution time data 
+        for a specific function (specified by id). Depending on the configuration file
+        it will either run LOF or Stream Standard Deviation  algorithm.
+        
+        Args:
+            data (numpy array): Holding function execution time table as received from Event class.
+            id (int): Specifying the function id which indicates which function the data belongs to.
+        
+        Returns:
+            No return value.
+        """
         if self.algorithm == 'Sstd':
             self.sstdComp(data[:,5], id)
             return
@@ -107,10 +158,26 @@ class Outlier():
     
     
     def getClf(self):
+        """Get method to access the object that implements Lof.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.clf, which is an object of the class LocalOutlierFactor().
+        """
         return self.clf
     
         
     def getScore(self):
+        """Get method to access the scores generated by the outlier detection algorithms.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.score (numpy array).
+        """
         if self.score is None:
             raise Exception("No scores computed ...")
         elif type(self.score) is list:
@@ -119,10 +186,27 @@ class Outlier():
             return self.score
     
     def checkNumPoints(self):
+        """Get method to access how many data points we are dealing with.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.numPoints (int).
+        """
         return self.numPoints
         
         
     def getOutlier(self):
+        """Get method to access the outl list, which contains values of 1 or -1 indicating 
+        inlier or outlier for each data point.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.outl (list).
+        """
         if self.outl is None:
             raise Exception("No outliers computed ...")
         else:
@@ -130,18 +214,59 @@ class Outlier():
         
         
     def getContamination(self):
+        """Get method to access contamination parameter.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.contamination (float).
+        """
         return self.contamination
     
     def getLofNumNeighbors(self):
+        """Get method to access number of neighbors parameter.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.numNeighbors (int).
+        """
         return self.numNeighbors
     
     def getAlgorithm(self):
+        """Get method to access algorithm parameter.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.algorithm (string).
+        """
         return self.algorithm
     
     def getSigma(self):
+        """Get method to access sigma parameter.
+        
+        Args:
+            No arguments.
+        
+        Returns:
+            self.sigma (float).
+        """
         return self.sigma
     
     def getMean(self, id):
+        """Get method to access rolling mean of function execution time associated with
+        function: id.
+        
+        Args:
+            id (int): function id
+        
+        Returns:
+            self.stats[id].mean() (float).
+        """
         return self.stats[id].mean()
    
     
