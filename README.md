@@ -146,7 +146,7 @@ There are mainly two main controls in this section.
   3. The function entry and execution times are passed to the outlier detection algorithm, which performs either `Sstd` or `Lof` on the data.
   4. The computed information (trace data and outlier labels) are passed to the visualization server via the configured method.
   
-  The following picture gives a visual representation of the procedure:
+  The following picture gives a visual representation of the results:
 
 ![Alt text](./plot/mva.png)
 
