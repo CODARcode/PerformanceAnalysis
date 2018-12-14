@@ -24,7 +24,7 @@ ADD . /PerformanceAnalysis
 
 # Install any needed packages specified in requirements.txt
 RUN pip3 install numpy
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --trusted-host pypi.python.org -r deps/requirements.txt
 
 RUN mkdir -p untracked/results
 # Run run perfanal.py when the container launches
