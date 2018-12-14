@@ -40,8 +40,6 @@ Once inside the image you can run the performance anlaysis code by following the
     - `./configure CFLAGS="-fPIC" --prefix=/path/to/install/location`
     - `make && make install`
     - `export PATH=$PATH:/path/to/install/location`
-    - `pip3 install numpy`
-    - `pip3 install --trusted-host pypi.python.org -r requirements.txt`
   - After ADIOS is installed install the necessary Python packages:
     - `pip3 install numpy`
     - `pip3 install --trusted-host pypi.python.org -r requirements.txt`
