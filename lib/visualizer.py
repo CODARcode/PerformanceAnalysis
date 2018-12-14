@@ -1,7 +1,9 @@
-"""
-Visualize outlier detection results 
-Authors: Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
-Create: September, 2018
+"""@package Chimbuko
+This module implements the interface between the analysis code and the visualization server. 
+Author(s): 
+    Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+Created: 
+    September, 2018
 """
 
 import os
@@ -18,7 +20,25 @@ import adios as ad
 
 
 class Visualizer():
+    """This class provides an interface to Chimbuko's visualization software.
+    It works in both online and offline mode. The online mode sends the trace data
+    in a streaming fashion to the visualization server through requests API. 
+    In offline mode it produces .json files that can be parsed by the visualization 
+    software.
+    """
+
     def __init__(self, configFile):
+        """This is the constructor for the Visualizer class.
+        The visualizer has two main modes defined by the VizMethod variable one is the offline, which writes
+        .json files that the visualization software then parses, the other is online and sends the data to 
+        the visualization server via the requests API.
+      
+        Args:
+            configFile (string): The configuration files's name.
+          
+        Returns:
+            No return value.
+        """
         self.config = configparser.ConfigParser()
         self.config.read(configFile)
         self.vizMethod = self.config['Visualizer']['VizMethod']
@@ -32,6 +52,20 @@ class Visualizer():
         
         
     def sendCombinedData(self, funData, countData, commData, funOfInt, outlId, outct):
+        """Send method for sending function, counter and communication data as well as the
+        results of the analysis function of interest and id(s) of outlier data points.
+        
+        Args:
+            funData (list): function call data
+            countData (list): counter data
+            commData (list): communication data
+            funOfInt (list): function id(s) of functions that have outliers
+            outlId (list): event id(s) associated with events that are classified as outliers
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """  
         if self.vizMethod == "online":
             # Send data to viz server
             dataList = []
@@ -95,6 +129,18 @@ class Visualizer():
             #===================================================================
     
     def sendTraceData(self, funData, countData, commData, outct):
+        """Send method for sending function, counter and communication.
+        (Will be deprecated...)
+        
+        Args:
+            funData (list): function call data
+            countData (list): counter data
+            commData (list): communication data
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """ 
         if self.vizMethod == "online":
             # Send data to viz server
             dataList = funData.tolist() + countData.tolist() + commData.tolist()
@@ -110,6 +156,16 @@ class Visualizer():
             outfile.close()  
             
     def sendOutlIds(self, outlId, outct):
+        """Send method for sending the id(s) of outlier data points.
+        (Will be deprecated...)
+        
+        Args:
+            outlId (list): event id(s) associated with events that are classified as outliers
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """ 
         if self.vizMethod == "online":
             # Send data to viz server
             r = req.post(self.vizUrl, json = {'type':'labels', 'value': outlId})
@@ -124,6 +180,16 @@ class Visualizer():
             outfile.close()   
     
     def sendFunMap(self, funMap, outct):
+        """Send method for sending the dictionary of function id(s) (key) and their corresponding names (value).
+        (Will be deprecated...)
+        
+        Args:
+            funMap (dictionary): function id (int) key and function name (string) value
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """
         if self.vizMethod == "online":
             # Send data to viz server
             r = req.post(self.vizUrl, json={'type':'functions', 'value': funMap})
@@ -139,6 +205,16 @@ class Visualizer():
             outfile.close()
     
     def sendFunOfInt(self, funOfInt, outct):
+        """Send method for sending function of interest id(s) to the visualization server.
+        These are id(s) of functions that are associated with outlier data points.
+        
+        Args:
+            funOfInt (list): function id(s) of functions that have outliers
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json={'type':'foi', 'value':funOfInt})
             # if r.status_code != 201:
@@ -151,6 +227,15 @@ class Visualizer():
             outfile.close()
             
     def sendEventType(self, eventType, outct):
+        """Send method for sending event types and thier id(s) to the visualization server.
+        
+        Args:
+            eventType (list): of event types such as function EXIT/ENTRY or SEND/RECEIVE for communication events.
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json={'type':'event_types', 'value':eventType})
             #if r.status_code != 201:
@@ -163,6 +248,14 @@ class Visualizer():
             outfile.close()
             
     def sendReset(self):
+        """Send signal to visualization server to restart itself.
+        
+        Args:
+            No arguments.
+            
+        Returns:
+            No return value.
+        """
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json={'type':'reset'})
             #if r.status_code != 201:
