@@ -3,6 +3,7 @@
 | :--- | :--- |
 | master | [![Build Status](https://travis-ci.org/CODARcode/PerformanceAnalysis.svg?branch=master)](https://travis-ci.org/CODARcode/PerformanceAnalysis)  |
 | develop | [![Build Status](https://travis-ci.org/CODARcode/PerformanceAnalysis.svg?branch=release)](https://travis-ci.org/CODARcode/PerformanceAnalysis)  |
+=======
 
 This library is part of the [CHIMBUKO](https://github.com/CODARcode/Chimbuko) software framework and provides the Python API to process [TAU](http://tau.uoregon.edu) performance traces which can be produced by multiple workflow components, processes, and threads. Its purpose is to detect events in the trace data that reveal useful information to developers of High Performance Computing applications. The library is composed of the following modules:
   - Parser: parses a given TAU trace (both streaming and batch through [ADIOS](https://www.olcf.ornl.gov/software_package/adios/)).
