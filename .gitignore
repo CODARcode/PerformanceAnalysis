@@ -6,6 +6,7 @@
 *.json
 nwchem/
 streaming/
+doc/
 
 
 # Byte-compiled / optimized / DLL files

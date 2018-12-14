@@ -1,4 +1,4 @@
-"""@package Perfanal
+"""@package Chimbuko
 This is the main driver script for the anlysis code 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)

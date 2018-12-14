@@ -1,4 +1,4 @@
-"""@package Perfanal
+"""@package Chimbuko
 This module detects outliers in trace data 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)

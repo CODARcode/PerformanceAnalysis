@@ -1,4 +1,4 @@
-"""@package Perfanal
+"""@package Chimbuko
 This module implements the interface between the analysis code and the visualization server. 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)

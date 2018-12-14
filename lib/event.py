@@ -1,4 +1,4 @@
-"""@package Perfanal
+"""@package Chimbuko
 This module processes events such as function calls, communication and processor counters 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
