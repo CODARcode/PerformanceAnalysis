@@ -3,7 +3,9 @@
 *.df
 *.log
 *.pickle
-untracked/
+*.json
+nwchem/
+streaming/
 
 
 # Byte-compiled / optimized / DLL files
