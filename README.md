@@ -141,4 +141,13 @@ There are mainly two main controls in this section.
 
 # What happens when running the analysis?
 
-![alt text](PerformanceAnalysis/plot/mva.png)
+  1. The driver script `perfanal.py` enters a `for` loop that extracts ADIOS frames via the configured method. 
+  2. After extracting the data frame it builds a function call stack and starts to compute the function execution times for all function calls that have exited.
+  3. The function entry and execution times are passed to the outlier detection algorithm, which performs either `Sstd` or `Lof` on the data.
+  4. The computed information (trace data and outlier labels) are passed to the visualization server via the configured method.
+  
+  The following picture gives a visual representation of the procedure:
+
+![Alt text](./plot/mva.png)
+
+The picture depicts function execution times of an [NWChem](https://github.com/hjjvandam/nwchem-1/tree/pretauadio/contrib/codar_integration) function `ga_get_()`. Each bubble represents how long a particular function call of `ga_get_()` took. The red ones are the outliers, which were computed using `Sstd` with `Sigma = 6`.
