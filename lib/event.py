@@ -140,7 +140,7 @@ class  Event():
         # if pevent[4] in self.funmap: # If event corresponds to a function call of interest compute execution time
         if pevent[4] not in self.funtime:
             self.funtime[pevent[4]] = [] # If function id is new to results dictionary create list 
-        self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], pevent[6]])
+        self.funtime[pevent[4]].append([event[0], event[1], event[2], event[4], pevent[5], event[5] - pevent[5], event[6]])
           #This portion is only needed if the visualization requires to send function calls that have exited
           #self.funList.append(pevent)
           #self.funList.append(event)
