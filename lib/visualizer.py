@@ -91,6 +91,11 @@ class Visualizer():
                 print("No communication data to visualize...")
             
             r = req.post(self.vizUrl, json={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}})
+            
+            """Format for new data...
+            """
+            #r = req.post(self.vizUrl, json={'type': 'info', 'value': {'functions': funMap, 'event_types': eventType, 'events': dataList, 'foi': funOfInt, 'labels': outlId}})
+            
             #time.sleep(3)
             #if r.status_code != 201:
             #    raise ApiError('Trace post error:'.format(r.status_code))
