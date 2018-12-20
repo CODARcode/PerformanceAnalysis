@@ -6,3 +6,7 @@ services:
 before_install:
   - docker build -t chimbuko/pan .
 script: docker run -it chimbuko/pan bash -c "make test"
+addons:
+  apt:
+    packages:
+      - docker-ce
