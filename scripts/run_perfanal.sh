@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /PerformanceAnalysis/scripts
+#cd /PerformanceAnalysis/scripts
 
 export PYTHONPATH=../lib:$PATH:$PYTHONPATH
 

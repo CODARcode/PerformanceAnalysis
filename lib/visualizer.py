@@ -135,6 +135,88 @@ class Visualizer():
             #         print(str(countData[i][7]))
             #         raise Exception("countData has non nan entry in column 7")
             #===================================================================
+
+    
+    def sendCombinedStreamData(self, eventType, funMap, funData, countData, commData, funOfInt, outlId, outct):
+        """Send method for sending function, counter and communication data as well as the
+        results of the analysis function of interest and id(s) of outlier data points.
+        
+        Args:
+            eventType (list): list of event types where position determines id e.g. [ENTRY, EXIT] then ENTRY has id 0
+            funMap (list): list function names where position determines id e.g. [MPI_Send(), MPI_Allreduce()] then MPI_Send() has id 0  
+            funData (ndarray): function call data
+            countData (ndarray): counter data
+            commData (ndarray): communication data
+            funOfInt (list): function id(s) of functions that have outliers
+            outlId (list): event id(s) associated with events that are classified as outliers
+            outct (int): frame id
+            
+        Returns:
+            No return value.
+        """  
+        if self.vizMethod == "online":
+            # Send data to viz server
+            dataList = []
+            try:
+                assert(type(funData) is np.ndarray)
+                dataList += funData.tolist()
+            except:
+                print("No function call data to visualize...")
+            
+            try:
+                assert(type(countData) is np.ndarray)
+                dataList += countData.tolist()
+            except:
+                print("No counter data to visualize...")
+            
+            try:
+                assert(type(commData) is np.ndarray)
+                dataList += commData.tolist()
+            except:
+                print("No communication data to visualize...")
+                    
+            r = req.post(self.vizUrl, json={'type': 'info', 'value': {'event_types': eventType, 'functions': funMap, 'events': dataList, 'foi': funOfInt, 'labels': outlId}})
+            
+            #time.sleep(3)
+            #if r.status_code != 201:
+            #    raise ApiError('Trace post error:'.format(r.status_code))
+            
+        if self.vizMethod == "offline":
+            # Dump data
+            dataList = []
+            try:
+                assert(type(funData) is np.ndarray)
+                dataList += funData.tolist()
+            except:
+                print("No function call data to visualize...")
+            
+            try:
+                assert(type(countData) is np.ndarray)
+                dataList += countData.tolist()
+            except:
+                print("No counter data to visualize...")
+            
+            try:
+                assert(type(commData) is np.ndarray)
+                dataList += commData.tolist()
+            except:
+                print("No communication data to visualize...")
+            
+            traceDict={'type': 'info', 'value': {'event_types': eventType, 'functions': funMap, 'events': dataList, 'foi': funOfInt, 'labels': outlId}}
+            traceFileName = self.outFile + "trace." + str(outct) + ".json"
+            with open(traceFileName, 'w') as outfile:
+                json.dump(traceDict, outfile)
+            outfile.close()
+            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
+            #===================================================================
+            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
+            # for i in range(0,countData.shape[0]):
+            #     if str(countData[i][7]) != str('nan'):
+            #         print(type(countData[i][7]))
+            #         print(str(countData[i][7]))
+            #         raise Exception("countData has non nan entry in column 7")
+            #===================================================================
+    
     
     def sendTraceData(self, funData, countData, commData, outct):
         """Send method for sending function, counter and communication.
