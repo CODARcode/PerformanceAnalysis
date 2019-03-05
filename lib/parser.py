@@ -15,15 +15,16 @@ import adios_mpi as ad
 from collections import defaultdict
 
 class Parser():
-    """Parser class provides an interface to Adios and is currently capable of parsing .bp files  
-    through the stream variable which serves as the Adios handle.
+    """Parser class provides an interface to Adios and is currently capable of 
+    parsing .bp files through the stream variable which serves as the Adios handle. 
     In addition the class contains methods for extracting specific events from the Adios stream.
     """
     
     def __init__(self, configFile):
       """This is the constructor for the Parser class.
-      The parser has two main modes one is the BP, which is equivalent to offline/batch processing and non-BP, which
-      allows streaming via one of the Adios streaming methods such as DATASPACES or FLEXPATH.
+      The parser has two main modes: 
+            BP mode: offline/batch processing 
+        non-BP mode: streaming via one of the Adios streaming methods such as DATASPACES or FLEXPATH.
       
       Args:
           configFile (string): The configuration files's name.
@@ -68,13 +69,17 @@ class Parser():
         self.log.info(msg)
         
         if self.Method == "BP":
-            # This part is needed because the visualization code requires function map and event type before any actual trace data is sent.
+            # This part is needed because the visualization code requires  
+            # function map and event type before any actual trace data is sent.
             self.bpAttrib = self.stream.attr
             self.bpNumAttrib = self.stream.nattrs
             for iter in self.bpAttrib: # extract function names and ids
                 if iter.startswith('timer'):
                     self.numFun = self.numFun + 1
-                    self.funMap[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8")) # if iter is a string "timer 123" separate timer and 123 and assign 123 as integer key to function map and the function name which is stored in self.bpAttrib[iter].value as a value  
+                    # if iter is a string "timer 123" separate timer and 123, 
+                    # and assign 123 as integer key to function map and,
+                    # the function name which is stored in self.bpAttrib[iter].value as a value
+                    self.funMap[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8"))   
                 if iter.startswith('event_type'):
                     self.eventType[int(iter.split()[1])] = str(self.bpAttrib[iter].value.decode("utf-8"))  
             # Info
