@@ -11,11 +11,14 @@ Created:
 """
 import configparser
 import logging
-import numpy as np
-import lib.pyAdios as ADIOS
+
+# PYTHONPATH coudl be set either /lib or /PerformanceAnalysis
+try:
+    import pyAdios as ADIOS
+except ImportError:
+    import lib.pyAdios as ADIOS
+
 from collections import defaultdict
-
-
 
 
 class Parser(object):
@@ -26,8 +29,7 @@ class Parser(object):
 
     In addition the class contains methods for extracting specific events from the Adios stream.
     """
-
-    def __init__(self, configFile):
+    def __init__(self, config, log):
         """
         The parser has two main modes:
                 BP mode: offline/batch processing
@@ -36,25 +38,15 @@ class Parser(object):
         Args:
             configFile: (str), the configuration files's name.
         """
-        # Initialize configparser
-        self.config = configparser.ConfigParser(interpolation=None)
-        self.config.read(configFile)
-
-        # Initialize logger
-        self.logFile   = self.config['Debug']['LogFile']
-        self.logFormat = self.config['Debug']['Format']
-        self.logLevel  = self.config['Debug']['LogLevel']
-
-        logging.basicConfig(level=self.logLevel, format=self.logFormat, filename=self.logFile)
-        self.log = logging.getLogger('PARSER')
+        self.log = log
 
         # Initialize parser mode
-        self.parseMode = self.config['Parser']['ParseMode']
+        self.parseMode = config['Parser']['ParseMode']
 
         # Initialize Adios variables
-        self.Method = self.config['Adios']['Method']
-        self.Parameters = self.config['Adios']['Parameters']
-        self.inputFile = self.config['Adios']['InputFile']
+        self.Method = config['Adios']['Method']
+        self.Parameters = config['Adios']['Parameters']
+        self.inputFile = config['Adios']['InputFile']
         self.ad = None
         self.stream = None
         self.status = -1
@@ -71,11 +63,11 @@ class Parser(object):
         if self.parseMode == "Adios":
             self.ad = ADIOS.pyAdios(self.Method, self.Parameters)
             self.ad.open(self.inputFile, ADIOS.OpenMode.READ)
-
+            self.status = self.ad.current_step()
             if self.Method == "BP":
                 # This part is needed because the visualization code requries
                 # function map and event type before any actual trace data is sent
-                # todo: bpAttrib data structure may be not incompatible from adios 1.x
+                # note: bpAttrib data structure may be not incompatible from adios 1.x
                 # todo: need to check the code where bpAttrib is utilized.
                 self.bpAttrib = self.ad.available_attributes()
                 self.bpNumAttrib = len(self.bpAttrib)
@@ -127,7 +119,6 @@ class Parser(object):
             self.status = self.ad.advance()
         else:
             raise ValueError("Unsupported method: %s" % self.Method)
-        # INFO
         self.log.info("Adios stream status: %s" % self.status)
         return self.ad
 
@@ -145,14 +136,10 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("timer_event_count")
+        assert ydim is not None, "Frame has no `timer_event_count`!"
 
-        if ydim is None:
-            self.log.debug("Frame has no `timer_event_count`!")
-            return None
         data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
-        if data is None:
-            self.log.debug("Frame has no `event_timestamps`!")
-            return None
+        assert data is not None, "Frame has no `event_timestamps`!"
 
         # INFO
         assert data.shape[0] > 0, "Function call data dimension is zero!"
@@ -175,14 +162,10 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("counter_event_count")
-        if ydim is None:
-            self.log.debug("Frame has no `counter_event_count`!")
-            return None
+        assert ydim is not None, "Frame has no `counter_event_count`!"
 
         data = self.ad.read_variable("counter_values", count=[ydim, 6])
-        if data is None:
-            self.log.debug("Frame has no `counter_values`!")
-            return None
+        assert data is not None, "Frame has no `counter_values`!"
 
         # INFO
         assert data.shape[0] > 0, "Counter data dimension is zero!"
@@ -205,21 +188,17 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("comm_count")
-        if ydim is None:
-            self.log.debug("Frame has no `comm_count`!")
-            return None
+        assert ydim is not None, "Frame has no `comm_count`!"
 
         data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
-        if data is None:
-            self.log.debug("Frame has no `comm_timestamps`!")
-            return None
+        assert data is not None, "Frame has no `comm_timestamps`!"
 
         # INFO
         assert data.shape[0] > 0, "Communication data dimension is zero!"
         self.log.info("Frame has `comm_timestamps: {}`".format(data.shape))
 
-        # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
-        # todo: does this return all data in all steps? what is numSteps?
+        # fixme: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
+        # fixme: does this return all data in all steps? what is numSteps?
         return data
 
     def getStatus(self):
@@ -322,84 +301,59 @@ class Parser(object):
         self.ad.close()
 
 
-if __name__ == '__main__':
-    configFile = '../test/test.cfg'
-    prs = Parser(configFile)
-    ctrl = 0
-    outct = 0
-
-    while ctrl >= 0:
-
-        # Info
-        prs.log.info("\n\nFrame: " + str(outct))
-        prs.getBpNumAttrib()
-        prs.getBpAttrib()
-        prs.getNumFun()
-        prs.getFunMap()
-        prs.getEventType()
-
-        # Stream function call data
-        funStream = None
-        try:
-            prs.log.info("Accessing frame: " + str(outct) + " function call data...")
-            funStream = prs.getFunData()
-        except:
-            prs.log.info("No function call data in frame: " + str(outct) + "...")
-
-        if funStream is not None:
-            prs.log.info("Function stream contains {} events...".format(len(funStream)))
-
-        # Stream counter data
-        countStream = None
-        try:
-            prs.log.info("Accessing frame: " + str(outct) + " counter data...")
-            countStream = prs.getCountData()
-        except:
-            prs.log.info("No counter data in frame: " + str(outct) + "...")
-
-        if countStream is not None:
-            prs.log.info("Counter stream contains {} events...".format(len(countStream)))
-
-        # Stream communication data
-        commStream = None
-        try:
-            prs.log.info("Accessing frame: " + str(outct) + " communication data...")
-            commStream = prs.getCommData()
-        except:
-            prs.log.info("No communication data in frame: " + str(outct) + "...")
-
-        if commStream is not None:
-            prs.log.info("Communication stream contains {} events".format(len(commStream)))
-
-        outct += 1
-        prs.getStream()
-        ctrl = prs.getStatus()
-
-    prs.adiosClose()
-    prs.adiosFinalize()
-    prs.log.info("\nParser test done...\n")
-
-    # import pprint
-    #
-    # #prs = Parser('../test/test.cfg')
-    # ad = ADIOS.pyAdios("BP", "verbose=3")
-    # ad.open("../data/shortdemo/data/tau-metrics.bp", ADIOS.OpenMode.READ)
-    # # fh = adios2.open("../data/shortdemo/data/tau-metrics.bp")
-    # status = ad.current_step()
-    # while status >= 0:
-    #     print(status)
-    #     #print(ad.available_variables())
-    #     ydim = ad.read_variable("timer_event_count")
-    #     data = ad.read_variable("event_timestamps", count=[ydim, 6])
-    #
-    #     if ydim is None:
-    #         break
-    #
-    #     print(ydim, data[-1])
-    #     status = ad.advance()
-    #
-    # ad.close()
-    #
-    # # for fh_step in fh:
-    # #     step = fh_step.current_step()
-    # #     print(step)
+# if __name__ == '__main__':
+#     configFile = '../test/test.cfg'
+#     prs = Parser(configFile)
+#     ctrl = 0
+#     outct = 0
+#
+#     while ctrl >= 0:
+#
+#         # Info
+#         prs.log.info("\n\nFrame: " + str(outct))
+#         prs.getBpNumAttrib()
+#         prs.getBpAttrib()
+#         prs.getNumFun()
+#         prs.getFunMap()
+#         prs.getEventType()
+#
+#         # Stream function call data
+#         funStream = None
+#         try:
+#             prs.log.info("Accessing frame: " + str(outct) + " function call data...")
+#             funStream = prs.getFunData()
+#         except:
+#             prs.log.info("No function call data in frame: " + str(outct) + "...")
+#
+#         if funStream is not None:
+#             prs.log.info("Function stream contains {} events...".format(len(funStream)))
+#
+#         # Stream counter data
+#         countStream = None
+#         try:
+#             prs.log.info("Accessing frame: " + str(outct) + " counter data...")
+#             countStream = prs.getCountData()
+#         except:
+#             prs.log.info("No counter data in frame: " + str(outct) + "...")
+#
+#         if countStream is not None:
+#             prs.log.info("Counter stream contains {} events...".format(len(countStream)))
+#
+#         # Stream communication data
+#         commStream = None
+#         try:
+#             prs.log.info("Accessing frame: " + str(outct) + " communication data...")
+#             commStream = prs.getCommData()
+#         except:
+#             prs.log.info("No communication data in frame: " + str(outct) + "...")
+#
+#         if commStream is not None:
+#             prs.log.info("Communication stream contains {} events".format(len(commStream)))
+#
+#         outct += 1
+#         prs.getStream()
+#         ctrl = prs.getStatus()
+#
+#     prs.adiosClose()
+#     prs.adiosFinalize()
+#     prs.log.info("\nParser test done...\n")

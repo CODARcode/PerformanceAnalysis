@@ -43,7 +43,6 @@ def get_npdtype(t:str):
     else:
         raise ValueError("Unknown data type: %s" % t)
 
-
 class pyVariable(object):
     def __init__(
             self, name,
@@ -59,6 +58,9 @@ class pyVariable(object):
         self.n_steps = int(AvailableStepsCount)
         self.shape = () if len(Shape) == 0 else [int(t) for t in Shape.split(',')]
         self.dtype = None if len(Type) == 0 else get_npdtype(Type)
+        # Note that in adios2.x Value string comes with `"str"'.
+        if Type == 'string':
+            Value = Value.replace('"', '')
         self.value = np.array([Value], dtype=self.dtype) if self.is_scalar else None
         self.min = Min # string
         self.max = Max # string
@@ -80,10 +82,19 @@ class pyAttribute(object):
         self.name = name
         self.n_elements = int(Elements)
         self.dtype = get_npdtype(Type)
+
+        # Note that in adios2.x Value string comes with `"str"'.
+        if Type == 'string':
+            Value = Value.replace('"', '')
         self._value = np.array([Value], dtype=self.dtype)
 
     def __repr__(self):
-        return "{}: {} {}".format(self.name, self.n_elements, self._value)
+        return str(dict(
+            name=self.name,
+            n_elements=self.n_elements,
+            dtype=self.dtype,
+            value=self._value
+        ))
 
     def value(self, idx=0):
         return self._value[idx]
@@ -153,8 +164,8 @@ class pyAdios(object):
         status = -1
         try:
             self.stream = self.fh.__next__()
-            # todo: in streaming mode releases the current_step (what this means?)
-            # todo: no effect in file based engines
+            # note: in streaming mode releases the current_step (what this means?)
+            # note: no effect in file based engines
             self.fh.end_step()
             status = self.current_step()
         except StopIteration:
