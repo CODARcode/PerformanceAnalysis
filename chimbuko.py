@@ -16,6 +16,7 @@ from collections import defaultdict
 from definition import *
 from parser2 import Parser
 from event import Event
+from outlier import Outlier
 
 class Chimbuko(object):
     def __init__(self, configFile:str):
@@ -36,8 +37,9 @@ class Chimbuko(object):
         # Event: event handler
         self.event = Event()
         # Outlier: outlier detector
-        self.outlier = None
+        self.outlier = Outlier(self.config)
         # Visualizer: visualization handler
+        self.maxDepth = int(self.config['Visualizer']['MaxFunDepth'])
         self.visualizer = None
         self._init()
 
@@ -46,12 +48,16 @@ class Chimbuko(object):
         # event id
         # note: maybe to generate unique id, is this okay with overflow?
         self.event_id = np.uint64(0)
+        # total number of outliers
+        self.n_outliers = 0
         # function data counter
         self.func_counter = defaultdict(int)
         # count data counter
         self.count_counter = defaultdict(int)
         # communication data counter
         self.comm_counter = defaultdict(int)
+        # anomaly function
+        self.anomFun = defaultdict(int)
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -124,21 +130,55 @@ class Chimbuko(object):
             self.event_id += 1
             self.comm_counter[data[COM_IDX_TAG]] += 1
 
+    def _run_anomaly_detection(self, funMap):
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self.log.info("Only contains open functions so no anomaly detection at Frame: {}".format(
+                self.parser.getStatus()
+            ))
+            return
+
+        outliers_id_str = []
+        funOfInt = []
+        for id, data in functime.items():
+            data = np.array(data)
+            n_data = len(data)
+
+            self.outlier.compOutlier(data, id)
+            outliers = self.outlier.getOutlier()
+            outliers_id = data[outliers==-1, -1]
+
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+            if n_data > np.sum(outliers) and maxFuncDepth[id] < self.maxDepth:
+                funOfInt.append(str(funMap[id]))
+            if len(outliers_id) > 0:
+                self.anomFun[id] += 1
+
+        return outliers_id_str, funOfInt
+
+
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
 
-        print('Frame: ', self.parser.getStatus())
+        print('Step: ', self.parser.getStatus())
 
         # Initialize event
         self._init_event()
+        funMap = self.parser.getFunMap()
 
         # process on function event
         self._process_func_data()
         if not self.status: return
 
-        # todo: detect anomalies in function call data
+        # detect anomalies in function call data
+        outlId, funOfInt = self._run_anomaly_detection(funMap)
+        self.n_outliers += len(outlId)
+        self.log.info("Numer of outliers per from: %s" % len(outlId))
 
         # process on counter event
         self._process_counter_data()
