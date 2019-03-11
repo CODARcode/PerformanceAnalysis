@@ -17,6 +17,7 @@ from definition import *
 from parser2 import Parser
 from event import Event
 from outlier import Outlier
+from visualizer import Visualizer
 
 class Chimbuko(object):
     def __init__(self, configFile:str):
@@ -30,6 +31,7 @@ class Chimbuko(object):
             filename=self.config['Debug']['LogFile']
         )
         self.log = logging.getLogger('CHIMBUKO')
+        self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log)
@@ -40,7 +42,7 @@ class Chimbuko(object):
         self.outlier = Outlier(self.config)
         # Visualizer: visualization handler
         self.maxDepth = int(self.config['Visualizer']['MaxFunDepth'])
-        self.visualizer = None
+        self.visualizer = Visualizer(self.config)
         self._init()
 
         # init variable
@@ -61,6 +63,11 @@ class Chimbuko(object):
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
+        if self.parser.Method == 'BP':
+            # reset visualization server
+            self.visualizer.sendReset()
+            self.visualizer.sendEventType(list(self.parser.eventType.values()), 0)
+            self.visualizer.sendFunMap(self.parser.getFunMap(), 0)
 
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
@@ -76,7 +83,6 @@ class Chimbuko(object):
         except AssertionError:
             self.log.info("Frame-{} has no function data...".format(self.parser.getStatus()))
             return
-        print('funData: ', funcData.shape)
         self.event.initFunData(len(funcData))
         for data in funcData:
             if not self.event.addFun(np.append(data, np.uint64(self.event_id))):
@@ -88,8 +94,6 @@ class Chimbuko(object):
                 break
             self.event_id += 1
             self.func_counter[data[FUN_IDX_FUNC]] += 1
-        print('stack size: ', self.event.getFunStackSize())
-        #print(self.event.printFunStack())
 
     def _process_counter_data(self):
         try:
@@ -97,7 +101,7 @@ class Chimbuko(object):
         except AssertionError:
             self.log.info("Frame-{} has no counter data...".format(self.parser.getStatus()))
             return
-        print('countData: ', countData.shape)
+
         self.event.initCountData(len(countData))
         for data in countData:
             if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
@@ -117,7 +121,7 @@ class Chimbuko(object):
         except AssertionError:
             self.log.info("Frame-{} has no communication data...".format(self.parser.getStatus()))
             return
-        print('commData: ', commData.shape)
+
         self.event.initCommData(len(commData))
         for data in commData:
             if not self.event.addComm(np.append(data, np.uint64(self.event_id))):
@@ -137,7 +141,7 @@ class Chimbuko(object):
             self.log.info("Only contains open functions so no anomaly detection at Frame: {}".format(
                 self.parser.getStatus()
             ))
-            return
+            return [], []
 
         outliers_id_str = []
         funOfInt = []
@@ -159,13 +163,17 @@ class Chimbuko(object):
 
         return outliers_id_str, funOfInt
 
+    def _dump_trace_data(self):
+        if self.parser.Method == "BP":
+            pass
+        else:
+            raise NotImplementedError("Unsupported parser method: %s" % self.parser.Method)
 
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
-
-        print('Step: ', self.parser.getStatus())
+        self.log.info("\n\nFrame: %s" % self.parser.getStatus())
 
         # Initialize event
         self._init_event()
@@ -178,7 +186,7 @@ class Chimbuko(object):
         # detect anomalies in function call data
         outlId, funOfInt = self._run_anomaly_detection(funMap)
         self.n_outliers += len(outlId)
-        self.log.info("Numer of outliers per from: %s" % len(outlId))
+        self.log.info("Numer of outliers per frame: %s" % len(outlId))
 
         # process on counter event
         self._process_counter_data()
@@ -188,11 +196,38 @@ class Chimbuko(object):
         self._process_communication_data()
         if not self.status: return
 
+        # dump trace data for visualization
+        self.visualizer.sendData(
+            self.event.getFunData().tolist(),
+            self.event.getCountData().tolist(),
+            self.event.getCommData().tolist(),
+            funOfInt,
+            outlId,
+            frame_id=self.parser.getStatus(),
+            funMap=None if self.parser.Method == 'BP' else funMap,
+            eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
+        )
+
         # go to next stream
         self.parser.getStream()
 
     def finalize(self):
-        pass
+        stack_size = self.event.getFunStackSize()
+        if stack_size > 0:
+            self.log.info("Function stack is not empty: %s" % stack_size)
+            self.log.info("Possible call stack violation!")
+
+        #self.log.info("Total number of frames: ")
+        self.log.info("Total number of events: %s" % self.event_id)
+        self.log.info("Total number of outliers: %s" % self.n_outliers)
+        #self.log.info("Running time: ")
+
+        self.parser.adiosFinalize()
+        self.event.clearFunTime()
+        self.event.clearFunData()
+        self.event.clearCountData()
+        self.event.clearCommData()
+
 
 def usage():
     pass
@@ -203,6 +238,7 @@ if __name__ == '__main__':
     configFile = './test/test.cfg' #sys.argv[1]
     driver = Chimbuko(configFile)
 
+    #driver.process()
     while driver.status:
         driver.process()
 

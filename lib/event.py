@@ -303,7 +303,7 @@ class  Event(object):
 
     def getFunData(self):
         """Get method for funData."""
-        return self.funData if self.funData is not None else []
+        return self.funData if self.funData is not None else np.array([])
         # This portion is only needed if the visualization requires to send function calls that have exited
         # self.funList.sort(key=lambda x: x[6])
         # self.funData = np.full((len(self.funList), 13), np.nan)
@@ -313,11 +313,11 @@ class  Event(object):
 
     def getCountData(self):
         """Get method for countData."""
-        return self.countData if self.countData is not None else []
+        return self.countData if self.countData is not None else np.array([])
 
     def getCommData(self):
         """Get method for commData."""
-        return self.commData if self.commData is not None else []
+        return self.commData if self.commData is not None else np.array([])
 
     def getFunTime(self):
         """Get method for function exection time data."""
