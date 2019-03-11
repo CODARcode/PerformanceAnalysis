@@ -67,24 +67,20 @@ class Parser(object):
             if self.Method == "BP":
                 # This part is needed because the visualization code requries
                 # function map and event type before any actual trace data is sent
-                # note: bpAttrib data structure may be not incompatible from adios 1.x
-                # todo: need to check the code where bpAttrib is utilized.
                 self.bpAttrib = self.ad.available_attributes()
                 self.bpNumAttrib = len(self.bpAttrib)
-                for attr_name in self.bpAttrib:
+                for attr_name, data in self.bpAttrib.items():
                     is_func = attr_name.startswith('timer')
                     is_event = attr_name.startswith('event_type')
                     if is_func or is_event:
                         key = int(attr_name.split()[1])
-                        val = str(self.bpAttrib[attr_name].value())
+                        val = str(data.value())
                         if is_func:
                             self.funMap[key] = val
                         else:
                             self.eventType[key] = val
                 self.numFun = len(self.funMap)
-                # INFO
                 self.log.info("Adios using BP method...")
-                # DEBUG
                 self.log.info("Number of attributes: %s" % self.bpNumAttrib)
                 self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
                 self.log.debug("Number of functions: %s" % self.numFun)
