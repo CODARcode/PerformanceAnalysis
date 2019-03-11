@@ -2,24 +2,25 @@
 This module implements the interface between the analysis code and the visualization server. 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
+    Sungsoo Ha (sungsooha@bnl.gov)
+
 Created: 
     September, 2018
+
+Modified:
+    March, 2019
     
     pydoc -w visualizer
     
 """
-
 import os
+import shutil
 import json
-import configparser
-import time
 import requests as req
 import matplotlib as mpl
-import numpy as np
 if os.environ.get('DISPLAY','') == '':
     print('No display found; using non-interactive Agg backend...\n')
     mpl.use('Agg')
-import adios as ad
 
 
 class Visualizer():
@@ -30,340 +31,129 @@ class Visualizer():
     software.
     """
 
-    def __init__(self, configFile):
+    def __init__(self, config):
         """This is the constructor for the Visualizer class.
-        The visualizer has two main modes defined by the VizMethod variable one is the offline, which writes
-        .json files that the visualization software then parses, the other is online and sends the data to 
-        the visualization server via the requests API.
+        The visualizer has two main modes defined by the `VizMethod` variable.
+            - offline: writes .json files that the visualization software parses
+            - online: sends the data to the visualization server via the requests API.
       
         Args:
-            configFile (string): The configuration files's name.
-          
-        Returns:
-            No return value.
+            config: config object
         """
-        self.config = configparser.ConfigParser()
-        self.config.read(configFile)
-        self.vizMethod = self.config['Visualizer']['VizMethod']
-        self.vizUrl = self.config['Visualizer']['VizUrl']
-        self.outFile = self.config['Visualizer']['OutputFile']
-        self.traceHeader = {'data': 'trace'}
+        self.vizMethod = config['Visualizer']['VizMethod']
+        self.vizUrl = config['Visualizer']['VizUrl']
+        self.outputDir = config['Visualizer']['OutputDir']
+        #self.traceHeader = {'data': 'trace'}
         self.funData = []
         self.countData = []
         self.commData = []
         self.anomalyData = []
-        
-        
-    def sendCombinedData(self, funData, countData, commData, funOfInt, outlId, outct):
-        """Send method for sending function, counter and communication data as well as the
-        results of the analysis function of interest and id(s) of outlier data points.
-        
-        Args:
-            funData (list): function call data
-            countData (list): counter data
-            commData (list): communication data
-            funOfInt (list): function id(s) of functions that have outliers
-            outlId (list): event id(s) associated with events that are classified as outliers
-            outct (int): frame id
-            
-        Returns:
-            No return value.
-        """  
-        if self.vizMethod == "online":
-            # Send data to viz server
-            dataList = []
-            try:
-                assert(type(funData) is np.ndarray)
-                dataList += funData.tolist()
-            except:
-                print("No function call data to visualize...")
-            
-            try:
-                assert(type(countData) is np.ndarray)
-                dataList += countData.tolist()
-            except:
-                print("No counter data to visualize...")
-            
-            try:
-                assert(type(commData) is np.ndarray)
-                dataList += commData.tolist()
-            except:
-                print("No communication data to visualize...")
-            
-            r = req.post(self.vizUrl, json={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}})
-            
-            """Format for new data...
-            """
-            #r = req.post(self.vizUrl, json={'type': 'info', 'value': {'functions': funMap, 'event_types': eventType, 'events': dataList, 'foi': funOfInt, 'labels': outlId}})
-            
-            #time.sleep(3)
-            #if r.status_code != 201:
-            #    raise ApiError('Trace post error:'.format(r.status_code))
-            
-        if self.vizMethod == "offline":
-            # Dump data
-            dataList = []
-            try:
-                assert(type(funData) is np.ndarray)
-                dataList += funData.tolist()
-            except:
-                print("No function call data to visualize...")
-            
-            try:
-                assert(type(countData) is np.ndarray)
-                dataList += countData.tolist()
-            except:
-                print("No counter data to visualize...")
-            
-            try:
-                assert(type(commData) is np.ndarray)
-                dataList += commData.tolist()
-            except:
-                print("No communication data to visualize...")
-            
-            traceDict={'type': 'info', 'value': {'events': dataList, 'foi': funOfInt, 'labels': outlId}}
-            traceFileName = self.outFile + "trace." + str(outct) + ".json"
-            with open(traceFileName, 'w') as outfile:
-                json.dump(traceDict, outfile)
-            outfile.close()
-            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
-            #===================================================================
-            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
-            # for i in range(0,countData.shape[0]):
-            #     if str(countData[i][7]) != str('nan'):
-            #         print(type(countData[i][7]))
-            #         print(str(countData[i][7]))
-            #         raise Exception("countData has non nan entry in column 7")
-            #===================================================================
 
-    
-    def sendCombinedStreamData(self, eventType, funMap, funData, countData, commData, funOfInt, outlId, outct):
-        """Send method for sending function, counter and communication data as well as the
-        results of the analysis function of interest and id(s) of outlier data points.
-        
-        Args:
-            eventType (list): list of event types where position determines id e.g. [ENTRY, EXIT] then ENTRY has id 0
-            funMap (list): list function names where position determines id e.g. [MPI_Send(), MPI_Allreduce()] then MPI_Send() has id 0  
-            funData (ndarray): function call data
-            countData (ndarray): counter data
-            commData (ndarray): communication data
-            funOfInt (list): function id(s) of functions that have outliers
-            outlId (list): event id(s) associated with events that are classified as outliers
-            outct (int): frame id
-            
-        Returns:
-            No return value.
-        """  
+        if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
+            shutil.rmtree(self.outputDir)
+
+        if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
+            os.makedirs(self.outputDir)
+
+
+    def sendReset(self):
+        """Send signal to visualization server to restart itself."""
+        resetDict = {'type': 'reset'}
         if self.vizMethod == "online":
-            # Send data to viz server
-            dataList = []
-            try:
-                assert(type(funData) is np.ndarray)
-                dataList += funData.tolist()
-            except:
-                print("No function call data to visualize...")
-            
-            try:
-                assert(type(countData) is np.ndarray)
-                dataList += countData.tolist()
-            except:
-                print("No counter data to visualize...")
-            
-            try:
-                assert(type(commData) is np.ndarray)
-                dataList += commData.tolist()
-            except:
-                print("No communication data to visualize...")
-                    
-            r = req.post(self.vizUrl, json={'type': 'info', 'value': {'event_types': eventType, 'functions': funMap, 'events': dataList, 'foi': funOfInt, 'labels': outlId}})
-            
-            #time.sleep(3)
-            #if r.status_code != 201:
-            #    raise ApiError('Trace post error:'.format(r.status_code))
-            
-        if self.vizMethod == "offline":
-            # Dump data
-            dataList = []
-            try:
-                assert(type(funData) is np.ndarray)
-                dataList += funData.tolist()
-            except:
-                print("No function call data to visualize...")
-            
-            try:
-                assert(type(countData) is np.ndarray)
-                dataList += countData.tolist()
-            except:
-                print("No counter data to visualize...")
-            
-            try:
-                assert(type(commData) is np.ndarray)
-                dataList += commData.tolist()
-            except:
-                print("No communication data to visualize...")
-            
-            traceDict={'type': 'info', 'value': {'event_types': eventType, 'functions': funMap, 'events': dataList, 'foi': funOfInt, 'labels': outlId}}
-            traceFileName = self.outFile + "trace." + str(outct) + ".json"
-            with open(traceFileName, 'w') as outfile:
-                json.dump(traceDict, outfile)
-            outfile.close()
-            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
-            #===================================================================
-            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
-            # for i in range(0,countData.shape[0]):
-            #     if str(countData[i][7]) != str('nan'):
-            #         print(type(countData[i][7]))
-            #         print(str(countData[i][7]))
-            #         raise Exception("countData has non nan entry in column 7")
-            #===================================================================
-    
-    
-    def sendTraceData(self, funData, countData, commData, outct):
-        """Send method for sending function, counter and communication.
-        (Will be deprecated...)
-        
+            req.post(self.vizUrl, json=resetDict)
+        elif self.vizMethod == "offline":
+            fn = "reset.json"
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(resetDict, outfile, indent=4, sort_keys=True)
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)
+
+    def sendEventType(self, eventType, frame_id):
+        """Send method for sending event types and thier id(s) to the visualization server.
+
         Args:
-            funData (list): function call data
-            countData (list): counter data
-            commData (list): communication data
-            outct (int): frame id
-            
-        Returns:
-            No return value.
-        """ 
+            eventType (list): of event types
+                such as function EXIT/ENTRY or SEND/RECEIVE for communication events.
+            frame_id (int): frame id
+        """
+        eventDict = {'type': 'event_types', 'value': eventType}
         if self.vizMethod == "online":
-            # Send data to viz server
-            dataList = funData.tolist() + countData.tolist() + commData.tolist()
-            r = req.post(self.vizUrl, json={'type':'events', 'value': dataList})
-            # time.sleep(5)
-            #if r.status_code != 201:
-            #    raise ApiError('Trace post error:'.format(r.status_code))
+            r = req.post(self.vizUrl, json=eventDict)
         if self.vizMethod == "offline":
-            # Dump data
-            traceFileName = self.outFile + "trace." + str(outct) + ".json"
-            with open(traceFileName, 'w') as outfile:
-                json.dump(funData.tolist() + countData.tolist() + commData.tolist(), outfile)
-            outfile.close()  
-            
-    def sendOutlIds(self, outlId, outct):
-        """Send method for sending the id(s) of outlier data points.
-        (Will be deprecated...)
-        
-        Args:
-            outlId (list): event id(s) associated with events that are classified as outliers
-            outct (int): frame id
-            
-        Returns:
-            No return value.
-        """ 
-        if self.vizMethod == "online":
-            # Send data to viz server
-            r = req.post(self.vizUrl, json = {'type':'labels', 'value': outlId})
-           # time.sleep(1)
-           # if r.status_code != 201:
-           #     raise ApiError('Anomaly post error:'.format(r.status_code))
-        if self.vizMethod == "offline":
-            # Dump data
-            anomalyFileName = self.outFile + "anomaly." + str(outct) + ".json"
-            with open(anomalyFileName, 'w') as outfile:
-                json.dump(outlId, outfile)
-            outfile.close()   
-    
-    def sendFunMap(self, funMap, outct):
-        """Send method for sending the dictionary of function id(s) (key) and their corresponding names (value).
-        (Will be deprecated...)
-        
+            fn = "et.{:06d}.json".format(frame_id)
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(eventDict, outfile)
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)
+
+    def sendFunMap(self, funMap, frame_id=0):
+        """Send method for sending the dictionary
+            - key: function id(s) and
+            - value: their corresponding names.
+
         Args:
             funMap (dictionary): function id (int) key and function name (string) value
-            outct (int): frame id
-            
-        Returns:
-            No return value.
+            frame_id (int): frame id
         """
+        funDict = {'type': 'functions', 'value': funMap}
         if self.vizMethod == "online":
-            # Send data to viz server
-            r = req.post(self.vizUrl, json={'type':'functions', 'value': funMap})
-           # time.sleep(1)
-           # if r.status_code != 201:
-           #     raise ApiError('Function map post error:'.format(r.status_code))
-        if self.vizMethod == "offline":
-            # Dump data            
-            funDict={'type': 'functions', 'value': funMap}    
-            funMapFileName = self.outFile + "functions." + str(outct) + ".json"  
-            with open(funMapFileName, 'w') as outfile:
-                json.dump(funMap, outfile)
-            outfile.close()
-    
-    def sendFunOfInt(self, funOfInt, outct):
-        """Send method for sending function of interest id(s) to the visualization server.
-        These are id(s) of functions that are associated with outlier data points.
-        
+            req.post(self.vizUrl, json={'type': 'functions', 'value': funMap})
+        elif self.vizMethod == "offline":
+            fn = "functions.{:06d}.json".format(frame_id)
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(funDict, outfile, indent=4, sort_keys=True)
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)
+
+    def sendData(self,
+                 funData, countData, commData, funOfInt, outlId, frame_id=0,
+                 eventType=None, funMap=None):
+        """
+        Send function, counter and communication data as well as the results of the analysis
+        of interest and id(s) of outlier data points.
+
         Args:
-            funOfInt (list): function id(s) of functions that have outliers
-            outct (int): frame id
-            
-        Returns:
-            No return value.
+            funData: (list), function call data
+            countData: (list), counter data
+            commData: (list), communication data
+            funOfInt: (list), function id(s) of functions that have outliers
+            outlId: (list), event id(s) associated with events that are classified as outliers
+            frame_id: (int), frame id
+            eventType: (list), event types
         """
+        #todo: is this correct way to aggregate all data
+        dataList = []
+        dataList += funData
+        dataList += countData
+        dataList += commData
+
+        traceDict = {
+            'type': 'info',
+            'value': {
+                'events': dataList,
+                'foi': funOfInt,
+                'labels': outlId
+            }
+        }
+        if eventType is not None:
+            traceDict['value']['event_types'] = eventType
+        if funMap is not None:
+            traceDict['value']['functions'] = funMap
+
         if self.vizMethod == "online":
-            r = req.post(self.vizUrl, json={'type':'foi', 'value':funOfInt})
-            # if r.status_code != 201:
-            #     raise ApiError('Function map post error:'.format(r.status_code))
-        if self.vizMethod == "offline":
-            # Dump data
-            funOfIntFileName = self.outFile + "foi." + str(outct) + ".json"
-            with open(funOfIntFileName, 'w') as outfile:
-                json.dump(funOfInt, outfile)
-            outfile.close()
-            
-    def sendEventType(self, eventType, outct):
-        """Send method for sending event types and thier id(s) to the visualization server.
-        
-        Args:
-            eventType (list): of event types such as function EXIT/ENTRY or SEND/RECEIVE for communication events.
-            outct (int): frame id
-            
-        Returns:
-            No return value.
-        """
-        if self.vizMethod == "online":
-            r = req.post(self.vizUrl, json={'type':'event_types', 'value':eventType})
-            #if r.status_code != 201:
-            #    raise ApiError('Function map post error:'.format(r.status_code))
-        if self.vizMethod == "offline":
-            eventTypeFileName = self.outFile + "et." + str(outct) + ".json" 
-            eventDict = {'type':'event_types', 'value':eventType}
-            with open(eventTypeFileName, 'w') as outfile:
-                json.dump(eventType, outfile)
-            outfile.close()
-            
-    def sendReset(self):
-        """Send signal to visualization server to restart itself.
-        
-        Args:
-            No arguments.
-            
-        Returns:
-            No return value.
-        """
-        if self.vizMethod == "online":
-            r = req.post(self.vizUrl, json={'type':'reset'})
-            #if r.status_code != 201:
-            #    raise ApiError('Function map post error:'.format(r.status_code))
-        if self.vizMethod == "offline":
-            resetDict ={'type':'reset'}
-            resetFileName = self.outFile + "reset.json"
-            with open(resetFileName, 'w') as outfile:
-                json.dump(resetDict, outfile)
-            outfile.close()
-    
-    #def addFunData(self, funData):
-    #    self.funData.extend(funData.tolist())
-        
-    #def addCountData(self, countData):
-    #    self.countData.extend(countData.tolist())
-        
-    #def addCommData(self, commData):
-    #    self.commData.extend(commData.tolist())
-        
-    
+            req.post(self.vizUrl, json=traceDict)
+        elif self.vizMethod == "offline":
+            fn = "trace.{:06d}.json".format(frame_id)
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(traceDict, outfile, indent=4, sort_keys=True)
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)
+            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
+            #===================================================================
+            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
+            # for i in range(0,countData.shape[0]):
+            #     if str(countData[i][7]) != str('nan'):
+            #         print(type(countData[i][7]))
+            #         print(str(countData[i][7]))
+            #         raise Exception("countData has non nan entry in column 7")
+            #===================================================================
