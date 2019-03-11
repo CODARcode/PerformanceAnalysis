@@ -9,9 +9,7 @@ Created:
     March, 2019
 
 """
-import configparser
-import logging
-
+import numpy as np
 # PYTHONPATH coudl be set either /lib or /PerformanceAnalysis
 try:
     import pyAdios as ADIOS
@@ -64,35 +62,32 @@ class Parser(object):
             self.ad = ADIOS.pyAdios(self.Method, self.Parameters)
             self.ad.open(self.inputFile, ADIOS.OpenMode.READ)
             self.status = self.ad.current_step()
-            if self.Method == "BP":
-                # This part is needed because the visualization code requries
-                # function map and event type before any actual trace data is sent
-                self.bpAttrib = self.ad.available_attributes()
-                self.bpNumAttrib = len(self.bpAttrib)
-                for attr_name, data in self.bpAttrib.items():
-                    is_func = attr_name.startswith('timer')
-                    is_event = attr_name.startswith('event_type')
-                    if is_func or is_event:
-                        key = int(attr_name.split()[1])
-                        val = str(data.value())
-                        if is_func:
-                            self.funMap[key] = val
-                        else:
-                            self.eventType[key] = val
-                self.numFun = len(self.funMap)
-                self.log.info("Adios using BP method...")
-                self.log.info("Number of attributes: %s" % self.bpNumAttrib)
-                self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
-                self.log.debug("Number of functions: %s" % self.numFun)
-                self.log.debug("Function map: \n" + str(self.funMap))
-            else:
-                msg = "Using non-BP method: %s" % self.Method
-                self.log.info(msg)
-                raise NotImplementedError(msg)
+            self._update()
         else:
-            msg = "Unsupported parse mode: %s" % self.parseMode
-            self.log.error(msg)
-            raise Exception(msg)
+            self.log.error("Unsupported parse mode: %s" % self.parseMode)
+            raise ValueError("Unsupported parse mode: %s" % self.parseMode)
+
+    def _update(self):
+        self.bpAttrib = self.ad.available_attributes()
+        self.bpNumAttrib = len(self.bpAttrib)
+
+        self.funMap = defaultdict(int)     # function hash map
+        self.eventType = defaultdict(int)  # eventType hash map
+        for attr_name, data in self.bpAttrib.items():
+            is_func = attr_name.startswith('timer')
+            is_event = attr_name.startswith('event_type')
+            if is_func or is_event:
+                key = int(attr_name.split()[1])
+                val = str(data.value())
+                if is_func:
+                    self.funMap[key] = val
+                else:
+                    self.eventType[key] = val
+        self.numFun = len(self.funMap)
+        self.log.info("Number of attributes: %s" % self.bpNumAttrib)
+        self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
+        self.log.debug("Number of functions: %s" % self.numFun)
+        self.log.debug("Function map: \n" + str(self.funMap))
 
     def getParseMethod(self):
         """Get method for accessing parse method.
@@ -111,16 +106,19 @@ class Parser(object):
         Returns:
             Reference to self.stream, which is essentially the return pyAdios object
         """
-        if self.Method == "BP":
-            self.status = self.ad.advance()
-        else:
-            raise ValueError("Unsupported method: %s" % self.Method)
+        # if self.Method == "BP":
+        #     self.status = self.ad.advance()
+        # else:
+        #     raise ValueError("Unsupported method: %s" % self.Method)
+        self.status = self.ad.advance()
+        if self.Method in ['SST']:
+            print('update')
+            self._update()
         self.log.info("Adios stream status: %s" % self.status)
         return self.ad
 
     def getFunData(self):
         """
-
         Get method for accessing function call data, i.e. Adios variable "event_timestamps".
 
         The variable is defined as
@@ -128,16 +126,24 @@ class Parser(object):
                 "event_timestamps", "", ad.DATATYPE.unsigned_long,
                 "timer_event_count,6", "timer_event_count,6", "0,0") in adios 1.x
 
+        todo: after updating writer with adios2, all variables become self-describing!
+        todo: don't require to fetch ydim!
+
         Returns:
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("timer_event_count")
         assert ydim is not None, "Frame has no `timer_event_count`!"
 
+        if isinstance(ydim, np.ndarray):
+            ydim = ydim[0]
+        print('getFunData: ydim: ', ydim)
+
         data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
         assert data is not None, "Frame has no `event_timestamps`!"
 
-        # INFO
+        print('getFunData: data: ', data.shape)
+
         assert data.shape[0] > 0, "Function call data dimension is zero!"
         self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
 
@@ -153,6 +159,9 @@ class Parser(object):
         The variable is defined as
             ad.define_var(g, "counter_values", "", ad.DATATYPE.unsigned_long,
                 "counter_event_count,6", "counter_event_count,6", "0,0") in adios 1.x
+
+        todo: after updating writer with adios2, all variables become self-describing!
+        todo: don't require to fetch ydim!
 
         Returns:
             Return value to Adios variable read() method.
@@ -179,6 +188,9 @@ class Parser(object):
         The variable is defined as
             ad.define_var(g, "comm_timestamps", "", ad.DATATYPE.unsigned_long,
                 "comm_count,8", "comm_count,8", "0,0") in adios 1.x
+
+        todo: after updating writer with adios2, all variables become self-describing!
+        todo: don't require to fetch ydim!
 
         Returns:
             Return value to Adios variable read() method.
@@ -218,11 +230,14 @@ class Parser(object):
         Returns:
             Reference to self.bpAttrib (dictionary) i.e. return value of Adios self.stream.attr.
         """
-        if self.Method == "BP":
-            self.log.debug("getBpAttrib(): \n" + str(self.bpAttrib))
-            return self.bpAttrib
-        else:
-            raise NotImplementedError("getBpAttrib: not implemented yet for non-BP")
+        return self.bpAttrib
+        # if self.Method == "BP":
+        #     self.log.debug("getBpAttrib(): \n" + str(self.bpAttrib))
+        #     return self.bpAttrib
+        # elif self.Method in ['SST']:
+        #     return self.ad.available_attributes()
+        # else:
+        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getBpNumAttrib(self):
         """
@@ -231,11 +246,14 @@ class Parser(object):
         Returns:
             Reference to self.bpNumAttrib (int) i.e. the number of attributes.
         """
-        if self.Method == "BP":
-            self.log.debug("getBpNumAttrib(): %s" % self.bpNumAttrib)
-            return self.bpNumAttrib
-        else:
-            raise NotImplementedError("getBpNumAttrib: not implemented yet for non-BP")
+        return self.bpNumAttrib
+        # if self.Method == "BP":
+        #     self.log.debug("getBpNumAttrib(): %s" % self.bpNumAttrib)
+        #     return self.bpNumAttrib
+        # elif self.Method in ['SST']:
+        #     return len(self.ad.available_attributes())
+        # else:
+        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getNumFun(self):
         """
@@ -244,11 +262,14 @@ class Parser(object):
         Returns:
             Reference to self.numFun (int) i.e. the number of different functions.
         """
-        if self.Method == "BP":
-            self.log.debug("getNumFun(): %s" % self.numFun)
-            return self.numFun
-        else:
-            raise NotImplementedError("getNumFun: not implemented yet for non-BP")
+        return self.numFun
+        # if self.Method == "BP":
+        #     self.log.debug("getNumFun(): %s" % self.numFun)
+        #     return self.numFun
+        # elif self.Method in ['SST']:
+        #     pass
+        # else:
+        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getFunMap(self):
         """
@@ -259,11 +280,12 @@ class Parser(object):
         Returns:
             Reference to self.funMap (dictionary).
         """
-        if self.Method == "BP":
-            self.log.debug("getFunMap(): \n" + str(self.funMap))
-            return self.funMap
-        else:
-            raise NotImplementedError("getFunMap: not implemented yet for non-BP")
+        return self.funMap
+        # if self.Method == "BP":
+        #     self.log.debug("getFunMap(): \n" + str(self.funMap))
+        #     return self.funMap
+        # else:
+        #     raise NotImplementedError("getFunMap: not implemented yet for non-BP")
 
     def getEventType(self):
         """
@@ -274,11 +296,12 @@ class Parser(object):
         Returns:
             Reference to self.eventType (dictionary).
         """
-        if self.Method == 'BP':
-            self.log.debug("getEventType(): \n" + str(self.eventType))
-            return self.eventType
-        else:
-            raise NotImplementedError("getEventType: not implemented yet for non-BP")
+        return self.eventType
+        # if self.Method == 'BP':
+        #     self.log.debug("getEventType(): \n" + str(self.eventType))
+        #     return self.eventType
+        # else:
+        #     raise NotImplementedError("getEventType: not implemented yet for non-BP")
 
     def adiosClose(self):
         """

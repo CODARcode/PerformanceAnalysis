@@ -212,6 +212,7 @@ class Chimbuko(object):
         self.parser.getStream()
 
     def finalize(self):
+        self.log.info("\n\nFinalize:")
         stack_size = self.event.getFunStackSize()
         if stack_size > 0:
             self.log.info("Function stack is not empty: %s" % stack_size)

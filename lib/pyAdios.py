@@ -146,6 +146,7 @@ class pyAdios(object):
         Returns:
 
         """
+
         self.fh = adios2.open(filename, mode.value, self.comm, self.engine_type.value)
         self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:
@@ -168,10 +169,11 @@ class pyAdios(object):
         """
         status = -1
         try:
-            self.stream = self.fh.__next__()
             # note: in streaming mode releases the current_step
             # note: no effect in file based engines
             self.fh.end_step()
+
+            self.stream = self.fh.__next__()
             status = self.current_step()
         except StopIteration:
             pass
