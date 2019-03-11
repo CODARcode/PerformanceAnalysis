@@ -141,7 +141,6 @@ class  Event(object):
 
     def addFun(self, event): 
         """Adds function call to call stack
-
         Args:
             event:  (ndarray[int])
                 0: program id

@@ -1,5 +1,5 @@
 """@package Chimbuko
-This is the main driver script for the anlysis code 
+This is the main driver script for the analysis code 
 Author(s): 
     Gyorgy Matyasfalvi (gmatyasfalvi@bnl.gov)
 Created: 
@@ -154,10 +154,8 @@ while ctrl >= 0:
         # In event class set event types for each frame 
         evn.setEventType(eventTypeList)
         
-        # In streaming mode send function map and event type to the visualization server for each frame
-        viz.sendEventType(eventTypeList, outct)
+        # Get funMap for each frame 
         funMap = prs.getFunMap()
-        viz.sendFunMap(list(funMap.values()), outct)
     
 
     # Stream function call data
@@ -245,7 +243,6 @@ while ctrl >= 0:
                     anomFun[funId] += 1
                     #if funId in foiid:
                     #    print("Function id: ", funId, " has anomaly\n")          
-    
     numOutl += numOutlFrame
     msg = "Number of outliers per frame: " + str(numOutlFrame)
     print(msg)
@@ -300,7 +297,10 @@ while ctrl >= 0:
      
 
     # Dump trace data
-    viz.sendCombinedData(evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)
+    if parseMethod != "BP":
+        viz.sendCombinedStreamData(eventTypeList, list(funMap.values()), evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)        
+    else:
+        viz.sendCombinedData(evn.getFunData(), evn.getCountData(), evn.getCommData(), funOfInt, outlId, outct)
     
     
     # Free memory
