@@ -10,5 +10,5 @@
 export PYTHONPATH=${PYTHONPATH}:/opt/adios2/lib/python3.5/site-packages
 export PYTHONPATH=${PYTHONPATH}:../lib
 
-python3 simple_writer_sst.py > writer.log &
-python3 chimbuko.py test.cfg
+python3 simple_writer_sst.py > ../untracked/results/writer.log &
+python3 chimbuko.py chimbuko.cfg
