@@ -145,21 +145,28 @@ class Chimbuko(object):
 
         outliers_id_str = []
         funOfInt = []
-        for id, data in functime.items():
+        for funid, data in functime.items():
             data = np.array(data)
             n_data = len(data)
 
-            self.outlier.compOutlier(data, id)
+            self.outlier.compOutlier(data, funid)
             outliers = self.outlier.getOutlier()
             outliers_id = data[outliers==-1, -1]
 
             outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
 
             maxFuncDepth = self.event.getMaxFunDepth()
-            if n_data > np.sum(outliers) and maxFuncDepth[id] < self.maxDepth:
-                funOfInt.append(str(funMap[id]))
+
+            # FIXME: need smooth handling for unknown function and event type
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_data > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
             if len(outliers_id) > 0:
-                self.anomFun[id] += 1
+                self.anomFun[int(funid)] += 1
 
         return outliers_id_str, funOfInt
 
@@ -212,15 +219,14 @@ class Chimbuko(object):
         self.parser.getStream()
 
     def finalize(self):
+        self.log.info("\n\nFinalize:")
         stack_size = self.event.getFunStackSize()
         if stack_size > 0:
             self.log.info("Function stack is not empty: %s" % stack_size)
             self.log.info("Possible call stack violation!")
 
-        #self.log.info("Total number of frames: ")
         self.log.info("Total number of events: %s" % self.event_id)
         self.log.info("Total number of outliers: %s" % self.n_outliers)
-        #self.log.info("Running time: ")
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()
@@ -233,13 +239,19 @@ def usage():
     pass
 
 if __name__ == '__main__':
+    import time
     # check argument and print usages()
 
     configFile = './test/test.cfg' #sys.argv[1]
     driver = Chimbuko(configFile)
+    n_frames = 0
 
-    #driver.process()
+    start = time.time()
     while driver.status:
         driver.process()
-
+        n_frames+=1
     driver.finalize()
+    end = time.time()
+
+    print("Total number of frames: %s" % n_frames)
+    print("Total running time: {}s".format(end - start))
