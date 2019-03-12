@@ -1,3 +1,20 @@
+"""
+Simple Adios2 SST writer
+
+To test SST, it will read variable and attribute from a BP file and write it via SST step by step.
+For the attribute, with BP file, we can get all attributes at the first step. As the result,
+a reader via SST will get all attribute at the first step. But, in reality, the available
+attributes can vary in each step.
+
+NOTE: Attributes are belonging under IO class in ADIOS. So, attribute registered at step i might
+NOTE: be also available at step j (j > i). But, it may be not true for the reverse way.
+
+Author(s)
+    Sungsoo Ha (sungsooha@bnl.gov)
+
+Created:
+    March 12, 2019
+"""
 import pyAdios as ADIOS
 
 # data
@@ -11,7 +28,8 @@ VAR_ARRAY = [
     ('counter_values', 'counter_event_count', 6),
     ('comm_timestamps', 'comm_count', 8)
 ]
-inputFile = './data/shortdemo/tau-metrics.bp'
+#inputFile = './data/shortdemo/tau-metrics.bp'
+inputFile = './data/longdemo/tau-metrics-nwchem.bp'
 outputFile = 'tau-metrics.bp'
 
 # reader (from bp file for test)
@@ -64,11 +82,11 @@ while status >= 0:
 
     # ------------------------------------------------------------------------
     # Read & Write attributes
-    # for att_name, att in reader.available_attributes().items():
-    #     if att_holder.get(att_name, None) is None:
-    #         writer.write_attribute(att_name, att.value())
-    #         att_holder[att_name] = att.value()
-    #         bWrite = True
+    for att_name, att in reader.available_attributes().items():
+        if att_holder.get(att_name, None) is None:
+            writer.write_attribute(att_name, att.value())
+            att_holder[att_name] = att.value()
+            bWrite = True
 
     if bWrite: writer.end_step()
     status = reader.advance()

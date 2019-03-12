@@ -53,10 +53,12 @@ class Parser(object):
         self.bpAttrib = None
         self.bpNumAttrib = None
 
-        # TAU information (?)
+        # TAU information
+        # NOTE: with unknonw function id or event id, it will return '__Unknown_function'
+        # NOTE: and '__Unknown_event', respectively.
         self.numFun = 0                    # the number of functions
-        self.funMap = defaultdict(int)     # function hash map
-        self.eventType = defaultdict(int)  # eventType hash map
+        self.funMap = defaultdict(lambda: '__Unknown_function')     # function hash map
+        self.eventType = defaultdict(lambda: '__Unknown_event')  # eventType hash map
 
         if self.parseMode == "Adios":
             self.ad = ADIOS.pyAdios(self.Method, self.Parameters)
@@ -71,8 +73,8 @@ class Parser(object):
         self.bpAttrib = self.ad.available_attributes()
         self.bpNumAttrib = len(self.bpAttrib)
 
-        self.funMap = defaultdict(int)     # function hash map
-        self.eventType = defaultdict(int)  # eventType hash map
+        self.funMap.clear()
+        self.eventType.clear()
         for attr_name, data in self.bpAttrib.items():
             is_func = attr_name.startswith('timer')
             is_event = attr_name.startswith('event_type')
@@ -103,16 +105,14 @@ class Parser(object):
     def getStream(self):
         """Get method for accessing Adios handle.
 
+        If it is streamming mode (e.g. SST), it needs to update unlike BP mode which
+        contains all information from the beginning.
+
         Returns:
             Reference to self.stream, which is essentially the return pyAdios object
         """
-        # if self.Method == "BP":
-        #     self.status = self.ad.advance()
-        # else:
-        #     raise ValueError("Unsupported method: %s" % self.Method)
         self.status = self.ad.advance()
         if self.Method in ['SST']:
-            print('update')
             self._update()
         self.log.info("Adios stream status: %s" % self.status)
         return self.ad
@@ -172,7 +172,6 @@ class Parser(object):
         data = self.ad.read_variable("counter_values", count=[ydim, 6])
         assert data is not None, "Frame has no `counter_values`!"
 
-        # INFO
         assert data.shape[0] > 0, "Counter data dimension is zero!"
         self.log.info("Frame has `counter_values: {}`".format(data.shape))
 
@@ -201,7 +200,6 @@ class Parser(object):
         data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
         assert data is not None, "Frame has no `comm_timestamps`!"
 
-        # INFO
         assert data.shape[0] > 0, "Communication data dimension is zero!"
         self.log.info("Frame has `comm_timestamps: {}`".format(data.shape))
 
@@ -231,13 +229,6 @@ class Parser(object):
             Reference to self.bpAttrib (dictionary) i.e. return value of Adios self.stream.attr.
         """
         return self.bpAttrib
-        # if self.Method == "BP":
-        #     self.log.debug("getBpAttrib(): \n" + str(self.bpAttrib))
-        #     return self.bpAttrib
-        # elif self.Method in ['SST']:
-        #     return self.ad.available_attributes()
-        # else:
-        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getBpNumAttrib(self):
         """
@@ -247,13 +238,6 @@ class Parser(object):
             Reference to self.bpNumAttrib (int) i.e. the number of attributes.
         """
         return self.bpNumAttrib
-        # if self.Method == "BP":
-        #     self.log.debug("getBpNumAttrib(): %s" % self.bpNumAttrib)
-        #     return self.bpNumAttrib
-        # elif self.Method in ['SST']:
-        #     return len(self.ad.available_attributes())
-        # else:
-        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getNumFun(self):
         """
@@ -263,13 +247,6 @@ class Parser(object):
             Reference to self.numFun (int) i.e. the number of different functions.
         """
         return self.numFun
-        # if self.Method == "BP":
-        #     self.log.debug("getNumFun(): %s" % self.numFun)
-        #     return self.numFun
-        # elif self.Method in ['SST']:
-        #     pass
-        # else:
-        #     raise ValueError("Unsupported adios method: %s" % self.Method)
 
     def getFunMap(self):
         """
@@ -281,11 +258,6 @@ class Parser(object):
             Reference to self.funMap (dictionary).
         """
         return self.funMap
-        # if self.Method == "BP":
-        #     self.log.debug("getFunMap(): \n" + str(self.funMap))
-        #     return self.funMap
-        # else:
-        #     raise NotImplementedError("getFunMap: not implemented yet for non-BP")
 
     def getEventType(self):
         """
@@ -297,11 +269,6 @@ class Parser(object):
             Reference to self.eventType (dictionary).
         """
         return self.eventType
-        # if self.Method == 'BP':
-        #     self.log.debug("getEventType(): \n" + str(self.eventType))
-        #     return self.eventType
-        # else:
-        #     raise NotImplementedError("getEventType: not implemented yet for non-BP")
 
     def adiosClose(self):
         """
@@ -318,61 +285,3 @@ class Parser(object):
         """
         self.log.info("Finalize Adios method: %s" % self.Method)
         self.ad.close()
-
-
-# if __name__ == '__main__':
-#     configFile = '../test/test.cfg'
-#     prs = Parser(configFile)
-#     ctrl = 0
-#     outct = 0
-#
-#     while ctrl >= 0:
-#
-#         # Info
-#         prs.log.info("\n\nFrame: " + str(outct))
-#         prs.getBpNumAttrib()
-#         prs.getBpAttrib()
-#         prs.getNumFun()
-#         prs.getFunMap()
-#         prs.getEventType()
-#
-#         # Stream function call data
-#         funStream = None
-#         try:
-#             prs.log.info("Accessing frame: " + str(outct) + " function call data...")
-#             funStream = prs.getFunData()
-#         except:
-#             prs.log.info("No function call data in frame: " + str(outct) + "...")
-#
-#         if funStream is not None:
-#             prs.log.info("Function stream contains {} events...".format(len(funStream)))
-#
-#         # Stream counter data
-#         countStream = None
-#         try:
-#             prs.log.info("Accessing frame: " + str(outct) + " counter data...")
-#             countStream = prs.getCountData()
-#         except:
-#             prs.log.info("No counter data in frame: " + str(outct) + "...")
-#
-#         if countStream is not None:
-#             prs.log.info("Counter stream contains {} events...".format(len(countStream)))
-#
-#         # Stream communication data
-#         commStream = None
-#         try:
-#             prs.log.info("Accessing frame: " + str(outct) + " communication data...")
-#             commStream = prs.getCommData()
-#         except:
-#             prs.log.info("No communication data in frame: " + str(outct) + "...")
-#
-#         if commStream is not None:
-#             prs.log.info("Communication stream contains {} events".format(len(commStream)))
-#
-#         outct += 1
-#         prs.getStream()
-#         ctrl = prs.getStatus()
-#
-#     prs.adiosClose()
-#     prs.adiosFinalize()
-#     prs.log.info("\nParser test done...\n")

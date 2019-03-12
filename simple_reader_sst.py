@@ -1,3 +1,14 @@
+"""
+simpler reader
+
+(will be deleted)
+
+Author(s)
+    Sungsoo Ha (sungsooha@bnl.gov)
+
+Created:
+    March 12, 2019
+"""
 import pyAdios as ADIOS
 
 reader = ADIOS.pyAdios('SST')

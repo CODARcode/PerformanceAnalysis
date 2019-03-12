@@ -9,6 +9,7 @@ class OpenMode(Enum):
     WRITE  = "w"
     APPEND = "a" # not yet supported
 
+
 class EngineType(Enum):
     BP3     = "BP"
     HDF5    = "HDF5"
@@ -24,6 +25,7 @@ class EngineType(Enum):
             return EngineType.SST
         else:
             raise Exception("Unsupported engine type: %s" % t)
+
 
 def get_npdtype(t:str):
     t = t.lower()
@@ -44,6 +46,7 @@ def get_npdtype(t:str):
     elif t == "string":                 return np.dtype(np.str)
     else:
         raise ValueError("Unknown data type: %s" % t)
+
 
 class pyVariable(object):
     def __init__(
@@ -81,6 +84,7 @@ class pyVariable(object):
             max=self.max
         ))
 
+
 class pyAttribute(object):
     def __init__(self, name, Elements:str='', Value:str='', Type:str=''):
         self.name = name
@@ -106,14 +110,12 @@ class pyAttribute(object):
         return self._value.copy()
 
 
-
 class pyAdios(object):
     """ pyAdios class
 
     Wrapper class for Adios 2.x
 
     """
-
     def __init__(self, method:str, parameters:str=None):
         # MPI
         # todo: what would be the correct way to handle MPI?
@@ -146,7 +148,6 @@ class pyAdios(object):
         Returns:
 
         """
-
         self.fh = adios2.open(filename, mode.value, self.comm, self.engine_type.value)
         self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:
@@ -172,7 +173,6 @@ class pyAdios(object):
             # note: in streaming mode releases the current_step
             # note: no effect in file based engines
             self.fh.end_step()
-
             self.stream = self.fh.__next__()
             status = self.current_step()
         except StopIteration:
@@ -282,35 +282,12 @@ class pyAdios(object):
         self.fh.write_attribute(att_name, data)
 
     def end_step(self):
+        """signal end_step(), mainly used for writers. for readers, see advance()"""
         self.fh.end_step()
 
     def close(self):
+        """close adios file handler"""
         self.stream = None
         if self.fh is not None:
             self.fh.close()
         self.fh = None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

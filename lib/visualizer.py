@@ -137,6 +137,7 @@ class Visualizer():
         }
         if eventType is not None:
             traceDict['value']['event_types'] = eventType
+
         if funMap is not None:
             traceDict['value']['functions'] = funMap
 
