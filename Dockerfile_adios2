@@ -1,0 +1,142 @@
+FROM ubuntu:16.04
+
+# Number of jobs when compiling
+ARG JOBS=16
+
+# create directory
+RUN mkdir -p /Downloads
+
+# ----------------------------------------------------------------------------
+# Install necessary ubuntu packages
+# ----------------------------------------------------------------------------
+RUN apt-get update
+RUN apt-get install -y apt-file
+RUN apt-file update
+
+RUN apt-get install -y build-essential wget git-core libtool libtool-bin autoconf subversion 
+RUN apt-get install -y gfortran 
+RUN apt-get install -y pkg-config
+# this one is to remove unused packages, but got an error message: 
+#   Unable to locate package autoremove
+#RUN apt-get install -y autoremove
+
+# download ADIOS VM
+RUN mkdir -p /Downloads/adiosvm
+RUN git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm
+
+# (optional) VIM setup
+RUN apt-get -y install vim
+RUN cp /Downloads/adiosvm/vimrc ~/.vimrc
+
+# ----------------------------------------------------------------------------
+# preparations to install ADIOS
+# ----------------------------------------------------------------------------
+
+# 1. Linux Packages ----------------------------------------------------------
+RUN apt-get install -y openmpi-common openmpi-bin libopenmpi-dev
+RUN apt-get install -y python-cheetah python-yaml
+
+# 2. Python/Numpy support ----------------------------------------------------
+RUN apt-get install -y python3 python3-dev
+RUN apt-get install -y python3-pip python3-tk
+RUN pip3 install numpy mpi4py matplotlib
+
+# 2. CMake -------------------------------------------------------------------
+WORKDIR /Downloads
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.13.4/cmake-3.13.4-Linux-x86_64.tar.gz
+RUN tar xvfz cmake-3.13.4-Linux-x86_64.tar.gz -C /opt
+ENV PATH=${PATH}:/opt/cmake-3.13.4-Linux-x86_64/bin
+
+# 3. Staging support ---------------------------------------------------------
+# a. libfabric is required by the SST staging engine -------------------------
+WORKDIR /Downloads
+RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.7.0/libfabric-1.7.0.tar.gz
+RUN tar xvfz libfabric-1.7.0.tar.gz
+WORKDIR /Downloads/libfabric-1.7.0
+RUN ./configure --disable-verbs --prefix=/opt/libfabric
+RUN make
+RUN make install
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+
+# b. ZeroMQ is required by the DataMan staging engine ------------------------
+RUN apt-get install -y libzmq5 libzmq3-dev
+
+# 4. Compression libraries (to demo the transform library) -------------------
+# a. zlib and bzip2 are installed as linux packages --------------------------
+RUN apt-get install -y bzip2 libbz2-dev zlib1g zlib1g-dev
+
+# b. SZ is provided in adiospackages/ ----------------------------------------
+WORKDIR /Downloads/adiosvm/adiospackages
+RUN tar zxf sz-1.4.13.0.tar.gz
+WORKDIR /Downloads/adiosvm/adiospackages/sz-1.4.13.0
+RUN ./configure --prefix=/opt/SZ --with-pic --disable-shared --disable-fortran --disable-maintainer-mode
+RUN make
+RUN make install
+
+# c. BLOSC is available on Github --------------------------------------------
+WORKDIR /Downloads
+RUN git clone https://github.com/Blosc/c-blosc.git
+RUN mkdir -p /Downloads/c-blosc/build
+WORKDIR /Downloads/c-blosc/build
+RUN cmake -DCMAKE_INSTALL_PREFIX=/opt/blosc ..
+RUN make
+RUN make install
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
+
+# 5. Parallel HDF5 support ---------------------------------------------------
+WORKDIR /Downloads/adiosvm/adiospackages
+RUN tar jxf hdf5-1.8.17.tar.bz2
+RUN mv hdf5-1.8.17 hdf5-1.8.17-parallel
+WORKDIR /Downloads/adiosvm/adiospackages/hdf5-1.8.17-parallel
+RUN ./configure --with-zlib=/usr --without-szlib --prefix=/opt/hdf5-parallel --enable-parallel --enable-fortran --with-pic CC=mpicc FC=mpif90
+RUN make -j$JOBS
+RUN make install
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/hdf5-parallel/lib
+
+# ----------------------------------------------------------------------------
+# ADIOS2 Installation
+# ----------------------------------------------------------------------------
+WORKDIR /Downloads
+RUN git clone https://github.com/ornladios/ADIOS2.git
+WORKDIR /Downloads/ADIOS2
+
+RUN mkdir -p /Downloads/ADIOS2/build
+WORKDIR /Downloads/ADIOS2/build
+
+RUN cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
+          -DADIOS2_USE_MPI:BOOL=ON \
+          -DADIOS2_USE_HDF5:BOOL=ON \
+          -DADIOS2_USE_ZeroMQ:BOOL=ON \
+          -DADIOS2_USE_Fortran:BOOL=ON \
+          -DADIOS2_USE_Python:BOOL=ON \
+          -DADIOS2_USE_SST:BOOL=ON \
+          -DADIOS2_USE_BZip2:BOOL=ON \
+          -DADIOS2_USE_ZFP:BOOL=OFF \
+          -DADIOS2_USE_DataMan:BOOL=ON \
+          -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+          -DLIBFABRIC_ROOT=/opt/libfabric \
+          -DHDF5_ROOT=/opt/hdf5-parallel \
+          -DSZ_ROOT=/opt/SZ \
+          -DADIOS2_BUILD_TESTING:BOOL=ON \
+          -DADIOS2_BUILD_EXAMPLES_EXPERIMENTAL:BOOL=OFF \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DMPIEXEC_MAX_NUMPROCS:STRING=$JOBS \
+          ..
+
+RUN make -j$JOBS
+
+# Work around limitation of mpiexec that requires a flag to be run as root
+RUN path=$(which mpiexec) && \
+    mv $path ${path}_real && \
+    echo "#!/bin/bash" > $path && \
+    echo ${path}_real' --allow-run-as-root $@' >> $path && \
+    more $path && \
+    chmod +x $path
+RUN ctest
+
+RUN make install
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV PATH=${PATH}:/opt/adios2/bin
+
+WORKDIR /
+
