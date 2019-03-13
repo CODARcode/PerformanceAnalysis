@@ -126,17 +126,18 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
 RUN make -j$JOBS
 
 # Work around limitation of mpiexec that requires a flag to be run as root
-RUN path=$(which mpiexec) && \
-    mv $path ${path}_real && \
-    echo "#!/bin/bash" > $path && \
-    echo ${path}_real' --allow-run-as-root $@' >> $path && \
-    more $path && \
-    chmod +x $path
-RUN ctest
+# needed if one wanted to conduct ctest
+#RUN path=$(which mpiexec) && \
+#    mv $path ${path}_real && \
+#    echo "#!/bin/bash" > $path && \
+#    echo ${path}_real' --allow-run-as-root $@' >> $path && \
+#    more $path && \
+#    chmod +x $path
+#RUN ctest
 
 RUN make install
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV PATH=${PATH}:/opt/adios2/bin
+ENV PYTHONPATH=${PYTHONPATH}:/opt/adios2/lib/python3.5/site-packages
 
 WORKDIR /
-
