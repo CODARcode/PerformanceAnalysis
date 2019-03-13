@@ -39,7 +39,7 @@ class Chimbuko(object):
         # Event: event handler
         self.event = Event()
         # Outlier: outlier detector
-        self.outlier = Outlier(self.config)
+        self.outlier = Outlier(self.config, self.log)
         # Visualizer: visualization handler
         self.maxDepth = int(self.config['Visualizer']['MaxFunDepth'])
         self.visualizer = Visualizer(self.config)
@@ -81,7 +81,7 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self.log.info("Frame-{} has no function data...".format(self.parser.getStatus()))
+            self.log.info("Frame has no function data...")
             return
         self.event.initFunData(len(funcData))
         for data in funcData:
@@ -99,7 +99,7 @@ class Chimbuko(object):
         try:
             countData = self.parser.getCountData()
         except AssertionError:
-            self.log.info("Frame-{} has no counter data...".format(self.parser.getStatus()))
+            self.log.info("Frame has no counter data...")
             return
 
         self.event.initCountData(len(countData))
@@ -119,7 +119,7 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self.log.info("Frame-{} has no communication data...".format(self.parser.getStatus()))
+            self.log.info("Frame has no communication data...")
             return
 
         self.event.initCommData(len(commData))
@@ -154,6 +154,8 @@ class Chimbuko(object):
             outliers_id = data[outliers==-1, -1]
 
             outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            #print('outliers', funid, len(outliers_id))
 
             maxFuncDepth = self.event.getMaxFunDepth()
 
