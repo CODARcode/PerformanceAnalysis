@@ -27,7 +27,7 @@ class Parser(object):
 
     In addition the class contains methods for extracting specific events from the Adios stream.
     """
-    def __init__(self, config, log):
+    def __init__(self, config, log=None):
         """
         The parser has two main modes:
                 BP mode: offline/batch processing
@@ -66,7 +66,7 @@ class Parser(object):
             self.status = self.ad.current_step()
             self._update()
         else:
-            self.log.error("Unsupported parse mode: %s" % self.parseMode)
+            if self.log is not None: self.log.error("Unsupported parse mode: %s" % self.parseMode)
             raise ValueError("Unsupported parse mode: %s" % self.parseMode)
 
     def _update(self):
@@ -86,10 +86,10 @@ class Parser(object):
                 else:
                     self.eventType[key] = val
         self.numFun = len(self.funMap)
-        self.log.info("Number of attributes: %s" % self.bpNumAttrib)
-        self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
-        self.log.debug("Number of functions: %s" % self.numFun)
-        self.log.debug("Function map: \n" + str(self.funMap))
+        if self.log is not None: self.log.info("Number of attributes: %s" % self.bpNumAttrib)
+        if self.log is not None: self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
+        if self.log is not None: self.log.debug("Number of functions: %s" % self.numFun)
+        if self.log is not None: self.log.debug("Function map: \n" + str(self.funMap))
 
     def getParseMethod(self):
         """Get method for accessing parse method.
@@ -114,7 +114,7 @@ class Parser(object):
         self.status = self.ad.advance()
         if self.Method in ['SST']:
             self._update()
-        self.log.info("Adios stream status: %s" % self.status)
+        if self.log is not None: self.log.info("Adios stream status: %s" % self.status)
         return self.ad
 
     def getFunData(self):
@@ -145,7 +145,7 @@ class Parser(object):
         print('getFunData: data: ', data.shape)
 
         assert data.shape[0] > 0, "Function call data dimension is zero!"
-        self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
+        if self.log is not None: self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
 
         # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
         # todo: does this return all data in all steps? what is numSteps?
@@ -173,7 +173,7 @@ class Parser(object):
         assert data is not None, "Frame has no `counter_values`!"
 
         assert data.shape[0] > 0, "Counter data dimension is zero!"
-        self.log.info("Frame has `counter_values: {}`".format(data.shape))
+        if self.log is not None: self.log.info("Frame has `counter_values: {}`".format(data.shape))
 
         # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
         # todo: does this return all data in all steps? what is numSteps?
@@ -201,7 +201,7 @@ class Parser(object):
         assert data is not None, "Frame has no `comm_timestamps`!"
 
         assert data.shape[0] > 0, "Communication data dimension is zero!"
-        self.log.info("Frame has `comm_timestamps: {}`".format(data.shape))
+        if self.log is not None: self.log.info("Frame has `comm_timestamps: {}`".format(data.shape))
 
         # fixme: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
         # fixme: does this return all data in all steps? what is numSteps?
@@ -274,7 +274,7 @@ class Parser(object):
         """
         Close Adios stream
         """
-        self.log.info("Closing Adios stream...")
+        if self.log is not None: self.log.info("Closing Adios stream...")
         self.ad.close()
 
     def adiosFinalize(self):
@@ -283,5 +283,5 @@ class Parser(object):
 
         Currently, this has same effect as adiosClose
         """
-        self.log.info("Finalize Adios method: %s" % self.Method)
+        if self.log is not None: self.log.info("Finalize Adios method: %s" % self.Method)
         self.ad.close()

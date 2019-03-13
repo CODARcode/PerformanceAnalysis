@@ -12,3 +12,7 @@ export PYTHONPATH=${PYTHONPATH}:../lib
 
 python3 simple_writer_sst.py > ../untracked/results/writer.log &
 python3 chimbuko.py chimbuko.cfg
+
+# kill writer
+# to check if writer is correctly killed: >> ps -fA | grep python
+# pkill -9 -f simple_writer_sst.py

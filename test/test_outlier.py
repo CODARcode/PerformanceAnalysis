@@ -1,5 +1,6 @@
 import sys
 import os
+import configparser
 import pickle
 import matplotlib
 matplotlib.use('Agg')
@@ -13,7 +14,7 @@ class TestCompOutlier(unittest.TestCase):
     """Test outlier computation.
     """
     
-    def setUp(selfs):
+    def setUp(self):
         """Setup scaled function execution time data (x-axis (timestamp), y-axis (function execution time)) 
         """
         # Setup data that has outliers
@@ -53,8 +54,11 @@ class TestCompOutlier(unittest.TestCase):
         pfile = "passFunTime.pickle"
         with open(pfile, 'rb') as handle:
             passData = pickle.load(handle)
+
+        config = configparser.ConfigParser(interpolation=None)
+        config.read("test.cfg")
         
-        passOtl = outlier.Outlier("test.cfg")
+        passOtl = outlier.Outlier(config)
         funId = 0
         passOtl.compOutlier(passData, funId)
         passFunOutl = np.array(passOtl.getOutlier())       
@@ -67,7 +71,7 @@ class TestCompOutlier(unittest.TestCase):
         with open(pfile, 'rb') as handle:
             failData = pickle.load(handle)
         
-        failOtl = outlier.Outlier("test.cfg")
+        failOtl = outlier.Outlier(config)
         funId = 0
         failOtl.compOutlier(failData, funId)
         failFunOutl = np.array(failOtl.getOutlier())     
