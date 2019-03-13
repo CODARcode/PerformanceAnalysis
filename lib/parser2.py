@@ -137,12 +137,9 @@ class Parser(object):
 
         if isinstance(ydim, np.ndarray):
             ydim = ydim[0]
-        print('getFunData: ydim: ', ydim)
 
         data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
         assert data is not None, "Frame has no `event_timestamps`!"
-
-        print('getFunData: data: ', data.shape)
 
         assert data.shape[0] > 0, "Function call data dimension is zero!"
         if self.log is not None: self.log.info("Frame has `event_timestamps: {}`".format(data.shape))

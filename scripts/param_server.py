@@ -46,4 +46,14 @@ def index():
     return jsonify({'message': 'This is a parameter server.'})
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        try:
+            log = open(sys.argv[1], 'w')
+        except IOError:
+            log = None
+
+        if log is not None:
+            sys.stdout = sys.stderr = log
+
     app.run()

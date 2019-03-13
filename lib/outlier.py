@@ -14,10 +14,30 @@ Modified:
     
 """
 import numpy as np
-from runstats import Statistics
+import requests as req
 from sklearn.neighbors import LocalOutlierFactor
+from collections import defaultdict
+from algorithm.runstats import RunStats
 
-class Outlier():
+def check_ps(url, log=None):
+    try:
+        r = req.get(url)
+        r.raise_for_status()
+    except req.exceptions.HTTPError as e:
+        if log is not None: log.debug("Http Error: ", e)
+        return False
+    except req.exceptions.ConnectionError as e:
+        if log is not None: log.debug("Connection Error: ", e)
+        return False
+    except req.exceptions.Timeout as e:
+        if log is not None: log.debug("Timeout Error: ", e)
+        return False
+    except req.exceptions.RequestException as e:
+        if log is not None: log.debug("OOps: something else: ", e)
+        return False
+    return True
+
+class Outlier(object):
     """
     : Outlier class computes outliers by assigning scores to each data point.
 
@@ -31,7 +51,7 @@ class Outlier():
       Streaming Standard Deviation (Sstd).
     """
     
-    def __init__(self, config):
+    def __init__(self, config, log=None):
         """
         This is the constructor for the Outlier class.
         Using the provided configuration file it determines which algorithm to use
@@ -40,6 +60,15 @@ class Outlier():
         Args:
             configFile (string): The configuration files's name.
         """
+        self.log = log
+
+        # check parameter server
+        self.ps_url = config['Outlier']['PSUrl']
+        self.use_ps = check_ps(self.ps_url, self.log)
+        if self.log is not None:
+            self.log.info("Use parameter server: {:s} @ {:s}".format(
+                'YES' if self.use_ps else 'NO', self.ps_url))
+
         # Outlier detection algorithm
         self.algorithm = config['Outlier']['Algorithm']
         
@@ -60,7 +89,8 @@ class Outlier():
                   
         # Streaming standard deviation     
         if self.algorithm == 'Sstd':
-            self.stats = dict()
+            #self.stats = dict()
+            self.stats = defaultdict(lambda: RunStats())
             self.sigma = int(config['Sstd']['Sigma'])
             self.numPoints = 0
         
@@ -103,21 +133,27 @@ class Outlier():
         self.outl = self.clf.fit_predict(data)
         self.score = -1.0 * self.clf.negative_outlier_factor_
 
-    def sstdComp(self, data, id):
+    def sstdComp(self, data, funid):
         """ Run Streaming Standard Deviation algorithm on the data. 
         
         Args:
             data (numpy array): Holding function execution time table as received from Event class.
             id (int): Specifying the function id which indicates which function the data belongs to.
         """
+        funid = int(funid)
         self.outl, self.score = [], []
-        if self.stats.get(id, None) is None:
-            self.stats[id] = Statistics()
 
-        for d in data: self.stats[id].push(d)
+        for d in data:
+            self.stats[funid].add(d)
 
-        if self.stats[id].get_state()[0] > 1.0:
-            mean, std = self.stats[id].mean(), self.stats[id].stddev()
+        if self.use_ps:
+            resp = req.post(self.ps_url + '/update',
+                            json={'id': funid, 'stat': self.stats[funid].stat()})
+            resp = resp.json()
+            self.stats[funid].reset(*resp['stat'])
+
+        if self.stats[funid].stat()[0] > 1.0:
+            mean, std = self.stats[funid].mean(), self.stats[funid].std()
             threshold = mean + self.sigma*std
             for d in data:
                 self.outl.append(-1 if d > threshold else 1)
