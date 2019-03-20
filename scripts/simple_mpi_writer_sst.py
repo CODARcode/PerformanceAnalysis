@@ -19,6 +19,8 @@ Last modified:
     March 20, 2019   support MPI
 """
 import pyAdios as ADIOS
+from mpi4py import MPI
+import numpy as np
 
 # data
 VAR_SCALAR = [
@@ -31,27 +33,35 @@ VAR_ARRAY = [
     ('counter_values', 'counter_event_count', 6),
     ('comm_timestamps', 'comm_count', 8)
 ]
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
 inputFile = '../data/shortdemo/tau-metrics.bp'
-#inputFile = './data/longdemo/tau-metrics-nwchem.bp'
-outputFile = 'tau-metrics.bp'
+#inputFile = '../data/longdemo/tau-metrics-nwchem.bp'
+outputFile = 'tau-metrics-{:d}.bp'.format(rank)
 
 # reader (from bp file for test)
 reader = ADIOS.pyAdios('BP')
-reader.open(inputFile, ADIOS.OpenMode.READ)
+reader.open(inputFile, ADIOS.OpenMode.READ, MPI.COMM_SELF)
 status = reader.current_step()
 
 # writer (SST)
 writer = ADIOS.pyAdios('SST', "QueueLimit=1")
-writer.open(outputFile, ADIOS.OpenMode.WRITE)
+writer.open(outputFile, ADIOS.OpenMode.WRITE, MPI.COMM_SELF)
 
 # attribute holder
 att_holder = dict()
 
 # Write data one by one from the BP file
 while status >= 0:
+    print("[WRITER][{:d}]Frame-{:d}".format(rank, status))
     bWrite = False
+
     # ------------------------------------------------------------------------
     # Read variable
+    #print('\n\nREAD...')
     scalar_data = []
     for name in VAR_SCALAR:
         scalar_data.append(reader.read_variable(name))
@@ -61,12 +71,17 @@ while status >= 0:
         ydim = scalar_data[VAR_SCALAR.index(ydim_name)]
         if ydim is not None:
             array_data.append(reader.read_variable(name, count=[ydim[0], xdim]))
+
+            if name == 'event_timestamps':
+                print('[W][{:d}][{:d}] event_timestamps: {}'.format(
+                    rank, status, array_data[-1].shape))
         else:
             array_data.append(None)
 
+
     # ------------------------------------------------------------------------
     # Write variable
-    # print('\n\nWRITE...')
+    #print('\n\nWRITE...')
     for name, data in zip(VAR_SCALAR, scalar_data):
         if data is not None:
             writer.write_variable(name, data)
@@ -85,7 +100,9 @@ while status >= 0:
             att_holder[att_name] = att.value()
             bWrite = True
 
-    # if bWrite: writer.end_step()
+    if bWrite:
+        writer.write_variable('frame', np.array([status]))
+        writer.end_step()
     status = reader.advance()
 
     # if status > 1:

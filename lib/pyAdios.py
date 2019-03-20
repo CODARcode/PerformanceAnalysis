@@ -118,10 +118,12 @@ class pyAdios(object):
     """
     def __init__(self, method:str, parameters:str=None):
         # MPI
-        # todo: what would be the correct way to handle MPI?
-        self.comm = MPI.COMM_WORLD
-        self.rank = self.comm.Get_rank()
-        self.size = self.comm.Get_size()
+        # self.comm = MPI.COMM_WORLD
+        # self.rank = self.comm.Get_rank()
+        # self.size = self.comm.Get_size()
+        #self.comm = MPI.COMM_WORLD
+        #self.rank = 0
+
 
         # adios engine type
         self.engine_type = EngineType.get_type(method)
@@ -137,18 +139,18 @@ class pyAdios(object):
         # adios file stream (only available for reader)
         self.stream = None
 
-    def open(self, filename:str, mode:OpenMode=OpenMode.READ):
+    def open(self, filename:str, mode:OpenMode=OpenMode.READ, comm=MPI.COMM_WORLD):
         """
         Open a file with adios2
 
         Args:
             filename: (str), filename with full path
             mode: (OpenMode), open mode
-
+            comm: mpi context
         Returns:
 
         """
-        self.fh = adios2.open(filename, mode.value, self.comm, self.engine_type.value)
+        self.fh = adios2.open(filename, mode.value, comm, self.engine_type.value)
         self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:
             self.stream = self.fh.__next__()
@@ -256,7 +258,7 @@ class pyAdios(object):
         #return self.stream.read(var_name, start, count, step_start, step_count)
 
     def write_variable(self, var_name:str, data:np.ndarray,
-                       start:list=None, count:list=None, end_step:bool=False):
+                       start:list=None, count:[list, tuple]=None, end_step:bool=False):
         """
         Write a variable
 
