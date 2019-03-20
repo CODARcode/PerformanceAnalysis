@@ -32,18 +32,19 @@ class  Event(object):
     """
 
 
-    def __init__(self, funMap:dict=None, eventType:list=None):
+    def __init__(self, log=None):
         """This is the constructor for the Event class."""
+        self.log = log
 
         # a dictionary of function ids;
         #   - key: function id (int)
         #   - value function name (string)
-        self.funMap = funMap
+        self.funMap = None
 
         # Event type id
         self.entry = None  # id (int) of `ENTRY` event
         self.exit = None   # id (int) of `EXIT` event
-        self.setEventType(eventType)
+        #self.setEventType(eventType)
 
         # A nested dictionary of function calls;
         #   [program id (int)]
@@ -64,7 +65,7 @@ class  Event(object):
         # - key: function id
         # - value: maximum depth
         self.maxFunDepth = defaultdict(int)
-        # todo: what this is and how this is used?
+        # stack size
         self.stackSize = 0
 
         # ndarray to store counter values, (n_events x 13)
@@ -98,7 +99,7 @@ class  Event(object):
             self.entry = eventType.index('ENTRY')
             self.exit = eventType.index('EXIT')
         except ValueError:
-            print("ENTRY or EXIT event not present...")
+            self.log.info("ENTRY or EXIT event not present...")
 
     def initFunData(self, numEvent):
         """Initialize funData to store function calls in format required by visualization.
@@ -107,7 +108,7 @@ class  Event(object):
             numEvent (int): number of function calls that will be required to store
         """
         # todo: replace number with constant variable
-        self.funData = np.full((numEvent, 13), np.nan)
+        self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def setFunMap(self, funMap):
         """Sets funMap variable.
@@ -216,7 +217,7 @@ class  Event(object):
         Args:
             numEvent (int): number of counter events that will be required to store
         """
-        self.countData = np.full((numEvent, 13), np.nan)
+        self.countData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def addCount(self, event):
         """Add counter data and store in format required by visualization.
@@ -249,21 +250,21 @@ class  Event(object):
         Args:
             numEvent (int): number of communication events that will be required to store
         """
-        self.commData = np.full((numEvent, 13), np.nan)
+        self.commData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def addComm(self, event):
         """Add communication data and store in format required by visualization.
-        todo: check index
         Args:
             event (numpy array of int-s): [
                 0: program,
                 1: mpi rank,
                 2: thread,
-                3: tag,
-                4: partner,
-                5: num bytes,
-                6: timestamp,
-                7: event id
+                3: ???,
+                4: tag id,
+                5: partner id,
+                6: num bytes,
+                7: timestamp
+                8: evnet id
             ].
 
         Returns:
@@ -271,7 +272,7 @@ class  Event(object):
         """
         self.commData[self.coidx, :4] = event[:4]
         self.commData[self.coidx, 8:11] = event[4:7]
-        self.commData[self.coidx, 11:] = event[7:9]
+        self.commData[self.coidx, 11:] = event[7:]
         self.coidx += 1
         return True
 

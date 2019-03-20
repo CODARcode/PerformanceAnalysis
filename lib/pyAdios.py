@@ -139,7 +139,7 @@ class pyAdios(object):
         # adios file stream (only available for reader)
         self.stream = None
 
-    def open(self, filename:str, mode:OpenMode=OpenMode.READ, comm=MPI.COMM_WORLD):
+    def open(self, filename:str, mode:OpenMode=OpenMode.READ, comm=MPI.COMM_SELF):
         """
         Open a file with adios2
 
@@ -150,6 +150,8 @@ class pyAdios(object):
         Returns:
 
         """
+        if comm is None:
+            comm = MPI.COMM_SELF
         self.fh = adios2.open(filename, mode.value, comm, self.engine_type.value)
         self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:
