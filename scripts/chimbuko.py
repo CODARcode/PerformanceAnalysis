@@ -34,7 +34,8 @@ class Chimbuko(object):
             filename=self.config['Debug']['LogFile']
         )
         self.log = logging.getLogger('CHIMBUKO')
-        self.log.addHandler(logging.StreamHandler(sys.stdout))
+        # to see logging on the terminal, uncomment below (for develop purpose)
+        #self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -156,7 +157,7 @@ class Chimbuko(object):
         funOfInt = []
         for funid, data in functime.items():
             data = np.array(data)
-            n_data = len(data)
+            n_data = len(data) # the number of function calls
 
             self.outlier.compOutlier(data, funid)
             outliers = self.outlier.getOutlier()

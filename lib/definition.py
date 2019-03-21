@@ -70,7 +70,7 @@ COM_IDX_TIME = 7
 COM_IDX_EVENT = 8
 
 # ----------------------------------------------------------------------------
-# vis trace event index scheme
+# vis trace event index scheme (funData, countData, commData in event.py)
 #   event:  (ndarray[int])
 #       -  0: program id
 #       -  1: mpi rank id

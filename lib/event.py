@@ -107,7 +107,6 @@ class  Event(object):
         Args:
             numEvent (int): number of function calls that will be required to store
         """
-        # todo: replace number with constant variable
         self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def setFunMap(self, funMap):
@@ -186,7 +185,8 @@ class  Event(object):
 
             fid = event[FUN_IDX_FUNC]
             self.maxFunDepth[fid] = max(
-                self.maxFunDepth.get(fid, 0), len(self.funStack[pid][rid][tid])
+                self.maxFunDepth.get(fid, 0),
+                len(self.funStack[pid][rid][tid])
             )
 
             # NOTE I think the first if condition can be removed since
