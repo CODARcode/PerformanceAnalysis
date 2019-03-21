@@ -9,14 +9,8 @@ Created:
     March, 2019
 
 """
-import os
 import numpy as np
-# PYTHONPATH coudl be set either /lib or /PerformanceAnalysis
-try:
-    import pyAdios as ADIOS
-except ImportError:
-    import lib.pyAdios as ADIOS
-
+import pyAdios as ADIOS
 from collections import defaultdict
 
 
@@ -102,6 +96,7 @@ class Parser(object):
         if self.log is not None: self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
         if self.log is not None: self.log.debug("Number of functions: %s" % self.numFun)
         if self.log is not None: self.log.debug("Function map: \n" + str(self.funMap))
+        if self.log is not None: self.log.debug("Event type: \n" + str(self.eventType))
 
     def getParseMethod(self):
         """Get method for accessing parse method.

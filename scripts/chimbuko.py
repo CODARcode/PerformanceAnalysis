@@ -80,12 +80,12 @@ class Chimbuko(object):
         if self.parser.Method == 'BP':
             # reset visualization server
             self.visualizer.sendReset()
-            self.visualizer.sendEventType(list(self.parser.eventType.values()), 0)
+            self.visualizer.sendEventType(list(self.parser.getEventType().values()), 0)
             self.visualizer.sendFunMap(self.parser.getFunMap(), 0)
 
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
-            self.event.setEventType(list(self.parser.eventType.values()))
+            self.event.setEventType(list(self.parser.getEventType().values()))
         self.event.clearFunTime()
         self.event.clearFunData()
         self.event.clearCountData()
