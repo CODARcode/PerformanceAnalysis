@@ -35,7 +35,7 @@ class Chimbuko(object):
         )
         self.log = logging.getLogger('CHIMBUKO')
         # to see logging on the terminal, uncomment below (for develop purpose)
-        #self.log.addHandler(logging.StreamHandler(sys.stdout))
+        self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -253,6 +253,9 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+
+    if size == 1:
+        rank = -1
 
     #configFile = './test/test.cfg' #sys.argv[1]
     configFile = sys.argv[1]

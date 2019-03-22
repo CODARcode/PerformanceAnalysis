@@ -50,8 +50,11 @@ att_holder = dict()
 # Write data one by one from the BP file
 while status >= 0:
     bWrite = False
+
+    print("Frame: ", status)
     # ------------------------------------------------------------------------
     # Read variable
+    print("Read frame ....")
     scalar_data = []
     for name in VAR_SCALAR:
         scalar_data.append(reader.read_variable(name))
@@ -66,7 +69,7 @@ while status >= 0:
 
     # ------------------------------------------------------------------------
     # Write variable
-    # print('\n\nWRITE...')
+    print("Write frame ...")
     for name, data in zip(VAR_SCALAR, scalar_data):
         if data is not None:
             writer.write_variable(name, data)
@@ -85,12 +88,14 @@ while status >= 0:
             att_holder[att_name] = att.value()
             bWrite = True
 
-    # if bWrite: writer.end_step()
+    if bWrite:
+        writer.end_step()
     status = reader.advance()
 
     # if status > 1:
     #     break
 
 # Finalize
+print("Finalize")
 reader.close()
 writer.close()
