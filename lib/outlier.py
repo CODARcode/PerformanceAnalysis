@@ -159,7 +159,7 @@ class Outlier(object):
                 self.outl.append(-1 if d > threshold else 1)
                 self.score.append(abs(d - mean))
 
-    def compOutlier(self, data, id):
+    def compOutlier_v1(self, data, funid):
         """
         Generic function call to compute outliers in function execution time data
         for a specific function (specified by id). Depending on the configuration file
@@ -173,7 +173,7 @@ class Outlier(object):
             id (int): Specifying the function id which indicates which function the data belongs to.
         """
         if self.algorithm == 'Sstd':
-            self.sstdComp(data[:,5], id)
+            self.sstdComp(data[:,5], funid)
 
         elif self.algorithm == 'Lof':
             self.lofComp(data[:,4:6])

@@ -70,6 +70,9 @@ COM_IDX_TIME = 7
 COM_IDX_EVENT = 8
 
 # ----------------------------------------------------------------------------
+# for visualization
+# - version: 'v1'
+#
 # vis trace event index scheme (funData, countData, commData in event.py)
 #   event:  (ndarray[int])
 #       -  0: program id
@@ -87,3 +90,52 @@ COM_IDX_EVENT = 8
 #       - 12: event id
 # ----------------------------------------------------------------------------
 VIS_DATA_LEN = 13
+
+# ----------------------------------------------------------------------------
+# for visualization
+# - version: 'v2'
+# ----------------------------------------------------------------------------
+class ExecData(object):
+    def __init__(self, _id):
+        self._id = _id
+
+        self.funName = '__Unknown_function' # function name
+        self.pid = 0 # program index
+        self.tid = 0 # thread index
+        self.rid = 0 # rank index
+        self.fid = 0 # function index
+
+        self.label = 0 # anomaly label (1 or -1)
+        self.entry = 0 # entry timestamp
+        self.exit  = 0 # exit timestamp
+        self.runtime = 0 # execution time (= exit - entry)
+
+        self.children = []
+        self.parent = -1
+
+        self.message = []
+
+    def get_id(self):
+        return self._id
+
+    def set_parent(self, _id):
+        self.parent = _id
+
+    def add_child(self, _id):
+        self.children.append(_id)
+
+    def update_entry(self, fname, pid, rid, tid, fid, entry):
+        self.funName = fname
+        self.pid = pid
+        self.rid = rid
+        self.tid = tid
+        self.fid = fid
+        self.entry = entry
+
+    def update_exit(self, fid, _exit):
+        if self.fid != fid or self.entry > _exit: return False
+        self.exit = _exit
+        self.runtime = _exit - self.entry
+        return True
+
+

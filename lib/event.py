@@ -36,6 +36,7 @@ class  Event(object):
         """This is the constructor for the Event class."""
         self.log = log
 
+
         # a dictionary of function ids;
         #   - key: function id (int)
         #   - value function name (string)
@@ -46,27 +47,37 @@ class  Event(object):
         self.exit = None   # id (int) of `EXIT` event
         #self.setEventType(eventType)
 
+        # ---------------------------------------------------------------------
+        # for function calls (event_timestamps)
+        # ---------------------------------------------------------------------
         # A nested dictionary of function calls;
         #   [program id (int)]
         #           |----- [mpi rank id (int)]
         #                           |----- [thread id (int)] : deque()
         self.funStack = {}
-        # ndarray to store function calls (n_events x 13)
-        # - a vector length of 13 contains function event data (length of 7) + additional info
-        self.funData = None
+        self.stackSize = 0 # stack size
+
         # function index
         self.fidx = 0
+
+        # ndarray to store function calls (n_events x 13)
+        # see definition.py for details
+        # - this will be deprecated in the future
+        self.funData = None
+
         # dictionary to store function execution time information
         # - key: function id
-        # - value: a list of list, [PID, RID, TID, FID, start time, execution time, event ID]
-        self.funtime = {}
+        # - value: a list of list, (old)
+        #   [PID, RID, TID, FID, start time, execution time, event ID]
+        # - value: a list of exec data (dict)
+        #self.funtime = {}
+        self.funtime = defaultdict(list)
+
 
         # maximum function depth (dict)
         # - key: function id
         # - value: maximum depth
         self.maxFunDepth = defaultdict(int)
-        # stack size
-        self.stackSize = 0
 
         # ndarray to store counter values, (n_events x 13)
         # - a vector length of 13 contains count event data (length of 7) + additional info
@@ -101,23 +112,28 @@ class  Event(object):
         except ValueError:
             self.log.info("ENTRY or EXIT event not present...")
 
-    def initFunData(self, numEvent):
-        """Initialize funData to store function calls in format required by visualization.
-
-        Args:
-            numEvent (int): number of function calls that will be required to store
-        """
-        self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
-
     def setFunMap(self, funMap):
         """Sets funMap variable.
-        
+
         Args:
             funMap (dictionary):
                 key: (int) function id
                 value: (string) function name
         """
         self.funMap = funMap
+
+    def initFunData(self, numEvent):
+        """
+        @ will be deprecated.
+
+        Initialize funData to store function calls in format
+        required by visualization.
+
+        Args:
+            numEvent (int):
+                number of function calls that will be required to store
+        """
+        self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def createCallStack(self, p, r, t): 
         """Creates a stack for each p,r,t combination.
@@ -139,7 +155,7 @@ class  Event(object):
         if self.funStack[p][r].get(t, None) is None:
             self.funStack[p][r][t] = deque()
 
-    def addFun(self, event): 
+    def addFun_v1(self, event):
         """Adds function call to call stack
         Args:
             event:  (ndarray[int])
@@ -150,9 +166,7 @@ class  Event(object):
                 4: function id
                 5: timestamp
                 6: event id
-
                 obtained from the adios module's "event_timestamps" variable
-
         Returns: (bool)
             True:  the event was successfully added to the call stack without any violations including
                 - timestamp: i.e. exit event's timestamp > entry event's timestamp
@@ -201,6 +215,97 @@ class  Event(object):
                     prev[FUN_IDX_EVENT]                    # event id
                 ]
             )
+
+            #todo: [VIS]
+            #self.funList.append(pevent)
+            #self.funList.append(event)
+            return True
+        # Event is not an exit or entry event
+        return True
+
+    def addFun_v2(self, event):
+        """Adds function call to call stack
+        Args:
+            event:  (ndarray[int])
+                0: program id
+                1: mpi rank id
+                2: thread id
+                3: (MUST) entry or exit id
+                4: function id (called timer id in sos_flow)
+                5: timestamp
+                6: event id
+
+                obtained from the adios module's "event_timestamps" variable
+
+        Returns: (bool)
+            True:  the event was successfully added to the call stack without any violations including
+                - timestamp: i.e. exit event's timestamp > entry event's timestamp
+            False: otherwise.
+        """
+        # Make sure stack corresponding to (program, mpi rank, thread) is created
+        pid, rid, tid, eid, fid, ts, event_id = event
+        fname = self.funMap[fid]
+        self.createCallStack(pid, rid, tid)
+
+        if eid not in [self.entry, self.exit]:
+            return True
+
+
+        if eid == self.entry:
+            # If entry event, add the event to call stack
+            execData = ExecData(event_id)
+            execData.update_entry(fname, pid, rid, tid, fid, ts)
+
+            try:
+                p_execData = self.funStack[pid][rid][tid][-1]
+            except IndexError:
+                p_execData = None
+            if p_execData is not None:
+                execData.set_parent(p_execData.get_id())
+                p_execData.add_child(execData.get_id())
+
+            self.funStack[pid][rid][tid].append(execData)
+
+            #self.funData[self.fidx, :5] = event[:5]
+            #self.funData[self.fidx, 11:] = event[5:]
+            #self.fidx += 1
+            return True
+
+        if eid == self.exit:
+            # If exit event, remove corresponding entry event from call stack
+            execData = self.funStack[pid][rid][tid].pop()
+
+            # check call stack violation
+            if not execData.update_exit(fid, ts):
+                return False
+            # if prev[FUN_IDX_FUNC] != event[FUN_IDX_FUNC] or \
+            #     prev[FUN_IDX_TIME] > event[FUN_IDX_TIME]:
+            #     return False
+
+            #self.funData[self.fidx,:5] = event[:5]
+            #self.funData[self.fidx,11:] = event[5:]
+            #self.fidx += 1
+
+            #fid = event[FUN_IDX_FUNC]
+            self.maxFunDepth[fid] = max(
+                self.maxFunDepth.get(fid, 0),
+                len(self.funStack[pid][rid][tid])
+            )
+
+            # NOTE I think the first if condition can be removed since
+            # NOTE we're computing anomalies for all functions
+            #pfid = prev[FUN_IDX_FUNC]
+            self.funtime[fid].append(execData)
+            # if self.funtime.get(fid, None) is None:
+            #     self.funtime[fid] = []
+            # self.funtime[pfid].append(
+            #     [
+            #         *event[:3], event[FUN_IDX_FUNC],       # PID, RID, TID, FID
+            #         prev[FUN_IDX_TIME],                    # start time
+            #         event[FUN_IDX_TIME] - prev[FUN_IDX_TIME],  # execution time
+            #         prev[FUN_IDX_EVENT]                    # event id
+            #     ]
+            # )
 
             #todo: [VIS]
             #self.funList.append(pevent)

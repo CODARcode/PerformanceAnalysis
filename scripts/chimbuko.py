@@ -65,6 +65,10 @@ class Chimbuko(object):
         # anomaly function
         self.anomFun = defaultdict(int)
 
+        # FIXME: to fix the index bug from sos_flow
+        self.fix_index = 0
+        self.ver = 'v1'
+
     def _log(self, msg:str, type='info'):
         msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
         if type == 'info':
@@ -86,24 +90,54 @@ class Chimbuko(object):
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
             self.event.setEventType(list(self.parser.getEventType().values()))
+            self.event.setFunMap(self.parser.getFunMap())
         self.event.clearFunTime()
         self.event.clearFunData()
         self.event.clearCountData()
         self.event.clearCommData()
 
-    def _process_func_data(self):
+    def _process_func_data_v1(self):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
             self._log("Frame has no function data...")
             return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        funcData[:, FUN_IDX_P] -= self.fix_index
+        funcData[:, FUN_IDX_EE] -= self.fix_index
+        funcData[:, FUN_IDX_FUNC] -= self.fix_index
+
+        # Can I assume that event_timestamps data is always sorted in the order
+        # of function call time
         self.event.initFunData(len(funcData))
         for data in funcData:
-            if not self.event.addFun(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addFun_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nCall stack violation at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id), 'error')
+                self._log("\n ***** Call stack violation! ***** \n", 'error')
+                break
+            self.event_id += 1
+            self.func_counter[data[FUN_IDX_FUNC]] += 1
+
+    def _process_func_data_v2(self):
+        try:
+            funcData = self.parser.getFunData()
+        except AssertionError:
+            self._log("Frame has no function data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        funcData[:, FUN_IDX_P] -= self.fix_index
+        funcData[:, FUN_IDX_EE] -= self.fix_index
+        funcData[:, FUN_IDX_FUNC] -= self.fix_index
+
+        # Can I assume that event_timestamps data is always sorted in the order
+        # of function call time
+        #self.event.initFunData(len(funcData))
+        for data in funcData:
+            if not self.event.addFun_v2(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self._log("\n ***** Call stack violation! ***** \n", 'error')
                 break
             self.event_id += 1
             self.func_counter[data[FUN_IDX_FUNC]] += 1
@@ -146,7 +180,7 @@ class Chimbuko(object):
             self.event_id += 1
             self.comm_counter[data[COM_IDX_TAG]] += 1
 
-    def _run_anomaly_detection(self, funMap):
+    def _run_anomaly_detection_v1(self, funMap):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
@@ -157,11 +191,55 @@ class Chimbuko(object):
         funOfInt = []
         for funid, data in functime.items():
             data = np.array(data)
-            n_data = len(data) # the number of function calls
+            n_fcalls = len(data) # the number of function calls
 
-            self.outlier.compOutlier(data, funid)
+            self.outlier.compOutlier_v1(data, funid)
             outliers = self.outlier.getOutlier()
+
             outliers_id = data[outliers==-1, -1]
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            #print('outliers', funid, len(outliers_id))
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+
+            # FIXME: need smooth handling for unknown function and event type
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
+            if len(outliers_id) > 0:
+                self.anomFun[int(funid)] += 1
+
+        return outliers_id_str, funOfInt
+
+    def _run_anomaly_detection_v2(self, funMap):
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self._log("Only contains open functions so no anomaly detection.")
+            return [], []
+
+        outliers_id_str = []
+        funOfInt = []
+        for funid, fcalls in functime.items():
+            #execdata = np.array(data)
+            n_fcalls = len(fcalls) # the number of function calls
+
+            self.outlier.compOutlier(fcalls, funid)
+            outliers = self.outlier.getOutlier()
+
+            # need to maintain for old version
+            #outliers_id = data[outliers==-1, -1]
+
+            outliers_id = []
+            for fcall, label in zip(fcalls, outliers):
+                fcall.set_label(label)
+                if label == -1:
+                    outliers_id.append(fcalls.get_id())
 
             outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
 
@@ -174,7 +252,7 @@ class Chimbuko(object):
             # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
             # NOTE: At this time, key value must cast to int manually; otherwise it will cause
             # NOTE: runtime error when we dump the information into json file.
-            if n_data > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
                 funOfInt.append(str(funMap[int(funid)]))
 
             if len(outliers_id) > 0:
@@ -193,11 +271,11 @@ class Chimbuko(object):
         funMap = self.parser.getFunMap()
 
         # process on function event
-        self._process_func_data()
+        self._process_func_data_v1()
         if not self.status: return
 
         # detect anomalies in function call data
-        outlId, funOfInt = self._run_anomaly_detection(funMap)
+        outlId, funOfInt = self._run_anomaly_detection_v1(funMap)
         self.n_outliers += len(outlId)
         self._log("Numer of outliers per frame: %s" % len(outlId))
 
