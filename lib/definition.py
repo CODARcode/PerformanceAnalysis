@@ -49,7 +49,7 @@ CNT_IDX_EVENT = 6
 #       - 0: program id
 #       - 1: mpi rank id
 #       - 2: thread id
-#       - 3: ?
+#       - 3: event id (either SEND or RECV)
 #       - 4: tag id
 #       - 5: partner id
 #       - 6: num bytes
@@ -62,7 +62,7 @@ CNT_IDX_EVENT = 6
 COM_IDX_P = 0
 COM_IDX_R = 1  # MPI rank id
 COM_IDX_T = 2  # thread id
-COM_IDX_UNKNOWN = 3
+COM_IDX_SR = 3
 COM_IDX_TAG = 4
 COM_IDX_PARTNER = 5
 COM_IDX_BYTES = 6
@@ -95,6 +95,16 @@ VIS_DATA_LEN = 13
 # for visualization
 # - version: 'v2'
 # ----------------------------------------------------------------------------
+class CommData(object):
+    def __init__(self):
+        self.type = '__Unknown_type' # either 'SEND' or 'RECV'
+        self.src = -1 # source rank id
+        self.dst = -1 # destination rank id
+        self.tid = -1 # thread id
+        self.m_size = 0 # message size
+        self.m_tag = 0  # message tag (is string?)
+        self.ts = 0 # time stamp
+
 class ExecData(object):
     def __init__(self, _id):
         self._id = _id
@@ -115,11 +125,39 @@ class ExecData(object):
 
         self.message = []
 
+    def __str__(self):
+        return str(dict(
+            id=self._id,
+            name=self.funName,
+            pid=self.pid, tid=self.tid, rid=self.rid, fid=self.fid,
+            entry=self.entry, exit=self.exit, runtime=self.runtime, label=self.label,
+            parent=self.parent, children=self.children,
+            message=self.message
+        ))
+
+    def to_dict(self):
+        return {
+            "prog names": self.pid,
+            "name": self.funName,
+            "comm ranks": self.rid,
+            "threads": self.tid,
+            "findex": self._id,
+            "anomaly_score": self.label,
+            "parent": self.parent,
+            "children": self.children,
+            "entry": self.entry,
+            "exit": self.exit,
+            "messages": self.message
+        }
+
     def get_id(self):
         return self._id
 
     def set_parent(self, _id):
         self.parent = _id
+
+    def set_label(self, label):
+        self.label = label
 
     def add_child(self, _id):
         self.children.append(_id)

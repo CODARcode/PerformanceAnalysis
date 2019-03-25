@@ -66,8 +66,8 @@ class Chimbuko(object):
         self.anomFun = defaultdict(int)
 
         # FIXME: to fix the index bug from sos_flow
-        self.fix_index = 0
-        self.ver = 'v1'
+        self.fix_index = int(self.config['Basic']['FixIndex'])
+        self.ver = self.config['Basic']['Ver']
 
     def _log(self, msg:str, type='info'):
         msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
@@ -77,7 +77,6 @@ class Chimbuko(object):
             self.log.debug(msg)
         elif type == 'error':
             self.log.error(msg)
-
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -133,7 +132,6 @@ class Chimbuko(object):
 
         # Can I assume that event_timestamps data is always sorted in the order
         # of function call time
-        #self.event.initFunData(len(funcData))
         for data in funcData:
             if not self.event.addFun_v2(np.append(data, np.uint64(self.event_id))):
                 self.status = False
@@ -149,6 +147,10 @@ class Chimbuko(object):
             self._log("Frame has no counter data...")
             return
 
+        # FIXME: this is added to handle index bug in sos_flow
+        countData[:, CNT_IDX_P] -= self.fix_index
+        countData[:, CNT_IDX_COUNT] -= self.fix_index
+
         self.event.initCountData(len(countData))
         for data in countData:
             if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
@@ -161,16 +163,43 @@ class Chimbuko(object):
             self.event_id += 1
             self.count_counter[data[CNT_IDX_COUNT]] += 1
 
-    def _process_communication_data(self):
+    def _process_communication_data_v1(self):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
             self._log("Frame has no communication data...")
             return
 
+        # FIXME: this is added to handle index bug in sos_flow
+        commData[:, COM_IDX_P] -= self.fix_index
+        commData[:, COM_IDX_SR] -= self.fix_index
+
         self.event.initCommData(len(commData))
         for data in commData:
-            if not self.event.addComm(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self._log(
+                    "\n\n\nError in adding communication data event at Frame: {}, "
+                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
+                )
+                break
+            self.event_id += 1
+            self.comm_counter[data[COM_IDX_TAG]] += 1
+
+    def _process_communication_data_v2(self):
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self._log("Frame has no communication data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        commData[:, COM_IDX_P] -= self.fix_index
+        commData[:, COM_IDX_SR] -= self.fix_index
+
+        # self.event.initCommData(len(commData))
+        for data in commData:
+            if not self.event.addComm_v2(np.append(data, np.uint64(self.event_id))):
                 self.status = False
                 self._log(
                     "\n\n\nError in adding communication data event at Frame: {}, "
@@ -229,21 +258,16 @@ class Chimbuko(object):
             #execdata = np.array(data)
             n_fcalls = len(fcalls) # the number of function calls
 
-            self.outlier.compOutlier(fcalls, funid)
+            self.outlier.compOutlier_v2(fcalls, funid)
             outliers = self.outlier.getOutlier()
-
-            # need to maintain for old version
-            #outliers_id = data[outliers==-1, -1]
 
             outliers_id = []
             for fcall, label in zip(fcalls, outliers):
                 fcall.set_label(label)
                 if label == -1:
-                    outliers_id.append(fcalls.get_id())
+                    outliers_id.append(fcall.get_id())
 
             outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
-
-            #print('outliers', funid, len(outliers_id))
 
             maxFuncDepth = self.event.getMaxFunDepth()
 
@@ -256,7 +280,7 @@ class Chimbuko(object):
                 funOfInt.append(str(funMap[int(funid)]))
 
             if len(outliers_id) > 0:
-                self.anomFun[int(funid)] += 1
+                self.anomFun[int(funid)] += len(outliers_id)
 
         return outliers_id_str, funOfInt
 
@@ -271,11 +295,17 @@ class Chimbuko(object):
         funMap = self.parser.getFunMap()
 
         # process on function event
-        self._process_func_data_v1()
+        if self.ver == 'v1':
+            self._process_func_data_v1()
+        else:
+            self._process_func_data_v2()
         if not self.status: return
 
         # detect anomalies in function call data
-        outlId, funOfInt = self._run_anomaly_detection_v1(funMap)
+        if self.ver == 'v1':
+            outlId, funOfInt = self._run_anomaly_detection_v1(funMap)
+        else:
+            outlId, funOfInt = self._run_anomaly_detection_v2(funMap)
         self.n_outliers += len(outlId)
         self._log("Numer of outliers per frame: %s" % len(outlId))
 
@@ -284,20 +314,35 @@ class Chimbuko(object):
         if not self.status: return
 
         # process on communication event
-        self._process_communication_data()
+        if self.ver == 'v1':
+            self._process_communication_data_v1()
+        else:
+            self._process_communication_data_v2()
         if not self.status: return
 
+        self.event.printFunStack()
+
         # dump trace data for visualization
-        # self.visualizer.sendData(
-        #     self.event.getFunData().tolist(),
-        #     self.event.getCountData().tolist(),
-        #     self.event.getCommData().tolist(),
-        #     funOfInt,
-        #     outlId,
-        #     frame_id=self.parser.getStatus(),
-        #     funMap=None if self.parser.Method == 'BP' else funMap,
-        #     eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
-        # )
+        if self.ver == 'v1':
+            self.visualizer.sendData_v1(
+                self.event.getFunData().tolist(),
+                self.event.getCountData().tolist(),
+                self.event.getCommData().tolist(),
+                funOfInt,
+                outlId,
+                frame_id=self.parser.getStatus(),
+                funMap=None if self.parser.Method == 'BP' else funMap,
+                eventType=None if self.parser.Method == 'BP'
+                               else list(self.parser.getEventType().values())
+            )
+        else:
+            self.visualizer.sendData_v2(
+                execData=self.event.getFunTime(),
+                funMap=funMap,
+                anomFunCount=self.anomFun,
+                getStat=self.outlier.getStat,
+                frame_id=self.parser.getStatus()
+            )
 
         # go to next stream
         self.parser.getStream()

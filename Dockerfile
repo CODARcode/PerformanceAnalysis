@@ -1,4 +1,7 @@
-FROM chimbuko/adios2:latest
+#FROM chimbuko/adios2:latest
+# chimbuko/sosflow contains adios2, tau2, and sos_flow
+FROM chimbuko/sosflow:latest
+
 
 # Create directory
 RUN mkdir -p /PerformanceAnalysis

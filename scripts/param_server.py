@@ -56,4 +56,7 @@ if __name__ == "__main__":
         if log is not None:
             sys.stdout = sys.stderr = log
 
-    app.run()
+    app.run(
+        host='0.0.0.0',
+        port=5500
+    )

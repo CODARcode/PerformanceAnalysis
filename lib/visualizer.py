@@ -55,7 +55,6 @@ class Visualizer():
         if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
             os.makedirs(self.outputDir)
 
-
     def sendReset(self):
         """Send signal to visualization server to restart itself."""
         resetDict = {'type': 'reset'}
@@ -105,7 +104,7 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData(self,
+    def sendData_v1(self,
                  funData, countData, commData, funOfInt, outlId, frame_id=0,
                  eventType=None, funMap=None):
         """
@@ -124,8 +123,8 @@ class Visualizer():
         #todo: is this correct way to aggregate all data
         dataList = []
         dataList += funData
-        dataList += countData
-        dataList += commData
+        #dataList += countData
+        #dataList += commData
 
         traceDict = {
             'type': 'info',
@@ -142,19 +141,56 @@ class Visualizer():
             traceDict['value']['functions'] = funMap
 
         if self.vizMethod == "online":
-            req.post(self.vizUrl, json=traceDict)
+            req.post(self.vizUrl + '/events', json=traceDict)
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(traceDict, outfile, indent=4, sort_keys=True)
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
-            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
-            #===================================================================
-            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
-            # for i in range(0,countData.shape[0]):
-            #     if str(countData[i][7]) != str('nan'):
-            #         print(type(countData[i][7]))
-            #         print(str(countData[i][7]))
-            #         raise Exception("countData has non nan entry in column 7")
-            #===================================================================
+
+    def sendData_v2(self, execData, funMap, anomFunCount, getStat, frame_id=0):
+        """
+        Send function, counter and communication data as well as the results of the analysis
+        of interest and id(s) of outlier data points.
+
+        Args:
+        """
+
+        execDict = {}
+        stat = {}
+        for d in execData:
+            if d.label == 1: continue
+            key = d.get_id()
+            value = d.to_dict()
+            execData[key] = value
+
+            key = d.funName
+            fid = d.fid
+            total = getStat(fid)[0]
+            abnormal = anomFunCount[fid]
+            normal = total - abnormal
+
+            try:
+                ratio = abnormal / total
+            except ZeroDivisionError:
+                ratio = 0.
+            stat[key] = {
+                "abnormal": abnormal,
+                "regular": normal,
+                "ratio": ratio
+            }
+
+        traceDict = {
+            'executions': execDict,
+            'stat': stat
+        }
+
+        if self.vizMethod == "online":
+            req.post(self.vizUrl + "/executions", json=traceDict)
+        elif self.vizMethod == "offline":
+            fn = "trace.{:06d}.json".format(frame_id)
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(traceDict, outfile, indent=4, sort_keys=True)
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)

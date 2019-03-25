@@ -45,6 +45,8 @@ class  Event(object):
         # Event type id
         self.entry = None  # id (int) of `ENTRY` event
         self.exit = None   # id (int) of `EXIT` event
+        self.send = None   # id (int) of `SEND` event
+        self.recv = None   # id (int) of `RECV` event
         #self.setEventType(eventType)
 
         # ---------------------------------------------------------------------
@@ -106,11 +108,18 @@ class  Event(object):
                 id 0 and exit id 1
         """
         if eventType is None: return
+
         try:
             self.entry = eventType.index('ENTRY')
             self.exit = eventType.index('EXIT')
         except ValueError:
             self.log.info("ENTRY or EXIT event not present...")
+
+        try:
+            self.recv = eventType.index('RECV')
+            self.send = eventType.index('SEND')
+        except ValueError:
+            self.log.info("RECV or SEND event not present...")
 
     def setFunMap(self, funMap):
         """Sets funMap variable.
@@ -250,7 +259,6 @@ class  Event(object):
         if eid not in [self.entry, self.exit]:
             return True
 
-
         if eid == self.entry:
             # If entry event, add the event to call stack
             execData = ExecData(event_id)
@@ -357,14 +365,14 @@ class  Event(object):
         """
         self.commData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
-    def addComm(self, event):
+    def addComm_v1(self, event):
         """Add communication data and store in format required by visualization.
         Args:
             event (numpy array of int-s): [
-                0: program,
+                0: program id,
                 1: mpi rank,
-                2: thread,
-                3: ???,
+                2: thread id,
+                3: event id (either SEND or RECV),
                 4: tag id,
                 5: partner id,
                 6: num bytes,
@@ -381,6 +389,35 @@ class  Event(object):
         self.coidx += 1
         return True
 
+    def addComm_v2(self, event):
+        """
+        Add communication data and store in format required by visualization.
+
+        add events regardless of ...
+
+        Args:
+            event (numpy array of int-s): [
+                0: program id,
+                1: mpi rank,
+                2: thread id,
+                3: event id (either SEND or RECV),
+                4: tag id,
+                5: partner id,
+                6: num bytes,
+                7: timestamp
+                8: evnet id
+            ].
+
+        Returns:
+            bool: True, if the event was successfully added, False otherwise.
+        """
+        #pid, rid, tid, eid = event[:4]
+        self.commData[self.coidx, :4] = event[:4]
+        self.commData[self.coidx, 8:11] = event[4:7]
+        self.commData[self.coidx, 11:] = event[7:]
+        self.coidx += 1
+        return True
+
     def clearFunTime(self):
         """Clear function execution time data."""
         self.funtime.clear()
@@ -389,12 +426,6 @@ class  Event(object):
         """Clear funData created by initFunData() method."""
         self.fidx = 0
         self.funData = None
-        #This portion is only needed if the visualization requires to send function calls that have exited
-        #self.funList.clear()
-        #if self.funDataTemp is None:
-        #    pass
-        #else:
-        #    del self.funDataTemp
 
     def clearCountData(self):
         """Clear countData created by initCountData() method."""
@@ -473,12 +504,20 @@ class  Event(object):
 
     def printFunStack(self):
         """Prints the function call stack."""
-        try:
-            import pprint
-            pp = pprint.PrettyPrinter(indent=3)
-            pp.pprint(self.funStack)
-        except ImportError:
-            print("self.funStack = ", self.funStack)
+        output = self.log.info if self.log is not None else print
+        output('***** Start Function call stack *****')
+        for pid, p_value in self.funStack.items():
+            for rid, r_value in p_value.items():
+                for tid, t_value in r_value.items():
+                    output("[{}][{}][{}]: {}".format(pid, rid, tid, len(t_value)))
+        output('***** End   Function call stack *****')
+
+        # try:
+        #     import pprint
+        #     pp = pprint.PrettyPrinter(indent=3)
+        #     pp.pprint(self.funStack)
+        # except ImportError:
+        #     print("self.funStack = ", self.funStack)
 
 
     #This portion is only needed if the visualization requires to send function calls that have exited
