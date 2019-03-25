@@ -20,9 +20,12 @@ from outlier import Outlier
 from visualizer import Visualizer
 
 class Chimbuko(object):
-    def __init__(self, configFile:str):
+    def __init__(self, configFile:str, rank=-1, comm=None):
         self.config = configparser.ConfigParser(interpolation=None)
         self.config.read(configFile)
+
+        self.rank = rank
+        self.comm = comm
 
         # Initialize logger
         logging.basicConfig(
@@ -31,13 +34,14 @@ class Chimbuko(object):
             filename=self.config['Debug']['LogFile']
         )
         self.log = logging.getLogger('CHIMBUKO')
-        self.log.addHandler(logging.StreamHandler(sys.stdout))
+        # to see logging on the terminal, uncomment below (for develop purpose)
+        #self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
-        self.parser = Parser(self.config, self.log)
+        self.parser = Parser(self.config, self.log, self.rank, self.comm)
 
         # Event: event handler
-        self.event = Event()
+        self.event = Event(self.log)
         # Outlier: outlier detector
         self.outlier = Outlier(self.config, self.log)
         # Visualizer: visualization handler
@@ -61,17 +65,27 @@ class Chimbuko(object):
         # anomaly function
         self.anomFun = defaultdict(int)
 
+    def _log(self, msg:str, type='info'):
+        msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
+        if type == 'info':
+            self.log.info(msg)
+        elif type == 'debug':
+            self.log.debug(msg)
+        elif type == 'error':
+            self.log.error(msg)
+
+
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
         if self.parser.Method == 'BP':
             # reset visualization server
             self.visualizer.sendReset()
-            self.visualizer.sendEventType(list(self.parser.eventType.values()), 0)
+            self.visualizer.sendEventType(list(self.parser.getEventType().values()), 0)
             self.visualizer.sendFunMap(self.parser.getFunMap(), 0)
 
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
-            self.event.setEventType(list(self.parser.eventType.values()))
+            self.event.setEventType(list(self.parser.getEventType().values()))
         self.event.clearFunTime()
         self.event.clearFunData()
         self.event.clearCountData()
@@ -81,16 +95,15 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self.log.info("Frame has no function data...")
+            self._log("Frame has no function data...")
             return
         self.event.initFunData(len(funcData))
         for data in funcData:
             if not self.event.addFun(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self.log.error(
+                self._log(
                     "\n\n\nCall stack violation at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id)
-                )
+                        self.parser.getStatus(), self.event_id), 'error')
                 break
             self.event_id += 1
             self.func_counter[data[FUN_IDX_FUNC]] += 1
@@ -99,18 +112,17 @@ class Chimbuko(object):
         try:
             countData = self.parser.getCountData()
         except AssertionError:
-            self.log.info("Frame has no counter data...")
+            self._log("Frame has no counter data...")
             return
 
         self.event.initCountData(len(countData))
         for data in countData:
             if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self.log.error(
+                self._log(
                     "\n\n\nError in adding count data event at Frame: {}, Event: {}!\n\n\n".format(
                         self.parser.getStatus(), self.event_id
-                    )
-                )
+                    ), "error")
                 break
             self.event_id += 1
             self.count_counter[data[CNT_IDX_COUNT]] += 1
@@ -119,16 +131,16 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self.log.info("Frame has no communication data...")
+            self._log("Frame has no communication data...")
             return
 
         self.event.initCommData(len(commData))
         for data in commData:
             if not self.event.addComm(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self.log.error(
+                self._log(
                     "\n\n\nError in adding communication data event at Frame: {}, "
-                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id)
+                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
                 )
                 break
             self.event_id += 1
@@ -138,16 +150,14 @@ class Chimbuko(object):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
-            self.log.info("Only contains open functions so no anomaly detection at Frame: {}".format(
-                self.parser.getStatus()
-            ))
+            self._log("Only contains open functions so no anomaly detection.")
             return [], []
 
         outliers_id_str = []
         funOfInt = []
         for funid, data in functime.items():
             data = np.array(data)
-            n_data = len(data)
+            n_data = len(data) # the number of function calls
 
             self.outlier.compOutlier(data, funid)
             outliers = self.outlier.getOutlier()
@@ -172,17 +182,11 @@ class Chimbuko(object):
 
         return outliers_id_str, funOfInt
 
-    def _dump_trace_data(self):
-        if self.parser.Method == "BP":
-            pass
-        else:
-            raise NotImplementedError("Unsupported parser method: %s" % self.parser.Method)
-
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
-        self.log.info("\n\nFrame: %s" % self.parser.getStatus())
+        self._log("\n\nFrame: %s" % self.parser.getStatus())
 
         # Initialize event
         self._init_event()
@@ -195,7 +199,7 @@ class Chimbuko(object):
         # detect anomalies in function call data
         outlId, funOfInt = self._run_anomaly_detection(funMap)
         self.n_outliers += len(outlId)
-        self.log.info("Numer of outliers per frame: %s" % len(outlId))
+        self._log("Numer of outliers per frame: %s" % len(outlId))
 
         # process on counter event
         self._process_counter_data()
@@ -206,16 +210,16 @@ class Chimbuko(object):
         if not self.status: return
 
         # dump trace data for visualization
-        self.visualizer.sendData(
-            self.event.getFunData().tolist(),
-            self.event.getCountData().tolist(),
-            self.event.getCommData().tolist(),
-            funOfInt,
-            outlId,
-            frame_id=self.parser.getStatus(),
-            funMap=None if self.parser.Method == 'BP' else funMap,
-            eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
-        )
+        # self.visualizer.sendData(
+        #     self.event.getFunData().tolist(),
+        #     self.event.getCountData().tolist(),
+        #     self.event.getCommData().tolist(),
+        #     funOfInt,
+        #     outlId,
+        #     frame_id=self.parser.getStatus(),
+        #     funMap=None if self.parser.Method == 'BP' else funMap,
+        #     eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
+        # )
 
         # go to next stream
         self.parser.getStream()
@@ -242,11 +246,19 @@ def usage():
 
 if __name__ == '__main__':
     import time
+    from mpi4py import MPI
     # check argument and print usages()
+
+    # MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
     #configFile = './test/test.cfg' #sys.argv[1]
     configFile = sys.argv[1]
-    driver = Chimbuko(configFile)
+
+    # currently, each rank will have its own anomaly detector, no communication among ranks
+    driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
     n_frames = 0
 
     start = time.time()

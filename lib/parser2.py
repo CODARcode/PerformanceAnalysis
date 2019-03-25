@@ -10,12 +10,7 @@ Created:
 
 """
 import numpy as np
-# PYTHONPATH coudl be set either /lib or /PerformanceAnalysis
-try:
-    import pyAdios as ADIOS
-except ImportError:
-    import lib.pyAdios as ADIOS
-
+import pyAdios as ADIOS
 from collections import defaultdict
 
 
@@ -27,7 +22,7 @@ class Parser(object):
 
     In addition the class contains methods for extracting specific events from the Adios stream.
     """
-    def __init__(self, config, log=None):
+    def __init__(self, config, log=None, rank=-1, comm=None):
         """
         The parser has two main modes:
                 BP mode: offline/batch processing
@@ -35,8 +30,12 @@ class Parser(object):
                             (e.g. DATASPACES or FLEXPATH)
         Args:
             configFile: (str), the configuration files's name.
+            log: logger
+            rank: MPI rank, if rank=-1, it is not MPI run.
         """
         self.log = log
+        self.rank = rank
+        self.comm = comm
 
         # Initialize parser mode
         self.parseMode = config['Parser']['ParseMode']
@@ -48,6 +47,13 @@ class Parser(object):
         self.ad = None
         self.stream = None
         self.status = -1
+
+        if self.rank >= 0:
+            # insert rank number into the inputFile
+            pos = self.inputFile.rfind('.')
+            if pos < 0:
+                raise ValueError("Invalid input file name for the parser: %s" % self.inputFile)
+            self.inputFile = self.inputFile[:pos] + "-{:d}".format(self.rank) + self.inputFile[pos:]
 
         # attributes from inputFile (BP)
         self.bpAttrib = None
@@ -62,7 +68,7 @@ class Parser(object):
 
         if self.parseMode == "Adios":
             self.ad = ADIOS.pyAdios(self.Method, self.Parameters)
-            self.ad.open(self.inputFile, ADIOS.OpenMode.READ)
+            self.ad.open(self.inputFile, ADIOS.OpenMode.READ, self.comm)
             self.status = self.ad.current_step()
             self._update()
         else:
@@ -90,6 +96,7 @@ class Parser(object):
         if self.log is not None: self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
         if self.log is not None: self.log.debug("Number of functions: %s" % self.numFun)
         if self.log is not None: self.log.debug("Function map: \n" + str(self.funMap))
+        if self.log is not None: self.log.debug("Event type: \n" + str(self.eventType))
 
     def getParseMethod(self):
         """Get method for accessing parse method.

@@ -49,10 +49,10 @@ CNT_IDX_EVENT = 6
 #       - 0: program id
 #       - 1: mpi rank id
 #       - 2: thread id
-#       - 3: tag id ?
-#       - 4: partner id ?
-#       - 5: ?
-#       - 6: num bytes ?
+#       - 3: ?
+#       - 4: tag id
+#       - 5: partner id
+#       - 6: num bytes
 #       - 7: timestamp
 #       - 8: event id
 #
@@ -62,9 +62,28 @@ CNT_IDX_EVENT = 6
 COM_IDX_P = 0
 COM_IDX_R = 1  # MPI rank id
 COM_IDX_T = 2  # thread id
-COM_IDX_TAG = 3
-COM_IDX_PARTNER = 4
-COM_IDX_UNKNOWN = 5
+COM_IDX_UNKNOWN = 3
+COM_IDX_TAG = 4
+COM_IDX_PARTNER = 5
 COM_IDX_BYTES = 6
 COM_IDX_TIME = 7
 COM_IDX_EVENT = 8
+
+# ----------------------------------------------------------------------------
+# vis trace event index scheme (funData, countData, commData in event.py)
+#   event:  (ndarray[int])
+#       -  0: program id
+#       -  1: mpi rank id
+#       -  2: thread id
+#       -  3: entry/exit id or tag id
+#       -  4: function id ??
+#       -  5: counter id
+#       -  6: counter value
+#       -  7: event type ?
+#       -  8: tag id
+#       -  9: partner id
+#       - 10: num bytes
+#       - 11: timestamp
+#       - 12: event id
+# ----------------------------------------------------------------------------
+VIS_DATA_LEN = 13
