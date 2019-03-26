@@ -54,23 +54,23 @@ class Chimbuko(object):
         # event id
         # note: maybe to generate unique id, is this okay with overflow?
         self.event_id = np.uint64(0)
-        # total number of outliers
+        # total number of outliers (will be deprecated)
         self.n_outliers = 0
-        # function data counter
-        self.func_counter = defaultdict(int)
-        # count data counter
-        self.count_counter = defaultdict(int)
-        # communication data counter
-        self.comm_counter = defaultdict(int)
-        # anomaly function
-        self.anomFun = defaultdict(int)
+        # function data counter (will be deprecated)
+        #self.func_counter = defaultdict(int)
+        # count data counter (will be deprecated)
+        #self.count_counter = defaultdict(int)
+        # communication data counter (will be deprecated)
+        #self.comm_counter = defaultdict(int)
+        # anomaly function (will be deprecated)
+        #self.anomFun = defaultdict(int)
 
         # FIXME: to fix the index bug from sos_flow
         self.fix_index = int(self.config['Basic']['FixIndex'])
         self.ver = self.config['Basic']['Ver']
 
-        print("FIX INDEX: ", self.fix_index)
-        print("VERSION: ", self.ver)
+        #print("FIX INDEX: ", self.fix_index)
+        #print("VERSION: ", self.ver)
 
     def _log(self, msg:str, type='info'):
         msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
@@ -119,7 +119,7 @@ class Chimbuko(object):
                 self._log("\n ***** Call stack violation! ***** \n", 'error')
                 break
             self.event_id += 1
-            self.func_counter[data[FUN_IDX_FUNC]] += 1
+            #self.func_counter[data[FUN_IDX_FUNC]] += 1
 
     def _process_func_data_v2(self):
         try:
@@ -141,7 +141,7 @@ class Chimbuko(object):
                 self._log("\n ***** Call stack violation! ***** \n", 'error')
                 break
             self.event_id += 1
-            self.func_counter[data[FUN_IDX_FUNC]] += 1
+            #self.func_counter[data[FUN_IDX_FUNC]] += 1
 
     def _process_communication_data_v1(self):
         try:
@@ -164,7 +164,7 @@ class Chimbuko(object):
                 )
                 break
             self.event_id += 1
-            self.comm_counter[data[COM_IDX_TAG]] += 1
+            #self.comm_counter[data[COM_IDX_TAG]] += 1
 
     def _process_communication_data_v2(self):
         try:
@@ -187,7 +187,7 @@ class Chimbuko(object):
                 )
                 break
             self.event_id += 1
-            self.comm_counter[data[COM_IDX_TAG]] += 1
+            #self.comm_counter[data[COM_IDX_TAG]] += 1
 
     def _process_func_comm_data_v2(self):
         try:
@@ -228,7 +228,7 @@ class Chimbuko(object):
                     self._log("\n ***** Call stack violation! *****\n", "error")
                     break
                 self.event_id += 1
-                self.func_counter[fun_data[FUN_IDX_FUNC]] += 1
+                #self.func_counter[fun_data[FUN_IDX_FUNC]] += 1
                 idx_fun += 1
             elif com_data is not None:
                 if not self.event.addComm_v2(com_data):
@@ -237,7 +237,7 @@ class Chimbuko(object):
                         "\n ***** Error in adding communication data event ***** \n", "error"
                     )
                     break
-                self.comm_counter[com_data[COM_IDX_TAG]] += 1
+                #self.comm_counter[com_data[COM_IDX_TAG]] += 1
                 idx_com += 1
 
 
@@ -273,7 +273,8 @@ class Chimbuko(object):
                 funOfInt.append(str(funMap[int(funid)]))
 
             if len(outliers_id) > 0:
-                self.anomFun[int(funid)] += 1
+                #self.anomFun[int(funid)] += 1
+                self.outlier.addAbnormal(funid, len(outliers_id))
 
         return outliers_id_str, funOfInt
 
@@ -312,7 +313,9 @@ class Chimbuko(object):
                 funOfInt.append(str(funMap[int(funid)]))
 
             if len(outliers_id) > 0:
-                self.anomFun[int(funid)] += len(outliers_id)
+                self.outlier.addAbnormal(funid, len(outliers_id))
+                #self.anomFun[int(funid)] += len(outliers_id)
+
 
         return outliers_id_str, funOfInt
 
@@ -337,7 +340,7 @@ class Chimbuko(object):
                     ), "error")
                 break
             self.event_id += 1
-            self.count_counter[data[CNT_IDX_COUNT]] += 1
+            #self.count_counter[data[CNT_IDX_COUNT]] += 1
 
 
     def process(self):
@@ -395,9 +398,8 @@ class Chimbuko(object):
                 funtime = self.event.getFunTime()
                 self.visualizer.sendData_v2(
                     execData=funtime,
-                    anomFunCount=self.anomFun,
                     funMap=funMap,
-                    getStat=self.outlier.getStat,
+                    getCount=self.outlier.getStat,
                     frame_id=self.parser.getStatus()
                 )
             except AssertionError:
