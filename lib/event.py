@@ -232,7 +232,7 @@ class  Event(object):
         # Event is not an exit or entry event
         return True
 
-    def addFun_v2(self, event):
+    def addFun_v2(self, event, event_id):
         """Adds function call to call stack
         Args:
             event:  (ndarray[int])
@@ -242,9 +242,9 @@ class  Event(object):
                 3: (MUST) entry or exit id
                 4: function id (called timer id in sos_flow)
                 5: timestamp
-                6: event id
 
                 obtained from the adios module's "event_timestamps" variable
+            event_id: (int)
 
         Returns: (bool)
             True:  the event was successfully added to the call stack without any violations including
@@ -252,7 +252,7 @@ class  Event(object):
             False: otherwise.
         """
         # Make sure stack corresponding to (program, mpi rank, thread) is created
-        pid, rid, tid, eid, fid, ts, event_id = event
+        pid, rid, tid, eid, fid, ts = event
         fname = self.funMap[fid]
         self.createCallStack(pid, rid, tid)
 
@@ -273,10 +273,6 @@ class  Event(object):
                 p_execData.add_child(execData.get_id())
 
             self.funStack[pid][rid][tid].append(execData)
-
-            #self.funData[self.fidx, :5] = event[:5]
-            #self.funData[self.fidx, 11:] = event[5:]
-            #self.fidx += 1
             return True
 
         if eid == self.exit:
@@ -286,38 +282,13 @@ class  Event(object):
             # check call stack violation
             if not execData.update_exit(fid, ts):
                 return False
-            # if prev[FUN_IDX_FUNC] != event[FUN_IDX_FUNC] or \
-            #     prev[FUN_IDX_TIME] > event[FUN_IDX_TIME]:
-            #     return False
 
-            #self.funData[self.fidx,:5] = event[:5]
-            #self.funData[self.fidx,11:] = event[5:]
-            #self.fidx += 1
-
-            #fid = event[FUN_IDX_FUNC]
             self.maxFunDepth[fid] = max(
                 self.maxFunDepth.get(fid, 0),
                 len(self.funStack[pid][rid][tid])
             )
 
-            # NOTE I think the first if condition can be removed since
-            # NOTE we're computing anomalies for all functions
-            #pfid = prev[FUN_IDX_FUNC]
             self.funtime[fid].append(execData)
-            # if self.funtime.get(fid, None) is None:
-            #     self.funtime[fid] = []
-            # self.funtime[pfid].append(
-            #     [
-            #         *event[:3], event[FUN_IDX_FUNC],       # PID, RID, TID, FID
-            #         prev[FUN_IDX_TIME],                    # start time
-            #         event[FUN_IDX_TIME] - prev[FUN_IDX_TIME],  # execution time
-            #         prev[FUN_IDX_EVENT]                    # event id
-            #     ]
-            # )
-
-            #todo: [VIS]
-            #self.funList.append(pevent)
-            #self.funList.append(event)
             return True
         # Event is not an exit or entry event
         return True
@@ -405,17 +376,41 @@ class  Event(object):
                 5: partner id,
                 6: num bytes,
                 7: timestamp
-                8: evnet id
             ].
-
         Returns:
             bool: True, if the event was successfully added, False otherwise.
         """
-        #pid, rid, tid, eid = event[:4]
-        self.commData[self.coidx, :4] = event[:4]
-        self.commData[self.coidx, 8:11] = event[4:7]
-        self.commData[self.coidx, 11:] = event[7:]
-        self.coidx += 1
+        pid, rid, tid, eid, tag, partner, nbytes, ts = event
+        if eid not in [self.send, self.recv]:
+            if self.log is not None:
+                self.log.debug("No attributes for SEND/RECV")
+            return True
+
+        try:
+            execData = self.funStack[pid][rid][tid][-1]
+        except IndexError:
+            if self.log is not None:
+                self.log.debug("Communication event before any function calls")
+            return True
+        except KeyError:
+            if self.log is not None:
+                self.log.debug("Communication event before any function calls")
+            return True
+
+        if eid == self.send:
+            comType = 'send'
+            comSrc = rid
+            comDst = partner
+        else:
+            comType = 'receive'
+            comSrc = partner
+            comDst = rid
+
+        comData = CommData(type=comType, src=comSrc, dst=comDst, tid=tid,
+                           msg_size=nbytes, msg_tag=tag, ts=ts)
+
+        execData.add_message(comData)
+
         return True
 
     def clearFunTime(self):

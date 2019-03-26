@@ -96,14 +96,25 @@ VIS_DATA_LEN = 13
 # - version: 'v2'
 # ----------------------------------------------------------------------------
 class CommData(object):
-    def __init__(self):
-        self.type = '__Unknown_type' # either 'SEND' or 'RECV'
-        self.src = -1 # source rank id
-        self.dst = -1 # destination rank id
-        self.tid = -1 # thread id
-        self.m_size = 0 # message size
-        self.m_tag = 0  # message tag (is string?)
-        self.ts = 0 # time stamp
+    def __init__(self, type, src, dst, tid, msg_size, msg_tag, ts):
+        self.type = type # either 'SEND' or 'RECV'
+        self.src = src # source rank id
+        self.dst = dst # destination rank id
+        self.tid = tid # thread id
+        self.msg_size = msg_size # message size
+        self.msg_tag = msg_tag  # message tag (is string?)
+        self.ts = ts # time stamp
+
+    def to_dict(self):
+        return {
+            "event-type": self.type,
+            "source-node-id": int(self.src),
+            "destination-node-id": int(self.dst),
+            "thread-id": int(self.tid),
+            "message_size": str(self.msg_size),
+            "message_tag": str(self.msg_tag),
+            "time": str(self.ts)
+        }
 
 class ExecData(object):
     def __init__(self, _id):
@@ -132,7 +143,7 @@ class ExecData(object):
             pid=self.pid, tid=self.tid, rid=self.rid, fid=self.fid,
             entry=self.entry, exit=self.exit, runtime=self.runtime, label=self.label,
             parent=self.parent, children=self.children,
-            message=self.message
+            message=len(self.message)
         ))
 
     def to_dict(self):
@@ -147,7 +158,7 @@ class ExecData(object):
             "children": [str(c) for c in self.children],
             "entry": str(self.entry),
             "exit": str(self.exit),
-            "messages": self.message
+            "messages": [msg.to_dict() for msg in self.message]
         }
 
     def get_id(self):
@@ -175,5 +186,8 @@ class ExecData(object):
         self.exit = _exit
         self.runtime = _exit - self.entry
         return True
+
+    def add_message(self, msg):
+        self.message.append(msg)
 
 

@@ -203,7 +203,7 @@ class Visualizer():
                 n_normal = total - n_abnormal
 
                 try:
-                    ratio = n_abnormal / (n_normal + n_abnormal)
+                    ratio = n_abnormal / (n_normal + n_abnormal) * 100.
                 except ZeroDivisionError:
                     ratio = 0.
 

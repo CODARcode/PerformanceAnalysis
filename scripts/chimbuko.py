@@ -136,35 +136,12 @@ class Chimbuko(object):
         # Can I assume that event_timestamps data is always sorted in the order
         # of function call time
         for data in funcData:
-            if not self.event.addFun_v2(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addFun_v2(data, self.event_id):
                 self.status = False
                 self._log("\n ***** Call stack violation! ***** \n", 'error')
                 break
             self.event_id += 1
             self.func_counter[data[FUN_IDX_FUNC]] += 1
-
-    def _process_counter_data(self):
-        try:
-            countData = self.parser.getCountData()
-        except AssertionError:
-            self._log("Frame has no counter data...")
-            return
-
-        # FIXME: this is added to handle index bug in sos_flow
-        countData[:, CNT_IDX_P] -= self.fix_index
-        countData[:, CNT_IDX_COUNT] -= self.fix_index
-
-        self.event.initCountData(len(countData))
-        for data in countData:
-            if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self._log(
-                    "\n\n\nError in adding count data event at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id
-                    ), "error")
-                break
-            self.event_id += 1
-            self.count_counter[data[CNT_IDX_COUNT]] += 1
 
     def _process_communication_data_v1(self):
         try:
@@ -202,7 +179,7 @@ class Chimbuko(object):
 
         self.event.initCommData(len(commData))
         for data in commData:
-            if not self.event.addComm_v2(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
                 self._log(
                     "\n\n\nError in adding communication data event at Frame: {}, "
@@ -211,6 +188,58 @@ class Chimbuko(object):
                 break
             self.event_id += 1
             self.comm_counter[data[COM_IDX_TAG]] += 1
+
+    def _process_func_comm_data_v2(self):
+        try:
+            funcData = self.parser.getFunData()
+            # FIXME: this is added to handle index bug in sos_flow
+            funcData[:, FUN_IDX_P] -= self.fix_index
+            funcData[:, FUN_IDX_EE] -= self.fix_index
+            funcData[:, FUN_IDX_FUNC] -= self.fix_index
+        except AssertionError:
+            self._log("[V2] Frame has no function data...")
+            funcData = []
+
+        try:
+            commData = self.parser.getCommData()
+            # FIXME: this is added to handle index bug in sos_flow
+            commData[:, COM_IDX_P] -= self.fix_index
+            commData[:, COM_IDX_SR] -= self.fix_index
+        except AssertionError:
+            self._log("[V2] Frame has no communication data...")
+            commData = []
+
+
+        n_funcData = len(funcData)
+        n_commData = len(commData)
+        idx_fun = 0
+        idx_com = 0
+
+        while idx_fun < n_funcData or idx_com < n_commData:
+            fun_data = funcData[idx_fun] if idx_fun < n_funcData else None
+            com_data = commData[idx_com] if idx_com < n_commData else None
+
+            ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
+            ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
+
+            if ts_fun <= ts_com and fun_data is not None:
+                if not self.event.addFun_v2(fun_data, self.event_id):
+                    self.status = False
+                    self._log("\n ***** Call stack violation! *****\n", "error")
+                    break
+                self.event_id += 1
+                self.func_counter[fun_data[FUN_IDX_FUNC]] += 1
+                idx_fun += 1
+            elif com_data is not None:
+                if not self.event.addComm_v2(com_data):
+                    self.status = False
+                    self._log(
+                        "\n ***** Error in adding communication data event ***** \n", "error"
+                    )
+                    break
+                self.comm_counter[com_data[COM_IDX_TAG]] += 1
+                idx_com += 1
+
 
     def _run_anomaly_detection_v1(self, funMap):
         try:
@@ -287,6 +316,30 @@ class Chimbuko(object):
 
         return outliers_id_str, funOfInt
 
+    def _process_counter_data(self):
+        try:
+            countData = self.parser.getCountData()
+        except AssertionError:
+            self._log("Frame has no counter data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        countData[:, CNT_IDX_P] -= self.fix_index
+        countData[:, CNT_IDX_COUNT] -= self.fix_index
+
+        self.event.initCountData(len(countData))
+        for data in countData:
+            if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self._log(
+                    "\n\n\nError in adding count data event at Frame: {}, Event: {}!\n\n\n".format(
+                        self.parser.getStatus(), self.event_id
+                    ), "error")
+                break
+            self.event_id += 1
+            self.count_counter[data[CNT_IDX_COUNT]] += 1
+
+
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
@@ -297,11 +350,14 @@ class Chimbuko(object):
         self._init_event()
         funMap = self.parser.getFunMap()
 
-        # process on function event
+        # process on function event and communication event
         if self.ver == 'v1':
             self._process_func_data_v1()
+            self._process_communication_data_v1()
         else:
-            self._process_func_data_v2()
+            # self._process_func_data_v2()
+            # self._process_communication_data_v2()
+            self._process_func_comm_data_v2()
         if not self.status: return
 
         # detect anomalies in function call data
@@ -313,15 +369,11 @@ class Chimbuko(object):
         self._log("Numer of outliers per frame: %s" % len(outlId))
 
         # process on counter event
+        # FIXME: do we need to parse counter data that wasn't used anywhere.
         self._process_counter_data()
         if not self.status: return
 
-        # process on communication event
-        if self.ver == 'v1':
-            self._process_communication_data_v1()
-        else:
-            self._process_communication_data_v2()
-        if not self.status: return
+
 
         #self.event.printFunStack()
 
