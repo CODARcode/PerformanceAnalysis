@@ -168,6 +168,7 @@ class Visualizer():
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(traceDict, outfile, indent=4, sort_keys=True)
+
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
@@ -243,10 +244,10 @@ class Visualizer():
             except Exception as e:
                 print("Really unknown error: ", e)
 
-
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(traceDict, outfile, indent=4, sort_keys=True)
+
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
