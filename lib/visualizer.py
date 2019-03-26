@@ -55,7 +55,6 @@ class Visualizer():
         if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
             os.makedirs(self.outputDir)
 
-
     def sendReset(self):
         """Send signal to visualization server to restart itself."""
         resetDict = {'type': 'reset'}
@@ -105,7 +104,7 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData(self,
+    def sendData_v1(self,
                  funData, countData, commData, funOfInt, outlId, frame_id=0,
                  eventType=None, funMap=None):
         """
@@ -124,8 +123,8 @@ class Visualizer():
         #todo: is this correct way to aggregate all data
         dataList = []
         dataList += funData
-        dataList += countData
-        dataList += commData
+        #dataList += countData
+        #dataList += commData
 
         traceDict = {
             'type': 'info',
@@ -141,20 +140,114 @@ class Visualizer():
         if funMap is not None:
             traceDict['value']['functions'] = funMap
 
+        # print('funcMap')
+        # for k, v in traceDict['value']['functions'].items():
+        #     print(k, v)
+        # print('event types: ', traceDict['value']['event_types'])
+        # print('funData')
+        # for d in traceDict['value']['events']:
+        #     print(d)
+        # print(self.vizMethod, self.vizUrl)
+
         if self.vizMethod == "online":
-            req.post(self.vizUrl, json=traceDict)
+            try:
+                r = req.post(self.vizUrl + '/events', json=traceDict)
+                r.raise_for_status()
+            except req.exceptions.HTTPError as e:
+                print("Http Error: ", e)
+            except req.exceptions.ConnectionError as e:
+                print("Connection Error: ", e)
+            except req.exceptions.Timeout as e:
+                print("Timeout Error: ", e)
+            except req.exceptions.RequestException as e:
+                print("OOps: something else: ", e)
+            except Exception as e:
+                print("Really unknown error: ", e)
+
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(traceDict, outfile, indent=4, sort_keys=True)
+
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
-            # This line of code was added to check whether we ever encounter a non nan value in countData[i][7]
-            #===================================================================
-            # dataList = funData.tolist() + countData.tolist() + commData.tolist()
-            # for i in range(0,countData.shape[0]):
-            #     if str(countData[i][7]) != str('nan'):
-            #         print(type(countData[i][7]))
-            #         print(str(countData[i][7]))
-            #         raise Exception("countData has non nan entry in column 7")
-            #===================================================================
+
+    def sendData_v2(self, execData, anomFunCount, funMap, getStat, frame_id=0):
+        """
+        Send function, counter and communication data as well as the results of the analysis
+        of interest and id(s) of outlier data points.
+
+        Args:
+        """
+        #execList = []
+        execDict = {}
+        stat = {}
+
+        for funid, execList in execData.items():
+            #n_normal = 0
+            #n_abnormal = 0
+            for d in execList:
+                if d.label == 1:
+                    #n_normal += 1
+                    continue
+
+                key = d.get_id()
+                value = d.to_dict()
+                #execList.append(value)
+                execDict[str(key)] = value
+                #n_abnormal += 1
+
+            n_abnormal = anomFunCount[funid]
+            if n_abnormal > 0:
+                key = funMap[funid]
+                total = getStat(funid)[0]
+                n_normal = total - n_abnormal
+
+                try:
+                    ratio = n_abnormal / (n_normal + n_abnormal) * 100.
+                except ZeroDivisionError:
+                    ratio = 0.
+
+                stat[key] = {
+                    "abnormal": n_abnormal,
+                    "regular": n_normal,
+                    "ratio": ratio
+                }
+                #print(funid, ratio)
+
+        traceDict = {
+            'executions': execDict,
+            'stat': stat
+        }
+
+        # print('executions: ')
+        # print(execDict.keys())
+        # for k, v in execDict.items():
+        #     print(k, v)
+
+        # print('stat: ')
+        # for k, v in stat.items():
+        #     print(k, v)
+
+        if self.vizMethod == "online":
+            try:
+                r = req.post(self.vizUrl + '/executions', json=traceDict)
+                r.raise_for_status()
+            except req.exceptions.HTTPError as e:
+                print("Http Error: ", e)
+            except req.exceptions.ConnectionError as e:
+                print("Connection Error: ", e)
+            except req.exceptions.Timeout as e:
+                print("Timeout Error: ", e)
+            except req.exceptions.RequestException as e:
+                print("OOps: something else: ", e)
+            except Exception as e:
+                print("Really unknown error: ", e)
+
+        elif self.vizMethod == "offline":
+            fn = "trace.{:06d}.json".format(frame_id)
+            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                json.dump(traceDict, outfile, indent=4, sort_keys=True)
+
+        else:
+            raise ValueError("Unsupported method: %s" % self.vizMethod)

@@ -152,6 +152,7 @@ class pyAdios(object):
         """
         if comm is None:
             comm = MPI.COMM_SELF
+
         self.fh = adios2.open(filename, mode.value, comm, self.engine_type.value)
         self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:

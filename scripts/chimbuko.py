@@ -35,7 +35,7 @@ class Chimbuko(object):
         )
         self.log = logging.getLogger('CHIMBUKO')
         # to see logging on the terminal, uncomment below (for develop purpose)
-        #self.log.addHandler(logging.StreamHandler(sys.stdout))
+        self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -65,6 +65,13 @@ class Chimbuko(object):
         # anomaly function
         self.anomFun = defaultdict(int)
 
+        # FIXME: to fix the index bug from sos_flow
+        self.fix_index = int(self.config['Basic']['FixIndex'])
+        self.ver = self.config['Basic']['Ver']
+
+        print("FIX INDEX: ", self.fix_index)
+        print("VERSION: ", self.ver)
+
     def _log(self, msg:str, type='info'):
         msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
         if type == 'info':
@@ -73,7 +80,6 @@ class Chimbuko(object):
             self.log.debug(msg)
         elif type == 'error':
             self.log.error(msg)
-
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -86,27 +92,229 @@ class Chimbuko(object):
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
             self.event.setEventType(list(self.parser.getEventType().values()))
+            self.event.setFunMap(self.parser.getFunMap())
         self.event.clearFunTime()
         self.event.clearFunData()
         self.event.clearCountData()
         self.event.clearCommData()
 
-    def _process_func_data(self):
+    def _process_func_data_v1(self):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("Frame has no function data...")
+            self._log("[V1] Frame has no function data...")
             return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        funcData[:, FUN_IDX_P] -= self.fix_index
+        funcData[:, FUN_IDX_EE] -= self.fix_index
+        funcData[:, FUN_IDX_FUNC] -= self.fix_index
+
+        # Can I assume that event_timestamps data is always sorted in the order
+        # of function call time
         self.event.initFunData(len(funcData))
         for data in funcData:
-            if not self.event.addFun(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addFun_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nCall stack violation at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id), 'error')
+                self._log("\n ***** Call stack violation! ***** \n", 'error')
                 break
             self.event_id += 1
             self.func_counter[data[FUN_IDX_FUNC]] += 1
+
+    def _process_func_data_v2(self):
+        try:
+            funcData = self.parser.getFunData()
+        except AssertionError:
+            self._log("[V2] Frame has no function data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        funcData[:, FUN_IDX_P] -= self.fix_index
+        funcData[:, FUN_IDX_EE] -= self.fix_index
+        funcData[:, FUN_IDX_FUNC] -= self.fix_index
+
+        # Can I assume that event_timestamps data is always sorted in the order
+        # of function call time
+        for data in funcData:
+            if not self.event.addFun_v2(data, self.event_id):
+                self.status = False
+                self._log("\n ***** Call stack violation! ***** \n", 'error')
+                break
+            self.event_id += 1
+            self.func_counter[data[FUN_IDX_FUNC]] += 1
+
+    def _process_communication_data_v1(self):
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self._log("[V1] Frame has no communication data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        commData[:, COM_IDX_P] -= self.fix_index
+        commData[:, COM_IDX_SR] -= self.fix_index
+
+        self.event.initCommData(len(commData))
+        for data in commData:
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self._log(
+                    "\n\n\nError in adding communication data event at Frame: {}, "
+                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
+                )
+                break
+            self.event_id += 1
+            self.comm_counter[data[COM_IDX_TAG]] += 1
+
+    def _process_communication_data_v2(self):
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self._log("[V2] Frame has no communication data...")
+            return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        commData[:, COM_IDX_P] -= self.fix_index
+        commData[:, COM_IDX_SR] -= self.fix_index
+
+        self.event.initCommData(len(commData))
+        for data in commData:
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self._log(
+                    "\n\n\nError in adding communication data event at Frame: {}, "
+                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
+                )
+                break
+            self.event_id += 1
+            self.comm_counter[data[COM_IDX_TAG]] += 1
+
+    def _process_func_comm_data_v2(self):
+        try:
+            funcData = self.parser.getFunData()
+            # FIXME: this is added to handle index bug in sos_flow
+            funcData[:, FUN_IDX_P] -= self.fix_index
+            funcData[:, FUN_IDX_EE] -= self.fix_index
+            funcData[:, FUN_IDX_FUNC] -= self.fix_index
+        except AssertionError:
+            self._log("[V2] Frame has no function data...")
+            funcData = []
+
+        try:
+            commData = self.parser.getCommData()
+            # FIXME: this is added to handle index bug in sos_flow
+            commData[:, COM_IDX_P] -= self.fix_index
+            commData[:, COM_IDX_SR] -= self.fix_index
+        except AssertionError:
+            self._log("[V2] Frame has no communication data...")
+            commData = []
+
+
+        n_funcData = len(funcData)
+        n_commData = len(commData)
+        idx_fun = 0
+        idx_com = 0
+
+        while idx_fun < n_funcData or idx_com < n_commData:
+            fun_data = funcData[idx_fun] if idx_fun < n_funcData else None
+            com_data = commData[idx_com] if idx_com < n_commData else None
+
+            ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
+            ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
+
+            if ts_fun <= ts_com and fun_data is not None:
+                if not self.event.addFun_v2(fun_data, self.event_id):
+                    self.status = False
+                    self._log("\n ***** Call stack violation! *****\n", "error")
+                    break
+                self.event_id += 1
+                self.func_counter[fun_data[FUN_IDX_FUNC]] += 1
+                idx_fun += 1
+            elif com_data is not None:
+                if not self.event.addComm_v2(com_data):
+                    self.status = False
+                    self._log(
+                        "\n ***** Error in adding communication data event ***** \n", "error"
+                    )
+                    break
+                self.comm_counter[com_data[COM_IDX_TAG]] += 1
+                idx_com += 1
+
+
+    def _run_anomaly_detection_v1(self, funMap):
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self._log("[V1] Only contains open functions so no anomaly detection.")
+            return [], []
+
+        outliers_id_str = []
+        funOfInt = []
+        for funid, data in functime.items():
+            data = np.array(data)
+            n_fcalls = len(data) # the number of function calls
+
+            self.outlier.compOutlier_v1(data, funid)
+            outliers = self.outlier.getOutlier()
+
+            outliers_id = data[outliers==-1, -1]
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            #print('outliers', funid, len(outliers_id))
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+
+            # FIXME: need smooth handling for unknown function and event type
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
+            if len(outliers_id) > 0:
+                self.anomFun[int(funid)] += 1
+
+        return outliers_id_str, funOfInt
+
+    def _run_anomaly_detection_v2(self, funMap):
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self._log("[V2] Only contains open functions so no anomaly detection.")
+            return [], []
+
+        outliers_id_str = []
+        funOfInt = []
+        for funid, fcalls in functime.items():
+            #execdata = np.array(data)
+            n_fcalls = len(fcalls) # the number of function calls
+
+            self.outlier.compOutlier_v2(fcalls, funid)
+            outliers = self.outlier.getOutlier()
+
+            outliers_id = []
+            for fcall, label in zip(fcalls, outliers):
+                fcall.set_label(label)
+                if label == -1:
+                    outliers_id.append(fcall.get_id())
+
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+
+            # FIXME: need smooth handling for unknown function and event type
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
+            if len(outliers_id) > 0:
+                self.anomFun[int(funid)] += len(outliers_id)
+
+        return outliers_id_str, funOfInt
 
     def _process_counter_data(self):
         try:
@@ -114,6 +322,10 @@ class Chimbuko(object):
         except AssertionError:
             self._log("Frame has no counter data...")
             return
+
+        # FIXME: this is added to handle index bug in sos_flow
+        countData[:, CNT_IDX_P] -= self.fix_index
+        countData[:, CNT_IDX_COUNT] -= self.fix_index
 
         self.event.initCountData(len(countData))
         for data in countData:
@@ -127,60 +339,6 @@ class Chimbuko(object):
             self.event_id += 1
             self.count_counter[data[CNT_IDX_COUNT]] += 1
 
-    def _process_communication_data(self):
-        try:
-            commData = self.parser.getCommData()
-        except AssertionError:
-            self._log("Frame has no communication data...")
-            return
-
-        self.event.initCommData(len(commData))
-        for data in commData:
-            if not self.event.addComm(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self._log(
-                    "\n\n\nError in adding communication data event at Frame: {}, "
-                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
-                )
-                break
-            self.event_id += 1
-            self.comm_counter[data[COM_IDX_TAG]] += 1
-
-    def _run_anomaly_detection(self, funMap):
-        try:
-            functime = self.event.getFunTime()
-        except AssertionError:
-            self._log("Only contains open functions so no anomaly detection.")
-            return [], []
-
-        outliers_id_str = []
-        funOfInt = []
-        for funid, data in functime.items():
-            data = np.array(data)
-            n_data = len(data) # the number of function calls
-
-            self.outlier.compOutlier(data, funid)
-            outliers = self.outlier.getOutlier()
-            outliers_id = data[outliers==-1, -1]
-
-            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
-
-            #print('outliers', funid, len(outliers_id))
-
-            maxFuncDepth = self.event.getMaxFunDepth()
-
-            # FIXME: need smooth handling for unknown function and event type
-            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
-            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
-            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
-            # NOTE: runtime error when we dump the information into json file.
-            if n_data > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
-                funOfInt.append(str(funMap[int(funid)]))
-
-            if len(outliers_id) > 0:
-                self.anomFun[int(funid)] += 1
-
-        return outliers_id_str, funOfInt
 
     def process(self):
         # check current status of the parser
@@ -192,34 +350,58 @@ class Chimbuko(object):
         self._init_event()
         funMap = self.parser.getFunMap()
 
-        # process on function event
-        self._process_func_data()
+        # process on function event and communication event
+        if self.ver == 'v1':
+            self._process_func_data_v1()
+            self._process_communication_data_v1()
+        else:
+            # self._process_func_data_v2()
+            # self._process_communication_data_v2()
+            self._process_func_comm_data_v2()
         if not self.status: return
 
         # detect anomalies in function call data
-        outlId, funOfInt = self._run_anomaly_detection(funMap)
+        if self.ver == 'v1':
+            outlId, funOfInt = self._run_anomaly_detection_v1(funMap)
+        else:
+            outlId, funOfInt = self._run_anomaly_detection_v2(funMap)
         self.n_outliers += len(outlId)
         self._log("Numer of outliers per frame: %s" % len(outlId))
 
         # process on counter event
+        # FIXME: do we need to parse counter data that wasn't used anywhere.
         self._process_counter_data()
         if not self.status: return
 
-        # process on communication event
-        self._process_communication_data()
-        if not self.status: return
+
+
+        #self.event.printFunStack()
 
         # dump trace data for visualization
-        # self.visualizer.sendData(
-        #     self.event.getFunData().tolist(),
-        #     self.event.getCountData().tolist(),
-        #     self.event.getCommData().tolist(),
-        #     funOfInt,
-        #     outlId,
-        #     frame_id=self.parser.getStatus(),
-        #     funMap=None if self.parser.Method == 'BP' else funMap,
-        #     eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
-        # )
+        if self.ver == 'v1':
+            self.visualizer.sendData_v1(
+                self.event.getFunData().tolist(),
+                self.event.getCountData().tolist(),
+                self.event.getCommData().tolist(),
+                funOfInt,
+                outlId,
+                frame_id=self.parser.getStatus(),
+                funMap=None if self.parser.Method == 'BP' else funMap,
+                eventType=None if self.parser.Method == 'BP'
+                               else list(self.parser.getEventType().values())
+            )
+        else:
+            try:
+                funtime = self.event.getFunTime()
+                self.visualizer.sendData_v2(
+                    execData=funtime,
+                    anomFunCount=self.anomFun,
+                    funMap=funMap,
+                    getStat=self.outlier.getStat,
+                    frame_id=self.parser.getStatus()
+                )
+            except AssertionError:
+                pass
 
         # go to next stream
         self.parser.getStream()
@@ -253,6 +435,9 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+
+    if size == 1:
+        rank = -1
 
     #configFile = './test/test.cfg' #sys.argv[1]
     configFile = sys.argv[1]

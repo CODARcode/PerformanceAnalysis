@@ -37,6 +37,7 @@ class Parser(object):
         self.rank = rank
         self.comm = comm
 
+
         # Initialize parser mode
         self.parseMode = config['Parser']['ParseMode']
 
@@ -149,10 +150,9 @@ class Parser(object):
         assert data is not None, "Frame has no `event_timestamps`!"
 
         assert data.shape[0] > 0, "Function call data dimension is zero!"
-        if self.log is not None: self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
+        if self.log is not None:
+            self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
 
-        # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
-        # todo: does this return all data in all steps? what is numSteps?
         return data
 
     def getCountData(self):
