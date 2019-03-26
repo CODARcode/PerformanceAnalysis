@@ -140,8 +140,30 @@ class Visualizer():
         if funMap is not None:
             traceDict['value']['functions'] = funMap
 
+        # print('funcMap')
+        # for k, v in traceDict['value']['functions'].items():
+        #     print(k, v)
+        # print('event types: ', traceDict['value']['event_types'])
+        # print('funData')
+        # for d in traceDict['value']['events']:
+        #     print(d)
+        # print(self.vizMethod, self.vizUrl)
+
         if self.vizMethod == "online":
-            req.post(self.vizUrl + '/events', json=traceDict)
+            try:
+                r = req.post(self.vizUrl + '/events', json=traceDict)
+                r.raise_for_status()
+            except req.exceptions.HTTPError as e:
+                print("Http Error: ", e)
+            except req.exceptions.ConnectionError as e:
+                print("Connection Error: ", e)
+            except req.exceptions.Timeout as e:
+                print("Timeout Error: ", e)
+            except req.exceptions.RequestException as e:
+                print("OOps: something else: ", e)
+            except Exception as e:
+                print("Really unknown error: ", e)
+
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
@@ -149,45 +171,79 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData_v2(self, execData, funMap, anomFunCount, getStat, frame_id=0):
+    def sendData_v2(self, execData, anomFunCount, funMap, getStat, frame_id=0):
         """
         Send function, counter and communication data as well as the results of the analysis
         of interest and id(s) of outlier data points.
 
         Args:
         """
-
+        #execList = []
         execDict = {}
         stat = {}
-        for d in execData:
-            if d.label == 1: continue
-            key = d.get_id()
-            value = d.to_dict()
-            execData[key] = value
 
-            key = d.funName
-            fid = d.fid
-            total = getStat(fid)[0]
-            abnormal = anomFunCount[fid]
-            normal = total - abnormal
+        for funid, execList in execData.items():
+            #n_normal = 0
+            #n_abnormal = 0
+            for d in execList:
+                if d.label == 1:
+                    #n_normal += 1
+                    continue
 
-            try:
-                ratio = abnormal / total
-            except ZeroDivisionError:
-                ratio = 0.
-            stat[key] = {
-                "abnormal": abnormal,
-                "regular": normal,
-                "ratio": ratio
-            }
+                key = d.get_id()
+                value = d.to_dict()
+                #execList.append(value)
+                execDict[str(key)] = value
+                #n_abnormal += 1
+
+            n_abnormal = anomFunCount[funid]
+            if n_abnormal > 0:
+                key = funMap[funid]
+                total = getStat(funid)[0]
+                n_normal = total - n_abnormal
+
+                try:
+                    ratio = n_abnormal / (n_normal + n_abnormal)
+                except ZeroDivisionError:
+                    ratio = 0.
+
+                stat[key] = {
+                    "abnormal": n_abnormal,
+                    "regular": n_normal,
+                    "ratio": ratio
+                }
+                #print(funid, ratio)
 
         traceDict = {
             'executions': execDict,
             'stat': stat
         }
 
+        # print('executions: ')
+        # print(execDict.keys())
+        # for k, v in execDict.items():
+        #     print(k, v)
+
+        # print('stat: ')
+        # for k, v in stat.items():
+        #     print(k, v)
+
         if self.vizMethod == "online":
-            req.post(self.vizUrl + "/executions", json=traceDict)
+            try:
+                r = req.post(self.vizUrl + '/executions', json=traceDict)
+                r.raise_for_status()
+            except req.exceptions.HTTPError as e:
+                print("Http Error: ", e)
+            except req.exceptions.ConnectionError as e:
+                print("Connection Error: ", e)
+            except req.exceptions.Timeout as e:
+                print("Timeout Error: ", e)
+            except req.exceptions.RequestException as e:
+                print("OOps: something else: ", e)
+            except Exception as e:
+                print("Really unknown error: ", e)
+
+
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:

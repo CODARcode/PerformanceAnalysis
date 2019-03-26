@@ -37,6 +37,7 @@ class Parser(object):
         self.rank = rank
         self.comm = comm
 
+
         # Initialize parser mode
         self.parseMode = config['Parser']['ParseMode']
 

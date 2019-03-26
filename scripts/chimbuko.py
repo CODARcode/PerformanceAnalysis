@@ -69,6 +69,9 @@ class Chimbuko(object):
         self.fix_index = int(self.config['Basic']['FixIndex'])
         self.ver = self.config['Basic']['Ver']
 
+        print("FIX INDEX: ", self.fix_index)
+        print("VERSION: ", self.ver)
+
     def _log(self, msg:str, type='info'):
         msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
         if type == 'info':
@@ -99,7 +102,7 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("Frame has no function data...")
+            self._log("[V1] Frame has no function data...")
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -122,7 +125,7 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("Frame has no function data...")
+            self._log("[V2] Frame has no function data...")
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -167,7 +170,7 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self._log("Frame has no communication data...")
+            self._log("[V1] Frame has no communication data...")
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -190,14 +193,14 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self._log("Frame has no communication data...")
+            self._log("[V2] Frame has no communication data...")
             return
 
         # FIXME: this is added to handle index bug in sos_flow
         commData[:, COM_IDX_P] -= self.fix_index
         commData[:, COM_IDX_SR] -= self.fix_index
 
-        # self.event.initCommData(len(commData))
+        self.event.initCommData(len(commData))
         for data in commData:
             if not self.event.addComm_v2(np.append(data, np.uint64(self.event_id))):
                 self.status = False
@@ -213,7 +216,7 @@ class Chimbuko(object):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
-            self._log("Only contains open functions so no anomaly detection.")
+            self._log("[V1] Only contains open functions so no anomaly detection.")
             return [], []
 
         outliers_id_str = []
@@ -249,7 +252,7 @@ class Chimbuko(object):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
-            self._log("Only contains open functions so no anomaly detection.")
+            self._log("[V2] Only contains open functions so no anomaly detection.")
             return [], []
 
         outliers_id_str = []
@@ -320,7 +323,7 @@ class Chimbuko(object):
             self._process_communication_data_v2()
         if not self.status: return
 
-        self.event.printFunStack()
+        #self.event.printFunStack()
 
         # dump trace data for visualization
         if self.ver == 'v1':
@@ -336,13 +339,17 @@ class Chimbuko(object):
                                else list(self.parser.getEventType().values())
             )
         else:
-            self.visualizer.sendData_v2(
-                execData=self.event.getFunTime(),
-                funMap=funMap,
-                anomFunCount=self.anomFun,
-                getStat=self.outlier.getStat,
-                frame_id=self.parser.getStatus()
-            )
+            try:
+                funtime = self.event.getFunTime()
+                self.visualizer.sendData_v2(
+                    execData=funtime,
+                    anomFunCount=self.anomFun,
+                    funMap=funMap,
+                    getStat=self.outlier.getStat,
+                    frame_id=self.parser.getStatus()
+                )
+            except AssertionError:
+                pass
 
         # go to next stream
         self.parser.getStream()

@@ -115,7 +115,7 @@ class ExecData(object):
         self.rid = 0 # rank index
         self.fid = 0 # function index
 
-        self.label = 0 # anomaly label (1 or -1)
+        self.label = 1 # anomaly label (1 or -1)
         self.entry = 0 # entry timestamp
         self.exit  = 0 # exit timestamp
         self.runtime = 0 # execution time (= exit - entry)
@@ -137,16 +137,16 @@ class ExecData(object):
 
     def to_dict(self):
         return {
-            "prog names": self.pid,
+            "prog names": str(self.pid),
             "name": self.funName,
-            "comm ranks": self.rid,
-            "threads": self.tid,
-            "findex": self._id,
-            "anomaly_score": self.label,
-            "parent": self.parent,
-            "children": self.children,
-            "entry": self.entry,
-            "exit": self.exit,
+            "comm ranks": int(self.rid),
+            "threads": int(self.tid),
+            "findex": str(self._id),
+            "anomaly_score": str(self.label),
+            "parent": str(self.parent),
+            "children": [str(c) for c in self.children],
+            "entry": str(self.entry),
+            "exit": str(self.exit),
             "messages": self.message
         }
 
