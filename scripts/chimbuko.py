@@ -46,7 +46,7 @@ class Chimbuko(object):
         self.outlier = Outlier(self.config, self.log)
         # Visualizer: visualization handler
         self.maxDepth = int(self.config['Visualizer']['MaxFunDepth'])
-        self.visualizer = Visualizer(self.config)
+        self.visualizer = Visualizer(self.config, self.log)
         self._init()
 
         # init variable
@@ -347,7 +347,7 @@ class Chimbuko(object):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
-        self._log("\n\nFrame: %s" % self.parser.getStatus())
+        self._log("\n\n[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # Initialize event
         self._init_event()
@@ -375,12 +375,9 @@ class Chimbuko(object):
         # FIXME: do we need to parse counter data that wasn't used anywhere.
         self._process_counter_data()
         if not self.status: return
+        self._log("\n\n[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
 
-
-        #self.event.printFunStack()
-
-        # dump trace data for visualization
         if self.ver == 'v1':
             self.visualizer.sendData_v1(
                 self.event.getFunData().tolist(),
@@ -399,7 +396,7 @@ class Chimbuko(object):
                 self.visualizer.sendData_v2(
                     execData=funtime,
                     funMap=funMap,
-                    getCount=self.outlier.getStat,
+                    getCount=self.outlier.getCount,
                     frame_id=self.parser.getStatus()
                 )
             except AssertionError:
@@ -457,3 +454,6 @@ if __name__ == '__main__':
 
     print("Total number of frames: %s" % n_frames)
     print("Total running time: {}s".format(end - start))
+
+    # waiting until all data is sent to VIS
+    driver.visualizer.join(not driver.status)

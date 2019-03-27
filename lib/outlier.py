@@ -300,7 +300,7 @@ class Outlier(object):
     def addAbnormal(self, funid, n_abnormals):
         if self.use_ps:
             resp = req.post(self.ps_url + '/add_abnormal',
-                            json={'id': funid, 'abnormal': n_abnormals})
+                            json={'id': int(funid), 'abnormal': int(n_abnormals)})
             resp = resp.json()
             self.stats[funid].reset_abnormal(resp['abnormal'])
         else:

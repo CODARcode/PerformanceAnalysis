@@ -12,7 +12,7 @@ Created:
 import threading
 import requests as req
 import json
-import time
+#import time
 
 from queue import Queue
 
@@ -23,6 +23,8 @@ class dataWorker(object):
         self.job_q = Queue(maxsize=maxsize)
         self.log = log
 
+        self._stop_event = threading.Event()
+
         thread = threading.Thread(target=self._run, args=())
         thread.daemon = True # daemonize thread
         thread.start()       # start the execution
@@ -30,11 +32,13 @@ class dataWorker(object):
     def put(self, method, path, data):
         self.job_q.put((method, path, data))
 
-    def join(self):
+    def join(self, force_to_quit):
         self.job_q.join()
+        if force_to_quit:
+            self._stop_event.set()
 
     def _run(self):
-        while True:
+        while not self._stop_event.isSet():
             method, path, data = self.job_q.get()
 
             msg = "Success"
@@ -62,4 +66,5 @@ class dataWorker(object):
                 self.log.info('[{:s}]'.format(self.name) + msg)
 
             self.job_q.task_done()
-            time.sleep(self.interval)
+            #time.sleep(self.interval)
+            self._stop_event.wait(self.interval)

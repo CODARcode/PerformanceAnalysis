@@ -53,19 +53,26 @@ class Visualizer():
 
         # potentinally, there could be multiple workers depending on the performance.
         # currently, it only creates single worker.
-        self.worker = None
-        n_workers = int(config['Visualizer']['UseWorker'])
-        if n_workers > 0:
-            self.worker = dataWorker(log=log)
+        if self.vizMethod in ['online', 'offline']:
+            self.worker = None
+            n_workers = int(config['Visualizer']['UseWorker'])
+            if n_workers > 0:
+                self.worker = dataWorker(log=log)
 
-        if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
-            shutil.rmtree(self.outputDir)
+            if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
+                shutil.rmtree(self.outputDir)
 
-        if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
-            os.makedirs(self.outputDir)
+            if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
+                os.makedirs(self.outputDir)
+
+    def join(self, force_to_quit):
+        if self.worker is not None:
+            self.worker.join(force_to_quit)
 
     def sendReset(self):
         """Send signal to visualization server to restart itself."""
+        if self.vizMethod == 'off': return
+
         resetDict = {'type': 'reset'}
         if self.vizMethod == "online":
             req.post(self.vizUrl, json=resetDict)
@@ -84,6 +91,8 @@ class Visualizer():
                 such as function EXIT/ENTRY or SEND/RECEIVE for communication events.
             frame_id (int): frame id
         """
+        if self.vizMethod == 'off': return
+
         eventDict = {'type': 'event_types', 'value': eventType}
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json=eventDict)
@@ -103,6 +112,8 @@ class Visualizer():
             funMap (dictionary): function id (int) key and function name (string) value
             frame_id (int): frame id
         """
+        if self.vizMethod == 'off': return
+
         funDict = {'type': 'functions', 'value': funMap}
         if self.vizMethod == "online":
             req.post(self.vizUrl, json={'type': 'functions', 'value': funMap})
@@ -129,7 +140,8 @@ class Visualizer():
             frame_id: (int), frame id
             eventType: (list), event types
         """
-        #todo: is this correct way to aggregate all data
+        if self.vizMethod == 'off': return
+
         dataList = []
         dataList += funData
         #dataList += countData
@@ -157,15 +169,15 @@ class Visualizer():
                     r = req.post(self.vizUrl + '/events', json=traceDict)
                     r.raise_for_status()
                 except req.exceptions.HTTPError as e:
-                    print("Http Error: ", e)
+                    if self.log is not None: self.log.info("Http Error: ", e)
                 except req.exceptions.ConnectionError as e:
-                    print("Connection Error: ", e)
+                    if self.log is not None: self.log.info("Connection Error: ", e)
                 except req.exceptions.Timeout as e:
-                    print("Timeout Error: ", e)
+                    if self.log is not None: self.log.info("Timeout Error: ", e)
                 except req.exceptions.RequestException as e:
-                    print("OOps: something else: ", e)
+                    if self.log is not None: self.log.info("OOps: something else: ", e)
                 except Exception as e:
-                    print("Really unknown error: ", e)
+                    if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
@@ -185,6 +197,8 @@ class Visualizer():
 
         Args:
         """
+        if self.vizMethod == 'off': return
+
         execDict = {}
         stat = {}
 
@@ -227,15 +241,15 @@ class Visualizer():
                     r = req.post(self.vizUrl + '/executions', json=traceDict)
                     r.raise_for_status()
                 except req.exceptions.HTTPError as e:
-                    print("Http Error: ", e)
+                    if self.log is not None: self.log.info("Http Error: ", e)
                 except req.exceptions.ConnectionError as e:
-                    print("Connection Error: ", e)
+                    if self.log is not None: self.log.info("Connection Error: ", e)
                 except req.exceptions.Timeout as e:
-                    print("Timeout Error: ", e)
+                    if self.log is not None: self.log.info("Timeout Error: ", e)
                 except req.exceptions.RequestException as e:
-                    print("OOps: something else: ", e)
+                    if self.log is not None: self.log.info("OOps: something else: ", e)
                 except Exception as e:
-                    print("Really unknown error: ", e)
+                    if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
