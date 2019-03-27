@@ -15,7 +15,7 @@ Last Modified:
 import numpy as np
 
 class RunStats(object):
-    def __init__(self, s0=0., s1=0., s2=0.):
+    def __init__(self, s0=0., s1=0., s2=0., n_abnormal=0.):
         """
         constructor
         Args:
@@ -26,6 +26,10 @@ class RunStats(object):
         self.s0 = s0
         self.s1 = s1
         self.s2 = s2
+
+        # this is to keep the number of abnormal cases
+        # - n_normal: s0 - n_abnormal
+        self.n_abnormal = n_abnormal
 
     def __str__(self):
         return "stat: s0 = {:.3f}, s1 = {:.3f}, s2 = {:.3f}".format(self.s0, self.s1, self.s2)
@@ -53,6 +57,12 @@ class RunStats(object):
     def stat(self):
         return [self.s0, self.s1, self.s2]
 
+    def count(self):
+        return self.s0, self.n_abnormal
+
+    def add_abnormal(self, n):
+        self.n_abnormal += n
+
     def add(self, x):
         """Add single data point"""
         self.s0 += 1
@@ -69,14 +79,18 @@ class RunStats(object):
         self.s1 = s1
         self.s2 = s2
 
+    def reset_abnormal(self, n):
+        self.n_abnormal = n
+
     def __add__(self, other):
         """Add two running stat
         """
         s0 = self.s0 + other.s0
         s1 = self.s1 + other.s1
         s2 = self.s2 + other.s2
+        n_abnormal = self.n_abnormal + other.n_abnormal
 
-        return RunStats(s0, s1, s2)
+        return RunStats(s0, s1, s2, n_abnormal)
 
 
 

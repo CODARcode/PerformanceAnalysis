@@ -20,8 +20,21 @@ class ParamServer(object):
         _ps = self.ps[int(funcid)]
         return _ps.stat()
 
+    def add_abnormal(self, funcid, n_abnormal):
+        _ps = self.ps[int(funcid)]
+        _ps.add_abnormal(n_abnormal)
+        return _ps.count()[1]
+
 # parameter server
 ps = ParamServer()
+
+@app.route("/add_abnormal", methods=['POST'])
+def add_abnormal():
+    param = request.get_json(force=True)
+    funid = int(param.get('id'))
+    n_abnormal = int(param.get('abnormal'))
+    n_abnormal = ps.add_abnormal(funid, n_abnormal)
+    return jsonify({'id': funid, 'abnormal': n_abnormal})
 
 @app.route("/clear", methods=['POST'])
 def clear():

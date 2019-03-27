@@ -296,5 +296,17 @@ class Outlier(object):
 
     def getStat(self, id):
         return self.stats[id].stat()
+
+    def addAbnormal(self, funid, n_abnormals):
+        if self.use_ps:
+            resp = req.post(self.ps_url + '/add_abnormal',
+                            json={'id': int(funid), 'abnormal': int(n_abnormals)})
+            resp = resp.json()
+            self.stats[funid].reset_abnormal(resp['abnormal'])
+        else:
+            self.stats[funid].add_abnormal(n_abnormals)
+
+    def getCount(self, funid):
+        return self.stats[funid].count()
    
     

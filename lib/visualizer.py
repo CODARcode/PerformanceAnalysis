@@ -15,12 +15,13 @@ Modified:
 """
 import os
 import shutil
+from utils.dataWorker import dataWorker
 import json
 import requests as req
-import matplotlib as mpl
-if os.environ.get('DISPLAY','') == '':
-    print('No display found; using non-interactive Agg backend...\n')
-    mpl.use('Agg')
+#import matplotlib as mpl
+#if os.environ.get('DISPLAY','') == '':
+#    print('No display found; using non-interactive Agg backend...\n')
+#    mpl.use('Agg')
 
 
 class Visualizer():
@@ -31,7 +32,7 @@ class Visualizer():
     software.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, log=None):
         """This is the constructor for the Visualizer class.
         The visualizer has two main modes defined by the `VizMethod` variable.
             - offline: writes .json files that the visualization software parses
@@ -40,6 +41,7 @@ class Visualizer():
         Args:
             config: config object
         """
+        self.log = log
         self.vizMethod = config['Visualizer']['VizMethod']
         self.vizUrl = config['Visualizer']['VizUrl']
         self.outputDir = config['Visualizer']['OutputDir']
@@ -49,14 +51,28 @@ class Visualizer():
         self.commData = []
         self.anomalyData = []
 
-        if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
-            shutil.rmtree(self.outputDir)
+        # potentinally, there could be multiple workers depending on the performance.
+        # currently, it only creates single worker.
+        if self.vizMethod in ['online', 'offline']:
+            self.worker = None
+            n_workers = int(config['Visualizer']['UseWorker'])
+            if n_workers > 0:
+                self.worker = dataWorker(log=log)
 
-        if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
-            os.makedirs(self.outputDir)
+            if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
+                shutil.rmtree(self.outputDir)
+
+            if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
+                os.makedirs(self.outputDir)
+
+    def join(self, force_to_quit):
+        if self.worker is not None:
+            self.worker.join(force_to_quit)
 
     def sendReset(self):
         """Send signal to visualization server to restart itself."""
+        if self.vizMethod == 'off': return
+
         resetDict = {'type': 'reset'}
         if self.vizMethod == "online":
             req.post(self.vizUrl, json=resetDict)
@@ -75,6 +91,8 @@ class Visualizer():
                 such as function EXIT/ENTRY or SEND/RECEIVE for communication events.
             frame_id (int): frame id
         """
+        if self.vizMethod == 'off': return
+
         eventDict = {'type': 'event_types', 'value': eventType}
         if self.vizMethod == "online":
             r = req.post(self.vizUrl, json=eventDict)
@@ -94,6 +112,8 @@ class Visualizer():
             funMap (dictionary): function id (int) key and function name (string) value
             frame_id (int): frame id
         """
+        if self.vizMethod == 'off': return
+
         funDict = {'type': 'functions', 'value': funMap}
         if self.vizMethod == "online":
             req.post(self.vizUrl, json={'type': 'functions', 'value': funMap})
@@ -120,11 +140,12 @@ class Visualizer():
             frame_id: (int), frame id
             eventType: (list), event types
         """
-        #todo: is this correct way to aggregate all data
+        if self.vizMethod == 'off': return
+
         dataList = []
         dataList += funData
         #dataList += countData
-        #dataList += commData
+        dataList += commData
 
         traceDict = {
             'type': 'info',
@@ -140,68 +161,60 @@ class Visualizer():
         if funMap is not None:
             traceDict['value']['functions'] = funMap
 
-        # print('funcMap')
-        # for k, v in traceDict['value']['functions'].items():
-        #     print(k, v)
-        # print('event types: ', traceDict['value']['event_types'])
-        # print('funData')
-        # for d in traceDict['value']['events']:
-        #     print(d)
-        # print(self.vizMethod, self.vizUrl)
-
         if self.vizMethod == "online":
-            try:
-                r = req.post(self.vizUrl + '/events', json=traceDict)
-                r.raise_for_status()
-            except req.exceptions.HTTPError as e:
-                print("Http Error: ", e)
-            except req.exceptions.ConnectionError as e:
-                print("Connection Error: ", e)
-            except req.exceptions.Timeout as e:
-                print("Timeout Error: ", e)
-            except req.exceptions.RequestException as e:
-                print("OOps: something else: ", e)
-            except Exception as e:
-                print("Really unknown error: ", e)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod, self.vizUrl + '/events', traceDict)
+            else:
+                try:
+                    r = req.post(self.vizUrl + '/events', json=traceDict)
+                    r.raise_for_status()
+                except req.exceptions.HTTPError as e:
+                    if self.log is not None: self.log.info("Http Error: ", e)
+                except req.exceptions.ConnectionError as e:
+                    if self.log is not None: self.log.info("Connection Error: ", e)
+                except req.exceptions.Timeout as e:
+                    if self.log is not None: self.log.info("Timeout Error: ", e)
+                except req.exceptions.RequestException as e:
+                    if self.log is not None: self.log.info("OOps: something else: ", e)
+                except Exception as e:
+                    if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
-            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                json.dump(traceDict, outfile, indent=4, sort_keys=True)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict)
+            else:
+                with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                    json.dump(traceDict, outfile, indent=4, sort_keys=True)
 
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData_v2(self, execData, anomFunCount, funMap, getStat, frame_id=0):
+    def sendData_v2(self, execData, funMap, getCount, frame_id=0):
         """
         Send function, counter and communication data as well as the results of the analysis
         of interest and id(s) of outlier data points.
 
         Args:
         """
-        #execList = []
+        if self.vizMethod == 'off': return
+
         execDict = {}
         stat = {}
 
         for funid, execList in execData.items():
-            #n_normal = 0
-            #n_abnormal = 0
             for d in execList:
                 if d.label == 1:
-                    #n_normal += 1
                     continue
-
                 key = d.get_id()
                 value = d.to_dict()
-                #execList.append(value)
                 execDict[str(key)] = value
-                #n_abnormal += 1
 
-            n_abnormal = anomFunCount[funid]
+            # FIXME: for mpi run, the number abnormal is local, but I need global one.
+            n_total, n_abnormal = getCount(funid)
             if n_abnormal > 0:
                 key = funMap[funid]
-                total = getStat(funid)[0]
-                n_normal = total - n_abnormal
+                n_normal = n_total - n_abnormal
 
                 try:
                     ratio = n_abnormal / (n_normal + n_abnormal) * 100.
@@ -213,41 +226,38 @@ class Visualizer():
                     "regular": n_normal,
                     "ratio": ratio
                 }
-                #print(funid, ratio)
 
         traceDict = {
             'executions': execDict,
             'stat': stat
         }
 
-        # print('executions: ')
-        # print(execDict.keys())
-        # for k, v in execDict.items():
-        #     print(k, v)
-
-        # print('stat: ')
-        # for k, v in stat.items():
-        #     print(k, v)
 
         if self.vizMethod == "online":
-            try:
-                r = req.post(self.vizUrl + '/executions', json=traceDict)
-                r.raise_for_status()
-            except req.exceptions.HTTPError as e:
-                print("Http Error: ", e)
-            except req.exceptions.ConnectionError as e:
-                print("Connection Error: ", e)
-            except req.exceptions.Timeout as e:
-                print("Timeout Error: ", e)
-            except req.exceptions.RequestException as e:
-                print("OOps: something else: ", e)
-            except Exception as e:
-                print("Really unknown error: ", e)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod, self.vizUrl + '/executions', traceDict)
+            else:
+                try:
+                    r = req.post(self.vizUrl + '/executions', json=traceDict)
+                    r.raise_for_status()
+                except req.exceptions.HTTPError as e:
+                    if self.log is not None: self.log.info("Http Error: ", e)
+                except req.exceptions.ConnectionError as e:
+                    if self.log is not None: self.log.info("Connection Error: ", e)
+                except req.exceptions.Timeout as e:
+                    if self.log is not None: self.log.info("Timeout Error: ", e)
+                except req.exceptions.RequestException as e:
+                    if self.log is not None: self.log.info("OOps: something else: ", e)
+                except Exception as e:
+                    if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
             fn = "trace.{:06d}.json".format(frame_id)
-            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                json.dump(traceDict, outfile, indent=4, sort_keys=True)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict)
+            else:
+                with open(os.path.join(self.outputDir, fn), 'w') as outfile:
+                    json.dump(traceDict, outfile, indent=4, sort_keys=True)
 
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
