@@ -53,6 +53,7 @@ class Visualizer():
 
         # potentinally, there could be multiple workers depending on the performance.
         # currently, it only creates single worker.
+        self.worker = None
         if self.vizMethod in ['online', 'offline']:
             self.worker = None
             n_workers = int(config['Visualizer']['UseWorker'])

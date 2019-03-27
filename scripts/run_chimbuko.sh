@@ -11,11 +11,13 @@
 export PYTHONPATH=${PYTHONPATH}:/opt/adios2/lib/python3.5/site-packages
 export PYTHONPATH=${PYTHONPATH}:../lib
 
+echo $PYTHONPATH
+
 rm -f *.sst
 
 # no mpi
 python3 param_server.py ../untracked/results/ps.log &
-python3 simple_writer_sst.py > ../untracked/results/writer.log &
+python3 simple_writer_sst.py ../data/shortdemo/tau-metrics.bp > ../untracked/results/writer.log &
 python3 chimbuko.py chimbuko.cfg
 
 # kill writer & parameter server

@@ -19,6 +19,7 @@ Last modified:
     March 20, 2019   support MPI
 """
 import pyAdios as ADIOS
+import sys
 
 # data
 VAR_SCALAR = [
@@ -31,9 +32,13 @@ VAR_ARRAY = [
     ('counter_values', 'counter_event_count', 6),
     ('comm_timestamps', 'comm_count', 8)
 ]
-inputFile = '../data/shortdemo/tau-metrics.bp'
+
+
+#inputFile = '../data/shortdemo/tau-metrics.bp'
 #inputFile = './data/longdemo/tau-metrics-nwchem.bp'
+inputFile = sys.argv[1]
 outputFile = 'tau-metrics.bp'
+
 
 # reader (from bp file for test)
 reader = ADIOS.pyAdios('BP')

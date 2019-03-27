@@ -428,6 +428,7 @@ def usage():
 if __name__ == '__main__':
     import time
     from mpi4py import MPI
+
     # check argument and print usages()
 
     # MPI
