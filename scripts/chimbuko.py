@@ -377,7 +377,6 @@ class Chimbuko(object):
         if not self.status: return
         self._log("\n\n[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
-
         if self.ver == 'v1':
             self.visualizer.sendData_v1(
                 self.event.getFunData().tolist(),
