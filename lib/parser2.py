@@ -53,8 +53,14 @@ class Parser(object):
             # insert rank number into the inputFile
             pos = self.inputFile.rfind('.')
             if pos < 0:
-                raise ValueError("Invalid input file name for the parser: %s" % self.inputFile)
+                raise ValueError("[{:d}] Invalid input file name for the parser: {}".format(
+                    self.rank, self.inputFile
+                ))
             self.inputFile = self.inputFile[:pos] + "-{:d}".format(self.rank) + self.inputFile[pos:]
+
+        if self.log is not None:
+            self.log.info('[{:d}] Input File: {}'.format(self.rank, self.inputFile))
+
 
         # attributes from inputFile (BP)
         self.bpAttrib = None
@@ -73,8 +79,10 @@ class Parser(object):
             self.status = self.ad.current_step()
             self._update()
         else:
-            if self.log is not None: self.log.error("Unsupported parse mode: %s" % self.parseMode)
-            raise ValueError("Unsupported parse mode: %s" % self.parseMode)
+            if self.log is not None:
+                self.log.error("[{:d}] Unsupported parse mode: {}".format(
+                    self.rank, self.parseMode))
+            raise ValueError("[{:d}] Unsupported parse mode: {}".format(self.rank, self.parseMode))
 
     def _update(self):
         self.bpAttrib = self.ad.available_attributes()
@@ -93,11 +101,13 @@ class Parser(object):
                 else:
                     self.eventType[key] = val
         self.numFun = len(self.funMap)
-        if self.log is not None: self.log.info("Number of attributes: %s" % self.bpNumAttrib)
-        if self.log is not None: self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
-        if self.log is not None: self.log.debug("Number of functions: %s" % self.numFun)
-        if self.log is not None: self.log.debug("Function map: \n" + str(self.funMap))
-        if self.log is not None: self.log.debug("Event type: \n" + str(self.eventType))
+        # if self.log is not None:
+        #     self.log.info("[{:d}] Number of attributes: {}".format(self.rank, self.bpNumAttrib))
+        # if self.log is not None:
+        #     self.log.debug("Attribute names: \n" + str(self.bpAttrib.keys()))
+        # if self.log is not None: self.log.debug("Number of functions: %s" % self.numFun)
+        # if self.log is not None: self.log.debug("Function map: \n" + str(self.funMap))
+        # if self.log is not None: self.log.debug("Event type: \n" + str(self.eventType))
 
     def getParseMethod(self):
         """Get method for accessing parse method.
@@ -122,7 +132,8 @@ class Parser(object):
         self.status = self.ad.advance()
         if self.Method in ['SST']:
             self._update()
-        if self.log is not None: self.log.info("Adios stream status: %s" % self.status)
+        if self.log is not None:
+            self.log.info("[{:d}] Adios stream status: {}".format(self.rank, self.status))
         return self.ad
 
     def getFunData(self):
@@ -141,17 +152,17 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("timer_event_count")
-        assert ydim is not None, "Frame has no `timer_event_count`!"
+        assert ydim is not None, "[{:d}] Frame has no `timer_event_count`!".format(self.rank)
 
         if isinstance(ydim, np.ndarray):
             ydim = ydim[0]
 
         data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
-        assert data is not None, "Frame has no `event_timestamps`!"
+        assert data is not None, "[{:d}] Frame has no `event_timestamps`!".format(self.rank)
 
-        assert data.shape[0] > 0, "Function call data dimension is zero!"
+        assert data.shape[0] > 0, "[{:d}] Function call data dimension is zero!".format(self.rank)
         if self.log is not None:
-            self.log.info("Frame has `event_timestamps: {}`".format(data.shape))
+            self.log.info("[{:d}] Frame has `event_timestamps: {}`".format(self.rank, data.shape))
 
         return data
 
@@ -171,13 +182,14 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("counter_event_count")
-        assert ydim is not None, "Frame has no `counter_event_count`!"
+        assert ydim is not None, "[{:d}] Frame has no `counter_event_count`!".format(self.rank)
 
         data = self.ad.read_variable("counter_values", count=[ydim, 6])
-        assert data is not None, "Frame has no `counter_values`!"
+        assert data is not None, "[{:d}] Frame has no `counter_values`!".format(self.rank)
 
-        assert data.shape[0] > 0, "Counter data dimension is zero!"
-        if self.log is not None: self.log.info("Frame has `counter_values: {}`".format(data.shape))
+        assert data.shape[0] > 0, "[{:d}] Counter data dimension is zero!".format(self.rank)
+        if self.log is not None:
+            self.log.info("[{:d}] Frame has `counter_values: {}`".format(self.rank, data.shape))
 
         # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
         # todo: does this return all data in all steps? what is numSteps?
@@ -199,13 +211,14 @@ class Parser(object):
             Return value to Adios variable read() method.
         """
         ydim = self.ad.read_variable("comm_count")
-        assert ydim is not None, "Frame has no `comm_count`!"
+        assert ydim is not None, "[{:d}] Frame has no `comm_count`!".format(self.rank)
 
         data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
-        assert data is not None, "Frame has no `comm_timestamps`!"
+        assert data is not None, "[{:d}] Frame has no `comm_timestamps`!".format(self.rank)
 
-        assert data.shape[0] > 0, "Communication data dimension is zero!"
-        if self.log is not None: self.log.info("Frame has `comm_timestamps: {}`".format(data.shape))
+        assert data.shape[0] > 0, "[{:d}] Communication data dimension is zero!".format(self.rank)
+        if self.log is not None:
+            self.log.info("[{:d}] Frame has `comm_timestamps: {}`".format(self.rank, data.shape))
 
         # fixme: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
         # fixme: does this return all data in all steps? what is numSteps?
@@ -278,7 +291,8 @@ class Parser(object):
         """
         Close Adios stream
         """
-        if self.log is not None: self.log.info("Closing Adios stream...")
+        if self.log is not None:
+            self.log.info("[{:d}] Closing Adios stream...".format(self.rank))
         self.ad.close()
 
     def adiosFinalize(self):
@@ -287,5 +301,6 @@ class Parser(object):
 
         Currently, this has same effect as adiosClose
         """
-        if self.log is not None: self.log.info("Finalize Adios method: %s" % self.Method)
+        if self.log is not None:
+            self.log.info("[{:d}] Finalize Adios method: {}".format(self.rank, self.parseMode))
         self.ad.close()

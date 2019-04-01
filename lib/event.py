@@ -505,16 +505,7 @@ class  Event(object):
             for rid, r_value in p_value.items():
                 for tid, t_value in r_value.items():
                     output("[{}][{}][{}]: {}".format(pid, rid, tid, len(t_value)))
+                    if self.log is not None:
+                        while len(t_value):
+                            self.log.info(t_value.pop())
         output('***** End   Function call stack *****')
-
-        # try:
-        #     import pprint
-        #     pp = pprint.PrettyPrinter(indent=3)
-        #     pp.pprint(self.funStack)
-        # except ImportError:
-        #     print("self.funStack = ", self.funStack)
-
-
-    #This portion is only needed if the visualization requires to send function calls that have exited
-    #def initFunData(self, numEvent):
-    #    self.funList = []

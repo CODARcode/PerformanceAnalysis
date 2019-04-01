@@ -11,7 +11,6 @@ import sys
 import logging
 import configparser
 import numpy as np
-from collections import defaultdict
 
 from definition import *
 from parser2 import Parser
@@ -28,14 +27,24 @@ class Chimbuko(object):
         self.comm = comm
 
         # Initialize logger
+        log_filename = self.config['Debug']['LogFile']
+        if self.rank >= 0:
+            # insert rank number into the log_filename
+            pos = log_filename.rfind('.')
+            if pos < 0:
+                raise ValueError("[{:d}] Invalid log file name: {}".format(
+                    self.rank, log_filename
+                ))
+            log_filename = log_filename[:pos] + "-{:d}".format(self.rank) + log_filename[pos:]
+
         logging.basicConfig(
             level=self.config['Debug']['LogLevel'],
             format=self.config['Debug']['Format'],
-            filename=self.config['Debug']['LogFile']
+            filename=log_filename
         )
         self.log = logging.getLogger('CHIMBUKO')
         # to see logging on the terminal, uncomment below (for develop purpose)
-        self.log.addHandler(logging.StreamHandler(sys.stdout))
+        #self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -72,14 +81,14 @@ class Chimbuko(object):
         #print("FIX INDEX: ", self.fix_index)
         #print("VERSION: ", self.ver)
 
-    def _log(self, msg:str, type='info'):
-        msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
-        if type == 'info':
-            self.log.info(msg)
-        elif type == 'debug':
-            self.log.debug(msg)
-        elif type == 'error':
-            self.log.error(msg)
+    # def _log(self, msg:str, type='info'):
+    #     msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
+    #     if type == 'info':
+    #         self.log.info(msg)
+    #     elif type == 'debug':
+    #         self.log.debug(msg)
+    #     elif type == 'error':
+    #         self.log.error(msg)
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -102,7 +111,7 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("[V1] Frame has no function data...")
+            self.log.info("[{:d}][V1] Frame has no function data...".format(self.rank))
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -116,7 +125,8 @@ class Chimbuko(object):
         for data in funcData:
             if not self.event.addFun_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log("\n ***** Call stack violation! ***** \n", 'error')
+                self.log.error(
+                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
                 break
             self.event_id += 1
             #self.func_counter[data[FUN_IDX_FUNC]] += 1
@@ -125,7 +135,7 @@ class Chimbuko(object):
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("[V2] Frame has no function data...")
+            self.log.info("[{:d}][V2] Frame has no function data...".format(self.rank))
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -138,7 +148,8 @@ class Chimbuko(object):
         for data in funcData:
             if not self.event.addFun_v2(data, self.event_id):
                 self.status = False
-                self._log("\n ***** Call stack violation! ***** \n", 'error')
+                self.log.info(
+                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
                 break
             self.event_id += 1
             #self.func_counter[data[FUN_IDX_FUNC]] += 1
@@ -147,7 +158,7 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self._log("[V1] Frame has no communication data...")
+            self.log.info("[{:d}][V1] Frame has no communication data...".format(self.rank))
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -158,10 +169,8 @@ class Chimbuko(object):
         for data in commData:
             if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nError in adding communication data event at Frame: {}, "
-                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
-                )
+                self.log.info(
+                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(self.rank))
                 break
             self.event_id += 1
             #self.comm_counter[data[COM_IDX_TAG]] += 1
@@ -170,7 +179,7 @@ class Chimbuko(object):
         try:
             commData = self.parser.getCommData()
         except AssertionError:
-            self._log("[V2] Frame has no communication data...")
+            self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -181,10 +190,9 @@ class Chimbuko(object):
         for data in commData:
             if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nError in adding communication data event at Frame: {}, "
-                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
-                )
+                self.log.info(
+                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(
+                        self.rank))
                 break
             self.event_id += 1
             #self.comm_counter[data[COM_IDX_TAG]] += 1
@@ -197,7 +205,7 @@ class Chimbuko(object):
             funcData[:, FUN_IDX_EE] -= self.fix_index
             funcData[:, FUN_IDX_FUNC] -= self.fix_index
         except AssertionError:
-            self._log("[V2] Frame has no function data...")
+            self.log.info("[{:d}][V2] Frame has no function data...".format(self.rank))
             funcData = []
 
         try:
@@ -206,7 +214,7 @@ class Chimbuko(object):
             commData[:, COM_IDX_P] -= self.fix_index
             commData[:, COM_IDX_SR] -= self.fix_index
         except AssertionError:
-            self._log("[V2] Frame has no communication data...")
+            self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
             commData = []
 
 
@@ -225,7 +233,8 @@ class Chimbuko(object):
             if ts_fun <= ts_com and fun_data is not None:
                 if not self.event.addFun_v2(fun_data, self.event_id):
                     self.status = False
-                    self._log("\n ***** Call stack violation! *****\n", "error")
+                    self.log.info(
+                        "\n ***** [{:d}] Call stack violation! *****\n".format(self.rank))
                     break
                 self.event_id += 1
                 #self.func_counter[fun_data[FUN_IDX_FUNC]] += 1
@@ -233,9 +242,9 @@ class Chimbuko(object):
             elif com_data is not None:
                 if not self.event.addComm_v2(com_data):
                     self.status = False
-                    self._log(
-                        "\n ***** Error in adding communication data event ***** \n", "error"
-                    )
+                    self.log.info(
+                        "\n ***** [{:d}] Error in adding communication data event ***** \n".format(
+                            self.rank))
                     break
                 #self.comm_counter[com_data[COM_IDX_TAG]] += 1
                 idx_com += 1
@@ -245,7 +254,8 @@ class Chimbuko(object):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
-            self._log("[V1] Only contains open functions so no anomaly detection.")
+            self.log.info("[{:d}][V1] Only contains open functions so no anomaly detection.".format(
+                self.rank))
             return [], []
 
         outliers_id_str = []
@@ -282,7 +292,8 @@ class Chimbuko(object):
         try:
             functime = self.event.getFunTime()
         except AssertionError:
-            self._log("[V2] Only contains open functions so no anomaly detection.")
+            self.log.info("[{:d}][V2] Only contains open functions so no anomaly detection.".format(
+                self.rank))
             return [], []
 
         outliers_id_str = []
@@ -323,7 +334,7 @@ class Chimbuko(object):
         try:
             countData = self.parser.getCountData()
         except AssertionError:
-            self._log("Frame has no counter data...")
+            self.log.info("[{:d}] Frame has no counter data...".format(self.rank))
             return
 
         # FIXME: this is added to handle index bug in sos_flow
@@ -334,10 +345,7 @@ class Chimbuko(object):
         for data in countData:
             if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nError in adding count data event at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id
-                    ), "error")
+                self.log.info("\n\n\n[{:d}] Error in adding count data event!\n\n\n".format(self.rank))
                 break
             self.event_id += 1
             #self.count_counter[data[CNT_IDX_COUNT]] += 1
@@ -347,7 +355,8 @@ class Chimbuko(object):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
-        self._log("\n\n[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
+        self.log.info("\n\n")
+        self.log.info("[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # Initialize event
         self._init_event()
@@ -369,13 +378,13 @@ class Chimbuko(object):
         else:
             outlId, funOfInt = self._run_anomaly_detection_v2(funMap)
         self.n_outliers += len(outlId)
-        self._log("Numer of outliers per frame: %s" % len(outlId))
+        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
 
         # process on counter event
         # FIXME: do we need to parse counter data that wasn't used anywhere.
         self._process_counter_data()
         if not self.status: return
-        self._log("\n\n[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
+        self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         if self.ver == 'v1':
             self.visualizer.sendData_v1(
@@ -405,14 +414,15 @@ class Chimbuko(object):
         self.parser.getStream()
 
     def finalize(self):
-        self.log.info("\n\nFinalize:")
+        self.log.info("\n\n [{:d}] Finalize:".format(self.rank))
         stack_size = self.event.getFunStackSize()
         if stack_size > 0:
-            self.log.info("Function stack is not empty: %s" % stack_size)
-            self.log.info("Possible call stack violation!")
+            self.log.info("[{:d}] Function stack is not empty: {}".format(self.rank, stack_size))
+            self.log.info("[{:d}] Possible call stack violation!".format(self.rank))
+            self.event.printFunStack()
 
-        self.log.info("Total number of events: %s" % self.event_id)
-        self.log.info("Total number of outliers: %s" % self.n_outliers)
+        self.log.info("[{:d}] Total number of events: {}".format(self.rank, self.event_id))
+        self.log.info("[{:d}] Total number of outliers: {}".format(self.rank, self.n_outliers))
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()
@@ -452,8 +462,9 @@ if __name__ == '__main__':
     driver.finalize()
     end = time.time()
 
-    print("Total number of frames: %s" % n_frames)
-    print("Total running time: {}s".format(end - start))
+    driver.log.info("[{:d}] Total number of frames: {:d}".format(rank, n_frames))
+    driver.log.info("[{:d}] Total running time: {}s".format(rank, end - start))
 
     # waiting until all data is sent to VIS
     driver.visualizer.join(not driver.status)
+    driver.log.info("[{:d}] All data is sent to VIS!".format(rank))

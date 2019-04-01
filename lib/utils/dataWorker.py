@@ -33,9 +33,9 @@ class dataWorker(object):
         self.job_q.put((method, path, data))
 
     def join(self, force_to_quit):
-        self.job_q.join()
         if force_to_quit:
             self._stop_event.set()
+        self.job_q.join()
 
     def _run(self):
         while not self._stop_event.isSet():
