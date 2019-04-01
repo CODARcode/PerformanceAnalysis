@@ -29,17 +29,27 @@ class dataWorker(object):
         thread.daemon = True # daemonize thread
         thread.start()       # start the execution
 
-    def put(self, method, path, data):
-        self.job_q.put((method, path, data))
+    def put(self, method, path, data, rank=-1, frame_id=0):
+        self.job_q.put((method, path, data, rank, frame_id))
+        if self.log is not None:
+            self.log.info('[{}][{}][{}] enque data!'.format(
+                self.name, rank, frame_id
+            ))
 
-    def join(self, force_to_quit):
+    def join(self, force_to_quit, rank=-1):
         if force_to_quit:
             self._stop_event.set()
+            if self.log is not None:
+                self.log.info("[{}][{}] Forced to quit!".format(self.name, rank))
+
+        if self.log is not None:
+            self.log.info("[{}][{}] {} data is remained to process!".format(
+                self.name, rank, self.job_q.qsize()))
         self.job_q.join()
 
     def _run(self):
         while not self._stop_event.isSet():
-            method, path, data = self.job_q.get()
+            method, path, data, rank, frame_id = self.job_q.get()
 
             msg = "Success"
             if method == "online":
@@ -63,7 +73,7 @@ class dataWorker(object):
                 msg = "Unknown method."
 
             if self.log is not None:
-                self.log.info('[{:s}]'.format(self.name) + msg)
+                self.log.info('[{}][{}][{}] {}'.format(self.name, rank, frame_id, msg))
 
             self.job_q.task_done()
             #time.sleep(self.interval)

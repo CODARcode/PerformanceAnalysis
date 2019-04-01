@@ -393,6 +393,7 @@ class Chimbuko(object):
                 self.event.getCommData().tolist(),
                 funOfInt,
                 outlId,
+                rank=self.rank,
                 frame_id=self.parser.getStatus(),
                 funMap=None if self.parser.Method == 'BP' else funMap,
                 eventType=None if self.parser.Method == 'BP'
@@ -405,7 +406,8 @@ class Chimbuko(object):
                     execData=funtime,
                     funMap=funMap,
                     getCount=self.outlier.getCount,
-                    frame_id=self.parser.getStatus()
+                    frame_id=self.parser.getStatus(),
+                    rank=self.rank
                 )
             except AssertionError:
                 pass
@@ -466,5 +468,5 @@ if __name__ == '__main__':
     driver.log.info("[{:d}] Total running time: {}s".format(rank, end - start))
 
     # waiting until all data is sent to VIS
-    driver.visualizer.join(not driver.status)
+    driver.visualizer.join(not driver.status, rank)
     driver.log.info("[{:d}] All data is sent to VIS!".format(rank))
