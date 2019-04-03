@@ -37,15 +37,16 @@ class dataWorker(object):
             ))
 
     def join(self, force_to_quit, rank=-1):
+        if self.log is not None:
+            self.log.info("[{}][{}] {} data is remained to process!".format(
+                self.name, rank, self.job_q.qsize()))
+        self.job_q.join()
+
         if force_to_quit:
             self._stop_event.set()
             if self.log is not None:
                 self.log.info("[{}][{}] Forced to quit!".format(self.name, rank))
 
-        if self.log is not None:
-            self.log.info("[{}][{}] {} data is remained to process!".format(
-                self.name, rank, self.job_q.qsize()))
-        self.job_q.join()
 
     def _run(self):
         while not self._stop_event.isSet():

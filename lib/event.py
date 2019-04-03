@@ -38,7 +38,7 @@ class  Event(object):
 
 
         # a dictionary of function ids;
-        #   - key: function id (int)
+        #   - key: function id (uint64)
         #   - value function name (string)
         self.funMap = None
 
@@ -155,6 +155,10 @@ class  Event(object):
         Returns:
           No return value.
         """
+        p = int(p)
+        r = int(r)
+        t = int(t)
+
         if self.funStack.get(p, None) is None:
             self.funStack[p] = dict()
 
@@ -252,7 +256,15 @@ class  Event(object):
             False: otherwise.
         """
         # Make sure stack corresponding to (program, mpi rank, thread) is created
-        pid, rid, tid, eid, fid, ts = event
+        # pid, rid, tid, eid, fid, ts = event
+        #event = np.array(event, dtype=np.float, copy=True)
+        pid = int(event[0])
+        rid = int(event[1])
+        tid = int(event[2])
+        eid = int(event[3])
+        fid = int(event[4])
+        ts = np.uint64(event[5])
+
         fname = self.funMap[fid]
         self.createCallStack(pid, rid, tid)
 
@@ -275,7 +287,7 @@ class  Event(object):
             self.funStack[pid][rid][tid].append(execData)
             return True
 
-        if eid == self.exit:
+        elif eid == self.exit:
             # If exit event, remove corresponding entry event from call stack
             execData = self.funStack[pid][rid][tid].pop()
 
@@ -381,6 +393,15 @@ class  Event(object):
             bool: True, if the event was successfully added, False otherwise.
         """
         pid, rid, tid, eid, tag, partner, nbytes, ts = event
+        # pid = int(event[0])
+        # rid = int(event[1])
+        # tid = int(event[2])
+        # eid = int(event[3])
+        # tag = int(event[4])
+        # partner = int(event[5])
+        # nbytes = float(event[6])
+        # ts = float(event[7])
+
         if eid not in [self.send, self.recv]:
             if self.log is not None:
                 self.log.debug("No attributes for SEND/RECV")

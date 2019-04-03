@@ -1,3 +1,4 @@
+import numpy as np
 # ----------------------------------------------------------------------------
 # a function event vector index scheme
 #   event:  (ndarray[int])
@@ -162,10 +163,10 @@ class ExecData(object):
         }
 
     def get_id(self):
-        return self._id
+        return np.uint64(self._id)
 
     def set_parent(self, _id):
-        self.parent = _id
+        self.parent = np.uint64(_id)
 
     def set_label(self, label):
         self.label = label

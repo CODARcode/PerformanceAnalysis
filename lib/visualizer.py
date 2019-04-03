@@ -32,7 +32,7 @@ class Visualizer():
     software.
     """
 
-    def __init__(self, config, log=None):
+    def __init__(self, config, log=None, rank=-1):
         """This is the constructor for the Visualizer class.
         The visualizer has two main modes defined by the `VizMethod` variable.
             - offline: writes .json files that the visualization software parses
@@ -42,7 +42,9 @@ class Visualizer():
             config: config object
         """
         self.log = log
-        self.vizMethod = config['Visualizer']['VizMethod']
+        self.rank = rank
+
+        self.vizMethod = str(config['Visualizer']['VizMethod'])
         self.vizUrl = config['Visualizer']['VizUrl']
         self.outputDir = config['Visualizer']['OutputDir']
         #self.traceHeader = {'data': 'trace'}
@@ -50,6 +52,9 @@ class Visualizer():
         self.countData = []
         self.commData = []
         self.anomalyData = []
+
+        if self.rank >= 0:
+            self.outputDir = self.outputDir + '-{:03d}'.format(self.rank)
 
         # potentinally, there could be multiple workers depending on the performance.
         # currently, it only creates single worker.
@@ -66,9 +71,9 @@ class Visualizer():
             if self.vizMethod == 'offline' and not os.path.exists(self.outputDir):
                 os.makedirs(self.outputDir)
 
-    def join(self, force_to_quit, rank=-1):
+    def join(self, force_to_quit):
         if self.worker is not None:
-            self.worker.join(force_to_quit, rank)
+            self.worker.join(force_to_quit, self.rank)
 
     def sendReset(self):
         """Send signal to visualization server to restart itself."""
@@ -76,9 +81,11 @@ class Visualizer():
 
         resetDict = {'type': 'reset'}
         if self.vizMethod == "online":
-            req.post(self.vizUrl, json=resetDict)
+            req.post(self.vizUrl + '/events', json=resetDict)
         elif self.vizMethod == "offline":
-            fn = "reset.json"
+            fn = "reset.{:03d}.json".format(self.rank) \
+                if self.rank >= 0 \
+                else "reset.json"
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(resetDict, outfile, indent=4, sort_keys=True)
         else:
@@ -96,9 +103,12 @@ class Visualizer():
 
         eventDict = {'type': 'event_types', 'value': eventType}
         if self.vizMethod == "online":
-            r = req.post(self.vizUrl, json=eventDict)
-        if self.vizMethod == "offline":
-            fn = "et.{:06d}.json".format(frame_id)
+            r = req.post(self.vizUrl + '/events', json=eventDict)
+        elif self.vizMethod == "offline":
+            fn = "et.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+                if self.rank >= 0 \
+                else "et.{:06d}.json".format(frame_id)
+
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(eventDict, outfile)
         else:
@@ -119,14 +129,16 @@ class Visualizer():
         if self.vizMethod == "online":
             req.post(self.vizUrl, json={'type': 'functions', 'value': funMap})
         elif self.vizMethod == "offline":
-            fn = "functions.{:06d}.json".format(frame_id)
+            fn = "functions.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+                if self.rank >=0 \
+                else "functions.{:06d}.json".format(frame_id)
             with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                 json.dump(funDict, outfile, indent=4, sort_keys=True)
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
     def sendData_v1(self,
-                 funData, countData, commData, funOfInt, outlId, frame_id=0, rank=-1,
+                 funData, countData, commData, funOfInt, outlId, frame_id=0,
                  eventType=None, funMap=None):
         """
         Send function, counter and communication data as well as the results of the analysis
@@ -164,7 +176,8 @@ class Visualizer():
 
         if self.vizMethod == "online":
             if self.worker is not None:
-                self.worker.put(self.vizMethod, self.vizUrl + '/events', traceDict, rank, frame_id)
+                self.worker.put(self.vizMethod, self.vizUrl + '/events', traceDict,
+                                self.rank, frame_id)
             else:
                 try:
                     r = req.post(self.vizUrl + '/events', json=traceDict)
@@ -181,10 +194,12 @@ class Visualizer():
                     if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
-            fn = "trace.{:06d}.json".format(frame_id)
+            fn = "trace.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+                if self.rank>=0 \
+                else "trace.{:06d}.json".format(frame_id)
             if self.worker is not None:
                 self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict,
-                                rank, frame_id)
+                                self.rank, frame_id)
             else:
                 with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                     json.dump(traceDict, outfile, indent=4, sort_keys=True)
@@ -192,7 +207,7 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData_v2(self, execData, funMap, getCount, rank=-1, frame_id=0):
+    def sendData_v2(self, execData, funMap, getCount, frame_id=0):
         """
         Send function, counter and communication data as well as the results of the analysis
         of interest and id(s) of outlier data points.
@@ -237,7 +252,8 @@ class Visualizer():
 
         if self.vizMethod == "online":
             if self.worker is not None:
-                self.worker.put(self.vizMethod, self.vizUrl + '/executions', traceDict, rank, frame_id)
+                self.worker.put(self.vizMethod, self.vizUrl + '/executions', traceDict,
+                                self.rank, frame_id)
             else:
                 try:
                     r = req.post(self.vizUrl + '/executions', json=traceDict)
@@ -254,10 +270,12 @@ class Visualizer():
                     if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
-            fn = "trace.{:06d}.json".format(frame_id)
+            fn = "trace.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+                if self.rank >= 0 \
+                else "trace.{:06d}.json".format(frame_id)
             if self.worker is not None:
                 self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict,
-                                rank, frame_id)
+                                self.rank, frame_id)
             else:
                 with open(os.path.join(self.outputDir, fn), 'w') as outfile:
                     json.dump(traceDict, outfile, indent=4, sort_keys=True)

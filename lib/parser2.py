@@ -59,7 +59,7 @@ class Parser(object):
             self.inputFile = self.inputFile[:pos] + "-{:d}".format(self.rank) + self.inputFile[pos:]
 
         if self.log is not None:
-            self.log.info('[{:d}] Input File: {}'.format(self.rank, self.inputFile))
+            self.log.info('[{:d}] Input File: {}, {}'.format(self.rank, self.inputFile, self.Method))
 
 
         # attributes from inputFile (BP)
@@ -140,14 +140,6 @@ class Parser(object):
         """
         Get method for accessing function call data, i.e. Adios variable "event_timestamps".
 
-        The variable is defined as
-            ad.define_var(g,
-                "event_timestamps", "", ad.DATATYPE.unsigned_long,
-                "timer_event_count,6", "timer_event_count,6", "0,0") in adios 1.x
-
-        todo: after updating writer with adios2, all variables become self-describing!
-        todo: don't require to fetch ydim!
-
         Returns:
             Return value to Adios variable read() method.
         """
@@ -157,12 +149,35 @@ class Parser(object):
         if isinstance(ydim, np.ndarray):
             ydim = ydim[0]
 
-        data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
-        assert data is not None, "[{:d}] Frame has no `event_timestamps`!".format(self.rank)
+        data = self.ad.read_variable("event_timestamps")
+        assert ydim == data.shape[0], "[{:d}] Frame has unexpected number of events!".format(
+            self.rank)
+        # data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
+        # assert data is not None, "[{:d}] Frame has no `event_timestamps`!".format(self.rank)
 
         assert data.shape[0] > 0, "[{:d}] Function call data dimension is zero!".format(self.rank)
-        if self.log is not None:
-            self.log.info("[{:d}] Frame has `event_timestamps: {}`".format(self.rank, data.shape))
+
+        # validation
+        # pid = data[:, 0]
+        # if not (pid < 1).all():
+        #     self.log.info('[{:d}][timer] contain invalid program index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(pid), np.nonzero(pid>=1), pid[pid>=1]))
+        #     self.log.info(data.dtype)
+        #
+        # rid = data[:, 1]
+        # if not (rid < 2).all():
+        #     self.log.info('[{:d}][timer] contain invalid rank index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(rid), np.nonzero(rid>=2), rid[rid>=2]))
+        #
+        # tid = data[:, 2]
+        # if not (tid < 128).all():
+        #     self.log.info('[{:d}][timer] contain invalid thread index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(tid), np.nonzero(tid>=128), tid[tid>=128]))
+        #
+        # eid = data[:, 3]
+        # if not (eid < 4).all():
+        #     self.log.info('[{:d}][timer] contain invalid event index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(eid), np.nonzero(eid>=4), eid[eid>=4]))
 
         return data
 
@@ -175,24 +190,20 @@ class Parser(object):
             ad.define_var(g, "counter_values", "", ad.DATATYPE.unsigned_long,
                 "counter_event_count,6", "counter_event_count,6", "0,0") in adios 1.x
 
-        todo: after updating writer with adios2, all variables become self-describing!
-        todo: don't require to fetch ydim!
-
         Returns:
             Return value to Adios variable read() method.
         """
-        ydim = self.ad.read_variable("counter_event_count")
-        assert ydim is not None, "[{:d}] Frame has no `counter_event_count`!".format(self.rank)
+        # ydim = self.ad.read_variable("counter_event_count")
+        # assert ydim is not None, "[{:d}] Frame has no `counter_event_count`!".format(self.rank)
 
-        data = self.ad.read_variable("counter_values", count=[ydim, 6])
-        assert data is not None, "[{:d}] Frame has no `counter_values`!".format(self.rank)
+        data = self.ad.read_variable("counter_values")
+        # data = self.ad.read_variable("counter_values", count=[ydim, 6])
+        # assert data is not None, "[{:d}] Frame has no `counter_values`!".format(self.rank)
 
-        assert data.shape[0] > 0, "[{:d}] Counter data dimension is zero!".format(self.rank)
-        if self.log is not None:
-            self.log.info("[{:d}] Frame has `counter_values: {}`".format(self.rank, data.shape))
+        # assert data.shape[0] > 0, "[{:d}] Counter data dimension is zero!".format(self.rank)
+        # if self.log is not None:
+        #     self.log.info("[{:d}] Frame has `counter_values: {}`".format(self.rank, data.shape))
 
-        # todo: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
-        # todo: does this return all data in all steps? what is numSteps?
         return data
 
     def getCommData(self):
@@ -200,28 +211,40 @@ class Parser(object):
 
         Get method for accessing function call data, i.e. Adios variable "comm_timestamps".
 
-        The variable is defined as
-            ad.define_var(g, "comm_timestamps", "", ad.DATATYPE.unsigned_long,
-                "comm_count,8", "comm_count,8", "0,0") in adios 1.x
-
-        todo: after updating writer with adios2, all variables become self-describing!
-        todo: don't require to fetch ydim!
-
         Returns:
             Return value to Adios variable read() method.
         """
-        ydim = self.ad.read_variable("comm_count")
-        assert ydim is not None, "[{:d}] Frame has no `comm_count`!".format(self.rank)
+        # ydim = self.ad.read_variable("comm_count")
+        # assert ydim is not None, "[{:d}] Frame has no `comm_count`!".format(self.rank)
 
-        data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
-        assert data is not None, "[{:d}] Frame has no `comm_timestamps`!".format(self.rank)
+
+        data = self.ad.read_variable("comm_timestamps")
+        # assert ydim == data.shape[0], "[{:d}] Frame has unexpected number of comm!".format(
+        #     self.rank)
+        # data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
+        # assert data is not None, "[{:d}] Frame has no `comm_timestamps`!".format(self.rank)
 
         assert data.shape[0] > 0, "[{:d}] Communication data dimension is zero!".format(self.rank)
-        if self.log is not None:
-            self.log.info("[{:d}] Frame has `comm_timestamps: {}`".format(self.rank, data.shape))
+        # if self.log is not None:
+        #     self.log.info("[{:d}] Frame has `comm_timestamps: {}`".format(self.rank, data.shape))
 
-        # fixme: is this correct return data? (adios 1.x: var.read(nsteps=numSteps))
-        # fixme: does this return all data in all steps? what is numSteps?
+        # validation
+        # pid = data[:, 0]
+        # if not (pid < 1).all():
+        #     self.log.info('[{:d}][comm] contain invalid program index!'.format(self.rank))
+        #
+        # rid = data[:, 1]
+        # if not (rid < 2).all():
+        #     self.log.info('[{:d}][comm] contain invalid rank index!'.format(self.rank))
+        #
+        # tid = data[:, 2]
+        # if not (tid < 128).all():
+        #     self.log.info('[{:d}][comm] contain invalid thread index!'.format(self.rank))
+        #
+        # eid = data[:, 3]
+        # if not (eid < 4).all():
+        #     self.log.info('[{:d}][comm] contain invalid event index!'.format(self.rank))
+
         return data
 
     def getStatus(self):
@@ -302,5 +325,5 @@ class Parser(object):
         Currently, this has same effect as adiosClose
         """
         if self.log is not None:
-            self.log.info("[{:d}] Finalize Adios method: {}".format(self.rank, self.parseMode))
+            self.log.info("[{:d}] Finalize Adios method: {}".format(self.rank, self.Method))
         self.ad.close()
