@@ -152,34 +152,34 @@ class Parser(object):
 
         #data = self.ad.read_variable("event_timestamps")
         data = self.ad.read_variable("event_timestamps", count=[ydim, 6])
+        assert data is not None, "[{:d}] Frame has no `event_timestamps`!".format(self.rank)
         assert ydim == data.shape[0], \
             "[{:d}] Frame has unexpected number of events!".format(self.rank)
-        # assert data is not None, "[{:d}] Frame has no `event_timestamps`!".format(self.rank)
 
         assert data.shape[0] > 0, "[{:d}] Function call data dimension is zero!".format(self.rank)
 
         # validation
-        self.log.info('[{:d}][timer] {}'.format(self.rank, data.shape))
-        pid = data[:, 0]
-        if not (pid < 1).all():
-            self.log.info('[{:d}][timer] contain invalid program index!'.format(self.rank))
-            self.log.info('{}:{}, {}, {}'.format(ydim, len(pid), np.nonzero(pid>=1), pid[pid>=1]))
-            self.log.info(data.dtype)
-
-        rid = data[:, 1]
-        if not (rid < 2).all():
-            self.log.info('[{:d}][timer] contain invalid rank index!'.format(self.rank))
-            self.log.info('{}:{}, {}, {}'.format(ydim, len(rid), np.nonzero(rid>=2), rid[rid>=2]))
-
-        tid = data[:, 2]
-        if not (tid < 128).all():
-            self.log.info('[{:d}][timer] contain invalid thread index!'.format(self.rank))
-            self.log.info('{}:{}, {}, {}'.format(ydim, len(tid), np.nonzero(tid>=128), tid[tid>=128]))
-
-        eid = data[:, 3]
-        if not (eid < 4).all():
-            self.log.info('[{:d}][timer] contain invalid event index!'.format(self.rank))
-            self.log.info('{}:{}, {}, {}'.format(ydim, len(eid), np.nonzero(eid>=4), eid[eid>=4]))
+        # self.log.info('[{:d}][timer] {}'.format(self.rank, data.shape))
+        # pid = data[:, 0]
+        # if not (pid < 1).all():
+        #     self.log.info('[{:d}][timer] contain invalid program index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(pid), np.nonzero(pid>=1), pid[pid>=1]))
+        #     self.log.info(data.dtype)
+        #
+        # rid = data[:, 1]
+        # if not (rid < 2).all():
+        #     self.log.info('[{:d}][timer] contain invalid rank index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(rid), np.nonzero(rid>=2), rid[rid>=2]))
+        #
+        # tid = data[:, 2]
+        # if not (tid < 128).all():
+        #     self.log.info('[{:d}][timer] contain invalid thread index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(tid), np.nonzero(tid>=128), tid[tid>=128]))
+        #
+        # eid = data[:, 3]
+        # if not (eid < 4).all():
+        #     self.log.info('[{:d}][timer] contain invalid event index!'.format(self.rank))
+        #     self.log.info('{}:{}, {}, {}'.format(ydim, len(eid), np.nonzero(eid>=4), eid[eid>=4]))
 
         #return copy.deepcopy(data)
         return data
@@ -204,9 +204,9 @@ class Parser(object):
 
         # data = self.ad.read_variable("counter_values")
         data = self.ad.read_variable("counter_values", count=[ydim, 6])
+        assert data is not None, "[{:d}] Frame has no `counter_values`!".format(self.rank)
         assert ydim == data.shape[0], \
             "[{:d}] Frame has unexpected number of counters!".format(self.rank)
-        # assert data is not None, "[{:d}] Frame has no `counter_values`!".format(self.rank)
 
         assert data.shape[0] > 0, "[{:d}] Counter data dimension is zero!".format(self.rank)
         # if self.log is not None:
@@ -230,28 +230,28 @@ class Parser(object):
 
         # data = self.ad.read_variable("comm_timestamps")
         data = self.ad.read_variable("comm_timestamps", count=[ydim, 8])
+        assert data is not None, "[{:d}] Frame has no `comm_timestamps`!".format(self.rank)
         assert ydim == data.shape[0], \
             "[{:d}] Frame has unexpected number of comm!".format(self.rank)
-        # assert data is not None, "[{:d}] Frame has no `comm_timestamps`!".format(self.rank)
 
         assert data.shape[0] > 0, "[{:d}] Communication data dimension is zero!".format(self.rank)
 
         # validation
-        pid = data[:, 0]
-        if not (pid < 1).all():
-            self.log.info('[{:d}][comm] contain invalid program index!'.format(self.rank))
-
-        rid = data[:, 1]
-        if not (rid < 2).all():
-            self.log.info('[{:d}][comm] contain invalid rank index!'.format(self.rank))
-
-        tid = data[:, 2]
-        if not (tid < 128).all():
-            self.log.info('[{:d}][comm] contain invalid thread index!'.format(self.rank))
-
-        eid = data[:, 3]
-        if not (eid < 4).all():
-            self.log.info('[{:d}][comm] contain invalid event index!'.format(self.rank))
+        # pid = data[:, 0]
+        # if not (pid < 1).all():
+        #     self.log.info('[{:d}][comm] contain invalid program index!'.format(self.rank))
+        #
+        # rid = data[:, 1]
+        # if not (rid < 2).all():
+        #     self.log.info('[{:d}][comm] contain invalid rank index!'.format(self.rank))
+        #
+        # tid = data[:, 2]
+        # if not (tid < 128).all():
+        #     self.log.info('[{:d}][comm] contain invalid thread index!'.format(self.rank))
+        #
+        # eid = data[:, 3]
+        # if not (eid < 4).all():
+        #     self.log.info('[{:d}][comm] contain invalid event index!'.format(self.rank))
 
         return data
 

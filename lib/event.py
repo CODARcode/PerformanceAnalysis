@@ -257,12 +257,14 @@ class  Event(object):
 
             try:
                 p_execData = self.funStack[pid][rid][tid][-1]
+            except IndexError:
+                p_execData = None
+
+            if p_execData is not None:
                 execData.set_parent(p_execData.get_id())
                 p_execData.add_child(execData.get_id())
-                self.funStack[pid][rid][tid].append(execData)
-            except IndexError:
-                pass
 
+            self.funStack[pid][rid][tid].append(execData)
             return True
 
         elif eid == self.exit:

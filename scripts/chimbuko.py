@@ -185,7 +185,7 @@ class Chimbuko(object):
         ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
         ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
 
-        self.log.info("[{:d}][before] {}".format(self.rank, fun_data))
+        # self.log.info("[{:d}][before] {}".format(self.rank, fun_data))
         while idx_fun < n_funcData or idx_com < n_commData:
             if ts_fun <= ts_com and fun_data is not None:
                 if not self.event.addFun_v2(fun_data, self.event_id):
@@ -210,7 +210,7 @@ class Chimbuko(object):
 
                 com_data = commData[idx_com] if idx_com < n_commData else None
                 ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
-        self.log.info("[{:d}][after] {}".format(self.rank, funcData[0]))
+        # self.log.info("[{:d}][after] {}".format(self.rank, funcData[0]))
 
     def _run_anomaly_detection_v1(self):
         """(deprecated) run anomaly detection with v1 data"""
