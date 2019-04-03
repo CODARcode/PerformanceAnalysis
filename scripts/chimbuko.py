@@ -63,32 +63,13 @@ class Chimbuko(object):
         # event id
         # note: maybe to generate unique id, is this okay with overflow?
         self.event_id = np.uint64(0)
-        # total number of outliers (will be deprecated)
+        # total number of outliers
         self.n_outliers = 0
-        # function data counter (will be deprecated)
-        #self.func_counter = defaultdict(int)
-        # count data counter (will be deprecated)
-        #self.count_counter = defaultdict(int)
-        # communication data counter (will be deprecated)
-        #self.comm_counter = defaultdict(int)
-        # anomaly function (will be deprecated)
-        #self.anomFun = defaultdict(int)
 
-        # FIXME: to fix the index bug from sos_flow
-        # self.fix_index = int(self.config['Basic']['FixIndex'])
+        # data type for visualization
+        # - v1: raw data
+        # - v2: execution data
         self.ver = self.config['Basic']['Ver']
-
-        #print("FIX INDEX: ", self.fix_index)
-        #print("VERSION: ", self.ver)
-
-    # def _log(self, msg:str, type='info'):
-    #     msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
-    #     if type == 'info':
-    #         self.log.info(msg)
-    #     elif type == 'debug':
-    #         self.log.debug(msg)
-    #     elif type == 'error':
-    #         self.log.error(msg)
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -108,6 +89,8 @@ class Chimbuko(object):
         self.event.clearCommData()
 
     def _process_func_data_v1(self):
+        """ (deprecated)
+        processing on function data and generate v1 data for visualization"""
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
@@ -122,9 +105,10 @@ class Chimbuko(object):
                     "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
                 break
             self.event_id += 1
-            #self.func_counter[data[FUN_IDX_FUNC]] += 1
 
     def _process_func_data_v2(self):
+        """(only for debug)
+        processing on function data and generate v2 data for visualization"""
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
@@ -138,18 +122,15 @@ class Chimbuko(object):
                     "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
                 break
             self.event_id += 1
-            #self.func_counter[data[FUN_IDX_FUNC]] += 1
 
     def _process_communication_data_v1(self):
+        """(deprecated)
+        processing on communication data and generate v1 data for visualization"""
         try:
             commData = self.parser.getCommData()
         except AssertionError:
             self.log.info("[{:d}][V1] Frame has no communication data...".format(self.rank))
             return
-
-        # FIXME: this is added to handle index bug in sos_flow
-        # commData[:, COM_IDX_P] -= self.fix_index
-        # commData[:, COM_IDX_SR] -= self.fix_index
 
         self.event.initCommData(len(commData))
         for data in commData:
@@ -159,18 +140,15 @@ class Chimbuko(object):
                     "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(self.rank))
                 break
             self.event_id += 1
-            #self.comm_counter[data[COM_IDX_TAG]] += 1
 
     def _process_communication_data_v2(self):
+        """(only for debug)
+        processing on communication data and generate v2 data for visualization"""
         try:
             commData = self.parser.getCommData()
         except AssertionError:
             self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
             return
-
-        # FIXME: this is added to handle index bug in sos_flow
-        # commData[:, COM_IDX_P] -= self.fix_index
-        # commData[:, COM_IDX_SR] -= self.fix_index
 
         self.event.initCommData(len(commData))
         for data in commData:
@@ -181,9 +159,9 @@ class Chimbuko(object):
                         self.rank))
                 break
             self.event_id += 1
-            #self.comm_counter[data[COM_IDX_TAG]] += 1
 
     def _process_func_comm_data_v2(self):
+        """processing on  function and communication data and generate v2 data for visualization"""
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
@@ -196,7 +174,6 @@ class Chimbuko(object):
             self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
             commData = []
 
-
         n_funcData = len(funcData)
         n_commData = len(commData)
         idx_fun = 0
@@ -208,6 +185,7 @@ class Chimbuko(object):
         ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
         ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
 
+        self.log.info("[{:d}][before] {}".format(self.rank, fun_data))
         while idx_fun < n_funcData or idx_com < n_commData:
             if ts_fun <= ts_com and fun_data is not None:
                 if not self.event.addFun_v2(fun_data, self.event_id):
@@ -232,9 +210,10 @@ class Chimbuko(object):
 
                 com_data = commData[idx_com] if idx_com < n_commData else None
                 ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
+        self.log.info("[{:d}][after] {}".format(self.rank, funcData[0]))
 
-
-    def _run_anomaly_detection_v1(self, funMap):
+    def _run_anomaly_detection_v1(self):
+        """(deprecated) run anomaly detection with v1 data"""
         try:
             functime = self.event.getFunTime()
         except AssertionError:
@@ -242,6 +221,7 @@ class Chimbuko(object):
                 self.rank))
             return [], []
 
+        funMap = self.parser.getFunMap()
         outliers_id_str = []
         funOfInt = []
         for funid, data in functime.items():
@@ -254,11 +234,8 @@ class Chimbuko(object):
             outliers_id = data[outliers==-1, -1]
             outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
 
-            #print('outliers', funid, len(outliers_id))
-
             maxFuncDepth = self.event.getMaxFunDepth()
 
-            # FIXME: need smooth handling for unknown function and event type
             # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
             # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
             # NOTE: At this time, key value must cast to int manually; otherwise it will cause
@@ -267,12 +244,12 @@ class Chimbuko(object):
                 funOfInt.append(str(funMap[int(funid)]))
 
             if len(outliers_id) > 0:
-                #self.anomFun[int(funid)] += 1
                 self.outlier.addAbnormal(funid, len(outliers_id))
 
         return outliers_id_str, funOfInt
 
-    def _run_anomaly_detection_v2(self, funMap):
+    def _run_anomaly_detection_v2(self):
+        """run anomaly detection with v2 data"""
         try:
             functime = self.event.getFunTime()
         except AssertionError:
@@ -280,10 +257,10 @@ class Chimbuko(object):
                 self.rank))
             return [], []
 
+        funMap = self.parser.getFunMap()
         outliers_id_str = []
         funOfInt = []
         for funid, fcalls in functime.items():
-            #execdata = np.array(data)
             n_fcalls = len(fcalls) # the number of function calls
 
             self.outlier.compOutlier_v2(fcalls, funid)
@@ -299,7 +276,6 @@ class Chimbuko(object):
 
             maxFuncDepth = self.event.getMaxFunDepth()
 
-            # FIXME: need smooth handling for unknown function and event type
             # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
             # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
             # NOTE: At this time, key value must cast to int manually; otherwise it will cause
@@ -309,21 +285,16 @@ class Chimbuko(object):
 
             if len(outliers_id) > 0:
                 self.outlier.addAbnormal(funid, len(outliers_id))
-                #self.anomFun[int(funid)] += len(outliers_id)
-
 
         return outliers_id_str, funOfInt
 
     def _process_counter_data(self):
+        """(unused) processing on counter data and currently it is not used."""
         try:
             countData = self.parser.getCountData()
         except AssertionError:
             self.log.info("[{:d}] Frame has no counter data...".format(self.rank))
             return
-
-        # FIXME: this is added to handle index bug in sos_flow
-        # countData[:, CNT_IDX_P] -= self.fix_index
-        # countData[:, CNT_IDX_COUNT] -= self.fix_index
 
         self.event.initCountData(len(countData))
         for data in countData:
@@ -332,44 +303,8 @@ class Chimbuko(object):
                 self.log.info("\n\n\n[{:d}] Error in adding count data event!\n\n\n".format(self.rank))
                 break
             self.event_id += 1
-            #self.count_counter[data[CNT_IDX_COUNT]] += 1
 
-
-    def process(self):
-        # check current status of the parser
-        self.status = self.parser.getStatus() >= 0
-        if not self.status: return
-        self.log.info("\n\n")
-        self.log.info("[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
-
-        # Initialize event
-        self._init_event()
-        funMap = self.parser.getFunMap()
-
-        # process on function event and communication event
-        if self.ver == 'v1':
-            self._process_func_data_v1()
-            self._process_communication_data_v1()
-        else:
-            # self._process_func_data_v2()
-            # self._process_communication_data_v2()
-            self._process_func_comm_data_v2()
-        if not self.status: return
-
-        # detect anomalies in function call data
-        if self.ver == 'v1':
-            outlId, funOfInt = self._run_anomaly_detection_v1(funMap)
-        else:
-            outlId, funOfInt = self._run_anomaly_detection_v2(funMap)
-        self.n_outliers += len(outlId)
-        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
-
-        # process on counter event
-        # FIXME: do we need to parse counter data that wasn't used anywhere.
-        # self._process_counter_data()
-        if not self.status: return
-        self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
-
+    def _process_for_viz(self, funOfInt=None, outlId=None):
         if self.ver == 'v1':
             self.visualizer.sendData_v1(
                 self.event.getFunData().tolist(),
@@ -378,7 +313,7 @@ class Chimbuko(object):
                 funOfInt,
                 outlId,
                 frame_id=self.parser.getStatus(),
-                funMap=None if self.parser.Method == 'BP' else funMap,
+                funMap=None if self.parser.Method == 'BP' else self.parser.getFunMap(),
                 eventType=None if self.parser.Method == 'BP'
                                else list(self.parser.getEventType().values())
             )
@@ -387,25 +322,59 @@ class Chimbuko(object):
                 funtime = self.event.getFunTime()
                 self.visualizer.sendData_v2(
                     execData=funtime,
-                    funMap=funMap,
+                    funMap=self.parser.getFunMap(),
                     getCount=self.outlier.getCount,
                     frame_id=self.parser.getStatus(),
                 )
             except AssertionError:
                 pass
 
+
+    def process(self):
+        # check current status of the parser
+        self.status = self.parser.getStatus() >= 0
+        if not self.status: return
+        self.log.info("[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
+
+        # Initialize event
+        self._init_event()
+
+        # process on function event and communication event
+        if self.ver == 'v1':
+            self._process_func_data_v1()
+            self._process_communication_data_v1()
+        else:
+            self._process_func_comm_data_v2()
+        if not self.status: return
+
+        # detect anomalies in function call data
+        if self.ver == 'v1':
+            outlId, funOfInt = self._run_anomaly_detection_v1()
+        else:
+            outlId, funOfInt = self._run_anomaly_detection_v2()
+        self.n_outliers += len(outlId)
+        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
+
+        # process on counter event
+        # NOTE: do we need to parse counter data that wasn't used anywhere.
+        # self._process_counter_data()
+        if not self.status: return
+        self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
+
+        # visualization
+        self._process_for_viz(funOfInt, outlId)
+
         # go to next stream
         self.parser.getStream()
 
     def finalize(self):
-        self.log.info("\n\n [{:d}] Finalize:".format(self.rank))
+        self.log.info("[{:d}] Finalize:".format(self.rank))
         stack_size = self.event.getFunStackSize()
         if stack_size > 0:
             self.log.info("[{:d}] Function stack is not empty: {}".format(self.rank, stack_size))
             self.log.info("[{:d}] Possible call stack violation!".format(self.rank))
             self.event.printFunStack()
 
-        self.log.info("[{:d}] Total number of events: {}".format(self.rank, self.event_id))
         self.log.info("[{:d}] Total number of outliers: {}".format(self.rank, self.n_outliers))
 
         self.parser.adiosFinalize()
@@ -432,14 +401,12 @@ if __name__ == '__main__':
     if size == 1:
         rank = -1
 
-    #configFile = './test/test.cfg' #sys.argv[1]
     configFile = sys.argv[1]
 
     # currently, each rank will have its own anomaly detector, no communication among ranks
-    driver = Chimbuko(configFile, rank, comm)
-    #driver = Chimbuko(configFile, rank, comm)
-    n_frames = 0
+    driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
 
+    n_frames = 0
     start = time.time()
     while driver.status:
         driver.process()
