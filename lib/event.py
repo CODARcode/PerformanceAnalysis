@@ -30,12 +30,9 @@ class  Event(object):
             A node or MPI rank indicated by r
             A thread indicated by t 
     """
-
-
     def __init__(self, log=None):
         """This is the constructor for the Event class."""
         self.log = log
-
 
         # a dictionary of function ids;
         #   - key: function id (uint64)
@@ -47,7 +44,6 @@ class  Event(object):
         self.exit = None   # id (int) of `EXIT` event
         self.send = None   # id (int) of `SEND` event
         self.recv = None   # id (int) of `RECV` event
-        #self.setEventType(eventType)
 
         # ---------------------------------------------------------------------
         # for function calls (event_timestamps)
@@ -75,7 +71,6 @@ class  Event(object):
         #self.funtime = {}
         self.funtime = defaultdict(list)
 
-
         # maximum function depth (dict)
         # - key: function id
         # - value: maximum depth
@@ -91,12 +86,6 @@ class  Event(object):
         self.commData = None
         # communication data index
         self.coidx = 0
-
-        # todo: [VIS]
-        # For sending events to the viz server that have already exited
-        #self.funList = None
-        # self.funDataTemp = None
-
 
     def setEventType(self, eventType:list):
         """Sets entry and exit variables.
@@ -169,7 +158,7 @@ class  Event(object):
             self.funStack[p][r][t] = deque()
 
     def addFun_v1(self, event):
-        """Adds function call to call stack
+        """ (deprecated) Adds function call to call stack
         Args:
             event:  (ndarray[int])
                 0: program id
@@ -229,9 +218,6 @@ class  Event(object):
                 ]
             )
 
-            #todo: [VIS]
-            #self.funList.append(pevent)
-            #self.funList.append(event)
             return True
         # Event is not an exit or entry event
         return True
@@ -256,14 +242,7 @@ class  Event(object):
             False: otherwise.
         """
         # Make sure stack corresponding to (program, mpi rank, thread) is created
-        # pid, rid, tid, eid, fid, ts = event
-        #event = np.array(event, dtype=np.float, copy=True)
-        pid = int(event[0])
-        rid = int(event[1])
-        tid = int(event[2])
-        eid = int(event[3])
-        fid = int(event[4])
-        ts = np.uint64(event[5])
+        pid, rid, tid, eid, fid, ts = event
 
         fname = self.funMap[fid]
         self.createCallStack(pid, rid, tid)
@@ -280,6 +259,7 @@ class  Event(object):
                 p_execData = self.funStack[pid][rid][tid][-1]
             except IndexError:
                 p_execData = None
+
             if p_execData is not None:
                 execData.set_parent(p_execData.get_id())
                 p_execData.add_child(execData.get_id())
@@ -339,7 +319,7 @@ class  Event(object):
         return True
 
     def initCommData(self, numEvent):
-        """
+        """ (deprecated)
         Initialize numpy array commData to store communication data in format
         required by visualization.
 
@@ -349,7 +329,8 @@ class  Event(object):
         self.commData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def addComm_v1(self, event):
-        """Add communication data and store in format required by visualization.
+        """ (deprecated)
+        Add communication data and store in format required by visualization.
         Args:
             event (numpy array of int-s): [
                 0: program id,
@@ -456,12 +437,6 @@ class  Event(object):
     def getFunData(self):
         """Get method for funData."""
         return self.funData if self.funData is not None else np.array([])
-        # This portion is only needed if the visualization requires to send function calls that have exited
-        # self.funList.sort(key=lambda x: x[6])
-        # self.funData = np.full((len(self.funList), 13), np.nan)
-        # self.funDataTemp = np.array(self.funList)
-        # self.funData[:,0:5] = self.funDataTemp[:,0:5]
-        # self.funData[:,11:13] = self.funDataTemp[:,5:7]
 
     def getCountData(self):
         """Get method for countData."""
