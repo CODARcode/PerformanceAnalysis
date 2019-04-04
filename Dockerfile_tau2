@@ -1,0 +1,39 @@
+# docker run -it chimbuko/adios2 /bin/bash
+FROM chimbuko/adios2
+ARG JOBS=16
+
+# --------------------------------------------------------
+# TAU
+# --------------------------------------------------------
+
+# PDT
+
+WORKDIR /Downloads
+RUN wget http://tau.uoregon.edu/pdt_lite.tar.gz \
+ && tar -xzf pdt_lite.tar.gz
+WORKDIR /Downloads/pdtoolkit-3.25
+RUN ./configure -GNU -prefix=/opt/pdt \
+ && make -j$JOBS \
+ && make install
+
+# PAPI
+
+WORKDIR /Downloads
+RUN wget http://icl.utk.edu/projects/papi/downloads/papi-5.6.0.tar.gz \
+ && tar -xzf papi-5.6.0.tar.gz
+WORKDIR /Downloads/papi-5.6.0/src
+RUN ./configure --prefix=/opt/papi \
+ && make -j$JOBS \
+ && make install
+
+# TAU 
+
+WORKDIR /Downloads
+RUN git clone https://github.com/UO-OACISS/tau2.git
+WORKDIR /Downloads/tau2
+RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -papi=/opt/papi \
+ && make -j$JOBS install
+
