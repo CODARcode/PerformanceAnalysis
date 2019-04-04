@@ -10,7 +10,7 @@ Created:
 import sys
 import logging
 import configparser
-import numpy as np
+import time
 
 from definition import *
 from parser2 import Parser
@@ -67,9 +67,16 @@ class Chimbuko(object):
         self.n_outliers = 0
 
         # data type for visualization
+        # - will be deprecated once version is fixed
         # - v1: raw data
         # - v2: execution data
         self.ver = self.config['Basic']['Ver']
+
+        # measure average time performance
+        self.t_funstack = 0.
+        self.t_anomaly = 0.
+        self.t_vis = 0.
+
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -329,7 +336,6 @@ class Chimbuko(object):
             except AssertionError:
                 pass
 
-
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
@@ -340,20 +346,26 @@ class Chimbuko(object):
         self._init_event()
 
         # process on function event and communication event
+        t_start = time.time()
         if self.ver == 'v1':
             self._process_func_data_v1()
             self._process_communication_data_v1()
         else:
             self._process_func_comm_data_v2()
         if not self.status: return
+        t_end = time.time()
+        self.t_funstack += t_end - t_start
 
         # detect anomalies in function call data
+        t_start = time.time()
         if self.ver == 'v1':
             outlId, funOfInt = self._run_anomaly_detection_v1()
         else:
             outlId, funOfInt = self._run_anomaly_detection_v2()
         self.n_outliers += len(outlId)
         self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
+        t_end = time.time()
+        self.t_anomaly += t_end - t_start
 
         # process on counter event
         # NOTE: do we need to parse counter data that wasn't used anywhere.
@@ -362,7 +374,10 @@ class Chimbuko(object):
         self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # visualization
+        t_start = time.time()
         self._process_for_viz(funOfInt, outlId)
+        t_end = time.time()
+        self.t_vis += t_end - t_start
 
         # go to next stream
         self.parser.getStream()
@@ -388,7 +403,6 @@ def usage():
     pass
 
 if __name__ == '__main__':
-    import time
     from mpi4py import MPI
 
     # check argument and print usages()
@@ -416,6 +430,10 @@ if __name__ == '__main__':
 
     driver.log.info("[{:d}] Total number of frames: {:d}".format(rank, n_frames))
     driver.log.info("[{:d}] Total running time: {}s".format(rank, end - start))
+    driver.log.info("[{:d}] Avg. process  time: {}s".format(rank, (end - start)/n_frames))
+    driver.log.info("[{:d}] Avg. funstack time: {}s".format(rank, driver.t_funstack/n_frames))
+    driver.log.info("[{:d}] Avg. anomaly  time: {}s".format(rank, driver.t_anomaly/n_frames))
+    driver.log.info("[{:d}] Avg. vis      time: {}s".format(rank, driver.t_vis/n_frames))
 
     # waiting until all data is sent to VIS
     driver.visualizer.join(not driver.status)

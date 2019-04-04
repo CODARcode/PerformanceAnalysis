@@ -22,7 +22,7 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
 
 # this depends on how tau2 is compiled
 # NOTE: TAU_MAKEFILE depends on how tau2 is compiled. Need to be changed 
-# accordingly. Are there better way like the second example that doesn't work? 
+# accordingly. Are there better way like the second example that doesn't work?
 ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 
 #ENV TAU_MAKEFILE="`find /opt/tau2/x86_64/lib -name Makefile.tau*`"
