@@ -10,8 +10,7 @@ Created:
 import sys
 import logging
 import configparser
-import numpy as np
-from collections import defaultdict
+import time
 
 from definition import *
 from parser2 import Parser
@@ -28,14 +27,24 @@ class Chimbuko(object):
         self.comm = comm
 
         # Initialize logger
+        log_filename = self.config['Debug']['LogFile']
+        if self.rank >= 0:
+            # insert rank number into the log_filename
+            pos = log_filename.rfind('.')
+            if pos < 0:
+                raise ValueError("[{:d}] Invalid log file name: {}".format(
+                    self.rank, log_filename
+                ))
+            log_filename = log_filename[:pos] + "-{:d}".format(self.rank) + log_filename[pos:]
+
         logging.basicConfig(
             level=self.config['Debug']['LogLevel'],
             format=self.config['Debug']['Format'],
-            filename=self.config['Debug']['LogFile']
+            filename=log_filename
         )
         self.log = logging.getLogger('CHIMBUKO')
         # to see logging on the terminal, uncomment below (for develop purpose)
-        #self.log.addHandler(logging.StreamHandler(sys.stdout))
+        self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -46,7 +55,7 @@ class Chimbuko(object):
         self.outlier = Outlier(self.config, self.log)
         # Visualizer: visualization handler
         self.maxDepth = int(self.config['Visualizer']['MaxFunDepth'])
-        self.visualizer = Visualizer(self.config)
+        self.visualizer = Visualizer(self.config, self.log, self.rank)
         self._init()
 
         # init variable
@@ -56,23 +65,17 @@ class Chimbuko(object):
         self.event_id = np.uint64(0)
         # total number of outliers
         self.n_outliers = 0
-        # function data counter
-        self.func_counter = defaultdict(int)
-        # count data counter
-        self.count_counter = defaultdict(int)
-        # communication data counter
-        self.comm_counter = defaultdict(int)
-        # anomaly function
-        self.anomFun = defaultdict(int)
 
-    def _log(self, msg:str, type='info'):
-        msg = "[{:d}]{:s}".format(self.rank, msg) if self.rank>=0 else msg
-        if type == 'info':
-            self.log.info(msg)
-        elif type == 'debug':
-            self.log.debug(msg)
-        elif type == 'error':
-            self.log.error(msg)
+        # data type for visualization
+        # - will be deprecated once version is fixed
+        # - v1: raw data
+        # - v2: execution data
+        self.ver = self.config['Basic']['Ver']
+
+        # measure average time performance
+        self.t_funstack = 0.
+        self.t_anomaly = 0.
+        self.t_vis = 0.
 
 
     def _init(self):
@@ -80,159 +83,314 @@ class Chimbuko(object):
         if self.parser.Method == 'BP':
             # reset visualization server
             self.visualizer.sendReset()
-            self.visualizer.sendEventType(list(self.parser.getEventType().values()), 0)
-            self.visualizer.sendFunMap(self.parser.getFunMap(), 0)
+            self.visualizer.sendEventType(list(self.parser.getEventType().values()), frame_id=0)
+            self.visualizer.sendFunMap(self.parser.getFunMap(), frame_id=0)
 
     def _init_event(self, force_to_init=False):
         if force_to_init or self.parser.Method != 'BP':
             self.event.setEventType(list(self.parser.getEventType().values()))
+            self.event.setFunMap(self.parser.getFunMap())
         self.event.clearFunTime()
         self.event.clearFunData()
         self.event.clearCountData()
         self.event.clearCommData()
 
-    def _process_func_data(self):
+    def _process_func_data_v1(self):
+        """ (deprecated)
+        processing on function data and generate v1 data for visualization"""
         try:
             funcData = self.parser.getFunData()
         except AssertionError:
-            self._log("Frame has no function data...")
+            self.log.info("[{:d}][V1] Frame has no function data...".format(self.rank))
             return
+
         self.event.initFunData(len(funcData))
         for data in funcData:
-            if not self.event.addFun(np.append(data, np.uint64(self.event_id))):
+            if not self.event.addFun_v1(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nCall stack violation at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id), 'error')
+                self.log.error(
+                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
                 break
             self.event_id += 1
-            self.func_counter[data[FUN_IDX_FUNC]] += 1
+
+    def _process_func_data_v2(self):
+        """(only for debug)
+        processing on function data and generate v2 data for visualization"""
+        try:
+            funcData = self.parser.getFunData()
+        except AssertionError:
+            self.log.info("[{:d}][V2] Frame has no function data...".format(self.rank))
+            return
+
+        for data in funcData:
+            if not self.event.addFun_v2(data, self.event_id):
+                self.status = False
+                self.log.info(
+                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
+                break
+            self.event_id += 1
+
+    def _process_communication_data_v1(self):
+        """(deprecated)
+        processing on communication data and generate v1 data for visualization"""
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self.log.info("[{:d}][V1] Frame has no communication data...".format(self.rank))
+            return
+
+        self.event.initCommData(len(commData))
+        for data in commData:
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self.log.info(
+                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(self.rank))
+                break
+            self.event_id += 1
+
+    def _process_communication_data_v2(self):
+        """(only for debug)
+        processing on communication data and generate v2 data for visualization"""
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
+            return
+
+        self.event.initCommData(len(commData))
+        for data in commData:
+            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
+                self.status = False
+                self.log.info(
+                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(
+                        self.rank))
+                break
+            self.event_id += 1
+
+    def _process_func_comm_data_v2(self):
+        """processing on  function and communication data and generate v2 data for visualization"""
+        try:
+            funcData = self.parser.getFunData()
+        except AssertionError:
+            self.log.info("[{:d}][V2] Frame has no function data...".format(self.rank))
+            funcData = []
+
+        try:
+            commData = self.parser.getCommData()
+        except AssertionError:
+            self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
+            commData = []
+
+        n_funcData = len(funcData)
+        n_commData = len(commData)
+        idx_fun = 0
+        idx_com = 0
+
+        fun_data = funcData[idx_fun] if idx_fun < n_funcData else None
+        com_data = commData[idx_com] if idx_com < n_commData else None
+
+        ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
+        ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
+
+        # self.log.info("[{:d}][before] {}".format(self.rank, fun_data))
+        while idx_fun < n_funcData or idx_com < n_commData:
+            if ts_fun <= ts_com and fun_data is not None:
+                if not self.event.addFun_v2(fun_data, self.event_id):
+                    self.status = False
+                    self.log.info(
+                        "\n ***** [{:d}] Call stack violation! *****\n".format(self.rank))
+                    break
+                self.event_id += np.uint64(1)
+                idx_fun += 1
+
+                fun_data = funcData[idx_fun] if idx_fun < n_funcData else None
+                ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
+
+            elif com_data is not None:
+                if not self.event.addComm_v2(com_data):
+                    self.status = False
+                    self.log.info(
+                        "\n ***** [{:d}] Error in adding communication data event ***** \n".format(
+                            self.rank))
+                    break
+                idx_com += 1
+
+                com_data = commData[idx_com] if idx_com < n_commData else None
+                ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
+        # self.log.info("[{:d}][after] {}".format(self.rank, funcData[0]))
+
+    def _run_anomaly_detection_v1(self):
+        """(deprecated) run anomaly detection with v1 data"""
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self.log.info("[{:d}][V1] Only contains open functions so no anomaly detection.".format(
+                self.rank))
+            return [], []
+
+        funMap = self.parser.getFunMap()
+        outliers_id_str = []
+        funOfInt = []
+        for funid, data in functime.items():
+            data = np.array(data)
+            n_fcalls = len(data) # the number of function calls
+
+            self.outlier.compOutlier_v1(data, funid)
+            outliers = self.outlier.getOutlier()
+
+            outliers_id = data[outliers==-1, -1]
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
+            if len(outliers_id) > 0:
+                self.outlier.addAbnormal(funid, len(outliers_id))
+
+        return outliers_id_str, funOfInt
+
+    def _run_anomaly_detection_v2(self):
+        """run anomaly detection with v2 data"""
+        try:
+            functime = self.event.getFunTime()
+        except AssertionError:
+            self.log.info("[{:d}][V2] Only contains open functions so no anomaly detection.".format(
+                self.rank))
+            return [], []
+
+        funMap = self.parser.getFunMap()
+        outliers_id_str = []
+        funOfInt = []
+        for funid, fcalls in functime.items():
+            n_fcalls = len(fcalls) # the number of function calls
+
+            self.outlier.compOutlier_v2(fcalls, funid)
+            outliers = self.outlier.getOutlier()
+
+            outliers_id = []
+            for fcall, label in zip(fcalls, outliers):
+                fcall.set_label(label)
+                if label == -1:
+                    outliers_id.append(fcall.get_id())
+
+            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
+
+            maxFuncDepth = self.event.getMaxFunDepth()
+
+            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
+            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
+            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
+            # NOTE: runtime error when we dump the information into json file.
+            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
+                funOfInt.append(str(funMap[int(funid)]))
+
+            if len(outliers_id) > 0:
+                self.outlier.addAbnormal(funid, len(outliers_id))
+
+        return outliers_id_str, funOfInt
 
     def _process_counter_data(self):
+        """(unused) processing on counter data and currently it is not used."""
         try:
             countData = self.parser.getCountData()
         except AssertionError:
-            self._log("Frame has no counter data...")
+            self.log.info("[{:d}] Frame has no counter data...".format(self.rank))
             return
 
         self.event.initCountData(len(countData))
         for data in countData:
             if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
                 self.status = False
-                self._log(
-                    "\n\n\nError in adding count data event at Frame: {}, Event: {}!\n\n\n".format(
-                        self.parser.getStatus(), self.event_id
-                    ), "error")
+                self.log.info("\n\n\n[{:d}] Error in adding count data event!\n\n\n".format(self.rank))
                 break
             self.event_id += 1
-            self.count_counter[data[CNT_IDX_COUNT]] += 1
 
-    def _process_communication_data(self):
-        try:
-            commData = self.parser.getCommData()
-        except AssertionError:
-            self._log("Frame has no communication data...")
-            return
-
-        self.event.initCommData(len(commData))
-        for data in commData:
-            if not self.event.addComm(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self._log(
-                    "\n\n\nError in adding communication data event at Frame: {}, "
-                    "Event: {}!\n\n\n".format(self.parser.getStatus(), self.event_id), "error"
+    def _process_for_viz(self, funOfInt=None, outlId=None):
+        if self.ver == 'v1':
+            self.visualizer.sendData_v1(
+                self.event.getFunData().tolist(),
+                self.event.getCountData().tolist(),
+                self.event.getCommData().tolist(),
+                funOfInt,
+                outlId,
+                frame_id=self.parser.getStatus(),
+                funMap=None if self.parser.Method == 'BP' else self.parser.getFunMap(),
+                eventType=None if self.parser.Method == 'BP'
+                               else list(self.parser.getEventType().values())
+            )
+        else:
+            try:
+                funtime = self.event.getFunTime()
+                self.visualizer.sendData_v2(
+                    execData=funtime,
+                    funMap=self.parser.getFunMap(),
+                    getStat=self.outlier.getStatViz,
+                    frame_id=self.parser.getStatus(),
                 )
-                break
-            self.event_id += 1
-            self.comm_counter[data[COM_IDX_TAG]] += 1
-
-    def _run_anomaly_detection(self, funMap):
-        try:
-            functime = self.event.getFunTime()
-        except AssertionError:
-            self._log("Only contains open functions so no anomaly detection.")
-            return [], []
-
-        outliers_id_str = []
-        funOfInt = []
-        for funid, data in functime.items():
-            data = np.array(data)
-            n_data = len(data) # the number of function calls
-
-            self.outlier.compOutlier(data, funid)
-            outliers = self.outlier.getOutlier()
-            outliers_id = data[outliers==-1, -1]
-
-            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
-
-            #print('outliers', funid, len(outliers_id))
-
-            maxFuncDepth = self.event.getMaxFunDepth()
-
-            # FIXME: need smooth handling for unknown function and event type
-            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
-            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
-            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
-            # NOTE: runtime error when we dump the information into json file.
-            if n_data > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
-                funOfInt.append(str(funMap[int(funid)]))
-
-            if len(outliers_id) > 0:
-                self.anomFun[int(funid)] += 1
-
-        return outliers_id_str, funOfInt
+            except AssertionError:
+                pass
 
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
         if not self.status: return
-        self._log("\n\nFrame: %s" % self.parser.getStatus())
+        self.log.info("[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # Initialize event
         self._init_event()
-        funMap = self.parser.getFunMap()
 
-        # process on function event
-        self._process_func_data()
+        # process on function event and communication event
+        t_start = time.time()
+        if self.ver == 'v1':
+            self._process_func_data_v1()
+            self._process_communication_data_v1()
+        else:
+            self._process_func_comm_data_v2()
         if not self.status: return
+        t_end = time.time()
+        self.t_funstack += t_end - t_start
 
         # detect anomalies in function call data
-        outlId, funOfInt = self._run_anomaly_detection(funMap)
+        t_start = time.time()
+        if self.ver == 'v1':
+            outlId, funOfInt = self._run_anomaly_detection_v1()
+        else:
+            outlId, funOfInt = self._run_anomaly_detection_v2()
         self.n_outliers += len(outlId)
-        self._log("Numer of outliers per frame: %s" % len(outlId))
+        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
+        t_end = time.time()
+        self.t_anomaly += t_end - t_start
 
         # process on counter event
-        self._process_counter_data()
+        # NOTE: do we need to parse counter data that wasn't used anywhere.
+        # self._process_counter_data()
         if not self.status: return
+        self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
-        # process on communication event
-        self._process_communication_data()
-        if not self.status: return
-
-        # dump trace data for visualization
-        # self.visualizer.sendData(
-        #     self.event.getFunData().tolist(),
-        #     self.event.getCountData().tolist(),
-        #     self.event.getCommData().tolist(),
-        #     funOfInt,
-        #     outlId,
-        #     frame_id=self.parser.getStatus(),
-        #     funMap=None if self.parser.Method == 'BP' else funMap,
-        #     eventType=None if self.parser.Method == 'BP' else list(self.parser.getEventType().values())
-        # )
+        # visualization
+        t_start = time.time()
+        self._process_for_viz(funOfInt, outlId)
+        t_end = time.time()
+        self.t_vis += t_end - t_start
 
         # go to next stream
         self.parser.getStream()
 
     def finalize(self):
-        self.log.info("\n\nFinalize:")
+        self.log.info("[{:d}] Finalize:".format(self.rank))
         stack_size = self.event.getFunStackSize()
         if stack_size > 0:
-            self.log.info("Function stack is not empty: %s" % stack_size)
-            self.log.info("Possible call stack violation!")
+            self.log.info("[{:d}] Function stack is not empty: {}".format(self.rank, stack_size))
+            self.log.info("[{:d}] Possible call stack violation!".format(self.rank))
+            self.event.printFunStack()
 
-        self.log.info("Total number of events: %s" % self.event_id)
-        self.log.info("Total number of outliers: %s" % self.n_outliers)
+        self.log.info("[{:d}] Total number of outliers: {}".format(self.rank, self.n_outliers))
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()
@@ -245,8 +403,8 @@ def usage():
     pass
 
 if __name__ == '__main__':
-    import time
     from mpi4py import MPI
+
     # check argument and print usages()
 
     # MPI
@@ -254,13 +412,15 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    #configFile = './test/test.cfg' #sys.argv[1]
+    if size == 1:
+        rank = -1
+
     configFile = sys.argv[1]
 
     # currently, each rank will have its own anomaly detector, no communication among ranks
     driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
-    n_frames = 0
 
+    n_frames = 0
     start = time.time()
     while driver.status:
         driver.process()
@@ -268,5 +428,13 @@ if __name__ == '__main__':
     driver.finalize()
     end = time.time()
 
-    print("Total number of frames: %s" % n_frames)
-    print("Total running time: {}s".format(end - start))
+    driver.log.info("[{:d}] Total number of frames: {:d}".format(rank, n_frames))
+    driver.log.info("[{:d}] Total running time: {}s".format(rank, end - start))
+    driver.log.info("[{:d}] Avg. process  time: {}s".format(rank, (end - start)/n_frames))
+    driver.log.info("[{:d}] Avg. funstack time: {}s".format(rank, driver.t_funstack/n_frames))
+    driver.log.info("[{:d}] Avg. anomaly  time: {}s".format(rank, driver.t_anomaly/n_frames))
+    driver.log.info("[{:d}] Avg. vis      time: {}s".format(rank, driver.t_vis/n_frames))
+
+    # waiting until all data is sent to VIS
+    driver.visualizer.join(not driver.status)
+    driver.log.info("[{:d}] All data is sent to VIS!".format(rank))

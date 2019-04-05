@@ -159,7 +159,7 @@ class Outlier(object):
                 self.outl.append(-1 if d > threshold else 1)
                 self.score.append(abs(d - mean))
 
-    def compOutlier(self, data, id):
+    def compOutlier_v1(self, data, funid):
         """
         Generic function call to compute outliers in function execution time data
         for a specific function (specified by id). Depending on the configuration file
@@ -173,11 +173,33 @@ class Outlier(object):
             id (int): Specifying the function id which indicates which function the data belongs to.
         """
         if self.algorithm == 'Sstd':
-            self.sstdComp(data[:,5], id)
+            self.sstdComp(data[:,5], funid)
 
         elif self.algorithm == 'Lof':
             self.lofComp(data[:,4:6])
+        else:
+            raise ValueError("Unsupported outlier detection algorithm: %s" % self.algorithm)
 
+    def compOutlier_v2(self, data, funid):
+        """
+        Generic function call to compute outliers in function execution time data
+        for a specific function (specified by id). Depending on the configuration file
+        it will either run LOF or Stream Standard Deviation  algorithm.
+
+        Args:
+            data (numpy array): Holding function execution time table as received from Event class.
+                - n_function x 7
+                - [PID, RID, TID, FID, start time, execution time, event id]
+
+            id (int): Specifying the function id which indicates which function the data belongs to.
+        """
+        if self.algorithm == 'Sstd':
+            data = np.array([d.runtime for d in data])
+            self.sstdComp(data, funid)
+
+        elif self.algorithm == 'Lof':
+            data = np.array([[d.entry, d.runtime] for d in data])
+            self.lofComp(data)
         else:
             raise ValueError("Unsupported outlier detection algorithm: %s" % self.algorithm)
 
@@ -271,5 +293,27 @@ class Outlier(object):
             self.stats[id].mean() (float).
         """
         return self.stats[id].mean()
+
+    def getStat(self, id):
+        return self.stats[id].stat()
+
+    def getStatViz(self, funid):
+        n_total, n_abnormal = self.stats[funid].count()
+        mean = self.stats[funid].mean()
+        std = self.stats[funid].std()
+        return n_total, n_abnormal, mean, std
+
+
+    def addAbnormal(self, funid, n_abnormals):
+        if self.use_ps:
+            resp = req.post(self.ps_url + '/add_abnormal',
+                            json={'id': int(funid), 'abnormal': int(n_abnormals)})
+            resp = resp.json()
+            self.stats[funid].reset_abnormal(resp['abnormal'])
+        else:
+            self.stats[funid].add_abnormal(n_abnormals)
+
+    def getCount(self, funid):
+        return self.stats[funid].count()
    
     

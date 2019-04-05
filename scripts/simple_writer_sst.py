@@ -19,6 +19,7 @@ Last modified:
     March 20, 2019   support MPI
 """
 import pyAdios as ADIOS
+import sys
 
 # data
 VAR_SCALAR = [
@@ -31,9 +32,13 @@ VAR_ARRAY = [
     ('counter_values', 'counter_event_count', 6),
     ('comm_timestamps', 'comm_count', 8)
 ]
-inputFile = '../data/shortdemo/tau-metrics.bp'
+
+
+#inputFile = '../data/shortdemo/tau-metrics.bp'
 #inputFile = './data/longdemo/tau-metrics-nwchem.bp'
+inputFile = sys.argv[1]
 outputFile = 'tau-metrics.bp'
+
 
 # reader (from bp file for test)
 reader = ADIOS.pyAdios('BP')
@@ -50,8 +55,11 @@ att_holder = dict()
 # Write data one by one from the BP file
 while status >= 0:
     bWrite = False
+
+    print("Frame: ", status)
     # ------------------------------------------------------------------------
     # Read variable
+    print("Read frame ....")
     scalar_data = []
     for name in VAR_SCALAR:
         scalar_data.append(reader.read_variable(name))
@@ -66,7 +74,7 @@ while status >= 0:
 
     # ------------------------------------------------------------------------
     # Write variable
-    # print('\n\nWRITE...')
+    print("Write frame ...")
     for name, data in zip(VAR_SCALAR, scalar_data):
         if data is not None:
             writer.write_variable(name, data)
@@ -85,12 +93,14 @@ while status >= 0:
             att_holder[att_name] = att.value()
             bWrite = True
 
-    # if bWrite: writer.end_step()
+    if bWrite:
+        writer.end_step()
     status = reader.advance()
 
     # if status > 1:
     #     break
 
 # Finalize
+print("Finalize")
 reader.close()
 writer.close()

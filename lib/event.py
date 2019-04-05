@@ -30,43 +30,51 @@ class  Event(object):
             A node or MPI rank indicated by r
             A thread indicated by t 
     """
-
-
     def __init__(self, log=None):
         """This is the constructor for the Event class."""
         self.log = log
 
         # a dictionary of function ids;
-        #   - key: function id (int)
+        #   - key: function id (uint64)
         #   - value function name (string)
         self.funMap = None
 
         # Event type id
         self.entry = None  # id (int) of `ENTRY` event
         self.exit = None   # id (int) of `EXIT` event
-        #self.setEventType(eventType)
+        self.send = None   # id (int) of `SEND` event
+        self.recv = None   # id (int) of `RECV` event
 
+        # ---------------------------------------------------------------------
+        # for function calls (event_timestamps)
+        # ---------------------------------------------------------------------
         # A nested dictionary of function calls;
         #   [program id (int)]
         #           |----- [mpi rank id (int)]
         #                           |----- [thread id (int)] : deque()
         self.funStack = {}
-        # ndarray to store function calls (n_events x 13)
-        # - a vector length of 13 contains function event data (length of 7) + additional info
-        self.funData = None
+        self.stackSize = 0 # stack size
+
         # function index
         self.fidx = 0
+
+        # ndarray to store function calls (n_events x 13)
+        # see definition.py for details
+        # - this will be deprecated in the future
+        self.funData = None
+
         # dictionary to store function execution time information
         # - key: function id
-        # - value: a list of list, [PID, RID, TID, FID, start time, execution time, event ID]
-        self.funtime = {}
+        # - value: a list of list, (old)
+        #   [PID, RID, TID, FID, start time, execution time, event ID]
+        # - value: a list of exec data (dict)
+        #self.funtime = {}
+        self.funtime = defaultdict(list)
 
         # maximum function depth (dict)
         # - key: function id
         # - value: maximum depth
         self.maxFunDepth = defaultdict(int)
-        # stack size
-        self.stackSize = 0
 
         # ndarray to store counter values, (n_events x 13)
         # - a vector length of 13 contains count event data (length of 7) + additional info
@@ -79,12 +87,6 @@ class  Event(object):
         # communication data index
         self.coidx = 0
 
-        # todo: [VIS]
-        # For sending events to the viz server that have already exited
-        #self.funList = None
-        # self.funDataTemp = None
-
-
     def setEventType(self, eventType:list):
         """Sets entry and exit variables.
         
@@ -95,29 +97,41 @@ class  Event(object):
                 id 0 and exit id 1
         """
         if eventType is None: return
+
         try:
             self.entry = eventType.index('ENTRY')
             self.exit = eventType.index('EXIT')
         except ValueError:
             self.log.info("ENTRY or EXIT event not present...")
 
-    def initFunData(self, numEvent):
-        """Initialize funData to store function calls in format required by visualization.
-
-        Args:
-            numEvent (int): number of function calls that will be required to store
-        """
-        self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
+        try:
+            self.recv = eventType.index('RECV')
+            self.send = eventType.index('SEND')
+        except ValueError:
+            self.log.info("RECV or SEND event not present...")
 
     def setFunMap(self, funMap):
         """Sets funMap variable.
-        
+
         Args:
             funMap (dictionary):
                 key: (int) function id
                 value: (string) function name
         """
         self.funMap = funMap
+
+    def initFunData(self, numEvent):
+        """
+        @ will be deprecated.
+
+        Initialize funData to store function calls in format
+        required by visualization.
+
+        Args:
+            numEvent (int):
+                number of function calls that will be required to store
+        """
+        self.funData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
     def createCallStack(self, p, r, t): 
         """Creates a stack for each p,r,t combination.
@@ -130,6 +144,10 @@ class  Event(object):
         Returns:
           No return value.
         """
+        p = int(p)
+        r = int(r)
+        t = int(t)
+
         if self.funStack.get(p, None) is None:
             self.funStack[p] = dict()
 
@@ -139,8 +157,8 @@ class  Event(object):
         if self.funStack[p][r].get(t, None) is None:
             self.funStack[p][r][t] = deque()
 
-    def addFun(self, event): 
-        """Adds function call to call stack
+    def addFun_v1(self, event):
+        """ (deprecated) Adds function call to call stack
         Args:
             event:  (ndarray[int])
                 0: program id
@@ -150,9 +168,7 @@ class  Event(object):
                 4: function id
                 5: timestamp
                 6: event id
-
                 obtained from the adios module's "event_timestamps" variable
-
         Returns: (bool)
             True:  the event was successfully added to the call stack without any violations including
                 - timestamp: i.e. exit event's timestamp > entry event's timestamp
@@ -202,9 +218,76 @@ class  Event(object):
                 ]
             )
 
-            #todo: [VIS]
-            #self.funList.append(pevent)
-            #self.funList.append(event)
+            return True
+        # Event is not an exit or entry event
+        return True
+
+    def addFun_v2(self, event, event_id):
+        """Adds function call to call stack
+        Args:
+            event:  (ndarray[int])
+                0: program id
+                1: mpi rank id
+                2: thread id
+                3: (MUST) entry or exit id
+                4: function id (called timer id in sos_flow)
+                5: timestamp
+
+                obtained from the adios module's "event_timestamps" variable
+            event_id: (int)
+
+        Returns: (bool)
+            True:  the event was successfully added to the call stack without any violations including
+                - timestamp: i.e. exit event's timestamp > entry event's timestamp
+            False: otherwise.
+        """
+        # Make sure stack corresponding to (program, mpi rank, thread) is created
+        pid, rid, tid, eid, fid, ts = event
+
+        # NOTE: with SST engine, sometimes, we get very large number for program index,
+        # rank index, thread index and so on. It may be corrupted data or garbage data. This
+        # issue is reported to adios team (Jong). In the mean time, if we observe these events,
+        # we will igore it because it doesn't cause any stack violation so far.
+        if pid > 1000 or rid > 1000 or tid > 1000:
+            return True
+
+        fname = self.funMap[fid]
+        self.createCallStack(pid, rid, tid)
+
+        if eid not in [self.entry, self.exit]:
+            return True
+
+        if eid == self.entry:
+            # If entry event, add the event to call stack
+            execData = ExecData(event_id)
+            execData.update_entry(fname, pid, rid, tid, fid, ts)
+
+            try:
+                p_execData = self.funStack[pid][rid][tid][-1]
+            except IndexError:
+                p_execData = None
+
+            if p_execData is not None:
+                execData.set_parent(p_execData.get_id())
+                p_execData.add_child(execData.get_id())
+
+            self.funStack[pid][rid][tid].append(execData)
+            return True
+
+        elif eid == self.exit:
+            # If exit event, remove corresponding entry event from call stack
+            execData = self.funStack[pid][rid][tid].pop()
+
+            # check call stack violation
+            if not execData.update_exit(fid, ts):
+                return False
+
+            self.maxFunDepth[fid] = max(
+                self.maxFunDepth.get(fid, 0),
+                len(self.funStack[pid][rid][tid])
+            )
+
+            self.funtime[fid].append(execData)
             return True
         # Event is not an exit or entry event
         return True
@@ -243,7 +326,7 @@ class  Event(object):
         return True
 
     def initCommData(self, numEvent):
-        """
+        """ (deprecated)
         Initialize numpy array commData to store communication data in format
         required by visualization.
 
@@ -252,14 +335,15 @@ class  Event(object):
         """
         self.commData = np.full((numEvent, VIS_DATA_LEN), np.nan)
 
-    def addComm(self, event):
-        """Add communication data and store in format required by visualization.
+    def addComm_v1(self, event):
+        """ (deprecated)
+        Add communication data and store in format required by visualization.
         Args:
             event (numpy array of int-s): [
-                0: program,
+                0: program id,
                 1: mpi rank,
-                2: thread,
-                3: ???,
+                2: thread id,
+                3: event id (either SEND or RECV),
                 4: tag id,
                 5: partner id,
                 6: num bytes,
@@ -276,6 +360,68 @@ class  Event(object):
         self.coidx += 1
         return True
 
+    def addComm_v2(self, event):
+        """
+        Add communication data and store in format required by visualization.
+
+        add events regardless of ...
+
+        Args:
+            event (numpy array of int-s): [
+                0: program id,
+                1: mpi rank,
+                2: thread id,
+                3: event id (either SEND or RECV),
+                4: tag id,
+                5: partner id,
+                6: num bytes,
+                7: timestamp
+            ].
+        Returns:
+            bool: True, if the event was successfully added, False otherwise.
+        """
+        pid, rid, tid, eid, tag, partner, nbytes, ts = event
+        # pid = int(event[0])
+        # rid = int(event[1])
+        # tid = int(event[2])
+        # eid = int(event[3])
+        # tag = int(event[4])
+        # partner = int(event[5])
+        # nbytes = float(event[6])
+        # ts = float(event[7])
+
+        if eid not in [self.send, self.recv]:
+            if self.log is not None:
+                self.log.debug("No attributes for SEND/RECV")
+            return True
+
+        try:
+            execData = self.funStack[pid][rid][tid][-1]
+        except IndexError:
+            if self.log is not None:
+                self.log.debug("Communication event before any function calls")
+            return True
+        except KeyError:
+            if self.log is not None:
+                self.log.debug("Communication event before any function calls")
+            return True
+
+        if eid == self.send:
+            comType = 'send'
+            comSrc = rid
+            comDst = partner
+        else:
+            comType = 'receive'
+            comSrc = partner
+            comDst = rid
+
+        comData = CommData(type=comType, src=comSrc, dst=comDst, tid=tid,
+                           msg_size=nbytes, msg_tag=tag, ts=ts)
+
+        execData.add_message(comData)
+
+        return True
+
     def clearFunTime(self):
         """Clear function execution time data."""
         self.funtime.clear()
@@ -284,12 +430,6 @@ class  Event(object):
         """Clear funData created by initFunData() method."""
         self.fidx = 0
         self.funData = None
-        #This portion is only needed if the visualization requires to send function calls that have exited
-        #self.funList.clear()
-        #if self.funDataTemp is None:
-        #    pass
-        #else:
-        #    del self.funDataTemp
 
     def clearCountData(self):
         """Clear countData created by initCountData() method."""
@@ -304,12 +444,6 @@ class  Event(object):
     def getFunData(self):
         """Get method for funData."""
         return self.funData if self.funData is not None else np.array([])
-        # This portion is only needed if the visualization requires to send function calls that have exited
-        # self.funList.sort(key=lambda x: x[6])
-        # self.funData = np.full((len(self.funList), 13), np.nan)
-        # self.funDataTemp = np.array(self.funList)
-        # self.funData[:,0:5] = self.funDataTemp[:,0:5]
-        # self.funData[:,11:13] = self.funDataTemp[:,5:7]
 
     def getCountData(self):
         """Get method for countData."""
@@ -368,14 +502,13 @@ class  Event(object):
 
     def printFunStack(self):
         """Prints the function call stack."""
-        try:
-            import pprint
-            pp = pprint.PrettyPrinter(indent=3)
-            pp.pprint(self.funStack)
-        except ImportError:
-            print("self.funStack = ", self.funStack)
-
-
-    #This portion is only needed if the visualization requires to send function calls that have exited
-    #def initFunData(self, numEvent):
-    #    self.funList = []
+        output = self.log.info if self.log is not None else print
+        output('***** Start Function call stack *****')
+        for pid, p_value in self.funStack.items():
+            for rid, r_value in p_value.items():
+                for tid, t_value in r_value.items():
+                    output("[{}][{}][{}]: {}".format(pid, rid, tid, len(t_value)))
+                    if self.log is not None:
+                        while len(t_value):
+                            self.log.info(t_value.pop())
+        output('***** End   Function call stack *****')

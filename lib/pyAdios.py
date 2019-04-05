@@ -152,8 +152,9 @@ class pyAdios(object):
         """
         if comm is None:
             comm = MPI.COMM_SELF
+
         self.fh = adios2.open(filename, mode.value, comm, self.engine_type.value)
-        self.fh.set_parameters(self.parameters)
+        #self.fh.set_parameters(self.parameters)
         if mode == OpenMode.READ:
             self.stream = self.fh.__next__()
 
@@ -239,6 +240,7 @@ class pyAdios(object):
         Returns:
             stored data of `var_name`
         """
+        # return self.stream.read(var_name)
         variables = self.available_variables()
         if var_name not in variables.keys(): return None
 
@@ -247,17 +249,17 @@ class pyAdios(object):
             return self.stream.read(var_name)
 
         # todo: validate step start and step count
-        if step_start is None: step_start = self.current_step()
-        else:                  step_start = min(self.current_step(), step_start)
-        if step_count is None: step_count = 1
-        else:                  step_count = min(step_count, v.n_steps - step_start)
+        # if step_start is None: step_start = self.current_step()
+        # else:                  step_start = min(self.current_step(), step_start)
+        # if step_count is None: step_count = 1
+        # else:                  step_count = min(step_count, v.n_steps - step_start)
 
         ndim = len(v.shape)
         if start is None: start = [0] * ndim
         if count is None: count = v.shape
 
         return self.stream.read(var_name, start, count)
-        #return self.stream.read(var_name, start, count, step_start, step_count)
+        # return self.stream.read(var_name, start, count, step_start, step_count)
 
     def write_variable(self, var_name:str, data:np.ndarray,
                        start:list=None, count:[list, tuple]=None, end_step:bool=False):
