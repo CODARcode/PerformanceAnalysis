@@ -207,7 +207,7 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData_v2(self, execData, funMap, getCount, frame_id=0):
+    def sendData_v2(self, execData, funMap, getStat, frame_id=0):
         """
         Send function, counter and communication data as well as the results of the analysis
         of interest and id(s) of outlier data points.
@@ -227,22 +227,14 @@ class Visualizer():
                 value = d.to_dict()
                 execDict[str(key)] = value
 
-            # FIXME: for mpi run, the number abnormal is local, but I need global one.
-            n_total, n_abnormal = getCount(funid)
-            if n_abnormal > 0:
-                key = funMap[funid]
-                n_normal = n_total - n_abnormal
-
-                try:
-                    ratio = n_abnormal / (n_normal + n_abnormal) * 100.
-                except ZeroDivisionError:
-                    ratio = 0.
-
-                stat[key] = {
-                    "abnormal": n_abnormal,
-                    "regular": n_normal,
-                    "ratio": ratio
-                }
+            n_total, n_abnormal, mean, std = getStat(funid)
+            key = funMap[funid]
+            stat[key] = {
+                "abnormal": n_abnormal,
+                "regular": n_total - n_abnormal,
+                "mean": mean,
+                "std": std,
+            }
 
         traceDict = {
             'executions': execDict,

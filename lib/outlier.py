@@ -297,6 +297,13 @@ class Outlier(object):
     def getStat(self, id):
         return self.stats[id].stat()
 
+    def getStatViz(self, funid):
+        n_total, n_abnormal = self.stats[funid].count()
+        mean = self.stats[funid].mean()
+        std = self.stats[funid].std()
+        return n_total, n_abnormal, mean, std
+
+
     def addAbnormal(self, funid, n_abnormals):
         if self.use_ps:
             resp = req.post(self.ps_url + '/add_abnormal',

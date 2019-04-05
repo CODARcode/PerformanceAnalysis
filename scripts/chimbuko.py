@@ -330,7 +330,7 @@ class Chimbuko(object):
                 self.visualizer.sendData_v2(
                     execData=funtime,
                     funMap=self.parser.getFunMap(),
-                    getCount=self.outlier.getCount,
+                    getStat=self.outlier.getStatViz,
                     frame_id=self.parser.getStatus(),
                 )
             except AssertionError:
