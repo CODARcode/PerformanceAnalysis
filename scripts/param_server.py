@@ -60,16 +60,32 @@ def index():
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) == 2:
-        try:
-            log = open(sys.argv[1], 'w')
-        except IOError:
-            log = None
+    import configparser
 
-        if log is not None:
-            sys.stdout = sys.stderr = log
+    host = '0.0.0.0'
+    port = 5500
+    log = ''
+    try:
+        configFile = sys.argv[1]
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(configFile)
 
-    app.run(
-        host='0.0.0.0',
-        port=5500
-    )
+        url = config['Outlier']['PSUrl']
+        if url.startswith('http'):
+            url = url.split('//')[1]
+        host = url[:-5]
+        port = int(url[-4:])
+
+        log = config['Outlier']['PSLog']
+    except IOError as e:
+        print('IOError: ', e)
+    except KeyError as e:
+        print('KeyError: ', e)
+
+    try:
+        f = open(log, 'w')
+        sys.stdout = sys.stderr = f
+    except IOError as e:
+        print('IOError: ', e)
+
+    app.run(host=host, port=port)
