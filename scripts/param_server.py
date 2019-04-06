@@ -51,6 +51,7 @@ def update():
     param = request.get_json(force=True)
     funid = int(param.get('id'))
     stat = param.get('stat')
+    stat = [float(d) for d in stat]
     stat = ps.update(funid, stat)
     return jsonify({'id': funid, 'stat': stat})
 

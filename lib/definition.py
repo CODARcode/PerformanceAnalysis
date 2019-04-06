@@ -171,6 +171,9 @@ class ExecData(object):
     def set_label(self, label):
         self.label = label
 
+    def get_label(self):
+        return self.label
+
     def add_child(self, _id):
         self.children.append(_id)
 
