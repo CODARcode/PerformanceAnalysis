@@ -52,7 +52,11 @@ class RunStats(object):
 
     def std(self):
         """Return current standard deviation"""
-        return np.sqrt(self.var())
+        try:
+            std = np.sqrt(self.s0*self.s2 - self.s1*self.s1) / self.s0
+        except ZeroDivisionError:
+            std = np.inf
+        return std
 
     def stat(self):
         return [self.s0, self.s1, self.s2]
@@ -65,14 +69,14 @@ class RunStats(object):
 
     def add(self, x):
         """Add single data point"""
-        self.s0 += 1
+        self.s0 += 1.
         self.s1 += x
         self.s2 += x*x
 
     def update(self, s0, s1, s2):
-        self.s0 += s0
-        self.s1 += s1
-        self.s2 += s2
+            self.s0 += s0
+            self.s1 += s1
+            self.s2 += s2
 
     def reset(self, s0, s1, s2):
         self.s0 = s0

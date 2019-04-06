@@ -24,16 +24,19 @@ def check_ps(url, log=None):
         r = req.get(url)
         r.raise_for_status()
     except req.exceptions.HTTPError as e:
-        if log is not None: log.debug("Http Error: ", e)
+        if log is not None: log.debug("Http Error: {}".format(e))
         return False
     except req.exceptions.ConnectionError as e:
-        if log is not None: log.debug("Connection Error: ", e)
+        if log is not None: log.debug("Connection Error: {}".format(e))
         return False
     except req.exceptions.Timeout as e:
-        if log is not None: log.debug("Timeout Error: ", e)
+        if log is not None: log.debug("Timeout Error: {}".format(e))
         return False
     except req.exceptions.RequestException as e:
-        if log is not None: log.debug("OOps: something else: ", e)
+        if log is not None: log.debug("OOps: something else: {}".format(e))
+        return False
+    except Exception as e:
+        if log is not None: log.debug("OOps: really unknwon: {}".format(e))
         return False
     return True
 
@@ -146,17 +149,30 @@ class Outlier(object):
         for d in data:
             self.stats[funid].add(d)
 
+        # self.log.info("before local: {} - {}, {}".format(
+        #     funid, self.stats[funid].mean(), self.stats[funid].std()))
         if self.use_ps:
-            resp = req.post(self.ps_url + '/update',
-                            json={'id': funid, 'stat': self.stats[funid].stat()})
-            resp = resp.json()
-            self.stats[funid].reset(*resp['stat'])
+            try:
+                resp = req.post(self.ps_url + '/update',
+                                json={'id': funid, 'stat': self.stats[funid].stat()})
+                resp = resp.json()
+                s0, s1, s2 = resp['stat']
+                s0 = float(s0)
+                s1 = float(s1)
+                s2 = float(s2)
+                self.stats[funid].reset(s0, s1, s2)
+            except Exception as e:
+                self.log.info("Error: {}".format(e))
+                exit(1)
+            # self.log.info("after local: {} - {}, {}".format(
+            #     funid, self.stats[funid].mean(), self.stats[funid].std()))
 
         if self.stats[funid].stat()[0] > 1.0:
             mean, std = self.stats[funid].mean(), self.stats[funid].std()
-            threshold = mean + self.sigma*std
+            thr_hi = mean + self.sigma*std
+            thr_lo = mean - self.sigma*std
             for d in data:
-                self.outl.append(-1 if d > threshold else 1)
+                self.outl.append(-1 if d > thr_hi or d < thr_lo else 1)
                 self.score.append(abs(d - mean))
 
     def compOutlier_v1(self, data, funid):
@@ -194,7 +210,7 @@ class Outlier(object):
             id (int): Specifying the function id which indicates which function the data belongs to.
         """
         if self.algorithm == 'Sstd':
-            data = np.array([d.runtime for d in data])
+            data = np.array([d.runtime/1000. for d in data])
             self.sstdComp(data, funid)
 
         elif self.algorithm == 'Lof':

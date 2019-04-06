@@ -12,16 +12,17 @@ Created:
 import threading
 import requests as req
 import json
-#import time
+import pickle
 
 from queue import Queue
 
 class dataWorker(object):
-    def __init__(self, name='dataWorker', interval=1, maxsize=0, log=None):
+    def __init__(self, name='dataWorker', interval=1, maxsize=0, log=None, saveType='json'):
         self.name = name
         self.interval = interval
         self.job_q = Queue(maxsize=maxsize)
         self.log = log
+        self.saveType = saveType
 
         self._stop_event = threading.Event()
 
@@ -32,8 +33,8 @@ class dataWorker(object):
     def put(self, method, path, data, rank=-1, frame_id=0):
         self.job_q.put((method, path, data, rank, frame_id))
         if self.log is not None:
-            self.log.info('[{}][{}][{}] enque data!'.format(
-                self.name, rank, frame_id
+            self.log.info('[{}][{}][{}][{}] enque data: {}!'.format(
+                self.name, rank, frame_id, method, path
             ))
 
     def join(self, force_to_quit, rank=-1):
@@ -49,10 +50,14 @@ class dataWorker(object):
 
 
     def _run(self):
+
+        if self.log is not None:
+            self.log.info('[{}] start runing ...'.format(self.name))
+
         while not self._stop_event.isSet():
             method, path, data, rank, frame_id = self.job_q.get()
 
-            msg = "Success"
+            msg = "Success: " + path
             if method == "online":
                 try:
                     r = req.post(path, json=data)
@@ -68,8 +73,12 @@ class dataWorker(object):
                 except Exception as e:
                     msg = "Really unknown error: {}".format(e)
             elif method == "offline":
-                with open(path, 'w') as f:
-                    json.dump(data, f, indent=4, sort_keys=True)
+                path = path + '.' + self.saveType
+                if self.saveType == 'json':
+                    with open(path, 'w') as f:
+                        json.dump(data, f, indent=4, sort_keys=True)
+                elif self.saveType == 'pkl':
+                    pickle.dump(data, open(path, 'wb'))
             else:
                 msg = "Unknown method."
 
@@ -79,3 +88,4 @@ class dataWorker(object):
             self.job_q.task_done()
             #time.sleep(self.interval)
             self._stop_event.wait(self.interval)
+

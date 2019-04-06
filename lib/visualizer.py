@@ -47,6 +47,23 @@ class Visualizer():
         self.vizMethod = str(config['Visualizer']['VizMethod'])
         self.vizUrl = config['Visualizer']['VizUrl']
         self.outputDir = config['Visualizer']['OutputDir']
+
+        try:
+            self.onlyAbnormal = config['Visualizer'].getboolean('OnlyAbnormal')
+        except KeyError:
+            self.onlyAbnormal = False
+
+        try:
+            self.saveType = config['Visualizer']['SaveType']
+        except KeyError:
+            self.saveType = 'json'
+        print(self.saveType)
+
+        try:
+            self.n_workers = config['Visualizer'].getint('UseWorker')
+        except KeyError:
+            self.n_workers = 1
+
         #self.traceHeader = {'data': 'trace'}
         self.funData = []
         self.countData = []
@@ -61,9 +78,8 @@ class Visualizer():
         self.worker = None
         if self.vizMethod in ['online', 'offline']:
             self.worker = None
-            n_workers = int(config['Visualizer']['UseWorker'])
-            if n_workers > 0:
-                self.worker = dataWorker(log=log)
+            if self.n_workers > 0:
+                self.worker = dataWorker(log=log, saveType=self.saveType)
 
             if self.vizMethod == 'offline' and os.path.exists(self.outputDir):
                 shutil.rmtree(self.outputDir)
@@ -83,11 +99,13 @@ class Visualizer():
         if self.vizMethod == "online":
             req.post(self.vizUrl + '/events', json=resetDict)
         elif self.vizMethod == "offline":
-            fn = "reset.{:03d}.json".format(self.rank) \
+            fn = "reset.{:03d}".format(self.rank) \
                 if self.rank >= 0 \
-                else "reset.json"
-            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                json.dump(resetDict, outfile, indent=4, sort_keys=True)
+                else "reset"
+            if self.worker is not None:
+                self.worker.put(self.vizMethod,
+                                os.path.join(self.outputDir, fn),
+                                resetDict, self.rank, 0)
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
@@ -105,12 +123,13 @@ class Visualizer():
         if self.vizMethod == "online":
             r = req.post(self.vizUrl + '/events', json=eventDict)
         elif self.vizMethod == "offline":
-            fn = "et.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+            fn = "et.{:06d}.{:03d}".format(frame_id, self.rank) \
                 if self.rank >= 0 \
-                else "et.{:06d}.json".format(frame_id)
-
-            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                json.dump(eventDict, outfile)
+                else "et.{:06d}".format(frame_id)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod,
+                                os.path.join(self.outputDir, fn),
+                                eventDict, self.rank, frame_id)
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
@@ -129,11 +148,13 @@ class Visualizer():
         if self.vizMethod == "online":
             req.post(self.vizUrl, json={'type': 'functions', 'value': funMap})
         elif self.vizMethod == "offline":
-            fn = "functions.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+            fn = "functions.{:06d}.{:03d}".format(frame_id, self.rank) \
                 if self.rank >=0 \
-                else "functions.{:06d}.json".format(frame_id)
-            with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                json.dump(funDict, outfile, indent=4, sort_keys=True)
+                else "functions.{:06d}".format(frame_id)
+            if self.worker is not None:
+                self.worker.put(self.vizMethod,
+                                os.path.join(self.outputDir, fn),
+                                funDict, self.rank, frame_id)
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
@@ -216,31 +237,32 @@ class Visualizer():
         """
         if self.vizMethod == 'off': return
 
-        execDict = {}
-        stat = {}
+        if self.saveType == 'json':
+            execDict = {}
+            stat = {}
+            for funid, execList in execData.items():
+                for d in execList:
+                    if self.onlyAbnormal and d.label == 1:
+                        continue
+                    key = d.get_id()
+                    value = d.to_dict()
+                    execDict[str(key)] = value
 
-        for funid, execList in execData.items():
-            for d in execList:
-                if d.label == 1:
-                    continue
-                key = d.get_id()
-                value = d.to_dict()
-                execDict[str(key)] = value
+                n_total, n_abnormal, mean, std = getStat(funid)
+                key = funMap[funid]
+                stat[key] = {
+                    "abnormal": n_abnormal,
+                    "regular": n_total - n_abnormal,
+                    "mean": mean,
+                    "std": std,
+                }
 
-            n_total, n_abnormal, mean, std = getStat(funid)
-            key = funMap[funid]
-            stat[key] = {
-                "abnormal": n_abnormal,
-                "regular": n_total - n_abnormal,
-                "mean": mean,
-                "std": std,
+            traceDict = {
+                'executions': execDict,
+                'stat': stat
             }
-
-        traceDict = {
-            'executions': execDict,
-            'stat': stat
-        }
-
+        else:
+            traceDict = execData
 
         if self.vizMethod == "online":
             if self.worker is not None:
@@ -262,15 +284,13 @@ class Visualizer():
                     if self.log is not None: self.log.info("Really unknown error: ", e)
 
         elif self.vizMethod == "offline":
-            fn = "trace.{:06d}.{:03d}.json".format(frame_id, self.rank) \
+            fn = "trace.{:06d}.{:03d}".format(frame_id, self.rank) \
                 if self.rank >= 0 \
-                else "trace.{:06d}.json".format(frame_id)
+                else "trace.{:06d}".format(frame_id)
             if self.worker is not None:
-                self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict,
-                                self.rank, frame_id)
-            else:
-                with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                    json.dump(traceDict, outfile, indent=4, sort_keys=True)
+                self.worker.put(self.vizMethod,
+                                os.path.join(self.outputDir, fn),
+                                traceDict, self.rank, frame_id)
 
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
