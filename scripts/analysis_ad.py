@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     config = configparser.ConfigParser(interpolation=None)
     config.read(configFile)
-    h = Outlier(config)
+    h = Outlier(config, force_no_ps=True)
 
     trace_filenames = load_filenames(
         data_root, data_dir_prefix,

@@ -54,7 +54,7 @@ class Outlier(object):
       Streaming Standard Deviation (Sstd).
     """
     
-    def __init__(self, config, log=None):
+    def __init__(self, config, log=None, force_no_ps=False):
         """
         This is the constructor for the Outlier class.
         Using the provided configuration file it determines which algorithm to use
@@ -67,7 +67,10 @@ class Outlier(object):
 
         # check parameter server
         self.ps_url = config['Outlier']['PSUrl']
-        self.use_ps = check_ps(self.ps_url, self.log)
+        if force_no_ps:
+            self.use_ps = False
+        else:
+            self.use_ps = check_ps(self.ps_url, self.log)
         if self.log is not None:
             self.log.info("Use parameter server: {:s} @ {:s}".format(
                 'YES' if self.use_ps else 'NO', self.ps_url))
