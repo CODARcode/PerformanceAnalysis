@@ -419,6 +419,7 @@ if __name__ == '__main__':
 
     # currently, each rank will have its own anomaly detector, no communication among ranks
     driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
+    comm.Barrier()
 
     n_frames = 0
     start = time.time()
