@@ -213,7 +213,7 @@ class Outlier(object):
             id (int): Specifying the function id which indicates which function the data belongs to.
         """
         if self.algorithm == 'Sstd':
-            data = np.array([d.runtime/1000. for d in data])
+            data = np.array([d.runtime for d in data])
             self.sstdComp(data, funid)
 
         elif self.algorithm == 'Lof':
