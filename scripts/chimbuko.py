@@ -267,10 +267,14 @@ class Chimbuko(object):
         funMap = self.parser.getFunMap()
         outliers_id_str = []
         funOfInt = []
+
+
         for funid, fcalls in functime.items():
             n_fcalls = len(fcalls) # the number of function calls
+            # self.log.info("[{}] func id: {}, N: {}".format(self.rank, funid, n_fcalls))
 
             self.outlier.compOutlier_v2(fcalls, funid)
+
             outliers = self.outlier.getOutlier()
 
             outliers_id = []
@@ -379,6 +383,13 @@ class Chimbuko(object):
         t_end = time.time()
         self.t_vis += t_end - t_start
 
+        # if True: #self.rank%2 == 0:
+        #     try:
+        #         fn = './func_stat-{:02d}-{:02d}.json'.format(self.rank, self.parser.getStatus())
+        #         self.outlier.dump_stat(fn)
+        #     except Exception as e:
+        #         print('Failed!!!!!!!!!!!!! ', e)
+
         # go to next stream
         self.parser.getStream()
 
@@ -419,7 +430,6 @@ if __name__ == '__main__':
 
     # currently, each rank will have its own anomaly detector, no communication among ranks
     driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
-    comm.Barrier()
 
     n_frames = 0
     start = time.time()

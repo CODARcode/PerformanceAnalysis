@@ -173,9 +173,9 @@ class Outlier(object):
         if self.stats[funid].stat()[0] > 1.0:
             mean, std = self.stats[funid].mean(), self.stats[funid].std()
             thr_hi = mean + self.sigma*std
-            thr_lo = mean - self.sigma*std
+            #thr_lo = mean - self.sigma*std
             for d in data:
-                self.outl.append(-1 if d > thr_hi or d < thr_lo else 1)
+                self.outl.append(-1 if d > thr_hi else 1)
                 self.score.append(abs(d - mean))
 
     def compOutlier_v1(self, data, funid):
@@ -334,5 +334,14 @@ class Outlier(object):
 
     def getCount(self, funid):
         return self.stats[funid].count()
+
+    def dump_stat(self, path):
+        import json
+
+        data = {}
+        for funid, stat in self.stats.items():
+            data[funid] = [stat.mean(), stat.std(), *stat.stat()]
+        with open(path, 'w') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
    
     

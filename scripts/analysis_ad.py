@@ -31,38 +31,49 @@ def load_filenames(data_root, data_dir_prefix, file_prefix, file_suffix):
     return trace_filenames
 
 def load_execdata(fn):
+    if fn is None: return None
     return pickle.load(open(fn, 'rb'))
 
 def merge_execdata(execdata_list):
     merged_data = defaultdict(list)
     for execdata in execdata_list:
+        if execdata is None: continue
         for funid, exections in execdata.items():
             merged_data[funid] += exections
     return merged_data
 
 if __name__ == '__main__':
-    # class mylog:
-    #     def info(self, msg):
-    #         print(msg)
-    #     def debug(self, msg):
-    #         print(msg)
+    class mylog:
+        def info(self, msg):
+            print(msg)
+        def debug(self, msg):
+            print(msg)
     import sys
 
-    data_root = sys.argv[1] #'../untracked'
-    data_dir_prefix = sys.argv[2] #'tmp'
-    configFile = sys.argv[3] #'chimbuko.cfg'
+
+    # data_root = sys.argv[1] #'../untracked'
+    # data_dir_prefix = sys.argv[2] #'tmp'
+    # configFile = sys.argv[3] #'chimbuko.cfg'
+    data_root = '../untracked'
+    data_dir_prefix = 'dump'
+    configFile = 'chimbuko.cfg'
     file_prefix = 'trace'
     file_suffix = 'pkl'
 
-
     config = configparser.ConfigParser(interpolation=None)
     config.read(configFile)
-    h = Outlier(config, force_no_ps=True)
+    h = Outlier(config, force_no_ps=True, log=mylog())
 
     trace_filenames = load_filenames(
         data_root, data_dir_prefix,
         file_prefix, file_suffix
     )
+    n_max_frames = np.max([len(files) for files in trace_filenames])
+    for i in range(len(trace_filenames)):
+        n_frames = len(trace_filenames[i])
+        if n_frames < n_max_frames:
+            trace_filenames[i] += [None] * (n_max_frames - n_frames)
+
 
     frame_idx = 0
     g_n_abnormal_ref = 0
@@ -95,6 +106,8 @@ if __name__ == '__main__':
         # ----- end   anomaly detection
         t_end = time.time()
         g_time += t_end - t_start
+
+        h.dump_stat('../untracked/ref_stat-{:02d}.json'.format(frame_idx))
 
         print("Frame %s" % frame_idx)
         print("# abnormal ref: %s" % l_n_abnormal_ref)

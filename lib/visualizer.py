@@ -237,32 +237,36 @@ class Visualizer():
         """
         if self.vizMethod == 'off': return
 
+        execDict = {}
+        stat = {}
+        for funid, execList in execData.items():
+            for d in execList:
+                if self.onlyAbnormal and d.label == 1:
+                    continue
+                key = d.get_id()
+                value = d.to_dict()
+                execDict[str(key)] = value
+
+            n_total, n_abnormal, mean, std = getStat(funid)
+            key = funMap[funid]
+            stat[key] = {
+                "abnormal": n_abnormal,
+                "regular": n_total - n_abnormal,
+                "mean": mean,
+                "std": std,
+            }
+
         if self.saveType == 'json':
-            execDict = {}
-            stat = {}
-            for funid, execList in execData.items():
-                for d in execList:
-                    if self.onlyAbnormal and d.label == 1:
-                        continue
-                    key = d.get_id()
-                    value = d.to_dict()
-                    execDict[str(key)] = value
-
-                n_total, n_abnormal, mean, std = getStat(funid)
-                key = funMap[funid]
-                stat[key] = {
-                    "abnormal": n_abnormal,
-                    "regular": n_total - n_abnormal,
-                    "mean": mean,
-                    "std": std,
-                }
-
             traceDict = {
                 'executions': execDict,
                 'stat': stat
             }
         else:
             traceDict = execData
+            # traceDict = {
+            #     'executions': execData,
+            #     'stat': stat
+            # }
 
         if self.vizMethod == "online":
             if self.worker is not None:

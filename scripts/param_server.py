@@ -1,29 +1,43 @@
 from flask import Flask, jsonify, request
 from collections import defaultdict
 from algorithm.runstats import RunStats
+from threading import Lock
+import json
 
 app = Flask(__name__)
 
 class ParamServer(object):
     def __init__(self):
         self.ps = defaultdict(lambda: RunStats())
+        self.lock = Lock()
 
     def clear(self):
         self.ps = defaultdict(lambda: RunStats())
 
     def update(self, funcid, stat:list):
-        _ps = self.ps[int(funcid)]
-        _ps.update(*stat)
+        with self.lock:
+            _ps = self.ps[int(funcid)]
+            _ps.update(*stat)
         return _ps.stat()
 
     def get(self, funcid):
-        _ps = self.ps[int(funcid)]
+        with self.lock:
+            _ps = self.ps[int(funcid)]
         return _ps.stat()
 
     def add_abnormal(self, funcid, n_abnormal):
-        _ps = self.ps[int(funcid)]
-        _ps.add_abnormal(n_abnormal)
+        with self.lock:
+            _ps = self.ps[int(funcid)]
+            _ps.add_abnormal(n_abnormal)
         return _ps.count()[1]
+
+    def dump(self):
+        with self.lock:
+            data = {}
+            for funid, stat in self.ps.items():
+                data[funid] = [stat.mean(), stat.std(), *stat.stat()]
+            with open('./ps_stat.json', 'w') as f:
+                json.dump(data, f, indent=4, sort_keys=True)
 
 # parameter server
 ps = ParamServer()
