@@ -157,7 +157,7 @@ class  Event(object):
         """
         # Make sure stack corresponding to (program, mpi rank, thread) is created
         pid, rid, tid, eid, fid, ts = event
-        ts = ts / 1000000
+        ts = np.log(ts)
 
         # NOTE: with SST engine, sometimes, we get very large number for program index,
         # rank index, thread index and so on. It may be corrupted data or garbage data. This

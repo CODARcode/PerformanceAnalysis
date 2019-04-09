@@ -26,7 +26,7 @@ class RunStats(object):
         self.s0 = s0
         self.s1 = s1
         self.s2 = s2
-        self.factor = 1000000.0 #1000000. # to avoid overflow (only applied to s0)
+        self.factor = 100.0 #1000000. # to avoid overflow (only applied to s0)
 
         # this is to keep the number of abnormal cases
         # - n_normal: s0 - n_abnormal
@@ -58,8 +58,11 @@ class RunStats(object):
         """Return current standard deviation"""
         try:
             # std = (np.sqrt(self.s0*self.s2*self.factor - self.s1*self.s1) / self.factor) / self.s0
-            num = np.sqrt((self.s0*self.s2 - self.s1*self.s1/self.factor) * self.factor)
-            std = num / self.factor / self.s0
+            left = self.s0 * self.s2
+            right = self.s1 * self.s1 / self.factor
+            diff = max(0, left - right)
+            std = np.sqrt(diff) / np.sqrt(self.factor) / self.s0
+
         except ZeroDivisionError:
             std = np.inf
         return std
