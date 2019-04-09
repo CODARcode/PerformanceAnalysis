@@ -163,10 +163,10 @@ class ExecData(object):
         }
 
     def get_id(self):
-        return np.uint64(self._id)
+        return self._id
 
     def set_parent(self, _id):
-        self.parent = np.uint64(_id)
+        self.parent = _id
 
     def set_label(self, label):
         self.label = label

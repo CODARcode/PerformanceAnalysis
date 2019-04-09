@@ -57,7 +57,6 @@ class Visualizer():
             self.saveType = config['Visualizer']['SaveType']
         except KeyError:
             self.saveType = 'json'
-        print(self.saveType)
 
         try:
             self.n_workers = config['Visualizer'].getint('UseWorker')

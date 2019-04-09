@@ -11,6 +11,7 @@ import sys
 import logging
 import configparser
 import time
+import uuid
 
 from definition import *
 from parser2 import Parser
@@ -62,7 +63,8 @@ class Chimbuko(object):
         self.status = True
         # event id
         # note: maybe to generate unique id, is this okay with overflow?
-        self.event_id = np.uint64(0)
+        #self.event_id = np.uint64(0)
+        #self.event_id = str(uuid.uuid4())
         # total number of outliers
         self.n_outliers = 0
 
@@ -70,7 +72,7 @@ class Chimbuko(object):
         # - will be deprecated once version is fixed
         # - v1: raw data
         # - v2: execution data
-        self.ver = self.config['Basic']['Ver']
+        # self.ver = self.config['Basic']['Ver']
 
         # measure average time performance
         self.t_funstack = 0.
@@ -91,83 +93,9 @@ class Chimbuko(object):
             self.event.setEventType(list(self.parser.getEventType().values()))
             self.event.setFunMap(self.parser.getFunMap())
         self.event.clearFunTime()
-        self.event.clearFunData()
         self.event.clearCountData()
-        self.event.clearCommData()
 
-    def _process_func_data_v1(self):
-        """ (deprecated)
-        processing on function data and generate v1 data for visualization"""
-        try:
-            funcData = self.parser.getFunData()
-        except AssertionError:
-            self.log.info("[{:d}][V1] Frame has no function data...".format(self.rank))
-            return
-
-        self.event.initFunData(len(funcData))
-        for data in funcData:
-            if not self.event.addFun_v1(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self.log.error(
-                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
-                break
-            self.event_id += 1
-
-    def _process_func_data_v2(self):
-        """(only for debug)
-        processing on function data and generate v2 data for visualization"""
-        try:
-            funcData = self.parser.getFunData()
-        except AssertionError:
-            self.log.info("[{:d}][V2] Frame has no function data...".format(self.rank))
-            return
-
-        for data in funcData:
-            if not self.event.addFun_v2(data, self.event_id):
-                self.status = False
-                self.log.info(
-                    "\n ***** [{:d}] Call stack violation! ***** \n".format(self.rank))
-                break
-            self.event_id += 1
-
-    def _process_communication_data_v1(self):
-        """(deprecated)
-        processing on communication data and generate v1 data for visualization"""
-        try:
-            commData = self.parser.getCommData()
-        except AssertionError:
-            self.log.info("[{:d}][V1] Frame has no communication data...".format(self.rank))
-            return
-
-        self.event.initCommData(len(commData))
-        for data in commData:
-            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self.log.info(
-                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(self.rank))
-                break
-            self.event_id += 1
-
-    def _process_communication_data_v2(self):
-        """(only for debug)
-        processing on communication data and generate v2 data for visualization"""
-        try:
-            commData = self.parser.getCommData()
-        except AssertionError:
-            self.log.info("[{:d}][V2] Frame has no communication data...".format(self.rank))
-            return
-
-        self.event.initCommData(len(commData))
-        for data in commData:
-            if not self.event.addComm_v1(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self.log.info(
-                    "\n\n\n [{:d}] Error in adding communication data event!\n\n\n".format(
-                        self.rank))
-                break
-            self.event_id += 1
-
-    def _process_func_comm_data_v2(self):
+    def _process_func_comm_data(self):
         """processing on  function and communication data and generate v2 data for visualization"""
         try:
             funcData = self.parser.getFunData()
@@ -195,19 +123,18 @@ class Chimbuko(object):
         # self.log.info("[{:d}][before] {}".format(self.rank, fun_data))
         while idx_fun < n_funcData or idx_com < n_commData:
             if ts_fun <= ts_com and fun_data is not None:
-                if not self.event.addFun_v2(fun_data, self.event_id):
+                if not self.event.addFun(fun_data, str(uuid.uuid4())):
                     self.status = False
                     self.log.info(
                         "\n ***** [{:d}] Call stack violation! *****\n".format(self.rank))
                     break
-                self.event_id += np.uint64(1)
                 idx_fun += 1
 
                 fun_data = funcData[idx_fun] if idx_fun < n_funcData else None
                 ts_fun = fun_data[FUN_IDX_TIME] if fun_data is not None else np.inf
 
             elif com_data is not None:
-                if not self.event.addComm_v2(com_data):
+                if not self.event.addComm(com_data):
                     self.status = False
                     self.log.info(
                         "\n ***** [{:d}] Error in adding communication data event ***** \n".format(
@@ -219,43 +146,7 @@ class Chimbuko(object):
                 ts_com = com_data[COM_IDX_TIME] if com_data is not None else np.inf
         # self.log.info("[{:d}][after] {}".format(self.rank, funcData[0]))
 
-    def _run_anomaly_detection_v1(self):
-        """(deprecated) run anomaly detection with v1 data"""
-        try:
-            functime = self.event.getFunTime()
-        except AssertionError:
-            self.log.info("[{:d}][V1] Only contains open functions so no anomaly detection.".format(
-                self.rank))
-            return [], []
-
-        funMap = self.parser.getFunMap()
-        outliers_id_str = []
-        funOfInt = []
-        for funid, data in functime.items():
-            data = np.array(data)
-            n_fcalls = len(data) # the number of function calls
-
-            self.outlier.compOutlier_v1(data, funid)
-            outliers = self.outlier.getOutlier()
-
-            outliers_id = data[outliers==-1, -1]
-            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
-
-            maxFuncDepth = self.event.getMaxFunDepth()
-
-            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
-            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
-            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
-            # NOTE: runtime error when we dump the information into json file.
-            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
-                funOfInt.append(str(funMap[int(funid)]))
-
-            if len(outliers_id) > 0:
-                self.outlier.addAbnormal(funid, len(outliers_id))
-
-        return outliers_id_str, funOfInt
-
-    def _run_anomaly_detection_v2(self):
+    def _run_anomaly_detection(self):
         """run anomaly detection with v2 data"""
         try:
             functime = self.event.getFunTime()
@@ -273,7 +164,7 @@ class Chimbuko(object):
             n_fcalls = len(fcalls) # the number of function calls
             # self.log.info("[{}] func id: {}, N: {}".format(self.rank, funid, n_fcalls))
 
-            self.outlier.compOutlier_v2(fcalls, funid)
+            self.outlier.compOutlier(fcalls, funid)
 
             outliers = self.outlier.getOutlier()
 
@@ -299,46 +190,30 @@ class Chimbuko(object):
 
         return outliers_id_str, funOfInt
 
-    def _process_counter_data(self):
-        """(unused) processing on counter data and currently it is not used."""
-        try:
-            countData = self.parser.getCountData()
-        except AssertionError:
-            self.log.info("[{:d}] Frame has no counter data...".format(self.rank))
-            return
+    # def _process_counter_data(self):
+    #     """(unused) processing on counter data and currently it is not used."""
+    #     try:
+    #         countData = self.parser.getCountData()
+    #     except AssertionError:
+    #         self.log.info("[{:d}] Frame has no counter data...".format(self.rank))
+    #         return
+    #
+    #     self.event.initCountData(len(countData))
+    #     for data in countData:
+    #         if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
+    #             self.status = False
+    #             self.log.info("\n\n\n[{:d}] Error in adding count data event!\n\n\n".format(self.rank))
+    #             break
+    #         self.event_id += 1
 
-        self.event.initCountData(len(countData))
-        for data in countData:
-            if not self.event.addCount(np.append(data, np.uint64(self.event_id))):
-                self.status = False
-                self.log.info("\n\n\n[{:d}] Error in adding count data event!\n\n\n".format(self.rank))
-                break
-            self.event_id += 1
-
-    def _process_for_viz(self, funOfInt=None, outlId=None):
-        if self.ver == 'v1':
-            self.visualizer.sendData_v1(
-                self.event.getFunData().tolist(),
-                self.event.getCountData().tolist(),
-                self.event.getCommData().tolist(),
-                funOfInt,
-                outlId,
+    def _process_for_viz(self):
+            funtime = self.event.getFunTime()
+            self.visualizer.sendData_v2(
+                execData=funtime,
+                funMap=self.parser.getFunMap(),
+                getStat=self.outlier.getStatViz,
                 frame_id=self.parser.getStatus(),
-                funMap=None if self.parser.Method == 'BP' else self.parser.getFunMap(),
-                eventType=None if self.parser.Method == 'BP'
-                               else list(self.parser.getEventType().values())
             )
-        else:
-            try:
-                funtime = self.event.getFunTime()
-                self.visualizer.sendData_v2(
-                    execData=funtime,
-                    funMap=self.parser.getFunMap(),
-                    getStat=self.outlier.getStatViz,
-                    frame_id=self.parser.getStatus(),
-                )
-            except AssertionError:
-                pass
 
     def process(self):
         # check current status of the parser
@@ -351,21 +226,14 @@ class Chimbuko(object):
 
         # process on function event and communication event
         t_start = time.time()
-        if self.ver == 'v1':
-            self._process_func_data_v1()
-            self._process_communication_data_v1()
-        else:
-            self._process_func_comm_data_v2()
+        self._process_func_comm_data()
         if not self.status: return
         t_end = time.time()
         self.t_funstack += t_end - t_start
 
         # detect anomalies in function call data
         t_start = time.time()
-        if self.ver == 'v1':
-            outlId, funOfInt = self._run_anomaly_detection_v1()
-        else:
-            outlId, funOfInt = self._run_anomaly_detection_v2()
+        outlId, funOfInt = self._run_anomaly_detection()
         self.n_outliers += len(outlId)
         self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
         t_end = time.time()
@@ -379,16 +247,9 @@ class Chimbuko(object):
 
         # visualization
         t_start = time.time()
-        self._process_for_viz(funOfInt, outlId)
+        self._process_for_viz()
         t_end = time.time()
         self.t_vis += t_end - t_start
-
-        # if True: #self.rank%2 == 0:
-        #     try:
-        #         fn = './func_stat-{:02d}-{:02d}.json'.format(self.rank, self.parser.getStatus())
-        #         self.outlier.dump_stat(fn)
-        #     except Exception as e:
-        #         print('Failed!!!!!!!!!!!!! ', e)
 
         # go to next stream
         self.parser.getStream()
@@ -405,9 +266,7 @@ class Chimbuko(object):
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()
-        self.event.clearFunData()
         self.event.clearCountData()
-        self.event.clearCommData()
 
 
 def usage():
@@ -446,6 +305,8 @@ if __name__ == '__main__':
     driver.log.info("[{:d}] Avg. anomaly  time: {}s".format(rank, driver.t_anomaly/n_frames))
     driver.log.info("[{:d}] Avg. vis      time: {}s".format(rank, driver.t_vis/n_frames))
 
+
     # waiting until all data is sent to VIS
     driver.visualizer.join(not driver.status)
     driver.log.info("[{:d}] All data is sent to VIS!".format(rank))
+
