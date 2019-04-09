@@ -45,7 +45,7 @@ class Chimbuko(object):
         )
         self.log = logging.getLogger('CHIMBUKO')
         # to see logging on the terminal, uncomment below (for develop purpose)
-        self.log.addHandler(logging.StreamHandler(sys.stdout))
+        #self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)

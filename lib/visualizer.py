@@ -51,7 +51,7 @@ class Visualizer():
         try:
             self.onlyAbnormal = config['Visualizer'].getboolean('OnlyAbnormal')
         except KeyError:
-            self.onlyAbnormal = False
+            self.onlyAbnormal = True
 
         try:
             self.saveType = config['Visualizer']['SaveType']
