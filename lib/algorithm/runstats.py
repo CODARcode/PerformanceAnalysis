@@ -26,6 +26,7 @@ class RunStats(object):
         self.s0 = s0
         self.s1 = s1
         self.s2 = s2
+        self.factor = 1000000. # to avoid overflow (only applied to s0)
 
         # this is to keep the number of abnormal cases
         # - n_normal: s0 - n_abnormal
@@ -37,7 +38,7 @@ class RunStats(object):
     def mean(self):
         """Return current mean"""
         try:
-            mn = self.s1 / self.s0
+            mn = self.s1 / self.s0 * self.factor
         except ZeroDivisionError:
             mn = 0
         return mn
@@ -46,6 +47,7 @@ class RunStats(object):
         """Return currrent variance"""
         try:
             var = (self.s0*self.s2 - self.s1*self.s1) / (self.s0*self.s0)
+            var = var * self.factor * self.factor
         except ZeroDivisionError:
             var = np.inf
         return var
@@ -53,7 +55,7 @@ class RunStats(object):
     def std(self):
         """Return current standard deviation"""
         try:
-            std = np.sqrt(self.s0*self.s2 - self.s1*self.s1) / self.s0
+            std = np.sqrt(self.s0*self.s2 - self.s1*self.s1) / self.s0 * self.factor
         except ZeroDivisionError:
             std = np.inf
         return std
@@ -61,7 +63,8 @@ class RunStats(object):
     def stat(self):
         return [self.s0, self.s1, self.s2]
 
-    def count(self):
+    def count(self, multiply_factor=False):
+        if multiply_factor: return self.s0 * self.factor, self.n_abnormal
         return self.s0, self.n_abnormal
 
     def add_abnormal(self, n):
@@ -69,7 +72,7 @@ class RunStats(object):
 
     def add(self, x):
         """Add single data point"""
-        self.s0 += 1.
+        self.s0 += 1./self.factor
         self.s1 += x
         self.s2 += x*x
 
