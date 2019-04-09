@@ -170,7 +170,7 @@ class Outlier(object):
             # self.log.info("after local: {} - {}, {}".format(
             #     funid, self.stats[funid].mean(), self.stats[funid].std()))
 
-        if self.stats[funid].stat()[0] > 1.0:
+        if self.stats[funid].stat()[0] > 1./self.stats[funid].factor:
             mean, std = self.stats[funid].mean(), self.stats[funid].std()
             thr_hi = mean + self.sigma*std
             #thr_lo = mean - self.sigma*std

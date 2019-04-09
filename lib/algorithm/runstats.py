@@ -26,7 +26,7 @@ class RunStats(object):
         self.s0 = s0
         self.s1 = s1
         self.s2 = s2
-        self.factor = 1000000. # to avoid overflow (only applied to s0)
+        self.factor = 1000000.0 #1000000. # to avoid overflow (only applied to s0)
 
         # this is to keep the number of abnormal cases
         # - n_normal: s0 - n_abnormal
@@ -38,7 +38,7 @@ class RunStats(object):
     def mean(self):
         """Return current mean"""
         try:
-            mn = self.s1 / self.s0 * self.factor
+            mn = (self.s1 / self.factor) / self.s0
         except ZeroDivisionError:
             mn = 0
         return mn
@@ -46,8 +46,10 @@ class RunStats(object):
     def var(self):
         """Return currrent variance"""
         try:
-            var = (self.s0*self.s2 - self.s1*self.s1) / (self.s0*self.s0)
-            var = var * self.factor * self.factor
+            #var = (self.s0*self.s2 - self.s1*self.s1) / (self.s0*self.s0)
+            var = self.s0*self.s2 - self.s1*self.s1
+            var = (var / self.factor) / self.s0
+            var = (var / self.factor) / self.s0
         except ZeroDivisionError:
             var = np.inf
         return var
@@ -55,7 +57,9 @@ class RunStats(object):
     def std(self):
         """Return current standard deviation"""
         try:
-            std = np.sqrt(self.s0*self.s2 - self.s1*self.s1) / self.s0 * self.factor
+            # std = (np.sqrt(self.s0*self.s2*self.factor - self.s1*self.s1) / self.factor) / self.s0
+            num = np.sqrt((self.s0*self.s2 - self.s1*self.s1/self.factor) * self.factor)
+            std = num / self.factor / self.s0
         except ZeroDivisionError:
             std = np.inf
         return std
