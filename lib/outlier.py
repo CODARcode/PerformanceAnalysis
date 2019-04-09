@@ -299,7 +299,7 @@ class Outlier(object):
         n_total, n_abnormal = self.stats[funid].count()
         mean = self.stats[funid].mean()
         std = self.stats[funid].std()
-        return n_total, n_abnormal, mean, std
+        return n_total, n_abnormal, mean, std, self.stats[funid].factor
 
 
     def addAbnormal(self, funid, n_abnormals):

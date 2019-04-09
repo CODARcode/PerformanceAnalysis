@@ -157,77 +157,7 @@ class Visualizer():
         else:
             raise ValueError("Unsupported method: %s" % self.vizMethod)
 
-    def sendData_v1(self,
-                 funData, countData, commData, funOfInt, outlId, frame_id=0,
-                 eventType=None, funMap=None):
-        """
-        Send function, counter and communication data as well as the results of the analysis
-        of interest and id(s) of outlier data points.
-
-        Args:
-            funData: (list), function call data
-            countData: (list), counter data
-            commData: (list), communication data
-            funOfInt: (list), function id(s) of functions that have outliers
-            outlId: (list), event id(s) associated with events that are classified as outliers
-            frame_id: (int), frame id
-            eventType: (list), event types
-        """
-        if self.vizMethod == 'off': return
-
-        dataList = []
-        dataList += funData
-        #dataList += countData
-        dataList += commData
-
-        traceDict = {
-            'type': 'info',
-            'value': {
-                'events': dataList,
-                'foi': funOfInt,
-                'labels': outlId
-            }
-        }
-        if eventType is not None:
-            traceDict['value']['event_types'] = eventType
-
-        if funMap is not None:
-            traceDict['value']['functions'] = funMap
-
-        if self.vizMethod == "online":
-            if self.worker is not None:
-                self.worker.put(self.vizMethod, self.vizUrl + '/events', traceDict,
-                                self.rank, frame_id)
-            else:
-                try:
-                    r = req.post(self.vizUrl + '/events', json=traceDict)
-                    r.raise_for_status()
-                except req.exceptions.HTTPError as e:
-                    if self.log is not None: self.log.info("Http Error: ", e)
-                except req.exceptions.ConnectionError as e:
-                    if self.log is not None: self.log.info("Connection Error: ", e)
-                except req.exceptions.Timeout as e:
-                    if self.log is not None: self.log.info("Timeout Error: ", e)
-                except req.exceptions.RequestException as e:
-                    if self.log is not None: self.log.info("OOps: something else: ", e)
-                except Exception as e:
-                    if self.log is not None: self.log.info("Really unknown error: ", e)
-
-        elif self.vizMethod == "offline":
-            fn = "trace.{:06d}.{:03d}.json".format(frame_id, self.rank) \
-                if self.rank>=0 \
-                else "trace.{:06d}.json".format(frame_id)
-            if self.worker is not None:
-                self.worker.put(self.vizMethod, os.path.join(self.outputDir, fn), traceDict,
-                                self.rank, frame_id)
-            else:
-                with open(os.path.join(self.outputDir, fn), 'w') as outfile:
-                    json.dump(traceDict, outfile, indent=4, sort_keys=True)
-
-        else:
-            raise ValueError("Unsupported method: %s" % self.vizMethod)
-
-    def sendData_v2(self, execData, funMap, getStat, frame_id=0):
+    def sendData(self, execData, funMap, getStat, frame_id=0):
         """
         Send function, counter and communication data as well as the results of the analysis
         of interest and id(s) of outlier data points.
@@ -246,11 +176,12 @@ class Visualizer():
                 value = d.to_dict()
                 execDict[str(key)] = value
 
-            n_total, n_abnormal, mean, std = getStat(funid)
+            n_total, n_abnormal, mean, std, factor = getStat(funid)
             key = funMap[funid]
             stat[key] = {
+                "total": n_total,
+                "factor": factor,
                 "abnormal": n_abnormal,
-                "regular": n_total - n_abnormal,
                 "mean": mean,
                 "std": std,
             }

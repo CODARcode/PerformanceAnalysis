@@ -31,6 +31,7 @@ class ParamServer(object):
             _ps.add_abnormal(n_abnormal)
         return _ps.count()[1]
 
+
     def dump(self):
         with self.lock:
             data = {}
@@ -59,6 +60,10 @@ def clear():
 def stat(pid):
     stat = ps.get(int(pid))
     return jsonify({'id': pid, 'stat': stat})
+
+@app.route("/stat", methods=['POST'])
+def all_stat():
+    pass
 
 @app.route("/update", methods=['POST'])
 def update():

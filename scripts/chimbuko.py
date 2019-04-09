@@ -155,17 +155,9 @@ class Chimbuko(object):
                 self.rank))
             return [], []
 
-        funMap = self.parser.getFunMap()
-        outliers_id_str = []
-        funOfInt = []
-
-
+        n_outliers = 0
         for funid, fcalls in functime.items():
-            n_fcalls = len(fcalls) # the number of function calls
-            # self.log.info("[{}] func id: {}, N: {}".format(self.rank, funid, n_fcalls))
-
             self.outlier.compOutlier(fcalls, funid)
-
             outliers = self.outlier.getOutlier()
 
             outliers_id = []
@@ -174,21 +166,10 @@ class Chimbuko(object):
                 if label == -1:
                     outliers_id.append(fcall.get_id())
 
-            outliers_id_str += np.array(outliers_id, dtype=np.str).tolist()
-
-            maxFuncDepth = self.event.getMaxFunDepth()
-
-            # NOTE: sometime, `funid` doesn't exist in funcMap. This time, it will add
-            # NOTE: an entry, `funid` -> '__Unknown_function', and then return the value.
-            # NOTE: At this time, key value must cast to int manually; otherwise it will cause
-            # NOTE: runtime error when we dump the information into json file.
-            if n_fcalls > np.sum(outliers) and maxFuncDepth[funid] < self.maxDepth:
-                funOfInt.append(str(funMap[int(funid)]))
-
             if len(outliers_id) > 0:
                 self.outlier.addAbnormal(funid, len(outliers_id))
-
-        return outliers_id_str, funOfInt
+                n_outliers += len(outliers_id)
+        return n_outliers
 
     # def _process_counter_data(self):
     #     """(unused) processing on counter data and currently it is not used."""
@@ -208,7 +189,7 @@ class Chimbuko(object):
 
     def _process_for_viz(self):
             funtime = self.event.getFunTime()
-            self.visualizer.sendData_v2(
+            self.visualizer.sendData(
                 execData=funtime,
                 funMap=self.parser.getFunMap(),
                 getStat=self.outlier.getStatViz,
@@ -233,9 +214,9 @@ class Chimbuko(object):
 
         # detect anomalies in function call data
         t_start = time.time()
-        outlId, funOfInt = self._run_anomaly_detection()
-        self.n_outliers += len(outlId)
-        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, len(outlId)))
+        n_outliers = self._run_anomaly_detection()
+        self.n_outliers += n_outliers
+        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, n_outliers))
         t_end = time.time()
         self.t_anomaly += t_end - t_start
 
@@ -246,10 +227,11 @@ class Chimbuko(object):
         self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # visualization
-        t_start = time.time()
-        self._process_for_viz()
-        t_end = time.time()
-        self.t_vis += t_end - t_start
+        if n_outliers:
+            t_start = time.time()
+            self._process_for_viz()
+            t_end = time.time()
+            self.t_vis += t_end - t_start
 
         # go to next stream
         self.parser.getStream()
