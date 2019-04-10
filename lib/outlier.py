@@ -15,6 +15,7 @@ Modified:
 """
 import numpy as np
 import requests as req
+import json
 from sklearn.neighbors import LocalOutlierFactor
 from collections import defaultdict
 from algorithm.runstats import RunStats
@@ -149,20 +150,23 @@ class Outlier(object):
         funid = int(funid)
         self.outl, self.score = [], []
 
+        data = data / 1000000
+        s0 = len(data) / RunStats.factor
+        s1 = 0
+        s2 = 0
         for d in data:
-            self.stats[funid].add(d)
+            s1 += d
+            s2 += d * d
+        self.stats[funid].update(s0, s1, s2)
 
         # self.log.info("before local: {} - {}, {}".format(
         #     funid, self.stats[funid].mean(), self.stats[funid].std()))
         if self.use_ps:
             try:
                 resp = req.post(self.ps_url + '/update',
-                                json={'id': funid, 'stat': self.stats[funid].stat()})
+                                json={'id': funid, 'stat': [s0, s1, s2]})
                 resp = resp.json()
                 s0, s1, s2 = resp['stat']
-                s0 = float(s0)
-                s1 = float(s1)
-                s2 = float(s2)
                 self.stats[funid].reset(s0, s1, s2)
             except Exception as e:
                 self.log.info("Error: {}".format(e))
@@ -315,12 +319,16 @@ class Outlier(object):
         return self.stats[funid].count()
 
     def dump_stat(self, path='stat.json'):
-        import json
-
         data = {}
         for funid, stat in self.stats.items():
             data[funid] = [stat.mean(), stat.std(), *stat.stat()]
         with open(path, 'w') as f:
             json.dump(data, f, indent=4, sort_keys=True)
+
+    def update_stat(self):
+        if self.use_ps:
+            resp = req.post(self.ps_url + '/stat')
+            resp = resp.json()
+            print(resp)
    
     

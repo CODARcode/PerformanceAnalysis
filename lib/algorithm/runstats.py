@@ -15,6 +15,8 @@ Last Modified:
 import numpy as np
 
 class RunStats(object):
+    factor=1000000
+
     def __init__(self, s0=0., s1=0., s2=0., n_abnormal=0.):
         """
         constructor
@@ -26,7 +28,6 @@ class RunStats(object):
         self.s0 = s0
         self.s1 = s1
         self.s2 = s2
-        self.factor = 100.0 #1000000. # to avoid overflow (only applied to s0)
 
         # this is to keep the number of abnormal cases
         # - n_normal: s0 - n_abnormal
@@ -38,6 +39,7 @@ class RunStats(object):
     def mean(self):
         """Return current mean"""
         try:
+            # mn = self.s1 / self.s0
             mn = (self.s1 / self.factor) / self.s0
         except ZeroDivisionError:
             mn = 0
@@ -46,7 +48,7 @@ class RunStats(object):
     def var(self):
         """Return currrent variance"""
         try:
-            #var = (self.s0*self.s2 - self.s1*self.s1) / (self.s0*self.s0)
+            # var = (self.s0*self.s2 - self.s1*self.s1) / (self.s0*self.s0)
             var = self.s0*self.s2 - self.s1*self.s1
             var = (var / self.factor) / self.s0
             var = (var / self.factor) / self.s0
@@ -57,12 +59,11 @@ class RunStats(object):
     def std(self):
         """Return current standard deviation"""
         try:
-            # std = (np.sqrt(self.s0*self.s2*self.factor - self.s1*self.s1) / self.factor) / self.s0
+            # std = np.sqrt(max(0., self.s0*self.s2 - self.s1*self.s1)) / self.s0
             left = self.s0 * self.s2
             right = self.s1 * self.s1 / self.factor
-            diff = max(0, left - right)
+            diff = max(0., left - right)
             std = np.sqrt(diff) / np.sqrt(self.factor) / self.s0
-
         except ZeroDivisionError:
             std = np.inf
         return std
@@ -84,9 +85,9 @@ class RunStats(object):
         self.s2 += x*x
 
     def update(self, s0, s1, s2):
-            self.s0 += s0
-            self.s1 += s1
-            self.s2 += s2
+        self.s0 += s0
+        self.s1 += s1
+        self.s2 += s2
 
     def reset(self, s0, s1, s2):
         self.s0 = s0

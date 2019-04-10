@@ -157,13 +157,12 @@ class  Event(object):
         """
         # Make sure stack corresponding to (program, mpi rank, thread) is created
         pid, rid, tid, eid, fid, ts = event
-        ts = np.log(ts)
 
         # NOTE: with SST engine, sometimes, we get very large number for program index,
         # rank index, thread index and so on. It may be corrupted data or garbage data. This
         # issue is reported to adios team (Jong). In the mean time, if we observe these events,
         # we will igore it because it doesn't cause any stack violation so far.
-        if pid > 1000 or rid > 1000 or tid > 1000:
+        if pid > 100000 or rid > 100000 or tid > 100000:
             return True
 
         fname = self.funMap[fid]

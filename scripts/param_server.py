@@ -31,7 +31,6 @@ class ParamServer(object):
             _ps.add_abnormal(n_abnormal)
         return _ps.count()[1]
 
-
     def dump(self):
         with self.lock:
             data = {}
@@ -39,6 +38,13 @@ class ParamServer(object):
                 data[funid] = [stat.mean(), stat.std(), *stat.stat()]
             with open('./ps_stat.json', 'w') as f:
                 json.dump(data, f, indent=4, sort_keys=True)
+
+    def get_coppy(self):
+        with self.lock:
+            ps = dict()
+            for funid, stat in self.ps.items():
+                ps[funid] = [*stat.stat()]
+        return ps
 
 # parameter server
 ps = ParamServer()
@@ -63,14 +69,15 @@ def stat(pid):
 
 @app.route("/stat", methods=['POST'])
 def all_stat():
-    pass
+    ps_cp = ps.get_coppy()
+    return jsonify({'ps': ps_cp})
 
 @app.route("/update", methods=['POST'])
 def update():
     param = request.get_json(force=True)
     funid = int(param.get('id'))
     stat = param.get('stat')
-    stat = [float(d) for d in stat]
+    stat = [d for d in stat]
     stat = ps.update(funid, stat)
     return jsonify({'id': funid, 'stat': stat})
 
