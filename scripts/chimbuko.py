@@ -67,6 +67,7 @@ class Chimbuko(object):
         #self.event_id = str(uuid.uuid4())
         # total number of outliers
         self.n_outliers = 0
+        self.n_funcalls = 0
 
         # data type for visualization
         # - will be deprecated once version is fixed
@@ -156,20 +157,21 @@ class Chimbuko(object):
             return [], []
 
         n_outliers = 0
+        n_funcalls = 0
         for funid, fcalls in functime.items():
+            n_funcalls += len(fcalls)
             self.outlier.compOutlier(fcalls, funid)
             outliers = self.outlier.getOutlier()
 
-            outliers_id = []
+            _n_outliers = 0
             for fcall, label in zip(fcalls, outliers):
                 fcall.set_label(label)
                 if label == -1:
-                    outliers_id.append(fcall.get_id())
+                    _n_outliers += 1
 
-            if len(outliers_id) > 0:
-                self.outlier.addAbnormal(funid, len(outliers_id))
-                n_outliers += len(outliers_id)
-        return n_outliers
+            if _n_outliers > 0:
+                self.outlier.addAbnormal(funid, _n_outliers)
+        return n_outliers, n_funcalls
 
     # def _process_counter_data(self):
     #     """(unused) processing on counter data and currently it is not used."""
@@ -214,10 +216,12 @@ class Chimbuko(object):
 
         # detect anomalies in function call data
         t_start = time.time()
-        n_outliers = self._run_anomaly_detection()
-        self.n_outliers += n_outliers
-        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, n_outliers))
+        n_outliers, n_funcalls = self._run_anomaly_detection()
         t_end = time.time()
+        self.n_outliers += n_outliers
+        self.n_funcalls += n_funcalls
+        self.log.info("[{:d}] Numer of outliers per frame: {}".format(self.rank, n_outliers))
+        self.log.info("[{:d}] Number of function calls: {}".format(self.rank, n_funcalls))
         self.t_anomaly += t_end - t_start
 
         # process on counter event
@@ -227,7 +231,7 @@ class Chimbuko(object):
         self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # visualization
-        if n_outliers:
+        if n_outliers > 0 or not self.visualizer.onlyAbnormal:
             t_start = time.time()
             self._process_for_viz()
             t_end = time.time()
@@ -245,6 +249,7 @@ class Chimbuko(object):
             self.event.printFunStack()
 
         self.log.info("[{:d}] Total number of outliers: {}".format(self.rank, self.n_outliers))
+        self.log.info("[{:d}] Total number of funcalls: {}".format(self.rank, self.n_funcalls))
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()

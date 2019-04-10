@@ -53,15 +53,20 @@ if __name__ == '__main__':
 
     # data_root = sys.argv[1] #'../untracked'
     # data_dir_prefix = sys.argv[2] #'tmp'
-    # configFile = sys.argv[3] #'chimbuko.cfg'
-    data_root = '../untracked'
-    data_dir_prefix = 'dump'
-    configFile = 'chimbuko.cfg'
+    configFile = sys.argv[1] #'chimbuko.cfg'
+    # data_root = '../untracked'
+    # data_dir_prefix = 'dump'
+    # configFile = 'chimbuko.cfg'
     file_prefix = 'trace'
     file_suffix = 'pkl'
 
     config = configparser.ConfigParser(interpolation=None)
     config.read(configFile)
+
+    output_dir = config['Visualizer']['OutputDir']
+    data_root = '/' + os.path.join(*output_dir.split('/')[:-1])
+    data_dir_prefix = os.path.basename(output_dir)
+
     h = Outlier(config, force_no_ps=True, log=mylog())
 
     trace_filenames = load_filenames(
@@ -79,6 +84,7 @@ if __name__ == '__main__':
     g_n_abnormal_ref = 0
     g_n_abnormal_pred = 0
     g_n_abnormal_match = 0
+    g_n_funcalls = 0
     g_time = 0
     for filenames in zip(*trace_filenames):
         print(filenames)
@@ -88,9 +94,11 @@ if __name__ == '__main__':
         l_n_abnormal_pred = 0
         l_n_abnormal_match = 0
         # ----- start anomaly detection
+        l_n_funcalls = 0
         t_start = time.time()
         for funid, executions in execData.items():
-            h.compOutlier_v2(executions, funid)
+            l_n_funcalls += len(executions)
+            h.compOutlier(executions, funid)
             labels_ref = h.getOutlier()
             labels_pred = np.array([d.label for d in executions])
 
@@ -107,7 +115,7 @@ if __name__ == '__main__':
         t_end = time.time()
         g_time += t_end - t_start
 
-        h.dump_stat('../untracked/ref_stat-{:02d}.json'.format(frame_idx))
+        # h.dump_stat('../untracked/ref_stat-{:02d}.json'.format(frame_idx))
 
         print("Frame %s" % frame_idx)
         print("# abnormal ref: %s" % l_n_abnormal_ref)
@@ -116,12 +124,13 @@ if __name__ == '__main__':
 
         l_accuracy = 0.
         if l_n_abnormal_pred > 0:
-            l_accuracy = l_n_abnormal_match / l_n_abnormal_pred
+            l_accuracy = l_n_abnormal_match / min(l_n_abnormal_pred, l_n_abnormal_ref)
         print("accuracy: {:.3f}".format(l_accuracy))
 
         g_n_abnormal_ref += l_n_abnormal_ref
         g_n_abnormal_pred += l_n_abnormal_pred
         g_n_abnormal_match += l_n_abnormal_match
+        g_n_funcalls += l_n_funcalls
 
         frame_idx += 1
 
@@ -131,6 +140,7 @@ if __name__ == '__main__':
     print("# abnormal match: %s" % g_n_abnormal_match)
     g_accuracy = 1.
     if g_n_abnormal_pred > 0:
-        g_accuracy = g_n_abnormal_match / g_n_abnormal_pred
+        g_accuracy = g_n_abnormal_match / min(g_n_abnormal_pred, g_n_abnormal_ref)
     print("accuracy: %s" % g_accuracy)
-    print("Avg. Time (per frame): {:.3f} sec".format(g_time / frame_idx))
+    print("Avg. Time (per frame): {:.3f} sec".format(g_time/n_max_frames))
+    print("# function calls: %s" % g_n_funcalls)
