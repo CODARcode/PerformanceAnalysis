@@ -2,6 +2,7 @@ import os
 import pickle
 import configparser
 import time
+import logging
 import numpy as np
 from collections import defaultdict
 from definition import *
@@ -43,29 +44,48 @@ def merge_execdata(execdata_list):
     return merged_data
 
 if __name__ == '__main__':
-    class mylog:
-        def info(self, msg):
-            print(msg)
-        def debug(self, msg):
-            print(msg)
     import sys
 
-
+    print('hello')
     # data_root = sys.argv[1] #'../untracked'
     # data_dir_prefix = sys.argv[2] #'tmp'
-    configFile = sys.argv[1] #'chimbuko.cfg'
+
     # data_root = '../untracked'
     # data_dir_prefix = 'dump'
     # configFile = 'chimbuko.cfg'
     file_prefix = 'trace'
     file_suffix = 'pkl'
+    MAX_N_FRAMES = 100
+
+
+    configFile = sys.argv[1] #'chimbuko.cfg'
+
+    try:
+        MAX_N_FRAMES = sys.argv[2]
+    except IndexError:
+        pass
 
     config = configparser.ConfigParser(interpolation=None)
     config.read(configFile)
 
+
+
     output_dir = config['Visualizer']['OutputDir']
     data_root = '/' + os.path.join(*output_dir.split('/')[:-1])
     data_dir_prefix = os.path.basename(output_dir)
+
+    logging.basicConfig(
+        level='INFO',
+        filename=data_root + '/anal_ad.log'
+    )
+    log = logging.getLogger('ANAL_AD')
+    log.addHandler(logging.StreamHandler(sys.stdout))
+    class mylog:
+        def info(self, msg):
+            log.info(msg)
+        def debug(self, msg):
+            log.info(msg)
+
 
     h = Outlier(config, force_no_ps=True, log=mylog())
 
@@ -87,7 +107,10 @@ if __name__ == '__main__':
     g_n_funcalls = 0
     g_time = 0
     for filenames in zip(*trace_filenames):
-        print(filenames)
+        if frame_idx > MAX_N_FRAMES:
+            break
+
+        log.info("{}".format(filenames))
         execData = merge_execdata([load_execdata(fn) for fn in filenames])
 
         l_n_abnormal_ref = 0
@@ -117,15 +140,15 @@ if __name__ == '__main__':
 
         # h.dump_stat('../untracked/ref_stat-{:02d}.json'.format(frame_idx))
 
-        print("Frame %s" % frame_idx)
-        print("# abnormal ref: %s" % l_n_abnormal_ref)
-        print("# abnormal pred: %s" % l_n_abnormal_pred)
-        print("# abnormal match: %s" % l_n_abnormal_match)
+        log.info("Frame %s" % frame_idx)
+        log.info("# abnormal ref: %s" % l_n_abnormal_ref)
+        log.info("# abnormal pred: %s" % l_n_abnormal_pred)
+        log.info("# abnormal match: %s" % l_n_abnormal_match)
 
         l_accuracy = 0.
-        if l_n_abnormal_pred > 0:
+        if l_n_abnormal_pred > 0 and l_n_abnormal_ref:
             l_accuracy = l_n_abnormal_match / min(l_n_abnormal_pred, l_n_abnormal_ref)
-        print("accuracy: {:.3f}".format(l_accuracy))
+        log.info("accuracy: {:.3f}".format(l_accuracy))
 
         g_n_abnormal_ref += l_n_abnormal_ref
         g_n_abnormal_pred += l_n_abnormal_pred
@@ -134,13 +157,13 @@ if __name__ == '__main__':
 
         frame_idx += 1
 
-    print("\nFinal:")
-    print("# abnormal ref: %s" % g_n_abnormal_ref)
-    print("# abnormal pred: %s" % g_n_abnormal_pred)
-    print("# abnormal match: %s" % g_n_abnormal_match)
+    log.info("\nFinal:")
+    log.info("# abnormal ref: %s" % g_n_abnormal_ref)
+    log.info("# abnormal pred: %s" % g_n_abnormal_pred)
+    log.info("# abnormal match: %s" % g_n_abnormal_match)
     g_accuracy = 1.
     if g_n_abnormal_pred > 0:
         g_accuracy = g_n_abnormal_match / min(g_n_abnormal_pred, g_n_abnormal_ref)
-    print("accuracy: %s" % g_accuracy)
-    print("Avg. Time (per frame): {:.3f} sec".format(g_time/n_max_frames))
-    print("# function calls: %s" % g_n_funcalls)
+    log.info("accuracy: %s" % g_accuracy)
+    log.info("Avg. Time (per frame): {:.3f} sec".format(g_time/frame_idx))
+    log.info("# function calls: %s" % g_n_funcalls)
