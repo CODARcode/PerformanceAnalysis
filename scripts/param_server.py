@@ -46,6 +46,14 @@ class ParamServer(object):
                 ps[funid] = [*stat.stat()]
         return ps
 
+    def update_all(self, stats):
+        with self.lock:
+            for funid, stat in stats.items():
+                _ps = self.ps[int(funid)]
+                _ps.update(*stat)
+                stats[funid] = _ps.stat()
+        return stats
+
 # parameter server
 ps = ParamServer()
 
@@ -80,6 +88,13 @@ def update():
     stat = [d for d in stat]
     stat = ps.update(funid, stat)
     return jsonify({'id': funid, 'stat': stat})
+
+@app.route("/update_all", methods=['POST'])
+def update_all():
+    param = request.get_json(force=True)
+    stats = param.get('stats')
+    stats = ps.update_all(stats)
+    return jsonify({'stats': stats})
 
 @app.route("/")
 def index():

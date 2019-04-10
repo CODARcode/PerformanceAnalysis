@@ -100,6 +100,7 @@ class Outlier(object):
             self.stats = defaultdict(lambda: RunStats())
             self.sigma = int(config['Sstd']['Sigma'])
             self.numPoints = 0
+            self.local_stats = dict()
         
         # Outliers and scores
         self.outl = []
@@ -151,36 +152,61 @@ class Outlier(object):
         self.outl, self.score = [], []
 
         data = data / 1000000
-        s0 = len(data) / RunStats.factor
-        s1 = 0
-        s2 = 0
-        for d in data:
-            s1 += d
-            s2 += d * d
-        self.stats[funid].update(s0, s1, s2)
+        # s0 = len(data) / RunStats.factor
+        # s1 = 0
+        # s2 = 0
+        # for d in data:
+        #     s1 += d
+        #     s2 += d * d
+        # self.stats[funid].update(s0, s1, s2)
 
-        # self.log.info("before local: {} - {}, {}".format(
-        #     funid, self.stats[funid].mean(), self.stats[funid].std()))
-        if self.use_ps:
-            try:
-                resp = req.post(self.ps_url + '/update',
-                                json={'id': funid, 'stat': [s0, s1, s2]})
-                resp = resp.json()
-                s0, s1, s2 = resp['stat']
-                self.stats[funid].reset(s0, s1, s2)
-            except Exception as e:
-                self.log.info("Error: {}".format(e))
-                exit(1)
-            # self.log.info("after local: {} - {}, {}".format(
-            #     funid, self.stats[funid].mean(), self.stats[funid].std()))
-
-        if self.stats[funid].stat()[0] > 1./self.stats[funid].factor:
+        # if self.use_ps:
+        #     try:
+        #         resp = req.post(self.ps_url + '/update',
+        #                         json={'id': funid, 'stat': [s0, s1, s2]})
+        #         resp = resp.json()
+        #         s0, s1, s2 = resp['stat']
+        #         self.stats[funid].reset(s0, s1, s2)
+        #     except Exception as e:
+        #         self.log.info("Error: {}".format(e))
+        #         exit(1)
+        #print(funid, self.stats[funid].stat())
+        if self.stats[funid].stat()[0] > 1./RunStats.factor:
             mean, std = self.stats[funid].mean(), self.stats[funid].std()
             thr_hi = mean + self.sigma*std
             #thr_lo = mean - self.sigma*std
             for d in data:
                 self.outl.append(-1 if d > thr_hi else 1)
                 self.score.append(abs(d - mean))
+
+    def initLocalStat(self):
+        self.local_stats.clear()
+
+    def addLocalStat(self, data, funid):
+        data = np.array([d.runtime for d in data])
+        data = data / 1000000
+        s0 = len(data) / RunStats.factor
+        s1 = 0
+        s2 = 0
+        for d in data:
+            s1 += d
+            s2 += d * d
+        self.local_stats[int(funid)] = [s0, s1, s2]
+
+    def pushLocalStat(self):
+        if self.use_ps:
+            try:
+                resp = req.post(self.ps_url + '/update_all', json={'stats': self.local_stats})
+                resp = resp.json()
+                for funid, (s0, s1, s2) in resp['stats'].items():
+                    self.stats[int(funid)].reset(s0, s1, s2)
+            except Exception as e:
+                self.log.info("Error: {}".format(e))
+                exit(1)
+        else:
+            for funid, (s0, s1, s2) in self.local_stats.items():
+                self.stats[funid].update(s0, s1, s2)
+
 
     def compOutlier(self, data, funid):
         """

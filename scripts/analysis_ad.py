@@ -57,7 +57,6 @@ if __name__ == '__main__':
     file_suffix = 'pkl'
     MAX_N_FRAMES = 100
 
-
     configFile = sys.argv[1] #'chimbuko.cfg'
 
     try:
@@ -119,6 +118,11 @@ if __name__ == '__main__':
         # ----- start anomaly detection
         l_n_funcalls = 0
         t_start = time.time()
+        h.initLocalStat()
+        for funid, executions in execData.items():
+            h.addLocalStat(executions, funid)
+        h.pushLocalStat()
+
         for funid, executions in execData.items():
             l_n_funcalls += len(executions)
             h.compOutlier(executions, funid)

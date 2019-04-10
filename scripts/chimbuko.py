@@ -156,6 +156,11 @@ class Chimbuko(object):
                 self.rank))
             return [], []
 
+        self.outlier.initLocalStat()
+        for funid, fcalls in functime.items():
+            self.outlier.addLocalStat(fcalls, funid)
+        self.outlier.pushLocalStat()
+
         n_outliers = 0
         n_funcalls = 0
         for funid, fcalls in functime.items():
