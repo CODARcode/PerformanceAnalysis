@@ -61,7 +61,7 @@ if __name__ == '__main__':
     configFile = sys.argv[1] #'chimbuko.cfg'
 
     try:
-        MAX_N_FRAMES = sys.argv[2]
+        MAX_N_FRAMES = int(sys.argv[2])
     except IndexError:
         pass
 
