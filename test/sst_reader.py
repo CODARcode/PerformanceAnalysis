@@ -1,7 +1,7 @@
-from testdata import TestTraceData
 from mpi4py import MPI
 import adios2
 import pyAdios as ADIOS
+from utils.testdata import TestTraceData
 
 def show_vars(vars:dict):
     for name, info in vars.items():
@@ -12,10 +12,10 @@ def show_vars(vars:dict):
 
 def check(name, data, ref):
     if not (data == ref).all():
-        print("data:")
-        print(data)
-        print("ref")
-        print(ref)
+        # print("data:")
+        # print(data)
+        # print("ref")
+        # print(ref)
         raise ValueError("{:s} read failed".format(name))
 
 if __name__ == '__main__':
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         reader.open(inputFile, ADIOS.OpenMode.READ, MPI.COMM_SELF)
         step = reader.current_step()
         while step >= 0:
-            print("[{:d}]READ: {:d}".format(rank, step))
+            # print("[{:d}]READ: {:d}".format(rank, step))
             data.update(step, rank)
 
             in_program_count = reader.read_variable("program_count")
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
                 step = fr_step.current_step()
 
-                print("[{:d}]READ: {:d}".format(rank, step))
+                # print("[{:d}]READ: {:d}".format(rank, step))
 
                 data.update(step, rank)
                 #print('read: ', step, rank, data.program_count)
@@ -124,3 +124,5 @@ if __name__ == '__main__':
 
 
                 fr_step.end_step()
+
+    print('[{}] SST TEST PASSED (w PSEUDO TRACE DATA)'.format(rank))

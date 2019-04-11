@@ -20,20 +20,19 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-fn = '/Codar/nwchem-1/PerfAnalScript/tau-metrics-{:d}.bp'.format(rank)
+fn = 'tau-metrics-{:d}.bp'.format(rank)
 while not os.path.exists(fn + '.sst'):
     print("[{:d}] Waiting for {}!".format(rank, fn))
     time.sleep(1)
 print("[{:d}] Find {}!".format(rank, fn))
 fr = adios2.open(fn, 'r', MPI.COMM_SELF, 'SST')
 print("[{:d}] start...".format(rank))
-time.sleep(10)
+comm.Barrier()
 
 try:
     while True:
         fr_step = fr.__next__()
         step_vars = fr_step.available_variables()
-        print(step_vars.keys())
 
         step = fr_step.current_step()
         indata = fr_step.read("event_timestamps")

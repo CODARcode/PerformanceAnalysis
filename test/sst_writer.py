@@ -1,16 +1,15 @@
+from mpi4py import MPI
 import adios2
 import pyAdios as ADIOS
-from mpi4py import MPI
-from testdata import TestTraceData
+from utils.testdata import TestTraceData
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-
     use_pyadios = True
-    n_steps = 10000
+    n_steps = 100
     data = TestTraceData()
 
     outputFile = "test-{:d}.bp".format(rank)
@@ -19,7 +18,7 @@ if __name__ == '__main__':
         writer = ADIOS.pyAdios('SST', 'QueueLimit=1')
         writer.open(outputFile, ADIOS.OpenMode.WRITE, MPI.COMM_SELF)
         for step in range(n_steps):
-            print("[{:d}]WRITE: {:d}".format(rank, step))
+            # print("[{:d}]WRITE: {:d}".format(rank, step))
             data.update(step, rank)
             writer.write_variable("program_count", data.program_count)
             writer.write_variable("comm_rank_count", data.comm_rank_count)
@@ -50,8 +49,7 @@ if __name__ == '__main__':
         with adios2.open(outputFile, "w", MPI.COMM_SELF, "SST") as fw:
             fw.set_parameters({'QueueLimit':'1'})
             for step in range(n_steps):
-
-                print("[{:d}]WRITE: {:d}".format(rank, step))
+                # print("[{:d}]WRITE: {:d}".format(rank, step))
                 data.update(step, rank)
                 #print('write: ', step, rank, data.program_count)
 
