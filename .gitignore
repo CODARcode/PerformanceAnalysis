@@ -119,3 +119,5 @@ venv.bak/
 
 # archive
 arch
+untracked
+untracked*

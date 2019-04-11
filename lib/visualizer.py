@@ -8,7 +8,7 @@ Created:
     September, 2018
 
 Modified:
-    March, 2019
+    April 11, 2019
     
     pydoc -w visualizer
     
@@ -16,7 +16,6 @@ Modified:
 import os
 import shutil
 from utils.dataWorker import dataWorker
-import json
 import requests as req
 #import matplotlib as mpl
 #if os.environ.get('DISPLAY','') == '':
@@ -24,7 +23,7 @@ import requests as req
 #    mpl.use('Agg')
 
 
-class Visualizer():
+class Visualizer(object):
     """This class provides an interface to Chimbuko's visualization software.
     It works in both online and offline mode. The online mode sends the trace data
     in a streaming fashion to the visualization server through requests API. 
@@ -63,7 +62,6 @@ class Visualizer():
         except KeyError:
             self.n_workers = 1
 
-        #self.traceHeader = {'data': 'trace'}
         self.funData = []
         self.countData = []
         self.commData = []
@@ -193,10 +191,6 @@ class Visualizer():
             }
         else:
             traceDict = execData
-            # traceDict = {
-            #     'executions': execData,
-            #     'stat': stat
-            # }
 
         if self.vizMethod == "online":
             if self.worker is not None:
