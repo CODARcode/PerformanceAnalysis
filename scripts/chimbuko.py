@@ -12,9 +12,10 @@ import logging
 import configparser
 import time
 import uuid
+import numpy as np
 
 from definition import *
-from parser2 import Parser
+from parser import Parser
 from event import Event
 from outlier import Outlier
 from visualizer import Visualizer
@@ -44,8 +45,14 @@ class Chimbuko(object):
             filename=log_filename
         )
         self.log = logging.getLogger('CHIMBUKO')
+        self.stop_loop = int(self.config['Debug']['StopLoop'])
         # to see logging on the terminal, uncomment below (for develop purpose)
-        #self.log.addHandler(logging.StreamHandler(sys.stdout))
+        try:
+            h = self.config['Debug']['AddHandler']
+            if h == 'stdout':
+                self.log.addHandler(logging.StreamHandler(sys.stdout))
+        except KeyError:
+            pass
 
         # Parser: data handler
         self.parser = Parser(self.config, self.log, self.rank, self.comm)
@@ -61,25 +68,13 @@ class Chimbuko(object):
 
         # init variable
         self.status = True
-        # event id
-        # note: maybe to generate unique id, is this okay with overflow?
-        #self.event_id = np.uint64(0)
-        #self.event_id = str(uuid.uuid4())
-        # total number of outliers
         self.n_outliers = 0
         self.n_funcalls = 0
-
-        # data type for visualization
-        # - will be deprecated once version is fixed
-        # - v1: raw data
-        # - v2: execution data
-        # self.ver = self.config['Basic']['Ver']
 
         # measure average time performance
         self.t_funstack = 0.
         self.t_anomaly = 0.
         self.t_vis = 0.
-
 
     def _init(self):
         self._init_event(self.parser.Method == 'BP')
@@ -94,7 +89,6 @@ class Chimbuko(object):
             self.event.setEventType(list(self.parser.getEventType().values()))
             self.event.setFunMap(self.parser.getFunMap())
         self.event.clearFunTime()
-        self.event.clearCountData()
 
     def _process_func_comm_data(self):
         """processing on  function and communication data and generate v2 data for visualization"""
@@ -154,7 +148,7 @@ class Chimbuko(object):
         except AssertionError:
             self.log.info("[{:d}][V2] Only contains open functions so no anomaly detection.".format(
                 self.rank))
-            return [], []
+            return 0, 0
 
         self.outlier.initLocalStat()
         for funid, fcalls in functime.items():
@@ -163,6 +157,7 @@ class Chimbuko(object):
 
         n_outliers = 0
         n_funcalls = 0
+        outlier_stat = dict()
         for funid, fcalls in functime.items():
             n_funcalls += len(fcalls)
             self.outlier.compOutlier(fcalls, funid)
@@ -174,8 +169,11 @@ class Chimbuko(object):
                 if label == -1:
                     _n_outliers += 1
 
+            n_outliers += _n_outliers
             if _n_outliers > 0:
-                self.outlier.addAbnormal(funid, _n_outliers)
+                outlier_stat[int(funid)] = _n_outliers
+
+        self.outlier.pushAbnormal(outlier_stat)
         return n_outliers, n_funcalls
 
     # def _process_counter_data(self):
@@ -206,7 +204,14 @@ class Chimbuko(object):
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
-        if not self.status: return
+        if not self.status:
+            # todo: addd terminate reason
+            return
+
+        if 1 <= self.stop_loop < self.parser.getStatus():
+            self.log.info("[{}] Terminated with stop_loop condition!".format(self.rank))
+            self.status = False
+            return
         self.log.info("[{}] Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # Initialize event
@@ -215,7 +220,9 @@ class Chimbuko(object):
         # process on function event and communication event
         t_start = time.time()
         self._process_func_comm_data()
-        if not self.status: return
+        if not self.status:
+            # todo: add terminate reason
+            return
         t_end = time.time()
         self.t_funstack += t_end - t_start
 
@@ -232,7 +239,9 @@ class Chimbuko(object):
         # process on counter event
         # NOTE: do we need to parse counter data that wasn't used anywhere.
         # self._process_counter_data()
-        if not self.status: return
+        if not self.status:
+            # todo: add terminate reason
+            return
         self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # visualization
@@ -258,7 +267,6 @@ class Chimbuko(object):
 
         self.parser.adiosFinalize()
         self.event.clearFunTime()
-        self.event.clearCountData()
 
 
 def usage():
@@ -278,15 +286,13 @@ if __name__ == '__main__':
         rank = -1
 
     configFile = sys.argv[1]
-
-    # currently, each rank will have its own anomaly detector, no communication among ranks
     driver = Chimbuko(configFile, rank, MPI.COMM_SELF)
 
     n_frames = 0
     start = time.time()
     while driver.status:
         driver.process()
-        n_frames+=1
+        if driver.status: n_frames+=1
     driver.finalize()
     end = time.time()
 
@@ -297,8 +303,11 @@ if __name__ == '__main__':
     driver.log.info("[{:d}] Avg. anomaly  time: {}s".format(rank, driver.t_anomaly/n_frames))
     driver.log.info("[{:d}] Avg. vis      time: {}s".format(rank, driver.t_vis/n_frames))
 
-
     # waiting until all data is sent to VIS
-    driver.visualizer.join(not driver.status)
+    driver.visualizer.join(True)
     driver.log.info("[{:d}] All data is sent to VIS!".format(rank))
 
+    comm.Barrier()
+    if rank == 0 or rank == -1:
+        driver.outlier.shutdown_parameter_server()
+        driver.log.info("[{:d}] request parameter server shutdown!!!".format(rank))

@@ -119,3 +119,11 @@ venv.bak/
 
 # archive
 arch
+untracked/dump*
+untracked/*.json
+untracked/*bp*
+untracked/*.log
+untracked/*.pkl
+untracked/results/*.log
+untracked/results/*.json
+untracked/results/*.pkl

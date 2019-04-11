@@ -19,6 +19,8 @@ Last modified:
     March 20, 2019   support MPI
 """
 import pyAdios as ADIOS
+from mpi4py import MPI
+import numpy as np
 import sys
 
 # data
@@ -33,33 +35,35 @@ VAR_ARRAY = [
     ('comm_timestamps', 'comm_count', 8)
 ]
 
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
 #inputFile = '../data/shortdemo/tau-metrics.bp'
-#inputFile = './data/longdemo/tau-metrics-nwchem.bp'
+#inputFile = '../data/longdemo/tau-metrics-nwchem.bp'
 inputFile = sys.argv[1]
-outputFile = 'tau-metrics.bp'
-
+outputFile = 'tau-metrics-{:d}.bp'.format(rank)
 
 # reader (from bp file for test)
 reader = ADIOS.pyAdios('BP')
-reader.open(inputFile, ADIOS.OpenMode.READ)
+reader.open(inputFile, ADIOS.OpenMode.READ, MPI.COMM_SELF)
 status = reader.current_step()
 
 # writer (SST)
 writer = ADIOS.pyAdios('SST', "QueueLimit=1")
-writer.open(outputFile, ADIOS.OpenMode.WRITE)
+writer.open(outputFile, ADIOS.OpenMode.WRITE, MPI.COMM_SELF)
 
 # attribute holder
 att_holder = dict()
 
 # Write data one by one from the BP file
 while status >= 0:
+    print("[WRITER][{:d}]Frame-{:d}".format(rank, status))
     bWrite = False
 
-    print("Frame: ", status)
     # ------------------------------------------------------------------------
     # Read variable
-    print("Read frame ....")
+    #print('\n\nREAD...')
     scalar_data = []
     for name in VAR_SCALAR:
         scalar_data.append(reader.read_variable(name))
@@ -69,12 +73,17 @@ while status >= 0:
         ydim = scalar_data[VAR_SCALAR.index(ydim_name)]
         if ydim is not None:
             array_data.append(reader.read_variable(name, count=[ydim[0], xdim]))
+
+            if name == 'event_timestamps':
+                print('[W][{:d}][{:d}] event_timestamps: {}'.format(
+                    rank, status, array_data[-1].shape))
         else:
             array_data.append(None)
 
+
     # ------------------------------------------------------------------------
     # Write variable
-    print("Write frame ...")
+    #print('\n\nWRITE...')
     for name, data in zip(VAR_SCALAR, scalar_data):
         if data is not None:
             writer.write_variable(name, data)
@@ -94,6 +103,7 @@ while status >= 0:
             bWrite = True
 
     if bWrite:
+        writer.write_variable('frame', np.array([status]))
         writer.end_step()
     status = reader.advance()
 
@@ -101,6 +111,5 @@ while status >= 0:
     #     break
 
 # Finalize
-print("Finalize")
 reader.close()
 writer.close()

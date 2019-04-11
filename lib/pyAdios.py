@@ -4,6 +4,7 @@ import numpy as np
 
 from enum import Enum
 
+
 class OpenMode(Enum):
     READ   = "r"
     WRITE  = "w"
@@ -117,14 +118,6 @@ class pyAdios(object):
 
     """
     def __init__(self, method:str, parameters:str=None):
-        # MPI
-        # self.comm = MPI.COMM_WORLD
-        # self.rank = self.comm.Get_rank()
-        # self.size = self.comm.Get_size()
-        #self.comm = MPI.COMM_WORLD
-        #self.rank = 0
-
-
         # adios engine type
         self.engine_type = EngineType.get_type(method)
         # adios engine parameter
@@ -199,10 +192,10 @@ class pyAdios(object):
         Returns: (dict), available variables in the current stream
         """
         if self.stream is None: return dict()
-        vars = dict()
+        avars = dict()
         for name, info in self.stream.available_variables().items():
-            vars[name] = pyVariable(name, **info)
-        return vars
+            avars[name] = pyVariable(name, **info)
+        return avars
 
     def available_attributes(self):
         """
@@ -219,10 +212,10 @@ class pyAdios(object):
         Returns: (dict), available variables in the current stream
         """
         if self.stream is None: return dict()
-        atts = dict()
+        aatts = dict()
         for name, info in self.stream.available_attributes().items():
-            atts[name] = pyAttribute(name, **info)
-        return atts
+            aatts[name] = pyAttribute(name, **info)
+        return aatts
 
     def read_variable(self, var_name:str,
                           start:list=None, count:list=None,

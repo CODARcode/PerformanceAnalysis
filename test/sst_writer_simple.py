@@ -19,8 +19,7 @@ Last modified:
     March 20, 2019   support MPI
 """
 import pyAdios as ADIOS
-from mpi4py import MPI
-import numpy as np
+import sys
 
 # data
 VAR_SCALAR = [
@@ -34,34 +33,32 @@ VAR_ARRAY = [
     ('comm_timestamps', 'comm_count', 8)
 ]
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
 
-inputFile = '../data/shortdemo/tau-metrics.bp'
-#inputFile = '../data/longdemo/tau-metrics-nwchem.bp'
-outputFile = 'tau-metrics-{:d}.bp'.format(rank)
+#inputFile = '../data/shortdemo/tau-metrics.bp'
+#inputFile = './data/longdemo/tau-metrics-nwchem.bp'
+inputFile = sys.argv[1]
+outputFile = 'tau-metrics.bp'
 
 # reader (from bp file for test)
 reader = ADIOS.pyAdios('BP')
-reader.open(inputFile, ADIOS.OpenMode.READ, MPI.COMM_SELF)
+reader.open(inputFile, ADIOS.OpenMode.READ)
 status = reader.current_step()
 
 # writer (SST)
 writer = ADIOS.pyAdios('SST', "QueueLimit=1")
-writer.open(outputFile, ADIOS.OpenMode.WRITE, MPI.COMM_SELF)
+writer.open(outputFile, ADIOS.OpenMode.WRITE)
 
 # attribute holder
 att_holder = dict()
 
 # Write data one by one from the BP file
 while status >= 0:
-    print("[WRITER][{:d}]Frame-{:d}".format(rank, status))
     bWrite = False
 
+    print("\nFrame: ", status)
     # ------------------------------------------------------------------------
     # Read variable
-    #print('\n\nREAD...')
+    print("Read frame ....")
     scalar_data = []
     for name in VAR_SCALAR:
         scalar_data.append(reader.read_variable(name))
@@ -71,17 +68,12 @@ while status >= 0:
         ydim = scalar_data[VAR_SCALAR.index(ydim_name)]
         if ydim is not None:
             array_data.append(reader.read_variable(name, count=[ydim[0], xdim]))
-
-            if name == 'event_timestamps':
-                print('[W][{:d}][{:d}] event_timestamps: {}'.format(
-                    rank, status, array_data[-1].shape))
         else:
             array_data.append(None)
 
-
     # ------------------------------------------------------------------------
     # Write variable
-    #print('\n\nWRITE...')
+    print("Write frame ...")
     for name, data in zip(VAR_SCALAR, scalar_data):
         if data is not None:
             writer.write_variable(name, data)
@@ -92,6 +84,9 @@ while status >= 0:
             writer.write_variable(name, data, [0,0], data.shape)
             bWrite = True
 
+            if name == 'event_timestamps':
+                print('event_timestamps: ', data.shape)
+
     # ------------------------------------------------------------------------
     # Read & Write attributes
     for att_name, att in reader.available_attributes().items():
@@ -101,7 +96,6 @@ while status >= 0:
             bWrite = True
 
     if bWrite:
-        writer.write_variable('frame', np.array([status]))
         writer.end_step()
     status = reader.advance()
 
@@ -109,5 +103,6 @@ while status >= 0:
     #     break
 
 # Finalize
+print("Finalize")
 reader.close()
 writer.close()
