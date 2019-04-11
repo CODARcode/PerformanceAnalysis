@@ -157,7 +157,7 @@ class Chimbuko(object):
 
         n_outliers = 0
         n_funcalls = 0
-        #outlier_stat = dict()
+        outlier_stat = dict()
         for funid, fcalls in functime.items():
             n_funcalls += len(fcalls)
             self.outlier.compOutlier(fcalls, funid)
@@ -171,7 +171,9 @@ class Chimbuko(object):
 
             n_outliers += _n_outliers
             if _n_outliers > 0:
-                self.outlier.addAbnormal(funid, _n_outliers)
+                outlier_stat[int(funid)] = _n_outliers
+
+        self.outlier.pushAbnormal(outlier_stat)
         return n_outliers, n_funcalls
 
     # def _process_counter_data(self):
@@ -202,7 +204,10 @@ class Chimbuko(object):
     def process(self):
         # check current status of the parser
         self.status = self.parser.getStatus() >= 0
-        if not self.status: return
+        if not self.status:
+            # todo: addd terminate reason
+            return
+
         if 1 <= self.stop_loop < self.parser.getStatus():
             self.log.info("[{}] Terminated with stop_loop condition!".format(self.rank))
             self.status = False
@@ -215,7 +220,9 @@ class Chimbuko(object):
         # process on function event and communication event
         t_start = time.time()
         self._process_func_comm_data()
-        if not self.status: return
+        if not self.status:
+            # todo: add terminate reason
+            return
         t_end = time.time()
         self.t_funstack += t_end - t_start
 
@@ -232,7 +239,9 @@ class Chimbuko(object):
         # process on counter event
         # NOTE: do we need to parse counter data that wasn't used anywhere.
         # self._process_counter_data()
-        if not self.status: return
+        if not self.status:
+            # todo: add terminate reason
+            return
         self.log.info("[{}] End Frame: {}".format(self.rank, self.parser.getStatus()))
 
         # visualization

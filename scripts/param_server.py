@@ -31,6 +31,14 @@ class ParamServer(object):
             _ps.add_abnormal(n_abnormal)
         return _ps.count()[1]
 
+    def add_abnormal_all(self, abnormals):
+        with self.lock:
+            for funid, n_abnormal in abnormals.items():
+                _ps = self.ps[int(funid)]
+                _ps.add_abnormal(int(n_abnormal))
+                abnormals[funid] = _ps.n_abnormal
+        return abnormals
+
     def dump(self):
         with self.lock:
             data = {}
@@ -75,6 +83,13 @@ def add_abnormal():
     n_abnormal = int(param.get('abnormal'))
     n_abnormal = ps.add_abnormal(funid, n_abnormal)
     return jsonify({'id': funid, 'abnormal': n_abnormal})
+
+@app.route("/add_abnormal_all", methods=['POST'])
+def add_abnormal_all():
+    param = request.get_json(force=True)
+    stats = param.get('abnormals')
+    stats = ps.add_abnormal_all(stats)
+    return jsonify({'abnormals': stats})
 
 @app.route("/clear", methods=['POST'])
 def clear():

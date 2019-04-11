@@ -222,6 +222,22 @@ class Outlier(object):
         else:
             self.stats[funid].add_abnormal(n_abnormals)
 
+    def pushAbnormal(self, abnormal_stats):
+        """push the local statistics to either parameter server or local accumulated one"""
+        if self.use_ps:
+            try:
+                resp = req.post(self.ps_url + '/add_abnormal_all',
+                                json={'abnormals': abnormal_stats})
+                resp = resp.json()
+                for funid, n_abnormal in resp['abnormals'].items():
+                    self.stats[int(funid)].n_abnormal = int(n_abnormal)
+            except Exception as e:
+                self.log.info("Error: {}".format(e))
+                exit(1)
+        else:
+            for funid, n_abnormal in abnormal_stats.items():
+                self.stats[funid].add_abnormal(n_abnormal)
+
     def getCount(self, funid):
         """Get trace data count (total and abnormal)"""
         return self.stats[funid].count()
