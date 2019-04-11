@@ -57,6 +57,17 @@ class ParamServer(object):
 # parameter server
 ps = ParamServer()
 
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    shutdown_server()
+    return 'Server shutting down...'
+
 @app.route("/add_abnormal", methods=['POST'])
 def add_abnormal():
     param = request.get_json(force=True)

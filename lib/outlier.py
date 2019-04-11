@@ -234,6 +234,10 @@ class Outlier(object):
         with open(path, 'w') as f:
             json.dump(data, f, indent=4, sort_keys=True)
 
+    def shutdown_parameter_server(self):
+        if self.use_ps:
+            req.post(self.ps_url + '/shutdown')
+
 
     # @staticmethod
     # def maxTimeDiff(data):

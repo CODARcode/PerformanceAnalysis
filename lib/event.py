@@ -276,7 +276,7 @@ class Event(object):
         for pid, p_value in self.funStack.items():
             for rid, r_value in p_value.items():
                 for tid, t_value in r_value.items():
-                    output("[{}][{}][{}]: {}".format(pid, rid, tid, len(t_value)))
+                    #output("[{}][{}][{}]: {}".format(pid, rid, tid, len(t_value)))
                     if self.log is not None:
                         while len(t_value):
                             self.log.info(t_value.pop())

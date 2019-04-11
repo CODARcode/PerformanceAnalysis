@@ -127,8 +127,9 @@ class ExecData(object):
 
     def __str__(self):
         """print output"""
-        return "[{}][{}][{}][{}] {:.3} sec, {}, {}, {}, {}".format(
-            self.pid, self.tid, self.rid, self.funName, self.runtime,
+        return "[{}][{}][{}][{}] {} sec, {}, {}, {}, {}".format(
+            self.pid, self.tid, self.rid, self.funName,
+            self.runtime,
             'root' if self.parent == -1 else 'child',
             len(self.children), len(self.message),
             'normal' if self.label == 1 else 'abnormal'
