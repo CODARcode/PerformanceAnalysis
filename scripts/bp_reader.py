@@ -22,5 +22,7 @@ while status >= 0:
     ydim = reader.stream.read('timer_event_count')[0]
     data = reader.stream.read('event_timestamps', [0, 0], [ydim, 6])
     print('event_timestamps: ', data.shape)
+    print(data[:10, -1])
+    break
     status = reader.advance()
 reader.close()

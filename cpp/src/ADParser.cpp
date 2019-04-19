@@ -98,13 +98,17 @@ void ADParser::update_attributes() {
         std::unordered_map<int, std::string>& m = (is_func) ? m_funcMap: m_eventType;
         if (m.count(key) == 0 && attributePair.second.count("Value"))
         {
-            m[key] = attributePair.second.find("Value")->second;
+            std::string value = attributePair.second.find("Value")->second;
+            size_t idx = 0;
+            while ( (idx = value.find("\"")) != std::string::npos )
+                value.replace(idx, 1, "");
+            m[key] = value;
         }
     }
     once = true;
 }
 
-ParserError ADParser::getFuncData() {
+ParserError ADParser::fetchFuncData() {
     adios2::Variable<size_t> in_timer_event_count;
     adios2::Variable<unsigned long> in_event_timestamps;
     size_t nelements;
@@ -127,7 +131,7 @@ ParserError ADParser::getFuncData() {
     return ParserError::NoFuncData;
 }
 
-ParserError ADParser::getCommData() {
+ParserError ADParser::fetchCommData() {
     adios2::Variable<size_t> in_comm_count;
     adios2::Variable<unsigned long> in_comm_timestamps;
     size_t nelements;
@@ -148,24 +152,4 @@ ParserError ADParser::getCommData() {
         return ParserError::OK;
     }
     return ParserError::NoCommData;
-}
-
-
-template <typename K, typename V>
-static void show_map(const std::unordered_map<K, V>& m)
-{
-    for (const auto& it : m)
-    {
-        std::cout << it.first << " : " << it.second << std::endl;
-    }
-}
-
-void ADParser::show_funcMap() const {
-    std::cout << "Function map: " << std::endl;
-    show_map<int, std::string>(m_funcMap);
-}
-
-void ADParser::show_eventType() const {
-    std::cout << "Event type map: " << std::endl;
-    show_map<int, std::string>(m_eventType);
 }
