@@ -1,6 +1,9 @@
 #pragma once
 #include "ADDefine.hpp"
 #include <iostream>
+#include <list>
+#include <stack>
+#include <unordered_map>
 
 typedef struct FuncEvent {
     const unsigned long * m_data;
@@ -28,6 +31,7 @@ public:
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
+    unsigned long get_runtime() const { return m_runtime; }
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
     void set_funcname(std::string funcname) { m_funcname = funcname; }
@@ -47,3 +51,16 @@ private:
     std::vector<std::string> m_children;
     std::vector<CommData_t*> m_messages;
 };
+
+typedef std::list<ExecData_t> CallList_t;
+typedef CallList_t::iterator  CallListIterator_t;
+typedef std::unordered_map<unsigned long, CallList_t>      CallListMap_t_t;
+typedef std::unordered_map<unsigned long, CallListMap_t_t> CallListMap_r_t;
+typedef std::unordered_map<unsigned long, CallListMap_r_t> CallListMap_p_t;
+
+typedef std::stack<CallListIterator_t> CallStack_t;
+typedef std::unordered_map<unsigned long, CallStack_t>      CallStackMap_t_t;
+typedef std::unordered_map<unsigned long, CallStackMap_t_t> CallStackMap_r_t;
+typedef std::unordered_map<unsigned long, CallStackMap_r_t> CallStackMap_p_t;
+
+typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;

@@ -19,8 +19,11 @@ int main(int argc, char ** argv) {
 
     ADParser* parser = new ADParser(data_dir + "/" + inputFile, engineType);
     ADEvent* event = new ADEvent();
+    ADOutlier* outlier = new ADOutlier();
+
     event->linkFuncMap(parser->getFuncMap());
     event->linkEventType(parser->getEventType());
+    outlier->linkExecDataMap(event->getExecDataMap());
 
     while (parser->getStatus())
     {
@@ -66,6 +69,8 @@ int main(int argc, char ** argv) {
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
             std::cout << duration << " msec \n"; 
+
+            outlier->run();
         }
         else
         {
@@ -95,6 +100,7 @@ int main(int argc, char ** argv) {
 
     delete parser;
     delete event;
+    delete outlier;
     MPI_Finalize();
     return 0;
 }
