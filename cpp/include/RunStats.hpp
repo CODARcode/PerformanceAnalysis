@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <vector>
 
 class RunStats {
 
@@ -7,18 +8,26 @@ public:
     RunStats();
     ~RunStats();
 
-    double get_s0() const { return m_s0; }
-    double get_s1() const { return m_s1; }
-    double get_s2() const { return m_s2; }
+    void clear();
+    void push(double x);
+    
+    long long N() const;
 
-    // double mean();
-    // double std();
+    double mean() const;
+    double var() const;
+    double std() const;
+    double skewness() const;
+    double kurtosis() const;
 
-    void add(double x, double weight=1.0);
+    friend RunStats operator+(const RunStats a, const RunStats b);
+    RunStats& operator+=(const RunStats& rs);
 
     friend std::ostream& operator<<(std::ostream& os, const RunStats& rs);
 
 private:
-    double m_s0, m_s1, m_s2;
-
+    long long m_n;
+    double m_M1, m_M2, m_M3, m_M4;
 };
+
+double static_mean(const std::vector<double>& data);
+double static_std(const std::vector<double>& data);
