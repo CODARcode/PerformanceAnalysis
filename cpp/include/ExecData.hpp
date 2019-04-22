@@ -32,6 +32,8 @@ public:
 
     std::string get_id() const { return m_id; }
     unsigned long get_runtime() const { return m_runtime; }
+    int get_label() const { return m_label; }
+    
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
     void set_funcname(std::string funcname) { m_funcname = funcname; }

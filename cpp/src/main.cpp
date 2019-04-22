@@ -19,7 +19,8 @@ int main(int argc, char ** argv) {
 
     ADParser* parser = new ADParser(data_dir + "/" + inputFile, engineType);
     ADEvent* event = new ADEvent();
-    ADOutlier* outlier = new ADOutlier();
+    //ADOutlier* outlier = new ADOutlier();
+    ADOutlierSSTD * outlier = new ADOutlierSSTD();
 
     event->linkFuncMap(parser->getFuncMap());
     event->linkEventType(parser->getEventType());

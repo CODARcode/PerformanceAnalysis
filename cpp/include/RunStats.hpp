@@ -16,7 +16,9 @@ public:
     double mean() const;
     double var() const;
     double std() const;
+    // still experimental, can output nan 
     double skewness() const;
+    // still experimental, can output nan or inf
     double kurtosis() const;
 
     friend RunStats operator+(const RunStats a, const RunStats b);
