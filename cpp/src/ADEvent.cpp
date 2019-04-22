@@ -34,7 +34,7 @@ void ADEvent::createCallList(unsigned long pid, unsigned long rid, unsigned long
         m_callList[pid][rid][tid] = CallList_t();
 }
 
-EventError ADEvent::addFunc(FuncEvent_t event, std::string event_id) {
+EventError ADEvent::addFunc(Event_t event, std::string event_id) {
     if (m_eventType == nullptr)
         return EventError::UnknownEvent;
 
@@ -89,4 +89,25 @@ EventError ADEvent::addFunc(FuncEvent_t event, std::string event_id) {
     }
 
     return EventError::UnknownEvent;
+}
+
+EventError ADEvent::addComm(Event_t event) {
+    if (m_eventType == nullptr)
+        return EventError::UnknownEvent;
+
+    int eid = static_cast<int>(event.eid());
+    if (m_eventType->count(eid) == 0)
+        return EventError::UnknownEvent;
+
+    std::string eventType = m_eventType->find(eid)->second;
+
+    if (eventType.compare("SEND") == 0 || eventType.compare("RECV") == 0) {
+        std::cout << eventType << std::endl;
+    }
+    else {
+        std::cout << eventType << std::endl;
+        return EventError::UnknownEvent;
+    }
+    
+    return EventError::OK;
 }

@@ -31,6 +31,12 @@ public:
         if (idx >= m_timer_event_count) return nullptr;
         return &m_event_timestamps[idx * FUNC_EVENT_DIM];
     }
+    size_t getNumFuncData() const { return m_timer_event_count; }
+    const unsigned long* getCommData(size_t idx) const {
+        if (idx >= m_comm_count) return nullptr;
+        return &m_comm_timestamps[idx * COMM_EVENT_DIM];
+    }
+    size_t getNumCommData() const { return m_comm_count; }
 
 private:
     adios2::ADIOS   m_ad;

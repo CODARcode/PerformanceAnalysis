@@ -66,7 +66,8 @@ int ADParser::beginStep() {
             else
             {
                 m_status = false;
-                return -1;
+                m_current_step = -1;
+                break;
             }
         }
     }
@@ -92,7 +93,10 @@ void ADParser::update_attributes() {
         bool is_func = name.find("timer") != std::string::npos;
         bool is_event = name.find("event_type") != std::string::npos;
 
-        if (!is_func && !is_event) continue;
+        if (!is_func && !is_event) {
+            // std::cout << name << ": " << attributePair.second.find("Value")->second << std::endl;
+            continue;
+        }
 
         int key = std::stoi(name.substr(name.find(" ")));
         std::unordered_map<int, std::string>& m = (is_func) ? m_funcMap: m_eventType;
@@ -112,6 +116,8 @@ ParserError ADParser::fetchFuncData() {
     adios2::Variable<size_t> in_timer_event_count;
     adios2::Variable<unsigned long> in_event_timestamps;
     size_t nelements;
+
+    m_timer_event_count = 0;
 
     in_timer_event_count = m_io.InquireVariable<size_t>("timer_event_count");
     in_event_timestamps = m_io.InquireVariable<unsigned long>("event_timestamps");
@@ -135,6 +141,8 @@ ParserError ADParser::fetchCommData() {
     adios2::Variable<size_t> in_comm_count;
     adios2::Variable<unsigned long> in_comm_timestamps;
     size_t nelements;
+
+    m_comm_count = 0;
 
     in_comm_count = m_io.InquireVariable<size_t>("comm_count");
     in_comm_timestamps = m_io.InquireVariable<unsigned long>("comm_timestamps");

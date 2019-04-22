@@ -1,5 +1,6 @@
 #include "AD.hpp"
 #include <chrono>
+#include <queue>
 
 template <typename K, typename V>
 void show_map(const std::unordered_map<K, V>& m)
@@ -38,45 +39,125 @@ int main(int argc, char ** argv) {
             break; 
         }
 
-        std::cout << "Current step: " << parser->getCurrentStep() << std::endl;
+        int step = parser->getCurrentStep();
+        std::cout << "Current step: " << step << std::endl;
         parser->update_attributes();
         // show_map<int, std::string>(*parser->getFuncMap());
         // show_map<int, std::string>(*event->getEventType());
 
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-        if (parser->fetchFuncData() == ParserError::OK)
-        {
-            size_t idx_funcData = 0;
-            const unsigned long * funcData = nullptr;
-            EventError err;
-            std::string event_id = "event_id";
+        parser->fetchFuncData();
+        parser->fetchCommData();
 
-            while ((funcData = parser->getFuncData(idx_funcData)) != nullptr )
-            {
-                event_id = generate_event_id(world_rank, parser->getCurrentStep(), idx_funcData);        
-                err = event->addFunc(FuncEvent_t(funcData), event_id);
-                if (err == EventError::CallStackViolation)
-                {
-                    std::cout << "\n*** Call stack violation ***\n";
-                    exit(EXIT_FAILURE);
-                }
-                idx_funcData += 1;
-            }   
-            outlier->run();
+        size_t n_funcData = parser->getNumFuncData();
+        size_t n_commData = parser->getNumCommData();
+        size_t idx_funcData = 0, idx_commData = 0;
+
+        std::priority_queue<Event_t, std::vector<Event_t>, std::greater<std::vector<Event_t>::value_type>> pq;
+        // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
+        // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
+        for (size_t i = 0; i < 50; i++) {
+            pq.push(Event_t(parser->getFuncData(i), EventDataType::FUNC));
+            pq.push(Event_t(parser->getCommData(i), EventDataType::COMM));
         }
-        else
-        {
-            std::cout << "No Function data!" << std::endl;
+
+        auto funcmap = parser->getFuncMap();
+        auto evmap = parser->getEventType();
+        while (!pq.empty()) {
+            Event_t ev = pq.top();
+            std::cout << ev << ": " << evmap->find(ev.eid())->second;
+            if (ev.type() == EventDataType::FUNC) {
+                std::cout << ": " << funcmap->find(ev.fid())->second;
+            } else {
+                std::cout << ": " << ev.partner() << ": " << ev.tag() << ": " << ev.bytes();
+            }
+            std::cout << std::endl;
+            pq.pop();
         }
+            
+
+        // if (parser->fetchFuncData() == ParserError::OK || parser->fetchCommData() == ParserError::OK)
+        // {
+        //     std::cout << "Start process ..." << std::endl;
+        //     std::cout << "# FuncData: " << parser->getNumFuncData() << std::endl;
+        //     std::cout << "# CommData: " << parser->getNumCommData() << std::endl;
+
+        //     size_t idx_funcData = 0, idx_commData = 0;
+        //     const unsigned long *funcData = nullptr, *commData = nullptr;
+        //     EventError err;
+        //     std::string event_id = "event_id";
+
+        //     while (
+        //         (funcData = parser->getFuncData(idx_funcData)) != nullptr || 
+        //         (commData = parser->getCommData(idx_commData)) != nullptr
+        //     )
+        //     {
+        //         Event_t ev_func(funcData, FUNC_IDX_TS);
+        //         Event_t ev_comm(commData, COMM_IDX_TS);
+        //         if ( (ev_func.valid() && ev_comm.valid() && ev_func.ts() <= ev_comm.ts()) ) {
+        //             std::cout << "Add funcData 1: " << idx_funcData << std::endl;
+        //             event_id = generate_event_id(world_rank, parser->getCurrentStep(), idx_funcData);        
+        //             err = event->addFunc(ev_func, event_id);
+        //             idx_funcData++;
+        //         }
+        //         else if ( (ev_func.valid() && ev_comm.valid() && ev_func.ts() > ev_comm.ts())) {
+        //             std::cout << "Add commData 1: " << idx_commData << std::endl;
+        //             err = event->addComm(ev_comm);
+        //             idx_commData++;
+        //         } 
+        //         else if ( ev_func.valid() ) {
+        //             std::cout << "Add funcData 2: " << idx_funcData << std::endl;
+        //             event_id = generate_event_id(world_rank, parser->getCurrentStep(), idx_funcData);        
+        //             err = event->addFunc(ev_func, event_id);
+        //             idx_funcData++;
+        //         } 
+        //         else if ( ev_comm.valid() ) {
+        //             std::cout << "Add commData 2: " << idx_commData << std::endl;
+        //             err = event->addComm(ev_comm);
+        //             idx_commData++;
+        //         } else {
+        //             std::cout << "Error!!" << std::endl;
+        //         }
+
+        //         // event_id = generate_event_id(world_rank, parser->getCurrentStep(), idx_funcData);        
+        //         // err = event->addFunc(FuncEvent_t(funcData), event_id);
+        //         if (err == EventError::CallStackViolation)
+        //         {
+        //             std::cout << "\n*** Call stack violation ***\n";
+        //             exit(EXIT_FAILURE);
+        //         }
+        //         // idx_funcData += 1;
+        //     }   
+        //     std::cout << "End of process." << std::endl;
+        //     std::cout << "# FuncData: " << idx_funcData << std::endl;
+        //     std::cout << "# CommData: " << idx_commData << std::endl;
+
+        //     outlier->run();
+        // }
+
         
-        if (parser->fetchCommData() == ParserError::OK)
-        {
-            std::cout << "Handle Communication data!" << std::endl;
-        }
-        else
-        {
-            std::cout << "No Communication data!" << std::endl;            
-        }
+        // else
+        // {
+        //     std::cout << "No Function data!" << std::endl;
+        // }
+        
+        // if (parser->fetchCommData() == ParserError::OK)
+        // {
+        //     std::cout << "Handle Communication data!" << std::endl;
+        //     EventError err;
+        //     const unsigned long * commData = nullptr;
+        //     size_t idx_commData = 0;
+
+        //     while ((commData = parser->getCommData(idx_commData)) != nullptr)
+        //     {
+        //         err = event->addComm(CommEvent_t(commData));
+        //         idx_commData += 1;
+        //     }
+        // }
+        // else
+        // {
+        //     std::cout << "No Communication data!" << std::endl;            
+        // }
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         std::cout << duration << " msec \n"; 

@@ -1,6 +1,9 @@
 #include "ExecData.hpp"
 
-ExecData_t::ExecData_t(std::string id, FuncEvent_t& ev) 
+/* ---------------------------------------------------------------------------
+ * Implementation of ExecData_t class
+ * --------------------------------------------------------------------------- */
+ExecData_t::ExecData_t(std::string id, Event_t& ev) 
     : m_id(id), m_runtime(0), m_label(1), m_parent("-1")
 {
     m_pid = ev.pid();
@@ -14,7 +17,7 @@ ExecData_t::~ExecData_t() {
 
 }
 
-bool ExecData_t::update_exit(FuncEvent_t& ev)
+bool ExecData_t::update_exit(Event_t& ev)
 {
     if (m_fid != ev.fid() || m_entry > ev.ts())
         return false;
@@ -36,5 +39,73 @@ std::ostream& operator<<(std::ostream& os, const ExecData_t& exec)
        << "\nentry: " << exec.m_entry << ", runtime: " << exec.m_runtime
        << "\nparent: " << exec.m_parent << ", # children: " << exec.m_children.size() 
        << ", # messages: " << exec.m_messages.size();
+    return os;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Implementation of Event_t class
+ * --------------------------------------------------------------------------- */
+unsigned long Event_t::ts() const {
+    switch (m_t) {
+        case EventDataType::FUNC: return m_data[FUNC_IDX_TS];
+        case EventDataType::COMM: return m_data[COMM_IDX_TS];
+        default: return UINT64_MAX;
+    }     
+}
+
+std::string Event_t::strtype() const {
+    switch(m_t) {
+        case EventDataType::FUNC: return "FUNC";
+        case EventDataType::COMM: return "COMM";
+        case EventDataType::COUNT: return "COUNT";
+        default: return "Unknown";
+    }
+}
+
+// for function event
+unsigned long Event_t::fid() const { 
+    if (m_t != EventDataType::FUNC) {
+        std::cerr << "\n***** It is NOT func event and tried to get fid! *****\n";
+        exit(EXIT_FAILURE);
+    }
+    return m_data[FUNC_IDX_F]; 
+}
+
+// for communication event
+unsigned long Event_t::tag() const {
+    if (m_t != EventDataType::COMM) {
+        std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
+        exit(EXIT_FAILURE);
+    } 
+    return m_data[COMM_IDX_TAG]; 
+}
+unsigned long Event_t::partner() const { 
+    if (m_t != EventDataType::COMM) {
+        std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
+        exit(EXIT_FAILURE);
+    } 
+    return m_data[COMM_IDX_PARTNER]; 
+}
+unsigned long Event_t::bytes() const { 
+    if (m_t != EventDataType::COMM) {
+        std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
+        exit(EXIT_FAILURE);
+    } 
+    return m_data[COMM_IDX_BYTES]; 
+}
+
+bool operator<(const Event_t& lhs, const Event_t& rhs) {
+    return lhs.ts() < rhs.ts();
+}
+
+bool operator>(const Event_t& lhs, const Event_t& rhs) {
+    return lhs.ts() > rhs.ts();
+}
+
+std::ostream& operator<<(std::ostream& os, const Event_t& ev) {
+    os << ev.ts() << ":" << ev.strtype() << ": " 
+       << ev.pid() << ": " << ev.rid() << ": " << ev.tid();
+       
     return os;
 }
