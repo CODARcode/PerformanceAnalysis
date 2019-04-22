@@ -12,6 +12,7 @@ unsigned char random_char() {
     return static_cast<unsigned char>(dis(gen));
 }
 
+// this is too slow
 std::string generate_hex(const unsigned int len) {
     std::stringstream ss;
     for (unsigned int i = 0; i < len; i++) {
@@ -24,4 +25,7 @@ std::string generate_hex(const unsigned int len) {
     return ss.str();
 }
 
+std::string generate_event_id(int rank, int step, size_t idx) {
+    return std::to_string(rank) + "_" + std::to_string(step) + "_" + std::to_string(idx);
+}
 

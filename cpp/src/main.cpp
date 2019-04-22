@@ -13,13 +13,16 @@ void show_map(const std::unordered_map<K, V>& m)
 int main(int argc, char ** argv) {
     MPI_Init(&argc, &argv);
 
+    int world_rank, world_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
     std::string data_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/data/mpi";
     std::string inputFile = "tau-metrics-0.bp";
     std::string engineType = "BPFile";
 
     ADParser* parser = new ADParser(data_dir + "/" + inputFile, engineType);
     ADEvent* event = new ADEvent();
-    //ADOutlier* outlier = new ADOutlier();
     ADOutlierSSTD * outlier = new ADOutlierSSTD();
 
     event->linkFuncMap(parser->getFuncMap());
@@ -40,6 +43,7 @@ int main(int argc, char ** argv) {
         // show_map<int, std::string>(*parser->getFuncMap());
         // show_map<int, std::string>(*event->getEventType());
 
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         if (parser->fetchFuncData() == ParserError::OK)
         {
             size_t idx_funcData = 0;
@@ -47,30 +51,17 @@ int main(int argc, char ** argv) {
             EventError err;
             std::string event_id = "event_id";
 
-            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
             while ((funcData = parser->getFuncData(idx_funcData)) != nullptr )
             {
-                // todo: generate event_id: [rank]_[step id]_[idx]
-                //event_id = generate_hex(LEN_EVENT_ID);                
+                event_id = generate_event_id(world_rank, parser->getCurrentStep(), idx_funcData);        
                 err = event->addFunc(FuncEvent_t(funcData), event_id);
                 if (err == EventError::CallStackViolation)
                 {
                     std::cout << "\n*** Call stack violation ***\n";
                     exit(EXIT_FAILURE);
                 }
-                // std::cout << idx_funcData << ": ";
-                // for (int i = 0; i < FUNC_EVENT_DIM; i++)
-                //     std::cout << funcData[i] << " ";
-                // std::cout << std::endl;
                 idx_funcData += 1;
-
-                // if (idx_funcData >= 10)
-                //     break;
             }   
-            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            std::cout << duration << " msec \n"; 
-
             outlier->run();
         }
         else
@@ -78,12 +69,18 @@ int main(int argc, char ** argv) {
             std::cout << "No Function data!" << std::endl;
         }
         
-
-
-        if (parser->fetchCommData() != ParserError::OK)
+        if (parser->fetchCommData() == ParserError::OK)
         {
-            std::cout << "No Communication data!" << std::endl;
+            std::cout << "Handle Communication data!" << std::endl;
         }
+        else
+        {
+            std::cout << "No Communication data!" << std::endl;            
+        }
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+        std::cout << duration << " msec \n"; 
+        
         parser->endStep();
         break;
     }

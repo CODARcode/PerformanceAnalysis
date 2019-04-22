@@ -4,4 +4,4 @@
 #include "ADEvent.hpp"
 #include "ADOutlier.hpp"
 
-std::string generate_hex(const unsigned int len);
+std::string generate_event_id(int rank, int step, size_t idx);
