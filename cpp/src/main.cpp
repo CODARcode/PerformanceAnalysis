@@ -2,10 +2,45 @@
 #include <chrono>
 #include <queue>
 
+#include "DispatchQueue.hpp"
+#include <fstream>
+
 typedef std::priority_queue<Event_t, std::vector<Event_t>, std::greater<std::vector<Event_t>::value_type>> PQUEUE;
 template <typename K, typename V> void show_map(const std::unordered_map<K, V>& m);
+int chimbuko(int argc, char ** argv);
+
+void simple_task(std::ofstream& os) {
+    os << "Dispatch 1!\n";
+    // std::cout << "Dispatch 1!\n";
+}
 
 int main(int argc, char ** argv) {
+    return chimbuko(argc, argv);
+    // int r = 0;
+    // std::ofstream myfile("/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp/test.txt", std::ios::app);
+
+    // DispatchQueue q("Dispatch Queue Demo", 1);
+
+    // // q.dispatch(&simple_task);
+    // // q.dispatch(&simple_task);
+    // // q.dispatch(&simple_task);
+    // // q.dispatch(&simple_task);
+    // q.dispatch([&myfile]{
+    //     printf("Dispatch 2!\n");
+    //     myfile << "Dispatch 2!\n";
+    // });
+    // q.dispatch([&myfile]{
+    //     printf("Dispatch 3!\n");
+    //     myfile << "Dispatch 3!\n";
+    // });    
+    // // q.dispatch([]{printf("Dispatch 3!\n");});
+    // // q.dispatch([]{printf("Dispatch 4!\n");});
+
+    // return r;
+}
+
+
+int chimbuko(int argc, char ** argv) {
     MPI_Init(&argc, &argv);
 
     int world_rank, world_size;
@@ -138,7 +173,7 @@ int main(int argc, char ** argv) {
         t2 = std::chrono::high_resolution_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " msec \n"; 
 
-        event->show_status(true);
+        // event->show_status(true);
 
         parser->endStep();
 
@@ -153,7 +188,6 @@ int main(int argc, char ** argv) {
     MPI_Finalize();
     return 0;
 }
-
 
 template <typename K, typename V>
 void show_map(const std::unordered_map<K, V>& m)

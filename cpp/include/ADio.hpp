@@ -1,6 +1,8 @@
 #pragma once
 #include "ADDefine.hpp"
 #include "ADEvent.hpp"
+#include "DispatchQueue.hpp"
+#include <fstream>
 
 class ADio {
 
@@ -15,4 +17,6 @@ public:
 private:
     IOMode m_mode;    
     unsigned int m_execWindow;
+    std::ofstream m_file;
+    DispatchQueue * m_q;
 };
