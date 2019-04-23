@@ -4,7 +4,7 @@ override ADIOS2_LIB=`${ADIOS2_DIR}/bin/adios2-config --cxx-libs`
 
 CXX		  := g++
 # CXX_FLAGS := -Wall -Wextra -std=c++17 -ggdb
-CXX_FLAGS := -Wall -Wextra -std=c++17
+CXX_FLAGS := -Wall -Wextra -std=c++17 -O3
 MPICC     := mpic++
 
 BIN     := bin

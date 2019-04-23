@@ -52,30 +52,88 @@ int main(int argc, char ** argv) {
         size_t n_funcData = parser->getNumFuncData();
         size_t n_commData = parser->getNumCommData();
         size_t idx_funcData = 0, idx_commData = 0;
+        const unsigned long *funcData = nullptr, *commData = nullptr;
+
+        // auto funcmap = parser->getFuncMap();
+        // auto evmap = parser->getEventType();
+        // std::cout << "***** TEST *****" << std::endl;
+        // for (size_t i = 0; i < 500; i++) {
+        //     Event_t ev = Event_t(parser->getFuncData(i), EventDataType::FUNC, i, generate_event_id(world_rank, step, i));
+        //     std::cout << ev << ": " << evmap->find(ev.eid())->second;
+        //     if (ev.type() == EventDataType::FUNC) {
+        //         std::cout << ": " << funcmap->find(ev.fid())->second;
+        //     } else {
+        //         std::cout << ": " << ev.partner() << ": " << ev.tag() << ": " << ev.bytes();
+        //     }
+        //     std::cout << std::endl;
+        // }
+        // std::cout << "***** END TEST *****" << std::endl;
 
         std::priority_queue<Event_t, std::vector<Event_t>, std::greater<std::vector<Event_t>::value_type>> pq;
         // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
         // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
-        for (size_t i = 0; i < 50; i++) {
-            pq.push(Event_t(parser->getFuncData(i), EventDataType::FUNC));
-            pq.push(Event_t(parser->getCommData(i), EventDataType::COMM));
+        for (size_t i = 0; i < 10; i++) {
+            if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                pq.push(Event_t(
+                    funcData, EventDataType::FUNC, idx_funcData, 
+                    generate_event_id(world_rank, step, idx_funcData))
+                );
+                idx_funcData++;
+            }
+            if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                idx_commData++;
+            }
         }
 
-        auto funcmap = parser->getFuncMap();
-        auto evmap = parser->getEventType();
         while (!pq.empty()) {
             Event_t ev = pq.top();
-            std::cout << ev << ": " << evmap->find(ev.eid())->second;
-            if (ev.type() == EventDataType::FUNC) {
-                std::cout << ": " << funcmap->find(ev.fid())->second;
-            } else {
-                std::cout << ": " << ev.partner() << ": " << ev.tag() << ": " << ev.bytes();
-            }
-            std::cout << std::endl;
+            // if (ev.type() == EventDataType::FUNC) {
+            //     std::cout << ev << ": " << evmap->find(ev.eid())->second;
+            //     std::cout << ": " << funcmap->find(ev.fid())->second;
+            //     std::cout << std::endl;            
+            // } 
             pq.pop();
-        }
-            
 
+            if (event->addEvent(ev) == EventError::CallStackViolation)
+            {
+                std::cerr << "\n***** Call stack violation *****\n";
+                exit(EXIT_FAILURE);
+            }
+
+            switch (ev.type())
+            {
+            case EventDataType::FUNC:
+                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                    pq.push(Event_t(
+                        funcData, EventDataType::FUNC, idx_funcData, 
+                        generate_event_id(world_rank, step, idx_funcData))
+                    );
+                    idx_funcData++;
+                }
+                break;
+            case EventDataType::COMM:
+                // event->addFunc(ev, generate_event_id(world_rank, step))
+                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                    idx_commData++;
+                }
+                break;
+            default:
+                break;
+            }
+            // std::cout << ev << ": " << evmap->find(ev.eid())->second;
+            // if (ev.type() == EventDataType::FUNC) {
+            //     std::cout << ": " << funcmap->find(ev.fid())->second;
+            // } else {
+            //     std::cout << ": " << ev.partner() << ": " << ev.tag() << ": " << ev.bytes();
+            // }
+            // std::cout << std::endl;
+        }
+
+        std::cout << "# outliers: " << outlier->run() << std::endl;
+            
+        event->show_status();
         // if (parser->fetchFuncData() == ParserError::OK || parser->fetchCommData() == ParserError::OK)
         // {
         //     std::cout << "Start process ..." << std::endl;
@@ -163,7 +221,7 @@ int main(int argc, char ** argv) {
         std::cout << duration << " msec \n"; 
         
         parser->endStep();
-        break;
+        //break;
     }
 
     // show_map<int, std::string>(*parser->getEventType());

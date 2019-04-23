@@ -3,9 +3,10 @@
 /* ---------------------------------------------------------------------------
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
-ExecData_t::ExecData_t(std::string id, Event_t& ev) 
-    : m_id(id), m_runtime(0), m_label(1), m_parent("-1")
+ExecData_t::ExecData_t(Event_t& ev) 
+    : m_runtime(0), m_label(1), m_parent("-1")
 {
+    m_id = ev.id();
     m_pid = ev.pid();
     m_rid = ev.rid();
     m_tid = ev.tid();
@@ -29,6 +30,13 @@ bool ExecData_t::update_exit(Event_t& ev)
 void ExecData_t::add_child(std::string child)
 {
     m_children.push_back(child);
+}
+
+bool ExecData_t::add_message(const CommData_t& comm) {
+    if (comm.ts() < m_entry || comm.ts() > m_exit)
+        return false;
+    m_messages.push_back(comm);
+    return true;
 }
 
 std::ostream& operator<<(std::ostream& os, const ExecData_t& exec)
@@ -96,10 +104,12 @@ unsigned long Event_t::bytes() const {
 }
 
 bool operator<(const Event_t& lhs, const Event_t& rhs) {
+    if (lhs.ts() == rhs.ts()) return lhs.idx() < rhs.idx();
     return lhs.ts() < rhs.ts();
 }
 
 bool operator>(const Event_t& lhs, const Event_t& rhs) {
+    if (lhs.ts() == rhs.ts()) return lhs.idx() > rhs.idx();
     return lhs.ts() > rhs.ts();
 }
 
@@ -107,5 +117,31 @@ std::ostream& operator<<(std::ostream& os, const Event_t& ev) {
     os << ev.ts() << ":" << ev.strtype() << ": " 
        << ev.pid() << ": " << ev.rid() << ": " << ev.tid();
        
+    return os;
+}
+
+/* ---------------------------------------------------------------------------
+ * Implementation of CommData_t class
+ * --------------------------------------------------------------------------- */
+CommData_t::CommData_t(Event_t& ev, std::string commType) : m_commType(commType) {
+    m_pid = ev.pid();
+    m_rid = ev.rid();
+    m_tid = ev.tid();
+    
+    if (m_commType.compare("SEND") == 0) {
+        m_src = m_rid;
+        m_tar = ev.partner();
+    } else if (m_commType.compare("RECV") == 0){
+        m_src = ev.partner();
+        m_tar = m_rid;
+    }
+
+    m_bytes = ev.bytes();
+    m_tag = ev.tag();
+    m_ts = ev.ts();
+}
+
+std::ostream& operator<<(std::ostream& os, const CommData_t& comm) {
+    os << comm.ts() << ": " << comm.type() << ": " << comm.src() << ": " << comm.tar();
     return os;
 }

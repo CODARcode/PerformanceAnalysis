@@ -1,17 +1,17 @@
 #pragma once
 #include "ADDefine.hpp"
 #include <iostream>
-#include <list>
-#include <stack>
-#include <unordered_map>
 
 class Event_t {
 public:
-    Event_t(const unsigned long * data, EventDataType t) : m_data(data), m_t(t) {}
+    Event_t(const unsigned long * data, EventDataType t, size_t idx, std::string id="event_id") 
+        : m_data(data), m_t(t), m_id(id), m_idx(idx) {}
     ~Event_t() {}
 
     // common for all kinds of events
     bool valid() const { return m_data != nullptr; }
+    std::string id() const { return m_id; }
+    size_t idx() const { return m_idx; }
     unsigned long pid() const { return m_data[IDX_P]; }
     unsigned long rid() const { return m_data[IDX_R]; }
     unsigned long tid() const { return m_data[IDX_T]; }
@@ -38,35 +38,43 @@ public:
 private:
     const unsigned long * m_data;
     EventDataType m_t;
+    std::string m_id;
+    size_t m_idx;
 };
 
 class CommData_t {
 public:
-    CommData_t() {};
+    CommData_t(Event_t& ev, std::string commType);
     ~CommData_t() {};
 
+    std::string type() const { return m_commType; }
+    unsigned long ts() const { return m_ts; }
+    unsigned long src() const { return m_src; }
+    unsigned long tar() const { return m_tar; }
+
+    friend std::ostream& operator<<(std::ostream& os, const CommData_t& comm);
+
 private:
-    std::string m_type;
-    unsigned long m_src, m_tar, m_tid;
+    std::string m_commType;
+    unsigned long m_pid, m_rid, m_tid;
+    unsigned long m_src, m_tar;
     unsigned long m_bytes, m_tag;
     unsigned long m_ts;
 };
 
-typedef std::list<CommData_t> CommList_t;
-typedef CommList_t::iterator  CommListIterator_t;
-typedef std::unordered_map<unsigned long, CommList_t>      CommListMap_t_t;
-typedef std::unordered_map<unsigned long, CommListMap_t_t> CommListMap_r_t;
-typedef std::unordered_map<unsigned long, CommListMap_r_t> CommListMap_p_t;
 
 class ExecData_t {
 
 public:
-    ExecData_t(std::string id, Event_t& ev);
+    ExecData_t(Event_t& ev);
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
     unsigned long get_runtime() const { return m_runtime; }
     int get_label() const { return m_label; }
+
+    size_t get_n_message() const { return m_messages.size(); }
+    size_t get_n_children() const { return m_children.size(); }
     
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
@@ -74,6 +82,7 @@ public:
 
     bool update_exit(Event_t& ev);
     void add_child(std::string child);
+    bool add_message(const CommData_t& comm);
 
     friend std::ostream& operator<<(std::ostream& os, const ExecData_t& exec);
 
@@ -85,18 +94,5 @@ private:
     int m_label;
     std::string m_parent;
     std::vector<std::string> m_children;
-    std::vector<CommListIterator_t> m_messages;
+    std::vector<CommData_t> m_messages;
 };
-
-typedef std::list<ExecData_t> CallList_t;
-typedef CallList_t::iterator  CallListIterator_t;
-typedef std::unordered_map<unsigned long, CallList_t>      CallListMap_t_t;
-typedef std::unordered_map<unsigned long, CallListMap_t_t> CallListMap_r_t;
-typedef std::unordered_map<unsigned long, CallListMap_r_t> CallListMap_p_t;
-
-typedef std::stack<CallListIterator_t> CallStack_t;
-typedef std::unordered_map<unsigned long, CallStack_t>      CallStackMap_t_t;
-typedef std::unordered_map<unsigned long, CallStackMap_t_t> CallStackMap_r_t;
-typedef std::unordered_map<unsigned long, CallStackMap_r_t> CallStackMap_p_t;
-
-typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;

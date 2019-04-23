@@ -32,6 +32,7 @@ public:
         return &m_event_timestamps[idx * FUNC_EVENT_DIM];
     }
     size_t getNumFuncData() const { return m_timer_event_count; }
+    
     const unsigned long* getCommData(size_t idx) const {
         if (idx >= m_comm_count) return nullptr;
         return &m_comm_timestamps[idx * COMM_EVENT_DIM];

@@ -1,6 +1,27 @@
 #pragma once
 #include "ADDefine.hpp"
 #include "ExecData.hpp"
+#include <list>
+#include <stack>
+#include <unordered_map>
+
+typedef std::stack<CommData_t> CommStack_t;
+typedef std::unordered_map<unsigned long, CommStack_t>      CommStackMap_t_t;
+typedef std::unordered_map<unsigned long, CommStackMap_t_t> CommStackMap_r_t;
+typedef std::unordered_map<unsigned long, CommStackMap_r_t> CommStackMap_p_t;
+
+typedef std::list<ExecData_t> CallList_t;
+typedef CallList_t::iterator  CallListIterator_t;
+typedef std::unordered_map<unsigned long, CallList_t>      CallListMap_t_t;
+typedef std::unordered_map<unsigned long, CallListMap_t_t> CallListMap_r_t;
+typedef std::unordered_map<unsigned long, CallListMap_r_t> CallListMap_p_t;
+
+typedef std::stack<CallListIterator_t> CallStack_t;
+typedef std::unordered_map<unsigned long, CallStack_t>      CallStackMap_t_t;
+typedef std::unordered_map<unsigned long, CallStackMap_t_t> CallStackMap_r_t;
+typedef std::unordered_map<unsigned long, CallStackMap_r_t> CallStackMap_p_t;
+
+typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
 
 class ADEvent {
 
@@ -16,10 +37,14 @@ public:
 
     void clear();
 
-    EventError addFunc(Event_t event, std::string event_id);
+    EventError addEvent(Event_t event);
+    EventError addFunc(Event_t event);
     EventError addComm(Event_t event);
 
+    void show_status() const;
+
 private:
+    void createCommStack(unsigned long pid, unsigned long rid, unsigned long tid);
     void createCallStack(unsigned long pid, unsigned long rid, unsigned long tid);
     void createCallList(unsigned long pid, unsigned long rid, unsigned long tid);
 
@@ -27,10 +52,10 @@ private:
     const std::unordered_map<int, std::string> *m_funcMap;
     const std::unordered_map<int, std::string> *m_eventType;
 
-    CallStackMap_p_t m_callStack;
-    CallListMap_p_t  m_callList;
-    CommListMap_p_t  m_commList;
-    ExecDataMap_t    m_execDataMap;
+    CommStackMap_p_t  m_commStack;
+    CallStackMap_p_t  m_callStack;
+    CallListMap_p_t   m_callList;
+    ExecDataMap_t     m_execDataMap;
 };
 
 // pid, rid, tid, eid, tag, partner, nbytes, ts = event
