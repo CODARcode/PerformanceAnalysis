@@ -93,7 +93,7 @@ EventError ADEvent::addFunc(Event_t event) {
             return EventError::CallStackViolation;
         }
 
-        CallListIterator_t it = cs.top();
+        CallListIterator_t& it = cs.top();
         cs.pop();
 
         if (!it->update_exit(event)) {
@@ -160,7 +160,35 @@ static unsigned long nested_map_size(const T& m) {
     return n_elements;
 }
 
-void ADEvent::show_status() const {
+CallListMap_p_t* ADEvent::trimCallList() {
+    CallListMap_p_t* cpListMap = new CallListMap_p_t;
+    for (auto& it_p : m_callList) {
+        for (auto& it_r : it_p.second) {
+            for (auto& it_t: it_r.second) {
+                CallList_t& cl = it_t.second;
+                CallList_t cpList;
+
+                auto it = cl.begin();
+                while (it != cl.end()) {
+                    // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
+                    if (it->get_runtime() < MAX_RUNTIME) {
+                        cpList.push_back(*it);
+                        it = cl.erase(it);
+                    }
+                    else {
+                        it++;
+                    }                    
+                }
+                if (cpList.size())
+                    (*cpListMap)[it_p.first][it_r.first][it_t.first] = cpList;
+            }
+        }
+    }    
+    m_execDataMap.clear();
+    return cpListMap;
+}
+
+void ADEvent::show_status(bool verbose) const {
     size_t n_comm_remained = nested_map_size<CommStackMap_p_t>(m_commStack);
     size_t n_exec_remained = nested_map_size<CallStackMap_p_t>(m_callStack);
     size_t n_exec = nested_map_size<CallListMap_p_t>(m_callList);
@@ -169,12 +197,14 @@ void ADEvent::show_status() const {
     std::cout << "Num. comm (remained): " << n_comm_remained << std::endl;
     std::cout << "Num. exec (remained): " << n_exec_remained << std::endl;
     std::cout << "Num. exec (total)   : " << n_exec << std::endl;
-    // for (auto it : m_execDataMap) {
-    //     std::cout << "Function: " << m_funcMap->find(it.first)->second << std::endl;
-    //     for (auto itt: it.second) {
-    //         if (itt->get_n_message() > 0 && itt->get_n_children())
-    //             std::cout << *itt << std::endl;
-    //     }
-    // }
+    if (verbose) {
+        for (auto it : m_execDataMap) {
+            std::cout << "Function: " << m_funcMap->find(it.first)->second << std::endl;
+            for (auto itt: it.second) {
+                if (itt->get_n_message() > 0 && itt->get_n_children())
+                    std::cout << *itt << std::endl;
+            }
+        }
+    }
     std::cout << "***** END   STATUS *****" << std::endl;
 }

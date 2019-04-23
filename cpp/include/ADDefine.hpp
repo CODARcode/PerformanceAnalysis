@@ -1,7 +1,5 @@
 #pragma once
-#include <vector>
-#include <string>
-#include <iostream>
+#include <climits>
 
 #define IDX_P 0
 #define IDX_R 1
@@ -18,6 +16,8 @@
 #define COMM_IDX_BYTES   6 // size in bytes
 #define COMM_IDX_TS      7
 
+#define MAX_RUNTIME ULONG_MAX
+
 enum class ParserError
 {
     OK = 0,
@@ -32,9 +32,22 @@ enum class EventError
     CallStackViolation = 2
 };
 
+enum class IOError
+{
+    OK = 0
+};
+
+enum class IOMode
+{
+    Off = 0,
+    Offline = 1,
+    Online = 2
+};
+
 enum class EventDataType {
     Unknown = 0,
     FUNC = 1,
     COMM = 2,
     COUNT = 3
 };
+

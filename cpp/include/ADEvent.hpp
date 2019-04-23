@@ -1,6 +1,8 @@
 #pragma once
 #include "ADDefine.hpp"
 #include "ExecData.hpp"
+#include <string>
+#include <vector>
 #include <list>
 #include <stack>
 #include <unordered_map>
@@ -34,6 +36,8 @@ public:
     const std::unordered_map<int, std::string>* getFuncMap() const { return m_funcMap; }
     const std::unordered_map<int, std::string>* getEventType() const { return m_eventType; }
     const ExecDataMap_t* getExecDataMap() const { return &m_execDataMap; }
+    const CallListMap_p_t * getCallListMap() const { return &m_callList; }
+    CallListMap_p_t& getCallListMap() { return m_callList; }
 
     void clear();
 
@@ -41,7 +45,8 @@ public:
     EventError addFunc(Event_t event);
     EventError addComm(Event_t event);
 
-    void show_status() const;
+    CallListMap_p_t* trimCallList();
+    void show_status(bool verbose=false) const;
 
 private:
     void createCommStack(unsigned long pid, unsigned long rid, unsigned long tid);

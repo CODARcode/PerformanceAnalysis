@@ -4,7 +4,7 @@
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t(Event_t& ev) 
-    : m_runtime(0), m_label(1), m_parent("-1")
+    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1")
 {
     m_id = ev.id();
     m_pid = ev.pid();

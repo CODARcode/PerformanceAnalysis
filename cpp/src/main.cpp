@@ -19,20 +19,25 @@ int main(int argc, char ** argv) {
     ADParser * parser;
     ADEvent * event;
     ADOutlierSSTD * outlier;
+    ADio * io;
 
     int step;
     size_t idx_funcData = 0, idx_commData = 0, i = 0;
     const unsigned long *funcData = nullptr, *commData = nullptr;
     PQUEUE pq;
 
+    std::chrono::high_resolution_clock::time_point t1, t2;
+
 
     parser = new ADParser(data_dir + "/" + inputFile, engineType);
     event = new ADEvent();
     outlier = new ADOutlierSSTD();
+    io = new ADio();
 
     event->linkFuncMap(parser->getFuncMap());
     event->linkEventType(parser->getEventType());
     outlier->linkExecDataMap(event->getExecDataMap());
+    // io->linkCallListMap(event->getCallListMap());
 
     while (parser->getStatus())
     {
@@ -50,7 +55,7 @@ int main(int argc, char ** argv) {
         // show_map<int, std::string>(*event->getEventType());
 
         // todo: make simple class for performance measurement!
-        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+        t1 = std::chrono::high_resolution_clock::now();
         parser->fetchFuncData();
         parser->fetchCommData();
 
@@ -123,19 +128,28 @@ int main(int argc, char ** argv) {
         }
 
         std::cout << "# outliers: " << outlier->run() << std::endl;
-            
-        event->show_status();
-        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        std::cout << duration << " msec \n"; 
-        
+        t2 = std::chrono::high_resolution_clock::now();
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " msec \n"; 
+
+        // event->show_status();
+        t1 = std::chrono::high_resolution_clock::now();
+        // might be better to dump data after endStep() call (to free SST buffer asap)
+        io->write(event->trimCallList());
+        t2 = std::chrono::high_resolution_clock::now();
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " msec \n"; 
+
+        event->show_status(true);
+
         parser->endStep();
-        //break;
+
+
+       // break;
     }
 
     delete parser;
     delete event;
     delete outlier;
+    delete io;
     MPI_Finalize();
     return 0;
 }
