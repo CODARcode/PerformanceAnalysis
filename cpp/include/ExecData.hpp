@@ -53,6 +53,7 @@ std::ostream& operator<<(std::ostream& os, const Event_t& ev);
 
 class CommData_t {
 public:
+    CommData_t();
     CommData_t(Event_t& ev, std::string commType);
     ~CommData_t() {};
 
@@ -61,7 +62,9 @@ public:
     unsigned long src() const { return m_src; }
     unsigned long tar() const { return m_tar; }
 
-    friend std::ostream& operator<<(std::ostream& os, const CommData_t& comm);
+    void set_stream(bool is_binary) { m_is_binary = is_binary; }
+    friend std::ostream& operator<<(std::ostream& os, CommData_t& comm);
+    friend std::istream& operator>>(std::istream& is, CommData_t& comm);
 
 private:
     std::string m_commType;
@@ -69,14 +72,16 @@ private:
     unsigned long m_src, m_tar;
     unsigned long m_bytes, m_tag;
     unsigned long m_ts;
+    bool m_is_binary;
 };
 
-std::ostream& operator<<(std::ostream& os, const CommData_t& comm);
-
+std::ostream& operator<<(std::ostream& os, CommData_t& comm);
+std::istream& operator>>(std::istream& is, CommData_t& comm);
 
 class ExecData_t {
 
 public:
+    ExecData_t();
     ExecData_t(Event_t& ev);
     ~ExecData_t();
 
@@ -86,7 +91,10 @@ public:
 
     size_t get_n_message() const { return m_messages.size(); }
     size_t get_n_children() const { return m_children.size(); }
-    
+
+    const std::vector<std::string>& get_children() const { return m_children; }
+    const std::vector<CommData_t>& get_message() const { return m_messages; }
+
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
     void set_funcname(std::string funcname) { m_funcname = funcname; }
@@ -95,7 +103,10 @@ public:
     void add_child(std::string child);
     bool add_message(const CommData_t& comm);
 
-    friend std::ostream& operator<<(std::ostream& os, const ExecData_t& exec);
+    void set_use(bool use) { m_use = use; }
+    void set_stream(bool is_binary) { m_is_binary = is_binary; }
+    friend std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
+    friend std::istream& operator>>(std::istream& is, ExecData_t& exec);
 
 private:
     std::string m_id;
@@ -106,6 +117,11 @@ private:
     std::string m_parent;
     std::vector<std::string> m_children;
     std::vector<CommData_t> m_messages;
+
+    bool m_is_binary;
+    bool m_use;
 };
 
+std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
+std::istream& operator>>(std::istream& is, ExecData_t& exec);
 } // end of AD namespace

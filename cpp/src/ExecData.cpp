@@ -5,8 +5,13 @@ using namespace AD;
 /* ---------------------------------------------------------------------------
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
+ExecData_t::ExecData_t()
+    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_use(false)
+{
+
+}
 ExecData_t::ExecData_t(Event_t& ev) 
-    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1")
+    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_use(false)
 {
     m_id = ev.id();
     m_pid = ev.pid();
@@ -41,15 +46,106 @@ bool ExecData_t::add_message(const CommData_t& comm) {
     return true;
 }
 
-std::ostream& AD::operator<<(std::ostream& os, const ExecData_t& exec)
+static void write_str(std::ostream& os, std::string& str) {
+    size_t len = str.size();
+    os.write((const char*)&len, sizeof(size_t));
+    os.write((const char*)str.c_str(), len);
+}
+
+static std::string read_str(std::istream& is) {
+    size_t len;
+    std::string buffer;
+    is.read((char*)&len, sizeof(size_t));
+
+    buffer.resize(len);
+    is.read((char*)&buffer[0], len);
+
+    return buffer;
+}
+
+template <typename T>
+static void write_num(std::ostream& os, T num) {
+    os.write((const char*)&num, sizeof(T));
+}
+
+template <typename T>
+static T read_num(std::istream& is) {
+    T num;
+    is.read((char*)&num, sizeof(T));
+    return num;
+}
+
+std::ostream& AD::operator<<(std::ostream& os, ExecData_t& exec)
 {
-    os << exec.m_id 
-       << "\npid: " << exec.m_pid << ", rid: " << exec.m_rid << ", tid: " << exec.m_tid
-       << "\nfid: " << exec.m_fid << ", name: " << exec.m_funcname << ", label: " << exec.m_label 
-       << "\nentry: " << exec.m_entry << ", runtime: " << exec.m_runtime
-       << "\nparent: " << exec.m_parent << ", # children: " << exec.m_children.size() 
-       << ", # messages: " << exec.m_messages.size();
+    if (exec.m_is_binary) {
+        write_str(os, exec.m_id);
+        write_str(os, exec.m_funcname);
+        write_num<unsigned long>(os, exec.m_pid);
+        write_num<unsigned long>(os, exec.m_tid);
+        write_num<unsigned long>(os, exec.m_rid);
+        write_num<unsigned long>(os, exec.m_fid);
+        write_num<unsigned long>(os, exec.m_entry);
+        write_num<unsigned long>(os, exec.m_exit);
+        write_num<unsigned long>(os, exec.m_runtime);
+        write_num<int>(os, exec.m_label);
+        write_str(os, exec.m_parent);
+
+        write_num<size_t>(os, exec.m_children.size());
+        for (auto c: exec.m_children) { 
+            write_str(os, c);
+        }
+
+        write_num<size_t>(os, exec.m_messages.size());
+        for (auto m: exec.m_messages) {
+            m.set_stream(true);
+            os << m;
+            m.set_stream(false);
+        }
+    }
+    else {
+        os << exec.m_id 
+            << "\npid: " << exec.m_pid << ", rid: " << exec.m_rid << ", tid: " << exec.m_tid
+            << "\nfid: " << exec.m_fid << ", name: " << exec.m_funcname << ", label: " << exec.m_label 
+            << "\nentry: " << exec.m_entry << ", runtime: " << exec.m_runtime
+            << "\nparent: " << exec.m_parent << ", # children: " << exec.m_children.size() 
+            << ", # messages: " << exec.m_messages.size();
+    }
     return os;
+}
+
+std::istream& AD::operator>>(std::istream& is, ExecData_t& exec)
+{
+    if (exec.m_is_binary) {
+        exec.m_id = read_str(is);
+        exec.m_funcname = read_str(is);
+        exec.m_pid = read_num<unsigned long>(is);
+        exec.m_tid = read_num<unsigned long>(is);
+        exec.m_rid = read_num<unsigned long>(is);
+        exec.m_fid = read_num<unsigned long>(is);
+        exec.m_entry = read_num<unsigned long>(is);
+        exec.m_exit = read_num<unsigned long>(is);
+        exec.m_runtime = read_num<unsigned long>(is);
+        exec.m_label = read_num<int>(is);
+        exec.m_parent = read_str(is);
+
+        size_t n_children = read_num<size_t>(is);
+        exec.m_children.resize(n_children);
+        for (size_t i = 0; i < n_children; i++) {
+            exec.m_children[i] = read_str(is);
+        }
+
+        size_t n_msg = read_num<size_t>(is);
+        exec.m_messages.resize(n_msg);
+        for (size_t i = 0; i < n_msg; i++) {
+            exec.m_messages[i].set_stream(true);
+            is >> exec.m_messages[i];
+            exec.m_messages[i].set_stream(false);
+        }
+    }
+    else {
+        std::cerr << "Currently, only binary format is supported for ExecData_t!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -92,14 +188,14 @@ unsigned long Event_t::tag() const {
 }
 unsigned long Event_t::partner() const { 
     if (m_t != EventDataType::COMM) {
-        std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
+        std::cerr << "\n***** It is NOT comm event and tried to get partner! *****\n";
         exit(EXIT_FAILURE);
     } 
     return m_data[COMM_IDX_PARTNER]; 
 }
 unsigned long Event_t::bytes() const { 
     if (m_t != EventDataType::COMM) {
-        std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
+        std::cerr << "\n***** It is NOT comm event and tried to get bytes! *****\n";
         exit(EXIT_FAILURE);
     } 
     return m_data[COMM_IDX_BYTES]; 
@@ -125,7 +221,13 @@ std::ostream& AD::operator<<(std::ostream& os, const Event_t& ev) {
 /* ---------------------------------------------------------------------------
  * Implementation of CommData_t class
  * --------------------------------------------------------------------------- */
-CommData_t::CommData_t(Event_t& ev, std::string commType) : m_commType(commType) {
+CommData_t::CommData_t() : m_is_binary(false)
+{
+
+}
+CommData_t::CommData_t(Event_t& ev, std::string commType) 
+: m_commType(commType), m_is_binary(false) 
+{
     m_pid = ev.pid();
     m_rid = ev.rid();
     m_tid = ev.tid();
@@ -143,7 +245,39 @@ CommData_t::CommData_t(Event_t& ev, std::string commType) : m_commType(commType)
     m_ts = ev.ts();
 }
 
-std::ostream& AD::operator<<(std::ostream& os, const CommData_t& comm) {
-    os << comm.ts() << ": " << comm.type() << ": " << comm.src() << ": " << comm.tar();
+std::ostream& AD::operator<<(std::ostream& os, CommData_t& comm) {
+    if (comm.m_is_binary) {
+        write_str(os, comm.m_commType);
+        write_num<unsigned long>(os, comm.m_pid);
+        write_num<unsigned long>(os, comm.m_rid);
+        write_num<unsigned long>(os, comm.m_tid);
+        write_num<unsigned long>(os, comm.m_src);
+        write_num<unsigned long>(os, comm.m_tar);
+        write_num<unsigned long>(os, comm.m_bytes);
+        write_num<unsigned long>(os, comm.m_tag);
+        write_num<unsigned long>(os, comm.m_ts);
+    }
+    else {
+        os << comm.ts() << ": " << comm.type() << ": " << comm.src() << ": " << comm.tar();
+    }
     return os;
+}
+
+std::istream& AD::operator>>(std::istream& is, CommData_t& comm) {
+    if (comm.m_is_binary) {
+        comm.m_commType = read_str(is);
+        comm.m_pid = read_num<unsigned long>(is);
+        comm.m_rid = read_num<unsigned long>(is);
+        comm.m_tid = read_num<unsigned long>(is);
+        comm.m_src = read_num<unsigned long>(is);
+        comm.m_tar = read_num<unsigned long>(is);
+        comm.m_bytes = read_num<unsigned long>(is);
+        comm.m_tag = read_num<unsigned long>(is);
+        comm.m_ts = read_num<unsigned long>(is);
+    }
+    else {
+        std::cerr << "Currently, only binary format is supported for CommData_t!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return is;
 }

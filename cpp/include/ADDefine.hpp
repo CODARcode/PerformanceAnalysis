@@ -18,7 +18,10 @@
 
 #define MAX_RUNTIME ULONG_MAX
 
+#define IO_VERSION 1
+
 namespace AD {
+
 enum class ParserError
 {
     OK = 0,
@@ -42,7 +45,14 @@ enum class IOMode
 {
     Off = 0,
     Offline = 1,
-    Online = 2
+    Online = 2,
+    Both = 3
+};
+
+enum class IOOpenMode
+{
+    Read = 0,
+    Write = 1
 };
 
 enum class EventDataType {
@@ -51,4 +61,5 @@ enum class EventDataType {
     COMM = 2,
     COUNT = 3
 };
+
 } // end of AD namespace
