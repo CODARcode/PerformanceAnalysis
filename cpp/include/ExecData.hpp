@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+namespace AD {
+
 class Event_t {
 public:
     Event_t(const unsigned long * data, EventDataType t, size_t idx, std::string id="event_id") 
@@ -44,6 +46,11 @@ private:
     size_t m_idx;
 };
 
+bool operator<(const Event_t& lhs, const Event_t& rhs);
+bool operator>(const Event_t& lhs, const Event_t& rhs);
+std::ostream& operator<<(std::ostream& os, const Event_t& ev);
+
+
 class CommData_t {
 public:
     CommData_t(Event_t& ev, std::string commType);
@@ -63,6 +70,8 @@ private:
     unsigned long m_bytes, m_tag;
     unsigned long m_ts;
 };
+
+std::ostream& operator<<(std::ostream& os, const CommData_t& comm);
 
 
 class ExecData_t {
@@ -98,3 +107,5 @@ private:
     std::vector<std::string> m_children;
     std::vector<CommData_t> m_messages;
 };
+
+} // end of AD namespace

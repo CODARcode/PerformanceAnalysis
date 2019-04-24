@@ -1,5 +1,7 @@
 #include "ADio.hpp"
 
+using namespace AD;
+
 ADio::ADio(IOMode mode) : m_mode(mode), m_execWindow(5) {
     m_file.open("/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp/test.txt", std::ios::app);
     if (!m_file.is_open()) {
@@ -14,18 +16,19 @@ ADio::~ADio() {
 }
 
 void ADio::write(CallListMap_p_t* m) {
-    std::ofstream& file = m_file;
-    m_q->dispatch([&file, m]{
-        for (auto it_p : *m) {
-            for (auto it_r : it_p.second) {
-                for (auto it_t: it_r.second) {
-                    CallList_t& cl = it_t.second;
-                    for (auto it : cl) {
-                        file << it << std::endl;
-                    }
-                }
-            }
-        }
-        delete m;
-    });
+    // std::ofstream& file = m_file;
+    // m_q->dispatch([&file, m]{
+    //     for (auto it_p : *m) {
+    //         for (auto it_r : it_p.second) {
+    //             for (auto it_t: it_r.second) {
+    //                 CallList_t& cl = it_t.second;
+    //                 for (auto it : cl) {
+    //                     file << it << std::endl;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     delete m;
+    // });
+    delete m;
 }

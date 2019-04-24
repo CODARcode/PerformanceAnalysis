@@ -18,6 +18,7 @@
 
 #define MAX_RUNTIME ULONG_MAX
 
+namespace AD {
 enum class ParserError
 {
     OK = 0,
@@ -50,4 +51,4 @@ enum class EventDataType {
     COMM = 2,
     COUNT = 3
 };
-
+} // end of AD namespace

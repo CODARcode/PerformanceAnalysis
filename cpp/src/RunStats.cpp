@@ -1,6 +1,8 @@
 #include "RunStats.hpp"
 #include "math.h"
 
+using namespace AD;
+
 RunStats::RunStats()
 {
     clear();
@@ -63,7 +65,7 @@ double RunStats::kurtosis() const
     return double(m_n) * m_M4 / (m_M2 * m_M2) - 3.0;
 }
 
-RunStats operator+(const RunStats a, const RunStats b)
+RunStats AD::operator+(const RunStats a, const RunStats b)
 {
     RunStats combined;
 
@@ -97,7 +99,7 @@ std::ostream& operator<<(std::ostream& os, const RunStats& rs)
     return os;
 }
 
-double static_mean(const std::vector<double>& data)
+double AD::static_mean(const std::vector<double>& data)
 {
     if (data.size() == 0) return 0.0;
 
@@ -108,7 +110,7 @@ double static_mean(const std::vector<double>& data)
     return sum / data.size();
 }
 
-double static_std(const std::vector<double>& data)
+double AD::static_std(const std::vector<double>& data)
 {
     if (data.size() == 0) return 0.0;
     double mean = static_mean(data);

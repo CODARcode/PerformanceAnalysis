@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include "ADDefine.hpp"
 
+namespace AD {
+
 class ADParser {
 
 public:
@@ -60,3 +62,5 @@ private:
     std::vector<unsigned long> m_comm_timestamps;
 
 };
+
+} // end of AD namespace

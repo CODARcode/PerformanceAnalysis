@@ -2,6 +2,8 @@
 #include <thread>
 #include <chrono>
 
+using namespace AD;
+
 ADParser::ADParser(std::string inputFile, std::string engineType)
     : m_engineType(engineType), m_status(false), m_opened(false), m_current_step(-1)
 {

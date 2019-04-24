@@ -3,6 +3,8 @@
 #include "ExecData.hpp"
 #include "RunStats.hpp"
 
+namespace AD {
+
 class ADOutlier {
 
 public:
@@ -40,3 +42,5 @@ protected:
 private:
     double m_sigma;
 };
+
+} // end of AD namespace

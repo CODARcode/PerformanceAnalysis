@@ -7,6 +7,8 @@
 #include <stack>
 #include <unordered_map>
 
+namespace AD {
+
 typedef std::stack<CommData_t> CommStack_t;
 typedef std::unordered_map<unsigned long, CommStack_t>      CommStackMap_t_t;
 typedef std::unordered_map<unsigned long, CommStackMap_t_t> CommStackMap_r_t;
@@ -63,34 +65,4 @@ private:
     ExecDataMap_t     m_execDataMap;
 };
 
-// pid, rid, tid, eid, tag, partner, nbytes, ts = event
-// if eid not in [self.send, self.recv]:
-//     if self.log is not None:
-//         self.log.debug("No attributes for SEND/RECV")
-//     return True
-
-// try:
-//     execData = self.funStack[pid][rid][tid][-1]
-// except IndexError:
-//     if self.log is not None:
-//         self.log.debug("Communication event before any function calls")
-//     return True
-// except KeyError:
-//     if self.log is not None:
-//         self.log.debug("Communication event before any function calls")
-//     return True
-
-// if eid == self.send:
-//     comType = 'send'
-//     comSrc = rid
-//     comDst = partner
-// else:
-//     comType = 'receive'
-//     comSrc = partner
-//     comDst = rid
-
-// comData = CommData(comm_type=comType, src=comSrc, dst=comDst, tid=tid,
-//                     msg_size=nbytes, msg_tag=tag, ts=ts)
-
-// execData.add_message(comData)
-// return True
+} // end of AD namespace

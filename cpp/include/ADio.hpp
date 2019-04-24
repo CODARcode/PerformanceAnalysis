@@ -4,12 +4,15 @@
 #include "DispatchQueue.hpp"
 #include <fstream>
 
-class ADio {
+namespace AD {
 
+class ADio {
 public:
     ADio(IOMode mode=IOMode::Offline);
     ~ADio();
 
+    void setWinSize(unsigned int sz) { m_execWindow = sz; }
+    void open();
 
     // void read();
     void write(CallListMap_p_t* m);
@@ -17,6 +20,8 @@ public:
 private:
     IOMode m_mode;    
     unsigned int m_execWindow;
-    std::ofstream m_file;
+    std::fstream m_file;
     DispatchQueue * m_q;
 };
+
+} // end of AD namespace

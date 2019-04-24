@@ -1,5 +1,7 @@
 #include "ExecData.hpp"
 
+using namespace AD;
+
 /* ---------------------------------------------------------------------------
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
@@ -39,7 +41,7 @@ bool ExecData_t::add_message(const CommData_t& comm) {
     return true;
 }
 
-std::ostream& operator<<(std::ostream& os, const ExecData_t& exec)
+std::ostream& AD::operator<<(std::ostream& os, const ExecData_t& exec)
 {
     os << exec.m_id 
        << "\npid: " << exec.m_pid << ", rid: " << exec.m_rid << ", tid: " << exec.m_tid
@@ -103,17 +105,17 @@ unsigned long Event_t::bytes() const {
     return m_data[COMM_IDX_BYTES]; 
 }
 
-bool operator<(const Event_t& lhs, const Event_t& rhs) {
+bool AD::operator<(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() < rhs.idx();
     return lhs.ts() < rhs.ts();
 }
 
-bool operator>(const Event_t& lhs, const Event_t& rhs) {
+bool AD::operator>(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() > rhs.idx();
     return lhs.ts() > rhs.ts();
 }
 
-std::ostream& operator<<(std::ostream& os, const Event_t& ev) {
+std::ostream& AD::operator<<(std::ostream& os, const Event_t& ev) {
     os << ev.ts() << ":" << ev.strtype() << ": " 
        << ev.pid() << ": " << ev.rid() << ": " << ev.tid();
        
@@ -141,7 +143,7 @@ CommData_t::CommData_t(Event_t& ev, std::string commType) : m_commType(commType)
     m_ts = ev.ts();
 }
 
-std::ostream& operator<<(std::ostream& os, const CommData_t& comm) {
+std::ostream& AD::operator<<(std::ostream& os, const CommData_t& comm) {
     os << comm.ts() << ": " << comm.type() << ": " << comm.src() << ": " << comm.tar();
     return os;
 }

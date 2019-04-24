@@ -1,6 +1,8 @@
 #include "ADEvent.hpp"
 #include <iostream>
 
+using namespace AD;
+
 ADEvent::ADEvent() : m_funcMap(nullptr), m_eventType(nullptr) {
 
 }
