@@ -87,7 +87,7 @@ int chimbuko(int argc, char ** argv) {
     //io->setDispatcher();
     io->setHeader({
         {"version", IO_VERSION}, {"rank", world_rank}, 
-        {"algorithm", 0}, {"nparam", 4}, {"winsz", 5}
+        {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
     });
     // todo: set important parameter for VIZ in the header
     io->open(output_dir + "/execdata.0", AD::IOOpenMode::Write);
@@ -194,7 +194,7 @@ int chimbuko(int argc, char ** argv) {
         // event->show_status(true);
 
         parser->endStep();
-        break;
+        //break;
     }
 
     delete parser;

@@ -6,7 +6,7 @@ using namespace AD;
  * Implementation of ADio class
  * --------------------------------------------------------------------------- */
 ADio::ADio(IOMode mode) 
-: m_mode(mode), m_execWindow(5), m_q(nullptr) {
+: m_mode(mode), m_execWindow(5), m_dispatcher(nullptr) {
     // m_file.open("/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp/test.txt", std::ios::app);
     // if (!m_file.is_open()) {
     //     std::cerr << "Cannot open file: " << std::endl;
@@ -16,7 +16,7 @@ ADio::ADio(IOMode mode)
 }
 
 ADio::~ADio() {
-    if (m_q) delete m_q;
+    if (m_dispatcher) delete m_dispatcher;
     if (m_fHead.is_open()) m_fHead.close();
     if (m_fData.is_open()) m_fData.close();
     if (m_fStat.is_open()) m_fStat.close();
@@ -29,8 +29,8 @@ void ADio::setHeader(std::unordered_map<std::string, unsigned int> info) {
 }
 
 void ADio::setDispatcher(std::string name, size_t thread_cnt) {
-    if (m_q == nullptr)
-        m_q = new DispatchQueue(name, thread_cnt);
+    if (m_dispatcher == nullptr)
+        m_dispatcher = new DispatchQueue(name, thread_cnt);
 }
 
 static void _open(std::fstream& f, std::string filename, IOOpenMode mode) {
@@ -57,12 +57,50 @@ void ADio::open(std::string prefix, IOOpenMode mode) {
     }
 }
 
-// IOError ADio::_write(CallListMap_p_t* m) {
+IOError ADio::write_dispatch(CallListMap_p_t* m, long long step) {
 
-//     return IOError::OK;
-// }
+    // std::fstream& fHead = m_fHead;
+    // std::fstream& fData = m_fData;
 
-IOError ADio::write(CallListMap_p_t* m, unsigned long step) {
+    long long * pstep = new long long;
+    pstep[0] = step;
+
+    m_dispatcher->dispatch([this, m, pstep]{
+        std::cout << "inside write dispatch step: " << *pstep << std::endl;
+        long long seekpos = this->m_fHead.tellp();
+        long long n_exec = 0;
+        for (auto it_p: *m) {
+            for (auto it_r: it_p.second) {
+                for (auto it_t: it_r.second) {
+                    CallList_t& cl = it_t.second;
+                    for (auto it: cl) {
+                        if (it.get_label() == 1) continue;
+                        it.set_stream(true);
+                        this->m_fData << it;
+                        it.set_stream(false);
+                        n_exec++;
+                    } // exec list
+                } // thread
+            } // rank
+        } // program
+        this->m_head.inc_nframes();
+        this->m_fHead << this->m_head;
+
+        long long offset = (*pstep) * 3 * sizeof(long long);
+        std::cout << "inside write dispatch offset: " << offset << std::endl;
+        this->m_fHead.seekp(this->m_head.get_offset() + offset, std::ios_base::beg);
+        this->m_fHead.write((const char*)& seekpos, sizeof(long long));
+        this->m_fHead.write((const char*)& n_exec, sizeof(long long));
+        this->m_fHead.write((const char*)& pstep, sizeof(long long));
+
+        delete m;
+        delete pstep;
+    });
+
+    return IOError::OK;
+}
+
+IOError ADio::write(CallListMap_p_t* m, long long step) {
 
     // switch (m_mode)
     // {
@@ -78,42 +116,24 @@ IOError ADio::write(CallListMap_p_t* m, unsigned long step) {
     //     delete m;
     //     return IOError::OK;
     // }
+    if (m_dispatcher)
+    {
+        std::cout << "dispatch: " << step << std::endl;
+        return write_dispatch(m, step);
+    }
 
-    bool once = true, once2 = true;
-
-    unsigned long seekpos = m_fData.tellp();
-    unsigned long n_exec = 0;
+    long long seekpos = m_fData.tellp();
+    long long n_exec = 0;
     for (auto it_p: *m) {
         for (auto it_r: it_p.second) {
             for (auto it_t: it_r.second) {
                 CallList_t& cl = it_t.second;
-                // auto it_beg = cl.begin();
-                // auto it_end = cl.end(); 
                 for (auto it: cl) {
                     if (it.get_label() == 1) continue;
                     it.set_stream(true);
                     m_fData << it;
                     it.set_stream(false);
                     n_exec++;
-
-                    if (n_exec == 1 || n_exec == 134 || (once && it.get_n_children() > 0) || (once2 && it.get_n_message() > 0)) {
-                        std::cout << it << std::endl;
-                        std::cout << "Children: ";
-                        for (auto c: it.get_children())
-                            std::cout << c << ", ";
-                        std::cout << std::endl;
-
-                        std::cout << "Message: " << std::endl;
-                        for (auto m: it.get_message())
-                            std::cout << m << std::endl;
-                        std::cout << std::endl;
-
-                        if (it.get_n_children() > 0)
-                            once = false;
-
-                        if (it.get_n_message() > 0)
-                            once2 = false;
-                    }
                 } // exec list
             } // thread
         } // rank
@@ -122,42 +142,27 @@ IOError ADio::write(CallListMap_p_t* m, unsigned long step) {
     m_head.inc_nframes();
     m_fHead << m_head;
 
-    size_t offset = step * 3 * sizeof(unsigned long);
+    long long offset = step * 3 * sizeof(long long);
     m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
-    m_fHead.write((const char*)& seekpos, sizeof(unsigned long));
-    m_fHead.write((const char*)& n_exec, sizeof(unsigned long));
-    m_fHead.write((const char*)& step, sizeof(unsigned long));
-
-    std::cout << "pos: " << seekpos << ", nexec: " << n_exec << ", step: " << step << std::endl;
+    m_fHead.write((const char*)& seekpos, sizeof(long long));
+    m_fHead.write((const char*)& n_exec, sizeof(long long));
+    m_fHead.write((const char*)& step, sizeof(long long));
 
     delete m;
-
-
-
-    // std::ofstream& file = m_file;
-    // m_q->dispatch([&file, m]{
-    //     for (auto it_p : *m) {
-    //         for (auto it_r : it_p.second) {
-    //             for (auto it_t: it_r.second) {
-    //                 CallList_t& cl = it_t.second;
-    //                 for (auto it : cl) {
-    //                     file << it << std::endl;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     delete m;
-    // });
 
     return IOError::OK;
 }
 
-void ADio::read(CallList_t& cl, unsigned long idx) {
+void ADio::read(CallList_t& cl, long long idx) {
     FileHeader_t::SeekPos_t pos;
+    for (auto it: m_head.get_datapos())
+        std::cout << "pos: " << it.pos << ", nexec: " << it.n_exec << ", step: " << it.step << std::endl;
+
+
     if (m_head.get_datapos(pos, idx)) {
         std::cout << "pos: " << pos.pos << ", nexec: " << pos.n_exec << ", step: " << pos.step << std::endl;
         m_fData.seekg(pos.pos);
-        for (unsigned long i = 0; i < pos.n_exec; i++) {
+        for (long long i = 0; i < pos.n_exec; i++) {
             ExecData_t exec;
             exec.set_stream(true);
             m_fData >> exec;
@@ -237,9 +242,9 @@ std::istream& AD::operator>>(std::istream& is, FileHeader_t& head) {
         if (head.m_nframes) {
             FileHeader_t::SeekPos_t pos;
             for (unsigned int i = 0; i < head.m_nframes; i++) {
-                is.read((char*)&pos.pos, sizeof(unsigned long));
-                is.read((char*)&pos.n_exec, sizeof(unsigned long));
-                is.read((char*)&pos.step, sizeof(unsigned long));
+                is.read((char*)&pos.pos, sizeof(long long));
+                is.read((char*)&pos.n_exec, sizeof(long long));
+                is.read((char*)&pos.step, sizeof(long long));
                 head.m_datapos.push_back(pos);
             }
         }

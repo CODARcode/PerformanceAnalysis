@@ -9,9 +9,9 @@ namespace AD {
 class FileHeader_t {
 public:
     typedef struct SeekPos {
-        unsigned long pos;
-        unsigned long n_exec;
-        unsigned long step;        
+        long long pos;
+        long long n_exec;
+        long long step;        
     } SeekPos_t;
 
 public:
@@ -71,7 +71,7 @@ public:
     }
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
 
-    size_t get_offset() const {
+    long long get_offset() const {
         return 6*sizeof(unsigned int) + m_nparam*(2*sizeof(unsigned int) + sizeof(double));
     }
 
@@ -116,18 +116,19 @@ public:
     void open(std::string prefix="execdata", IOOpenMode=IOOpenMode::Read);
 
 
-    void read(CallList_t& cl, unsigned long idx);
-    IOError write(CallListMap_p_t* m, unsigned long step);
+    void read(CallList_t& cl, long long idx);
+    IOError write(CallListMap_p_t* m, long long step);
+    IOError write_dispatch(CallListMap_p_t* m, long long step);
 
     friend std::ostream& operator<<(std::ostream& os, ADio& io);
 
-private:
+//private:
     // IOError _write(CallListMap_p_t* m);
 
     IOMode m_mode;    
     unsigned int m_execWindow;
     std::fstream m_fHead, m_fData, m_fStat;
-    DispatchQueue * m_q;
+    DispatchQueue * m_dispatcher;
     FileHeader_t m_head;
 };
 

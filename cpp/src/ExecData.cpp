@@ -146,6 +146,7 @@ std::istream& AD::operator>>(std::istream& is, ExecData_t& exec)
         std::cerr << "Currently, only binary format is supported for ExecData_t!" << std::endl;
         exit(EXIT_FAILURE);
     }
+    return is;
 }
 
 
