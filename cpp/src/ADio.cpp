@@ -57,98 +57,66 @@ void ADio::open(std::string prefix, IOOpenMode mode) {
     }
 }
 
-IOError ADio::write_dispatch(CallListMap_p_t* m, long long step) {
+class WriteFunctor
+{
+public:
+    WriteFunctor(
+        std::fstream& fHead, std::fstream& fData,
+        FileHeader_t& head, CallListMap_p_t* callList, long long step
+    ) 
+    : m_fHead(fHead), m_fData(fData), m_head(head), m_callList(callList), m_step(step)
+    {
 
-    // std::fstream& fHead = m_fHead;
-    // std::fstream& fData = m_fData;
+    }
 
-    long long * pstep = new long long;
-    pstep[0] = step;
-
-    m_dispatcher->dispatch([this, m, pstep]{
-        std::cout << "inside write dispatch step: " << *pstep << std::endl;
-        long long seekpos = this->m_fHead.tellp();
+    void operator()() {
+        long long seekpos = m_fData.tellp();
         long long n_exec = 0;
-        for (auto it_p: *m) {
+        for (auto it_p: *m_callList) {
             for (auto it_r: it_p.second) {
                 for (auto it_t: it_r.second) {
                     CallList_t& cl = it_t.second;
                     for (auto it: cl) {
                         if (it.get_label() == 1) continue;
                         it.set_stream(true);
-                        this->m_fData << it;
+                        m_fData << it;
                         it.set_stream(false);
                         n_exec++;
                     } // exec list
                 } // thread
             } // rank
         } // program
-        this->m_head.inc_nframes();
-        this->m_fHead << this->m_head;
 
-        long long offset = (*pstep) * 3 * sizeof(long long);
-        std::cout << "inside write dispatch offset: " << offset << std::endl;
-        this->m_fHead.seekp(this->m_head.get_offset() + offset, std::ios_base::beg);
-        this->m_fHead.write((const char*)& seekpos, sizeof(long long));
-        this->m_fHead.write((const char*)& n_exec, sizeof(long long));
-        this->m_fHead.write((const char*)& pstep, sizeof(long long));
+        m_head.inc_nframes();
+        m_fHead << m_head;
 
-        delete m;
-        delete pstep;
-    });
+        long long offset = m_step * 3 * sizeof(long long);
+        m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
+        m_fHead.write((const char*)& seekpos, sizeof(long long));
+        m_fHead.write((const char*)& n_exec, sizeof(long long));
+        m_fHead.write((const char*)& m_step, sizeof(long long));
 
-    return IOError::OK;
-}
+        m_fHead.flush();
+        m_fData.flush();
+
+        delete m_callList;
+    }
+
+private:
+    std::fstream& m_fHead;
+    std::fstream& m_fData;
+    FileHeader_t& m_head;
+    CallListMap_p_t* m_callList;
+    long long m_step;
+};
 
 IOError ADio::write(CallListMap_p_t* m, long long step) {
 
-    // switch (m_mode)
-    // {
-    // case IOMode::Offline: return _write(m);
-    // case IOMode::Online:
-    //     break;
-
-    // case IOMode::Both:
-    //     break;
-
-    // case IOMode::Off: 
-    // default:
-    //     delete m;
-    //     return IOError::OK;
-    // }
+    WriteFunctor wFunc(m_fHead, m_fData, m_head, m, step);
     if (m_dispatcher)
-    {
-        std::cout << "dispatch: " << step << std::endl;
-        return write_dispatch(m, step);
-    }
-
-    long long seekpos = m_fData.tellp();
-    long long n_exec = 0;
-    for (auto it_p: *m) {
-        for (auto it_r: it_p.second) {
-            for (auto it_t: it_r.second) {
-                CallList_t& cl = it_t.second;
-                for (auto it: cl) {
-                    if (it.get_label() == 1) continue;
-                    it.set_stream(true);
-                    m_fData << it;
-                    it.set_stream(false);
-                    n_exec++;
-                } // exec list
-            } // thread
-        } // rank
-    } // program
-
-    m_head.inc_nframes();
-    m_fHead << m_head;
-
-    long long offset = step * 3 * sizeof(long long);
-    m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
-    m_fHead.write((const char*)& seekpos, sizeof(long long));
-    m_fHead.write((const char*)& n_exec, sizeof(long long));
-    m_fHead.write((const char*)& step, sizeof(long long));
-
-    delete m;
+        m_dispatcher->dispatch(wFunc);
+    else
+        wFunc();
 
     return IOError::OK;
 }

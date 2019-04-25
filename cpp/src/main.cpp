@@ -9,8 +9,8 @@ template <typename K, typename V> void show_map(const std::unordered_map<K, V>& 
 int chimbuko(int argc, char ** argv);
 
 
-
 int main(int argc, char ** argv) {
+
     chimbuko(argc, argv);
 
     std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
@@ -84,7 +84,7 @@ int chimbuko(int argc, char ** argv) {
     outlier->linkExecDataMap(event->getExecDataMap());
 
     io->setWinSize(5);
-    //io->setDispatcher();
+    io->setDispatcher();
     io->setHeader({
         {"version", IO_VERSION}, {"rank", world_rank}, 
         {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
