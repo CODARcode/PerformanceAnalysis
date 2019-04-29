@@ -54,7 +54,7 @@ public:
         }
         else if (key.compare("nparam") == 0) {
             m_nparam = value;
-            m_uparams.resize(m_nparam);
+            m_uparams.resize(2*m_nparam);
             m_dparams.resize(m_nparam);
         }
         else if (key.compare("winsz") == 0) {
@@ -104,6 +104,8 @@ private:
 std::ostream& operator<<(std::ostream& os, const FileHeader_t& head);
 std::istream& operator>>(std::istream& is, FileHeader_t& head);
 
+// TODO: 
+// handling very large file output!!!!
 class ADio {
 public:
     ADio(IOMode mode=IOMode::Offline);
@@ -116,15 +118,12 @@ public:
     void open(std::string prefix="execdata", IOOpenMode=IOOpenMode::Read);
 
 
-    void read(CallList_t& cl, long long idx);
+    IOError read(CallList_t& cl, long long idx);
     IOError write(CallListMap_p_t* m, long long step);
-    IOError write_dispatch(CallListMap_p_t* m, long long step);
 
     friend std::ostream& operator<<(std::ostream& os, ADio& io);
 
-//private:
-    // IOError _write(CallListMap_p_t* m);
-
+private:
     IOMode m_mode;    
     unsigned int m_execWindow;
     std::fstream m_fHead, m_fData, m_fStat;

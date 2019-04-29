@@ -38,7 +38,8 @@ enum class EventError
 
 enum class IOError
 {
-    OK = 0
+    OK = 0,
+    OutIndexRange = 1
 };
 
 enum class IOMode

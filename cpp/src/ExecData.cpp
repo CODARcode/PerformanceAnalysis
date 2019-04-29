@@ -47,6 +47,7 @@ bool ExecData_t::add_message(const CommData_t& comm) {
 }
 
 static void write_str(std::ostream& os, std::string& str) {
+    // std::cout << str << ", " << str.size() << std::endl;
     size_t len = str.size();
     os.write((const char*)&len, sizeof(size_t));
     os.write((const char*)str.c_str(), len);
@@ -65,6 +66,7 @@ static std::string read_str(std::istream& is) {
 
 template <typename T>
 static void write_num(std::ostream& os, T num) {
+    // std::cout << num << ", " << sizeof(T) << std::endl;
     os.write((const char*)&num, sizeof(T));
 }
 
@@ -106,9 +108,20 @@ std::ostream& AD::operator<<(std::ostream& os, ExecData_t& exec)
         os << exec.m_id 
             << "\npid: " << exec.m_pid << ", rid: " << exec.m_rid << ", tid: " << exec.m_tid
             << "\nfid: " << exec.m_fid << ", name: " << exec.m_funcname << ", label: " << exec.m_label 
-            << "\nentry: " << exec.m_entry << ", runtime: " << exec.m_runtime
+            << "\nentry: " << exec.m_entry << ", exit: " << exec.m_exit << ", runtime: " << exec.m_runtime
             << "\nparent: " << exec.m_parent << ", # children: " << exec.m_children.size() 
             << ", # messages: " << exec.m_messages.size();
+
+        if (exec.m_children.size()) {
+            os << "\nChildren: ";
+            for (auto c: exec.m_children)
+                os << c << ", ";
+        }
+        if (exec.m_messages.size()) {
+            os << "\nMessage: \n";
+            for (auto msg: exec.m_messages)
+                os << msg << std::endl;
+        }
     }
     return os;
 }

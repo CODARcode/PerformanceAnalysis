@@ -129,3 +129,4 @@ untracked/results/*.json
 untracked/results/*.pkl
 .vscode
 cpp/bin/*
+cpp/extern/*

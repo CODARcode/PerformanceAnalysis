@@ -1,4 +1,6 @@
 #include "ADio.hpp"
+#include <sstream>
+#include <curl/curl.h>
 
 using namespace AD;
 
@@ -48,7 +50,7 @@ static void _open(std::fstream& f, std::string filename, IOOpenMode mode) {
 void ADio::open(std::string prefix, IOOpenMode mode) {
     _open(m_fHead, prefix + ".head.dat", mode);
     _open(m_fData, prefix + ".data.dat", mode);
-    _open(m_fStat, prefix + ".stat.dat", mode);
+    //_open(m_fStat, prefix + ".stat.dat", mode);
 
     if (mode == IOOpenMode::Write) {
         m_fHead << m_head;
@@ -110,25 +112,91 @@ private:
     long long m_step;
 };
 
-IOError ADio::write(CallListMap_p_t* m, long long step) {
+static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    return size * nmemb;
+}
 
-    WriteFunctor wFunc(m_fHead, m_fData, m_head, m, step);
-    if (m_dispatcher)
-        m_dispatcher->dispatch(wFunc);
-    else
-        wFunc();
+IOError ADio::write(CallListMap_p_t* m, long long step) {
+    // WriteFunctor wFunc(m_fHead, m_fData, m_head, m, step);
+    // if (m_dispatcher)
+    //     m_dispatcher->dispatch(wFunc);
+    // else
+    //     wFunc();
+
+    std::stringstream oss(std::stringstream::out | std::stringstream::binary);
+    m_head.inc_nframes();
+
+    CURL* curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    if (curl) {
+        oss << m_head;
+        
+        std::vector<CallListIterator_t> out_execData;
+        long long n_exec = 0;
+        bool once1 = false, once2 = false, once3 = false;
+        for (auto& it_p: *m) {
+            for (auto& it_r: it_p.second) {
+                for (auto& it_t: it_r.second) {
+                    CallList_t& cl = it_t.second;
+                    for (auto it=cl.begin(); it!=cl.end(); it++) {
+                        if (it->get_label() == 1) continue;
+
+                        if (!once1) {
+                            out_execData.push_back(it);
+                            n_exec++;
+                            once1 = true;
+                        } else if (!once2 && it->get_n_children()) {
+                            out_execData.push_back(it);
+                            n_exec++;
+                            once2 = true;
+                        } else if (!once3 && it->get_n_message()) {
+                            out_execData.push_back(it);
+                            n_exec++;
+                            once3 = true;
+                        }
+                    } // CallList_t
+                } // thread
+            } // rank
+        } // program
+
+        oss.write((const char*)&n_exec, sizeof(long long));
+        for (CallListIterator_t& it: out_execData) {
+            it->set_stream(true);
+            oss << *it;
+            it->set_stream(false);
+            std::cout << *it << std::endl << std::endl;
+        }
+        delete m;
+
+
+        struct curl_slist * headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
+
+        std::string data = oss.str();
+
+        curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+        }
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
 
     return IOError::OK;
 }
 
-void ADio::read(CallList_t& cl, long long idx) {
+IOError ADio::read(CallList_t& cl, long long idx) {
     FileHeader_t::SeekPos_t pos;
-    for (auto it: m_head.get_datapos())
-        std::cout << "pos: " << it.pos << ", nexec: " << it.n_exec << ", step: " << it.step << std::endl;
-
-
     if (m_head.get_datapos(pos, idx)) {
-        std::cout << "pos: " << pos.pos << ", nexec: " << pos.n_exec << ", step: " << pos.step << std::endl;
         m_fData.seekg(pos.pos);
         for (long long i = 0; i < pos.n_exec; i++) {
             ExecData_t exec;
@@ -137,10 +205,9 @@ void ADio::read(CallList_t& cl, long long idx) {
             exec.set_stream(false);
             cl.push_back(exec);
         }
+        return IOError::OK;
     }
-    // for (auto d: m_head.get_datapos()) {
-    //     std::cout << "pos: " << d.pos << ", nexec: " << d.n_exec << ", step: " << d.step << std::endl;
-    // }
+    return IOError::OutIndexRange;
 }
 
 std::ostream& AD::operator<<(std::ostream& os, ADio& io) {

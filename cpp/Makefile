@@ -16,14 +16,14 @@ LIB		:= lib
 CXX_FLAGS += -isystem /opt/adios2/include
 # LIB += /opt/adios2/lib
 
-LIBRARIES  := 
+LIBRARIES  := `curl-config --libs`
 EXECUTABLE := main
 
 all: $(BIN)/$(EXECUTABLE)
 
 run: clean all
 	clear
-	./$(BIN)/$(EXECUTABLE)
+	mpirun -n 1 ./$(BIN)/$(EXECUTABLE)
 
 $(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
 	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES) $(ADIOS2_LIB) 

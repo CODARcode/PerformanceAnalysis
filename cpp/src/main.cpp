@@ -2,7 +2,7 @@
 #include <chrono>
 #include <queue>
 
-#include <fstream>
+#include <curl/curl.h>
 
 typedef std::priority_queue<AD::Event_t, std::vector<AD::Event_t>, std::greater<std::vector<AD::Event_t>::value_type>> PQUEUE;
 template <typename K, typename V> void show_map(const std::unordered_map<K, V>& m);
@@ -13,53 +13,83 @@ int main(int argc, char ** argv) {
 
     chimbuko(argc, argv);
 
-    std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
-    AD::ADio io(AD::IOMode::Offline);
+    // std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
+    // AD::ADio io(AD::IOMode::Offline);
 
-    io.open(output_dir + "/execdata.0", AD::IOOpenMode::Read);  
-    std::cout << io;
+    // io.open(output_dir + "/execdata.0", AD::IOOpenMode::Read);  
+    // std::cout << io;
 
-    AD::CallList_t cl;
-    io.read(cl, 0);
+    // AD::CallList_t cl;
+    // io.read(cl, 0);
     
-    bool once = true, once2 = true;
-    int n_exec = 0;
-    for (auto it: cl) {
-        n_exec++;
-        if (n_exec == 1 || n_exec == 134 || (once && it.get_n_children() > 0) || (once2 && it.get_n_message() > 0)) {
-            std::cout << it << std::endl;
-            std::cout << "Children: ";
-            for (auto c: it.get_children())
-                std::cout << c << ", ";
-            std::cout << std::endl;
+    // bool once = true, once2 = true;
+    // int n_exec = 0;
+    // for (auto it: cl) {
+    //     n_exec++;
+    //     if (n_exec == 1 || n_exec == 134 || (once && it.get_n_children() > 0) || (once2 && it.get_n_message() > 0)) {
+    //         std::cout << it << std::endl;
+    //         std::cout << "Children: ";
+    //         for (auto c: it.get_children())
+    //             std::cout << c << ", ";
+    //         std::cout << std::endl;
 
-            std::cout << "Message: " << std::endl;
-            for (auto m: it.get_message())
-                std::cout << m << std::endl;
-            std::cout << std::endl;
+    //         std::cout << "Message: " << std::endl;
+    //         for (auto m: it.get_message())
+    //             std::cout << m << std::endl;
+    //         std::cout << std::endl;
 
-            if (it.get_n_children() > 0)
-                once = false;
+    //         if (it.get_n_children() > 0)
+    //             once = false;
 
-            if (it.get_n_message() > 0)
-                once2 = false;
-        }        
-    }
+    //         if (it.get_n_message() > 0)
+    //             once2 = false;
+    //     }        
+    // }
 
-    return 0;
+    // return 0;
 }
 
 
 int chimbuko(int argc, char ** argv) {
     MPI_Init(&argc, &argv);
+    // int thread_level;
+    // int rc = MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &thread_level);
+    // if (rc != MPI_SUCCESS) {
+    //     std::cerr << "MPI_Init_thread failed with rc=" << rc << std::endl;
+    //     exit(EXIT_FAILURE);
+    // }
+    // switch (thread_level) {
+    //     case MPI_THREAD_SINGLE:
+    //         std::cout << "thread level supported: MPI_THREAD_SINGLE\n";
+    //         break;
+    //     case MPI_THREAD_FUNNELED:
+    //         std::cout << "thread level supported: MPI_THREAD_FUNNELED\n";
+    //         break;
+    //     case MPI_THREAD_SERIALIZED:
+    //         std::cout << "thread level supported: MPI_THREAD_SERIALIZED\n";
+    //         break;
+    //     case MPI_THREAD_MULTIPLE:
+    //         std::cout << "thread level supported: MPI_THREAD_MULTIPLE\n";
+    //         break;
+    //     default:
+    //         std::cerr << "thread level supported: UNRECOGNIZED\n";
+    //         exit(EXIT_FAILURE);
+    // }
 
     int world_rank, world_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
+    curl_global_init(CURL_GLOBAL_ALL);
+
+
     std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
     std::string data_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/data/mpi";
-    std::string inputFile = "tau-metrics-0.bp";
+    // std::string output_dir = "/Codar/nwchem-1/PerfAnalScript";
+    // std::string data_dir = "/Codar/nwchem-1/PerfAnalScript";
+    std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
+    //std::string inputFile = "tau-metrics-0.bp";
+    // std::string engineType = "SST";
     std::string engineType = "BPFile";
 
     AD::ADParser * parser;
@@ -90,7 +120,7 @@ int chimbuko(int argc, char ** argv) {
         {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
     });
     // todo: set important parameter for VIZ in the header
-    io->open(output_dir + "/execdata.0", AD::IOOpenMode::Write);
+    io->open(output_dir + "/execdata." + std::to_string(world_rank), AD::IOOpenMode::Write);
  
     while ( parser->getStatus())
     {
@@ -104,8 +134,6 @@ int chimbuko(int argc, char ** argv) {
         step = parser->getCurrentStep();
         std::cout << "Current step: " << step << std::endl;
         parser->update_attributes();
-        // show_map<int, std::string>(*parser->getFuncMap());
-        // show_map<int, std::string>(*event->getEventType());
 
         // todo: make simple class for performance measurement!
         t1 = std::chrono::high_resolution_clock::now();
@@ -137,11 +165,6 @@ int chimbuko(int argc, char ** argv) {
         }
         while (!pq.empty()) {
             AD::Event_t ev = pq.top();
-            // if (ev.type() == EventDataType::FUNC) {
-            //     std::cout << ev << ": " << evmap->find(ev.eid())->second;
-            //     std::cout << ": " << funcmap->find(ev.fid())->second;
-            //     std::cout << std::endl;            
-            // } 
             pq.pop();
 
             if (event->addEvent(ev) == AD::EventError::CallStackViolation)
@@ -171,38 +194,28 @@ int chimbuko(int argc, char ** argv) {
             default:
                 break;
             }
-            // std::cout << ev << ": " << evmap->find(ev.eid())->second;
-            // if (ev.type() == EventDataType::FUNC) {
-            //     std::cout << ": " << funcmap->find(ev.fid())->second;
-            // } else {
-            //     std::cout << ": " << ev.partner() << ": " << ev.tag() << ": " << ev.bytes();
-            // }
-            // std::cout << std::endl;
         }
 
         std::cout << "# outliers: " << outlier->run() << std::endl;
         t2 = std::chrono::high_resolution_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " msec \n"; 
 
-        // event->show_status();
+        parser->endStep();
+
         t1 = std::chrono::high_resolution_clock::now();
-        // might be better to dump data after endStep() call (to free SST buffer asap)
         io->write(event->trimCallList(), step);
         t2 = std::chrono::high_resolution_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " msec \n"; 
-
-        // event->show_status(true);
-
-        parser->endStep();
-        //break;
+        break;
     }
 
     delete parser;
     delete event;
     delete outlier;
     delete io;
+    curl_global_cleanup();
     MPI_Finalize();
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 template <typename K, typename V>
