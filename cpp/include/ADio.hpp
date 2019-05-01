@@ -3,6 +3,7 @@
 #include "ADEvent.hpp"
 #include "DispatchQueue.hpp"
 #include <fstream>
+#include <curl/curl.h>
 
 namespace AD {
 
@@ -74,6 +75,7 @@ public:
     long long get_offset() const {
         return 6*sizeof(unsigned int) + m_nparam*(2*sizeof(unsigned int) + sizeof(double));
     }
+    unsigned int get_winsize() const { return m_winsize; }
 
     const std::vector<SeekPos_t>& get_datapos() const { return m_datapos; }
     bool get_datapos(SeekPos_t& pos, unsigned long idx) {
@@ -108,8 +110,11 @@ std::istream& operator>>(std::istream& is, FileHeader_t& head);
 // handling very large file output!!!!
 class ADio {
 public:
-    ADio(IOMode mode=IOMode::Offline);
+    ADio();
     ~ADio();
+
+    void open_curl();
+    void close_curl();
 
     void setWinSize(unsigned int sz) { m_execWindow = sz; }
     void setHeader(std::unordered_map<std::string, unsigned int> info);
@@ -117,21 +122,19 @@ public:
     
     void open(std::string prefix="execdata", IOOpenMode=IOOpenMode::Read);
 
-
     IOError read(CallList_t& cl, long long idx);
     IOError write(CallListMap_p_t* m, long long step);
 
     friend std::ostream& operator<<(std::ostream& os, ADio& io);
 
 private:
-    IOMode m_mode;    
     unsigned int m_execWindow;
-    std::fstream m_fHead, m_fData, m_fStat;
+    std::fstream m_fHead, m_fData;
     DispatchQueue * m_dispatcher;
     FileHeader_t m_head;
+    CURL* m_curl;
 };
 
 std::ostream& operator<<(std::ostream& os, const ADio& io);
-
 
 } // end of AD namespace

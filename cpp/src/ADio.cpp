@@ -7,26 +7,41 @@ using namespace AD;
 /* ---------------------------------------------------------------------------
  * Implementation of ADio class
  * --------------------------------------------------------------------------- */
-ADio::ADio(IOMode mode) 
-: m_mode(mode), m_execWindow(5), m_dispatcher(nullptr) {
-    // m_file.open("/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp/test.txt", std::ios::app);
-    // if (!m_file.is_open()) {
-    //     std::cerr << "Cannot open file: " << std::endl;
-    //     exit(EXIT_FAILURE);
-    // }
-    // m_q = new DispatchQueue("ADio", 1);
+ADio::ADio() 
+: m_execWindow(5), m_dispatcher(nullptr), m_curl(nullptr) 
+{
+
 }
 
 ADio::~ADio() {
     if (m_dispatcher) delete m_dispatcher;
     if (m_fHead.is_open()) m_fHead.close();
     if (m_fData.is_open()) m_fData.close();
-    if (m_fStat.is_open()) m_fStat.close();
+    close_curl();
+}
+
+void ADio::open_curl() {
+    curl_global_init(CURL_GLOBAL_ALL);
+    m_curl = curl_easy_init();
+    if (m_curl == nullptr) {
+        std::cerr << "Failed to initialize curl easy handler\n";
+        exit(EXIT_FAILURE);
+    }
+}
+
+void ADio::close_curl() {
+    if (m_curl) {
+        curl_easy_cleanup(m_curl);
+        curl_global_cleanup();
+        m_curl = nullptr;
+    }
 }
 
 void ADio::setHeader(std::unordered_map<std::string, unsigned int> info) {
     for (auto pair: info) {
         m_head.set(pair.first, pair.second);
+        if (pair.first.compare("winsz") == 0)
+            m_execWindow = pair.second;
     }
 }
 
@@ -61,135 +76,127 @@ void ADio::open(std::string prefix, IOOpenMode mode) {
 
 class WriteFunctor
 {
+private:
+    static size_t _curl_writefunc(char *, size_t size, size_t nmemb, void *)
+    {
+        return size * nmemb;
+    }
+
 public:
     WriteFunctor(
-        std::fstream& fHead, std::fstream& fData,
+        std::fstream& fHead, std::fstream& fData, CURL* curl,
         FileHeader_t& head, CallListMap_p_t* callList, long long step
     ) 
-    : m_fHead(fHead), m_fData(fData), m_head(head), m_callList(callList), m_step(step)
+    : m_fHead(fHead), m_fData(fData), m_curl(curl), 
+      m_head(head), m_callList(callList), m_step(step)
     {
 
     }
 
     void operator()() {
-        long long seekpos = m_fData.tellp();
+        unsigned int winsz = m_head.get_winsize();
+        CallListIterator_t prev_n, next_n, beg, end;
         long long n_exec = 0;
+
+        std::stringstream ss_data(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+
+
         for (auto it_p: *m_callList) {
             for (auto it_r: it_p.second) {
                 for (auto it_t: it_r.second) {
                     CallList_t& cl = it_t.second;
-                    for (auto it: cl) {
-                        if (it.get_label() == 1) continue;
-                        it.set_stream(true);
-                        m_fData << it;
-                        it.set_stream(false);
-                        n_exec++;
+                    beg = cl.begin();
+                    end = cl.end();
+                    for (auto it=cl.begin(); it!=cl.end(); it++) {
+                        if (it->get_label() == 1) continue;
+
+                        prev_n = next_n = it;
+                        for (unsigned int i = 0; i < winsz && prev_n != beg; i++)
+                            prev_n = std::prev(prev_n);
+
+                        for (unsigned int i = 0; i < winsz + 1 && next_n != end; i++)
+                            next_n = std::next(next_n);
+
+                        while (prev_n != next_n) {
+                            if (!prev_n->is_used()) {
+                                prev_n->set_use(true);
+                                prev_n->set_stream(true);
+                                ss_data << *prev_n;
+                                n_exec++;
+                            }
+                            prev_n++;
+                        }
+                        it = next_n;
+                        it--;
                     } // exec list
                 } // thread
             } // rank
         } // program
 
         m_head.inc_nframes();
-        m_fHead << m_head;
+        if (m_fHead.is_open() && m_fData.is_open()) {
+            m_fHead << m_head;
 
-        long long offset = m_step * 3 * sizeof(long long);
-        m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
-        m_fHead.write((const char*)& seekpos, sizeof(long long));
-        m_fHead.write((const char*)& n_exec, sizeof(long long));
-        m_fHead.write((const char*)& m_step, sizeof(long long));
+            long long seekpos = m_fData.tellp();
+            long long offset = m_step * 3 * sizeof(long long);
+            m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
+            m_fHead.write((const char*)& seekpos, sizeof(long long));
+            m_fHead.write((const char*)& n_exec, sizeof(long long));
+            m_fHead.write((const char*)& m_step, sizeof(long long));
 
-        m_fHead.flush();
-        m_fData.flush();
+            ss_data.seekg(0);
+            m_fData << ss_data.rdbuf();
+
+            m_fHead.flush();
+            m_fData.flush();
+        }
+
+        if (m_curl) {
+            std::stringstream oss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+            oss << m_head;
+            oss.write((const char*)&n_exec, sizeof(long long));
+            
+            ss_data.seekg(0);
+            oss << ss_data.rdbuf();
+
+            struct curl_slist * headers = nullptr;
+            headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
+
+            std::string data = oss.str();
+
+            curl_easy_setopt(m_curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
+            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, data.c_str());
+            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDSIZE, data.size());
+            curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(m_curl, CURLOPT_VERBOSE, 0);
+            curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
+
+            CURLcode res = curl_easy_perform(m_curl);
+            if (res != CURLE_OK) {
+                std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+            }
+            curl_slist_free_all(headers);
+        }
 
         delete m_callList;
     }
 
+
 private:
     std::fstream& m_fHead;
     std::fstream& m_fData;
+    CURL* m_curl;
     FileHeader_t& m_head;
     CallListMap_p_t* m_callList;
     long long m_step;
 };
 
-static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void *userdata)
-{
-    return size * nmemb;
-}
-
-IOError ADio::write(CallListMap_p_t* m, long long step) {
-    // WriteFunctor wFunc(m_fHead, m_fData, m_head, m, step);
-    // if (m_dispatcher)
-    //     m_dispatcher->dispatch(wFunc);
-    // else
-    //     wFunc();
-
-    std::stringstream oss(std::stringstream::out | std::stringstream::binary);
-    m_head.inc_nframes();
-
-    CURL* curl;
-    CURLcode res;
-    curl = curl_easy_init();
-    if (curl) {
-        oss << m_head;
-        
-        std::vector<CallListIterator_t> out_execData;
-        long long n_exec = 0;
-        bool once1 = false, once2 = false, once3 = false;
-        for (auto& it_p: *m) {
-            for (auto& it_r: it_p.second) {
-                for (auto& it_t: it_r.second) {
-                    CallList_t& cl = it_t.second;
-                    for (auto it=cl.begin(); it!=cl.end(); it++) {
-                        if (it->get_label() == 1) continue;
-
-                        if (!once1) {
-                            out_execData.push_back(it);
-                            n_exec++;
-                            once1 = true;
-                        } else if (!once2 && it->get_n_children()) {
-                            out_execData.push_back(it);
-                            n_exec++;
-                            once2 = true;
-                        } else if (!once3 && it->get_n_message()) {
-                            out_execData.push_back(it);
-                            n_exec++;
-                            once3 = true;
-                        }
-                    } // CallList_t
-                } // thread
-            } // rank
-        } // program
-
-        oss.write((const char*)&n_exec, sizeof(long long));
-        for (CallListIterator_t& it: out_execData) {
-            it->set_stream(true);
-            oss << *it;
-            it->set_stream(false);
-            std::cout << *it << std::endl << std::endl;
-        }
-        delete m;
-
-
-        struct curl_slist * headers = nullptr;
-        headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
-
-        std::string data = oss.str();
-
-        curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
-
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        }
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-    }
+IOError ADio::write(CallListMap_p_t* callListMap, long long step) {
+    WriteFunctor wFunc(m_fHead, m_fData, m_curl, m_head, callListMap, step);
+    if (m_dispatcher)
+        m_dispatcher->dispatch(wFunc);
+    else
+        wFunc();
 
     return IOError::OK;
 }

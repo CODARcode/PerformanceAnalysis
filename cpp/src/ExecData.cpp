@@ -6,12 +6,12 @@ using namespace AD;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_use(false)
+    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
 {
 
 }
 ExecData_t::ExecData_t(Event_t& ev) 
-    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_use(false)
+    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
 {
     m_id = ev.id();
     m_pid = ev.pid();

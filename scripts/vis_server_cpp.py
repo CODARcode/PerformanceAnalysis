@@ -129,6 +129,7 @@ class DataParser(object):
             print("Num. exec: ", n_exec)
 
             execData = [ ExecData.fromBinary(f) for _ in range(n_exec) ]
+
             for d in execData:
                 print(d)
 
@@ -145,29 +146,7 @@ app = Flask(__name__)
 @app.route("/post", methods=['POST'])
 def post():
     data = request.get_data()
-    print(len(data))
-    print(data)
     dparser.put(data)
-
-    # f = io.BytesIO(data)
-    # version, rank, nframes, algorithm, winsize, nparam = \
-    #     struct.unpack('<IIIIII', f.read(24))
-    #
-    # print("Version    : ", version)
-    # print("Rank       : ", rank)
-    # print("Num. frames: ", nframes)
-    # print("Algorithm  : ", algorithm)
-    # print("Win. Size  : ", winsize)
-    # print("Num. params: ", nparam)
-
-    # print( len(data) )
-    # print( struct.unpack('<I', f.read(4))[0] )
-    # print( struct.unpack('<q', f.read(8))[0] )
-    # print( round(struct.unpack('<d', f.read(8))[0], 15) )
-    # print( round(struct.unpack('<f', f.read(4))[0], 7) )
-
-    # print( struct.unpack('<Iqdf', data) )
-
     return jsonify({"message": "ok"})
 
 @app.route("/get", methods=['GET'])
@@ -179,9 +158,6 @@ def index():
     return jsonify({'message': 'This is a parameter server.'})
 
 if __name__ == "__main__":
-    import sys
-    import configparser
-
     host = '0.0.0.0'
     port = 5500
 

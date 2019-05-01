@@ -86,11 +86,15 @@ public:
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
+    unsigned long get_entry() const { return m_entry; }
+    unsigned long get_exit() const { return m_exit; }
     unsigned long get_runtime() const { return m_runtime; }
     int get_label() const { return m_label; }
 
     size_t get_n_message() const { return m_messages.size(); }
     size_t get_n_children() const { return m_children.size(); }
+
+    bool is_used() const { return m_used; }
 
     const std::vector<std::string>& get_children() const { return m_children; }
     const std::vector<CommData_t>& get_message() const { return m_messages; }
@@ -103,7 +107,7 @@ public:
     void add_child(std::string child);
     bool add_message(const CommData_t& comm);
 
-    void set_use(bool use) { m_use = use; }
+    void set_use(bool use) { m_used = use; }
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
     friend std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
     friend std::istream& operator>>(std::istream& is, ExecData_t& exec);
@@ -119,7 +123,7 @@ private:
     std::vector<CommData_t> m_messages;
 
     bool m_is_binary;
-    bool m_use;
+    bool m_used;
 };
 
 std::ostream& operator<<(std::ostream& os, ExecData_t& exec);

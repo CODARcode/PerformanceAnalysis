@@ -2,7 +2,6 @@
 #include <chrono>
 #include <queue>
 
-#include <curl/curl.h>
 
 typedef std::priority_queue<AD::Event_t, std::vector<AD::Event_t>, std::greater<std::vector<AD::Event_t>::value_type>> PQUEUE;
 template <typename K, typename V> void show_map(const std::unordered_map<K, V>& m);
@@ -14,7 +13,7 @@ int main(int argc, char ** argv) {
     chimbuko(argc, argv);
 
     // std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
-    // AD::ADio io(AD::IOMode::Offline);
+    // AD::ADio io;
 
     // io.open(output_dir + "/execdata.0", AD::IOOpenMode::Read);  
     // std::cout << io;
@@ -46,7 +45,7 @@ int main(int argc, char ** argv) {
     //     }        
     // }
 
-    // return 0;
+    return 0;
 }
 
 
@@ -80,8 +79,6 @@ int chimbuko(int argc, char ** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    curl_global_init(CURL_GLOBAL_ALL);
-
 
     std::string output_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/cpp";
     std::string data_dir = "/home/sungsooha/Desktop/CODAR/PerformanceAnalysis/data/mpi";
@@ -107,7 +104,7 @@ int chimbuko(int argc, char ** argv) {
     parser = new AD::ADParser(data_dir + "/" + inputFile, engineType);
     event = new AD::ADEvent();
     outlier = new AD::ADOutlierSSTD();
-    io = new AD::ADio(AD::IOMode::Offline);
+    io = new AD::ADio();
 
     event->linkFuncMap(parser->getFuncMap());
     event->linkEventType(parser->getEventType());
@@ -119,7 +116,8 @@ int chimbuko(int argc, char ** argv) {
         {"version", IO_VERSION}, {"rank", world_rank}, 
         {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
     });
-    // todo: set important parameter for VIZ in the header
+
+    io->open_curl();
     io->open(output_dir + "/execdata." + std::to_string(world_rank), AD::IOOpenMode::Write);
  
     while ( parser->getStatus())
@@ -213,7 +211,7 @@ int chimbuko(int argc, char ** argv) {
     delete event;
     delete outlier;
     delete io;
-    curl_global_cleanup();
+
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
