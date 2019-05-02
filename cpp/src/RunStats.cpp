@@ -3,7 +3,7 @@
 
 using namespace AD;
 
-RunStats::RunStats()
+RunStats::RunStats() : m_is_binary(false)
 {
     clear();
 }
@@ -92,11 +92,29 @@ RunStats& RunStats::operator+=(const RunStats& rs)
     return *this;
 }
 
-std::ostream& operator<<(std::ostream& os, const RunStats& rs)
+std::ostream& AD::operator<<(std::ostream& os, const RunStats& rs)
 {
-    os << "n: " << rs.N() << ", mean: " << rs.mean() << ", std: " << rs.std() 
-       << ", skewness: " << rs.skewness() << ", kurtosis: " << rs.kurtosis() << std::endl;
+    if (rs.m_is_binary) {
+        os.write((const char*)&rs.m_n, sizeof(long long));
+        os.write((const char*)&rs.m_M1, sizeof(double));
+        os.write((const char*)&rs.m_M2, sizeof(double));
+        os.write((const char*)&rs.m_M3, sizeof(double));
+        os.write((const char*)&rs.m_M4, sizeof(double));
+    } else {
+        os << "n: " << rs.N() << ", mean: " << rs.mean() << ", std: " << rs.std() 
+        << ", skewness: " << rs.skewness() << ", kurtosis: " << rs.kurtosis() << std::endl;
+    }
     return os;
+}
+
+std::istream& AD::operator>>(std::istream& is, RunStats& rs)
+{
+    is.read((char*)&rs.m_n, sizeof(long long));
+    is.read((char*)&rs.m_M1, sizeof(double));
+    is.read((char*)&rs.m_M2, sizeof(double));
+    is.read((char*)&rs.m_M3, sizeof(double));
+    is.read((char*)&rs.m_M4, sizeof(double));
+    return is;
 }
 
 double AD::static_mean(const std::vector<double>& data)
