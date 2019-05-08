@@ -22,10 +22,12 @@ LIBRARIES  := `curl-config --libs`
 SRC_PERFANAL := $(SRC)/ADEvent.cpp $(SRC)/ADio.cpp $(SRC)/ADOutlier.cpp $(SRC)/ADParser.cpp $(SRC)/DispatchQueue.cpp $(SRC)/ExecData.cpp $(SRC)/main.cpp $(SRC)/RunStats.cpp $(SRC)/utils.cpp
 SRC_PARAM_WEB := $(SRC)/param_web.cpp $(SRC)/RunStats.cpp $(SRC)/ParamServer.cpp
 SRC_PARAM_WEB_CLIENT := $(SRC)/param_web_client.cpp $(SRC)/RunStats.cpp
+SRC_PARAM_MPI := $(SRC)/param_mpi.cpp
+SRC_PARAM_MPI_CLIENT := $(SRC)/param_mpi_client.cpp
 CROW_INC := extern
 BOOST_LIB := /usr/lib/x86_64-linux-gnu
 
-all: $(BIN)/perfanal $(BIN)/param_web $(BIN)/param_web_client
+all: $(BIN)/perfanal $(BIN)/param_web $(BIN)/param_web_client $(BIN)/param_mpi $(BIN)/param_mpi_client
 
 # run: clean all
 # 	clear
@@ -39,6 +41,12 @@ $(BIN)/param_web: $(SRC_PARAM_WEB)
 
 $(BIN)/param_web_client: $(SRC_PARAM_WEB_CLIENT)
 	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -I$(CROW_INC) -L$(LIB) $^ -o $@ $(LIBRARIES)
+
+$(BIN)/param_mpi: $(SRC_PARAM_MPI)
+	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
+
+$(BIN)/param_mpi_client: $(SRC_PARAM_MPI_CLIENT)
+	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
 
 clean:
 	rm $(BIN)/*
