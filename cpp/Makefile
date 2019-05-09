@@ -1,73 +1,27 @@
-ADIOS2_DIR=/opt/adios2
-override ADIOS2_INC=`${ADIOS2_DIR}/bin/adios2-config --cxx-flags`
-override ADIOS2_LIB=`${ADIOS2_DIR}/bin/adios2-config --cxx-libs`
+OMPI_ROOT := /opt/openmpi-4.0.1
 
-CXX		  := g++
-# CXX_FLAGS := -Wall -Wextra -std=c++17 -ggdb
-CXX_FLAGS := -Wall -Wextra -std=c++17 -O3
-MPICC     := mpic++
+CXX := g++
+MPICXX := $(OMPI_ROOT)/bin/mpic++
 
-BIN     := bin
-SRC     := src
-INCLUDE	:= include
-LIB		:= lib
+CXX_FLAGS := -Wall -Wextra -std=c++17 -O3 -DCHIMBUKO_USE_MPINET
+MPI_COMPILE_FLAGS := `$(MPICXX) --showme:compile`
+MPI_LINK_FLAGS := `$(MPICXX) --showme:link`
 
-#INCLUDE += /opt/adios2/include
-CXX_FLAGS += -isystem /opt/adios2/include
-# LIB += /opt/adios2/lib
+INCS := -I./include -I/usr/include
+LIBS := 
+LIBRARIES := -lpthread 
 
-LIBRARIES  := `curl-config --libs`
-#EXECUTABLE := perfanal
-
-SRC_PERFANAL := $(SRC)/ADEvent.cpp $(SRC)/ADio.cpp $(SRC)/ADOutlier.cpp $(SRC)/ADParser.cpp $(SRC)/DispatchQueue.cpp $(SRC)/ExecData.cpp $(SRC)/main.cpp $(SRC)/RunStats.cpp $(SRC)/utils.cpp
-SRC_PARAM_WEB := $(SRC)/param_web.cpp $(SRC)/RunStats.cpp $(SRC)/ParamServer.cpp
-SRC_PARAM_WEB_CLIENT := $(SRC)/param_web_client.cpp $(SRC)/RunStats.cpp
-SRC_PARAM_MPI := $(SRC)/param_mpi.cpp
-SRC_PARAM_MPI_CLIENT := $(SRC)/param_mpi_client.cpp
-CROW_INC := extern
-BOOST_LIB := /usr/lib/x86_64-linux-gnu
-
-all: $(BIN)/perfanal $(BIN)/param_web $(BIN)/param_web_client $(BIN)/param_mpi $(BIN)/param_mpi_client
-
-# run: clean all
-# 	clear
-# 	mpirun -n 1 ./$(BIN)/$(EXECUTABLE)
-
-$(BIN)/perfanal: $(SRC_PERFANAL)
-	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES) $(ADIOS2_LIB) 
-
-$(BIN)/param_web: $(SRC_PARAM_WEB)
-	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -I$(CROW_INC) -L$(LIB) -L$(BOOST_LIB) $^ -o $@ $(LIBRARIES) -lpthread -lboost_system -lboost_thread -lboost_chrono -lboost_date_time -lboost_atomic
-
-$(BIN)/param_web_client: $(SRC_PARAM_WEB_CLIENT)
-	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -I$(CROW_INC) -L$(LIB) $^ -o $@ $(LIBRARIES)
-
-$(BIN)/param_mpi: $(SRC_PARAM_MPI)
-	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
-
-$(BIN)/param_mpi_client: $(SRC_PARAM_MPI_CLIENT)
-	$(MPICC) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
-
-clean:
-	rm $(BIN)/*
+TARGET = main
 
 
+all: $(TARGET)
+
+$(TARGET): main.cpp src/net.cpp src/net/mpi_net.cpp
+	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $^ -o $@ $(LIBRARIES) $(MPI_LINK_FLAGS)
 
 
+# %.o: %.cpp
+# 	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $^ -o $@ $(LIBRARIES) $(MPI_LINK_FLAGS)
 
-# BIN		:= bin
-# SRC		:= src
-# INCLUDE	:= include
-# LIB		:= lib
-
-# LIBRARIES	:=
-# EXECUTABLE	:= main
-
-
-# all: $(BIN)/$(EXECUTABLE)
-
-# run: clean all
-# 	clear
-# 	./$(BIN)/$(EXECUTABLE)
 
 
