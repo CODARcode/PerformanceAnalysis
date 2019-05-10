@@ -7,25 +7,6 @@
 
 namespace chimbuko {
 
-class ResourceManager
-{
-public:
-    ResourceManager() : m_resource(0) 
-    {}
-    ~ResourceManager(){}
-
-    void update(int value) {
-        std::lock_guard<std::mutex> _{m_mutex};
-        std::cout << "I am " << std::this_thread::get_id() << std::endl;
-        std::cout << "Update: " << m_resource << " --> " << value << std::endl;
-        m_resource = value;
-    }
-
-private:
-    std::mutex m_mutex;
-    int m_resource;
-};
-
 class MPINet : public NetInterface {
 public:
     MPINet();
@@ -35,19 +16,16 @@ public:
     void finalize() override;
 
     void run() override;
-    void update(int value) {
-        m_resource.update(value);
-    }
 
     std::string name() const override { return "MPINET"; }
+    int thread_level() const { return m_thread_provided; }
+    int size() const { return m_size; }
 
 private:
     int m_thread_provided;
     int m_inited;
     int m_rank;
     int m_size;
-
-    ResourceManager m_resource;
 };
 
 } // end of chimbuko namespace

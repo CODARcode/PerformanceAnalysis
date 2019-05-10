@@ -1,6 +1,7 @@
 #include "chimbuko/net.hpp"
 #include "chimbuko/net/mpi_net.hpp"
 #include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/param/sstd_param.hpp"
 
 #include <iostream>
 
@@ -28,6 +29,21 @@ NetInterface::~NetInterface()
     {
         delete m_tpool;
     }
+}
+
+void NetInterface::init_parameter(ParamKind kind)
+{
+    m_kind = kind;
+    if (m_kind == ParamKind::SSTD)
+    {
+        m_param = new SstdParam();
+    }
+    else
+    {
+        std::cerr << "Unknown parameter kind!\n";
+        exit(1);
+    }
+    
 }
 
 void NetInterface::init_thread_pool(int nt)

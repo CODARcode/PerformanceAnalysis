@@ -65,15 +65,16 @@ void MPINet::run()
 
     while (true)
     {
+        std::cout << "Waiting ... \n";
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, client, &status);
         //status.MPI_SOURCE
         //status.MPI_TAG
-        m_tpool->sumit([&client, this](){
-            MPI_Status _status;
-            int i;
-            MPI_Recv(&i, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, client, &_status);
-            this->update(i);
-        });
+        // m_tpool->sumit([&client, this](){
+        //     MPI_Status _status;
+        //     int i;
+        //     MPI_Recv(&i, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, client, &_status);
+        //     this->update(i);
+        // });
     }
 }
 

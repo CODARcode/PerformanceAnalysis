@@ -1,6 +1,6 @@
 #pragma once
-
 #include "chimbuko/util/threadPool.hpp"
+#include "chimbuko/param.hpp"
 #include <string>
 
 namespace chimbuko {
@@ -22,12 +22,16 @@ public:
 
     virtual std::string name() const = 0;
 
+    void init_parameter(ParamKind kind);
+
 protected:
     void init_thread_pool(int nt);
 
 protected:
     int m_nt;
     threadPool* m_tpool;
+    ParamKind m_kind;
+    ParamInterface * m_param;
 };
 
 namespace DefaultNetInterface

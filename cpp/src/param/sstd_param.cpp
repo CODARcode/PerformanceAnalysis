@@ -1,4 +1,5 @@
 #include "chimbuko/param/sstd_param.hpp"
+#include <sstream>
 
 using namespace chimbuko;
 
@@ -27,12 +28,12 @@ std::string SstdParam::serialize(std::unordered_map<unsigned long, RunStats>& ru
     ss.write((const char*)&n, sizeof(size_t));
     for (auto& pair: runstats)
     {
-        unsigned long& id = pair.first;
-        RunStats& stat = pair.second;
-        ss.write((const char*)&id, sizeof(unsigned long));
-        stat.set_stream(true);
-        ss << stat;
-        stat.set_stream(false);
+        //unsigned long id = pair.first;
+        //RunStats stat = pair.second;
+        ss.write((const char*)&pair.first, sizeof(unsigned long));
+        pair.second.set_stream(true);
+        ss << pair.second;
+        pair.second.set_stream(false);
     }
 
     return ss.str();
