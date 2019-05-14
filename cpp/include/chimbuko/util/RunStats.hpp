@@ -28,6 +28,8 @@ public:
     friend RunStats operator+(const RunStats a, const RunStats b);
     RunStats& operator+=(const RunStats& rs);
 
+    friend bool operator==(const RunStats& a, const RunStats& b);
+
     friend std::ostream& operator<<(std::ostream& os, const RunStats& rs);
     friend std::istream& operator>>(std::istream& os, RunStats& rs);
 private:
@@ -37,6 +39,7 @@ private:
 };
 
 RunStats operator+(const RunStats a, const RunStats b);
+bool operator==(const RunStats& a, const RunStats& b);
 
 std::ostream& operator<<(std::ostream& os, const RunStats& rs);
 std::istream& operator>>(std::istream& is, RunStats& rs);

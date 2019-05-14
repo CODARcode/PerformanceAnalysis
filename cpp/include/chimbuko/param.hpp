@@ -17,7 +17,8 @@ public:
     virtual ParamKind kind() const = 0;
 
     virtual std::string serialize() = 0;
-    virtual std::string update(const std::string parameters, bool flag=false) = 0;
+    virtual std::string update(const std::string& parameters, bool flag=false) = 0;
+    virtual void assign(const std::string& parameters) = 0;
 
 protected:
     std::mutex m_mutex;    

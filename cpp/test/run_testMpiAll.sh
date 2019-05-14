@@ -7,4 +7,17 @@ MPI_URI_PATH=ompi_uri_path.txt
 
 #${MPISERVER} --no-daemonize -r ${MPI_URI_PATH} & 
 
-${MPIRUN} -n 1 --ompi-server file:${MPI_URI_PATH} testMpiAll -n 1
+
+# echo "run testMpiAll"
+${MPIRUN} -n 1 --ompi-server file:${MPI_URI_PATH} testMpiAll -n 1 &
+
+# echo "run mpiClient"
+sleep 1
+${MPIRUN} -n 1 --ompi-server file:${MPI_URI_PATH} mpiClient 
+
+# echo "run mpiClient"
+sleep 1
+${MPIRUN} -n 10 --ompi-server file:${MPI_URI_PATH} mpiClient 
+
+sleep 1
+${MPIRUN} -n 10 --ompi-server file:${MPI_URI_PATH} mpiClient 

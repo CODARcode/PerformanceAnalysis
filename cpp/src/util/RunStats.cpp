@@ -92,6 +92,11 @@ RunStats& RunStats::operator+=(const RunStats& rs)
     return *this;
 }
 
+bool chimbuko::operator==(const RunStats& a, const RunStats& b)
+{
+    return a.m_n == b.m_n && a.m_M1 == b.m_M1 && a.m_M2 == b.m_M2 && a.m_M3 == b.m_M3 && a.m_M4 == b.m_M4;
+}
+
 std::ostream& chimbuko::operator<<(std::ostream& os, const RunStats& rs)
 {
     if (rs.m_is_binary) {

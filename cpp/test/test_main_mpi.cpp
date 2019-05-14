@@ -13,5 +13,6 @@ int main(int argc, char** argv)
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     result = RUN_ALL_TESTS();
     MPI_Finalize();
+    std::cout << "Finish all tests\n";
     return result;
 }

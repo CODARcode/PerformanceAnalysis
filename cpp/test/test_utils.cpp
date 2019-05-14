@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <random>
+#include <sstream>
 
 class UtilTest : public ::testing::Test
 {
@@ -104,4 +105,37 @@ TEST_F(UtilTest, RunStatMergeTest)
 
     EXPECT_NEAR(static_mean, run_mean, 0.001);
     EXPECT_NEAR(static_std, run_std, 0.001);
+}
+
+TEST_F(UtilTest, RunStatSerializeTest)
+{
+    using namespace chimbuko;
+
+    RunStats stat, c_stat;
+    std::vector<double> data;
+    for (int i = 0; i < 100; i++) {
+        double num = i % 10;
+        stat.push(num);
+        data.push_back(num);
+    }
+
+    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    stat.set_stream(true);
+    ss << stat;
+    stat.set_stream(false);
+
+    c_stat.set_stream(true);
+    ss >> c_stat;
+    c_stat.set_stream(false);
+
+    double static_mean = chimbuko::static_mean(data);
+    double static_std = chimbuko::static_std(data);
+    double run_mean = stat.mean();
+    double run_std = stat.std();    
+    EXPECT_NEAR(run_mean, static_mean, 0.001);
+    EXPECT_NEAR(run_std, static_std, 0.001);
+    EXPECT_EQ(stat.N(), c_stat.N());
+    EXPECT_DOUBLE_EQ(run_mean, c_stat.mean());
+    EXPECT_DOUBLE_EQ(run_std, c_stat.std());
+    EXPECT_EQ(stat, c_stat);
 }

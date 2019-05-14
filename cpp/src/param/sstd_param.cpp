@@ -28,20 +28,21 @@ std::string SstdParam::serialize(std::unordered_map<unsigned long, RunStats>& ru
     ss.write((const char*)&n, sizeof(size_t));
     for (auto& pair: runstats)
     {
-        //unsigned long id = pair.first;
-        //RunStats stat = pair.second;
         ss.write((const char*)&pair.first, sizeof(unsigned long));
         pair.second.set_stream(true);
         ss << pair.second;
         pair.second.set_stream(false);
     }
-
     return ss.str();
 }
 
-void SstdParam::deserialize(std::unordered_map<unsigned long, RunStats>& runstats, std::string parameters) const
+void SstdParam::deserialize(
+    const std::string& parameters,
+    std::unordered_map<unsigned long, RunStats>& runstats) 
 {
-    std::stringstream ss(parameters, std::stringstream::in | std::stringstream::binary);
+    std::stringstream ss(parameters,
+        std::stringstream::out | std::stringstream::in | std::stringstream::binary
+    );
 
     size_t n;
     unsigned long id;
@@ -58,16 +59,27 @@ void SstdParam::deserialize(std::unordered_map<unsigned long, RunStats>& runstat
     }
 }
 
-std::string SstdParam::update(const std::string parameters, bool flag)
+std::string SstdParam::update(const std::string& parameters, bool flag)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
-    deserialize(runstats, std::string(parameters));
+    deserialize(parameters, runstats);
     update(runstats);
-    if (flag)
-    {
-        return serialize(runstats);
-    }
-    return "";
+    return (flag) ? serialize(runstats): "";
+}
+
+void SstdParam::assign(std::unordered_map<unsigned long, RunStats>& runstats)
+{
+    std::lock_guard<std::mutex> _(m_mutex);
+    for (auto& pair: runstats) {
+        m_runstats[pair.first] = pair.second;
+    }       
+}
+
+void SstdParam::assign(const std::string& parameters)
+{
+    std::unordered_map<unsigned long, RunStats> runstats;
+    deserialize(parameters, runstats);
+    assign(runstats);
 }
 
 void SstdParam::clear()

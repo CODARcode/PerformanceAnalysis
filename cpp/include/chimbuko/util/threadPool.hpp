@@ -86,6 +86,7 @@ public:
     {
 
     }
+
     explicit threadPool(const std::uint32_t nt) : m_done{false}, m_workQueue{}, m_threads{}
     {
         try
@@ -99,6 +100,7 @@ public:
             throw;
         }        
     }
+
     threadPool(const threadPool& rhs) = delete;
     threadPool& operator=(const threadPool& rhs) = delete;
     ~threadPool()
@@ -118,6 +120,14 @@ public:
         TaskFuture<result_type> result{task.get_future()};
         m_workQueue.push(std::make_unique<task_type>(std::move(task)));
         return result;
+    }
+
+    size_t pool_size() const {
+        return m_threads.size();
+    }
+
+    size_t queue_size() const {
+        return m_workQueue.size();
     }
 
 private:

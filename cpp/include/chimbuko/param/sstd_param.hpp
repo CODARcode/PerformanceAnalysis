@@ -16,17 +16,21 @@ public:
     ParamKind kind() const override { return ParamKind::SSTD; }
 
     std::string serialize() override;
-    std::string update(const std::string parameters, bool flag=false) override;
+    std::string update(const std::string& parameters, bool flag=false) override;
+    void assign(const std::string& parameters) override;
 
     std::string serialize(std::unordered_map<unsigned long, RunStats>& runstats);
-    void deserialize(std::unordered_map<unsigned long, RunStats>& runstats, std::string parameters) const;
+    void deserialize(
+        const std::string& parameters,
+        std::unordered_map<unsigned long, RunStats>& runstats);
+
     void update(std::unordered_map<unsigned long, RunStats>& runstats);
     void update(SstdParam& other) { update(other.m_runstats); }
 
+    void assign(std::unordered_map<unsigned long, RunStats>& runstats);
+
     //RunStats operator [](unsigned long id) const { return m_runstats[id]; }
     RunStats& operator [](unsigned long id) { return m_runstats[id]; }
-
-
 
 private:
     std::unordered_map<unsigned long, RunStats> m_runstats;

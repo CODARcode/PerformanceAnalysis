@@ -9,15 +9,17 @@ MPI_LINK_FLAGS := `$(MPICXX) --showme:link`
 
 INCS := -I../include -I/usr/include
 LIBS := 
-OBJS := test_utils.o test_param.o ../src/util/RunStats.o ../src/param.o ../src/param/sstd_param.o
+OBJS := test_utils.o test_param.o ../src/util/RunStats.o ../src/param.o ../src/param/sstd_param.o ../src/message.o
 
-OBJS_MPI := test_mpinet.o ../src/net.o ../src/net/mpi_net.o ../src/util/RunStats.o ../src/param.o ../src/param/sstd_param.o
+OBJS_MPI := test_mpinet.o ../src/net.o ../src/net/mpi_net.o ../src/util/RunStats.o ../src/param.o ../src/param/sstd_param.o ../src/message.o
 MPI_FLAG := -DCHIMBUKO_USE_MPINET
+
+
 
 #CXX_FLAGS += -lgtest -lpthread
 LIBRARIES := -lpthread -lgtest
 
-all: testAll testMpiAll
+all: testAll testMpiAll mpiClient mpiServer
 
 testAll: $(OBJS)
 	$(CXX) $(CXX_FLAGS) $(INCS) $(LIBS) -o testAll test_main.cpp $(OBJS) $(LIBRARIES)
@@ -25,11 +27,17 @@ testAll: $(OBJS)
 testMpiAll: $(OBJS_MPI)
 	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $(MPI_FLAG) -o testMpiAll test_main_mpi.cpp $(OBJS_MPI) $(LIBRARIES) $(MPI_LINK_FLAGS)
 
+mpiClient: $(OBJS_MPI)
+	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $(MPI_FLAG) -o mpiClient ./clients/mpi_client.cpp $(OBJS_MPI) $(LIBRARIES) $(MPI_LINK_FLAGS)
+
+mpiServer: $(OBJS_MPI)
+	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $(MPI_FLAG) -o mpiServer ./clients/mpi_server.cpp $(OBJS_MPI) $(LIBRARIES) $(MPI_LINK_FLAGS)
+
 .cpp.o:
 	$(MPICXX) $(CXX_FLAGS) $(MPI_COMPILE_FLAGS) $(INCS) $(LIBS) $(MPI_FLAG) -c $< -o $@ $(LIBRARIES) $(MPI_LINK_FLAGS)
 	#$(CXX) $(CXX_FLAGS) -c $< -o $@ $(INCS) $(LIBRARIES)
 
 clean:
-	rm testAll testMpiAll $(OBJS) $(OBJS_MPI)
+	rm testAll testMpiAll mpiClient mpiServer $(OBJS) $(OBJS_MPI)
 
 

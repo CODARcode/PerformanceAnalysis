@@ -76,6 +76,12 @@ public:
         return m_valid;
     }
 
+    size_t size() const
+    {
+        std::lock_guard<std::mutex> _{m_mutex};
+        return m_queue.size();
+    }
+
 private:
     std::atomic_bool m_valid{true};
     mutable std::mutex m_mutex;
