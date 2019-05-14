@@ -43,10 +43,10 @@ TEST_F(ADTest, AdBpfileTest)
         {77332, 93027 , 107856, 107628, 112019, 116468, 74517}
     };
     const std::vector<std::vector<unsigned long>> N_OUTLIERS{
-        {134, 207, 272, 350, 424, 498, 540},
-        { 89, 143, 206, 268, 325, 389, 435},
-        { 99, 161, 224, 278, 385, 390, 425},
-        {106, 161, 265, 294, 386, 455, 515}
+        {134, 65, 83, 73, 77, 68, 34},
+        { 89, 44, 62, 58, 54, 47, 39},
+        { 99, 56, 59, 64, 66, 58, 43},
+        {106, 58, 79, 49, 54, 66, 48}
     };
 
 
@@ -164,8 +164,7 @@ TEST_F(ADTest, AdBpfileTest)
 
         parser->endStep();
 
-        // fixbug!!!!
-        //io->write(event->trimCallList(), step);
+        io->write(event->trimCallList(), step);
     }
     EXPECT_EQ(N_STEPS[world_rank], step);
 
