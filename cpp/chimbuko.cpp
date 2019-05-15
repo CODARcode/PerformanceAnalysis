@@ -1,70 +1,14 @@
 #include "chimbuko/AD.hpp"
-#include <gtest/gtest.h>
 
-class ADTest : public ::testing::Test
+using namespace chimbuko;
+
+int main(int argc, char ** argv)
 {
-protected:
-
-    virtual void SetUp()
-    {
-    }
-
-    virtual void TearDown()
-    {
-
-    }
-
-    template <typename K, typename V>
-    void show_map(const std::unordered_map<K, V>& m)
-    {
-        for (const auto& it : m)
-        {
-            std::cout << it.first << " : " << it.second << std::endl;
-        }
-    }    
-};
-
-TEST_F(ADTest, EnvTest)
-{
-    int world_rank, world_size;
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-    EXPECT_EQ(4, world_size);
-}
-
-TEST_F(ADTest, BpfileTest)
-{
-    using namespace chimbuko;
+    MPI_Init(&argc, &argv);
 
     int world_rank, world_size;
-
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-
-    //const int N_RANKS = 4;
-    const std::vector<int> N_STEPS{6, 6, 6, 6};
-    const std::vector<std::vector<size_t>> N_FUNC{
-        {57077, 51845, 60561, 63278, 64628, 66484, 42233},
-        {41215, 51375, 56620, 57683, 58940, 61010, 41963},
-        {41108, 50820, 57237, 56590, 63458, 63931, 42486},
-        {40581, 51127, 59175, 58158, 60465, 62516, 41238}
-    }; 
-    const std::vector<std::vector<size_t>> N_COMM{
-        {89349, 107207, 121558, 123381, 128682, 131611, 83326},
-        {78250, 94855 , 106301, 107222, 111581, 114273, 77817},
-        {77020, 93355 , 105238, 106608, 114192, 118530, 79135},
-        {77332, 93027 , 107856, 107628, 112019, 116468, 74517}
-    };
-    const std::vector<std::vector<unsigned long>> N_OUTLIERS{
-        {134, 65, 83, 73, 77, 68, 34},
-        { 89, 44, 62, 58, 54, 47, 39},
-        { 99, 56, 59, 64, 66, 58, 43},
-        {106, 58, 79, 49, 54, 66, 48}
-    };
-
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
 
     std::string data_dir = "./data";
     std::string output_dir = "./data";
@@ -91,8 +35,10 @@ TEST_F(ADTest, BpfileTest)
 
     event->linkFuncMap(parser->getFuncMap());
     event->linkEventType(parser->getEventType());
+
     outlier->linkExecDataMap(event->getExecDataMap());
     outlier->set_sigma(sigma);
+    outlier->connect_ps(world_rank);
 
     io->setWinSize(5);
     io->setDispatcher();
@@ -101,7 +47,7 @@ TEST_F(ADTest, BpfileTest)
         {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
     });
 
-    //io->open_curl(); // for VIS module
+    io->open_curl(); // for VIS module
     io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
     while ( parser->getStatus() )
@@ -114,9 +60,6 @@ TEST_F(ADTest, BpfileTest)
         parser->update_attributes();
         parser->fetchFuncData();
         parser->fetchCommData();
-
-        EXPECT_EQ(N_FUNC[world_rank][step], parser->getNumFuncData());
-        EXPECT_EQ(N_COMM[world_rank][step], parser->getNumCommData());
 
         idx_funcData = idx_commData = 0;
         funcData = nullptr;
@@ -176,18 +119,20 @@ TEST_F(ADTest, BpfileTest)
         }        
 
         n_outliers = outlier->run();
-        EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
+        std::cout << n_outliers << std::endl;
 
         parser->endStep();
 
         io->write(event->trimCallList(), step);
     }
-    EXPECT_EQ(N_STEPS[world_rank], step);
 
     MPI_Barrier(MPI_COMM_WORLD);
+    outlier->disconnect_ps();
 
     delete parser;
     delete event;
     delete outlier;
     delete io;
+
+    return 0;
 }

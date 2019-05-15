@@ -4,9 +4,10 @@
 
 namespace chimbuko {
 
-enum class ParamKind {
-    SSTD
-};
+//enum class ParamKind {
+//    Undefined = 0,
+//    SSTD = 1
+//};
 
 class ParamInterface {
 public:
@@ -14,7 +15,8 @@ public:
     virtual ~ParamInterface();
     virtual void clear() = 0;
 
-    virtual ParamKind kind() const = 0;
+    //virtual ParamKind kind() const = 0;
+    virtual size_t size() const = 0;
 
     virtual std::string serialize() = 0;
     virtual std::string update(const std::string& parameters, bool flag=false) = 0;

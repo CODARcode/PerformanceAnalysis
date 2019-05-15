@@ -1,4 +1,4 @@
-#ifdef CHIMBUKO_USE_MPINET
+#ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include <gtest/gtest.h>
@@ -35,7 +35,7 @@ TEST_F(MpiNetTest, MpiNetSendRecvMultiThreadSingleClientTest)
     net.init(nullptr, nullptr, 10);    
 
     chimbuko::SstdParam param;
-    net.set_parameter(&param, chimbuko::ParamKind::SSTD);
+    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 1;
@@ -61,7 +61,7 @@ TEST_F(MpiNetTest, MpiNetSendRecvMultiThreadMultiClientTest)
     net.init(nullptr, nullptr, 10);    
 
     chimbuko::SstdParam param;
-    net.set_parameter(&param, chimbuko::ParamKind::SSTD);
+    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 10;
@@ -87,7 +87,7 @@ TEST_F(MpiNetTest, MpiNetSendRecvSingleThreadMultiClientTest)
     net.init(nullptr, nullptr, 1);    
 
     chimbuko::SstdParam param;
-    net.set_parameter(&param, chimbuko::ParamKind::SSTD);
+    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 10;

@@ -57,13 +57,17 @@ EventError ADEvent::addEvent(Event_t event) {
 }
 
 EventError ADEvent::addFunc(Event_t event) {
-    if (m_eventType == nullptr)
+    if (m_eventType == nullptr) {
+        //std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
+    }
 
     std::string eventType;
     int eid = static_cast<int>(event.eid());
-    if (m_eventType->count(eid) == 0)
+    if (m_eventType->count(eid) == 0) {
+        //std::cerr << "Unknown event in eventType: " << eid << std::endl;
         return EventError::UnknownEvent;
+    }
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
     this->createCallList(event.pid(), event.rid(), event.tid());

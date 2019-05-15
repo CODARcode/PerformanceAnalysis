@@ -13,7 +13,9 @@ public:
     ~SstdParam();
     void clear() override;
 
-    ParamKind kind() const override { return ParamKind::SSTD; }
+    //ParamKind kind() const override { return ParamKind::SSTD; }
+
+    size_t size() const override { return m_runstats.size(); }
 
     std::string serialize() override;
     std::string update(const std::string& parameters, bool flag=false) override;

@@ -63,13 +63,15 @@ int main (int argc, char** argv)
         // send to server
         MPINet::send(server, msg.data(), 0, MessageType::REQ_ADD, msg.count());
         // receive reply
-        MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
+        //MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
+        MPI_Probe(0, MessageType::REP_ADD, server, &status);
         MPI_Get_count(&status, MPI_BYTE, &count);
         msg.clear();
         msg.set_msg(
             MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count),
             true
         );
+        //std::cout << status.MPI_SOURCE << std::endl;
 
         g_param.assign(msg.data_buffer());
     }

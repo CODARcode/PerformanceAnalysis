@@ -1,9 +1,103 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response, render_template
 import threading
 from queue import Queue
 import struct
 import io
+import time
+# from flask_sse import sse
+from gevent.pywsgi import WSGIServer
 
+
+#
+# Data stream
+#
+class ServerSideEvent(object):
+    def __init__(self):
+        self.events = {}
+
+    def wait(self):
+        ident = threading.get_ident()
+        if ident not in self.events:
+            self.events[ident] = [threading.Event(), time.time()]
+            print('Create new thread')
+        return self.events[ident][0].wait()
+
+    def set(self):
+        now = time.time()
+        remove = []
+        for ident, event in self.events.items():
+            if not event[0].isSet():
+                event[0].set()
+                event[1] = now
+            else:
+                if now - event[1] > 10:
+                    remove.append(ident)
+
+        if len(remove) > 0:
+            for ident in remove:
+                del self.events[ident]
+
+    def clear(self):
+        self.events[threading.get_ident()][0].clear()
+
+class ServerSideData(object):
+    thread = None
+    frame = None
+    last_access = 0
+    event = ServerSideEvent()
+    data_q = Queue()
+
+    for num in range(1000):
+        data_q.put(num)
+
+    def __init__(self):
+        if ServerSideData.thread is None:
+            ServerSideData.last_access = time.time()
+            ServerSideData.thread = threading.Thread(target=self._run)
+            ServerSideData.thread.start()
+
+            while self.get_frame() is None:
+                time.sleep(0.001)
+
+    @classmethod
+    def get_frame(cls):
+        print('get_frame')
+        cls.last_access = time.time()
+        cls.event.wait()
+        cls.event.clear()
+        return cls.frame
+
+    @classmethod
+    def _run(cls):
+        print('run ServerSideData thread: ', cls.data_q.qsize())
+        while True:
+            data = cls.data_q.get()
+            cls.frame = data
+            #cls.frame = data.to_dict()
+            print('Frame: ', cls.frame)
+            cls.event.set()
+            cls.data_q.task_done()
+            time.sleep(1)
+            if time.time() - cls.last_access > 100:
+                break
+        print('kill ServerSideData thread')
+        cls.thread = None
+
+    @classmethod
+    def publish(cls, data):
+        cls.data_q.put(data)
+
+def ServerSideDataGen(data:ServerSideData):
+    while True:
+        frame = data.get_frame()
+        print('Gen: ', frame)
+        time.sleep(1)
+        yield "\ndata: {}\n\n".format(frame)
+
+
+#
+# Data parser
+#
 def read_cstr(stream):
     slen, = struct.unpack('<Q', stream.read(8))
     fmt = '<' + str(slen) + 's'
@@ -66,6 +160,20 @@ class ExecData(object):
             str_message += "\n"
         return "{}{}{}".format(str_general, str_children, str_message)
 
+    def to_dict(self):
+        return {
+            'id': self.m_id,
+            'funcname': self.m_funcname,
+            'pid': self.m_pid,
+            'tid': self.m_tid,
+            'rid': self.m_rid,
+            'fid': self.m_fid,
+            'entry': self.m_entry,
+            'exit': self.m_exit,
+            'runtime': self.m_runtime,
+            'label': self.m_label
+        }
+
     @staticmethod
     def fromBinary(stream):
         d = ExecData()
@@ -115,33 +223,50 @@ class DataParser(object):
             uparams = [ d[0] for d in struct.iter_unpack('<I', f.read(2*4*nparam)) ]
             dparams = [ d[0] for d in struct.iter_unpack('<d', f.read(8*nparam)) ]
 
-            print("Version    : ", version)
-            print("Rank       : ", rank)
-            print("Num. frames: ", nframes)
-            print("Algorithm  : ", algorithm)
-            print("Win. Size  : ", winsize)
-            print("Num. params: ", nparam)
-            print("Parameters (unsigned int): ", uparams)
-            print("Parameters (double)      : ", dparams)
+            # print("Version    : ", version)
+            # print("Rank       : ", rank)
+            # print("Num. frames: ", nframes)
+            # print("Algorithm  : ", algorithm)
+            # print("Win. Size  : ", winsize)
+            # print("Num. params: ", nparam)
+            # print("Parameters (unsigned int): ", uparams)
+            # print("Parameters (double)      : ", dparams)
 
             # parse contents
             n_exec = struct.unpack('<q', f.read(8))[0]
-            print("Num. exec: ", n_exec)
-
             execData = [ ExecData.fromBinary(f) for _ in range(n_exec) ]
-
             for d in execData:
-                print(d)
+                ServerSideData.publish(d)
+
+            # print("Num. exec: ", n_exec)
+            # for d in execData:
+            #     print(d)
 
             self.job_q.task_done()
             self._stop_event.wait(self.interval)
 
-
 dparser = DataParser()
-
-
-
 app = Flask(__name__)
+
+@app.route("/stream")
+def stream():
+    # return jsonify({"message": "ok"})
+    #
+    # print('stream')
+    # return Response(
+    #     'data',
+    #     mimetype='text/event-stream'
+    # )
+    return Response(
+        ServerSideDataGen(ServerSideData()),
+        mimetype='text/event-stream',
+        # headers={
+        #     'Cache-Control': 'no-cache',
+        #     'Access-Control-Allow-Credentials': 'true',
+        #     'Access-Control-Allow-Methods': 'GET',
+        #     'Access-Control-Expose-Headers': 'X-Events'
+        # }
+    )
 
 @app.route("/post", methods=['POST'])
 def post():
@@ -155,12 +280,15 @@ def get():
 
 @app.route("/")
 def index():
+    #return render_template('index.html')
     return jsonify({'message': 'This is a parameter server.'})
 
 if __name__ == "__main__":
     host = '0.0.0.0'
     port = 5500
 
-
-    app.run(host=host, port=port)
+    app.debug = True
+    # server = WSGIServer(("", 5500), app)
+    # server.serve_forever()
+    app.run(host=host, port=port, threaded=True)
     dparser.join()

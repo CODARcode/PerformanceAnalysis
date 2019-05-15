@@ -72,7 +72,7 @@ public:
      * @param param pointer to parameter storage
      * @param kind parameter kind
      */
-    void set_parameter(ParamInterface* param, ParamKind kind);
+    void set_parameter(ParamInterface* param);
 
     ParamInterface* get_parameter() { return m_param; } 
 
@@ -87,7 +87,7 @@ protected:
 protected:
     int              m_nt;    // the number of threads in the pool
     threadPool *     m_tpool; // thread pool
-    ParamKind        m_kind;  // parameter kind
+    //ParamKind        m_kind;  // parameter kind
     ParamInterface * m_param; // pointer to parameter (storage)
     std::atomic_bool m_stop;
 };

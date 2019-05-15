@@ -9,10 +9,12 @@ enum MessageType {
     REQ_GET  =  2,
     REQ_CMD  =  3,
     REQ_QUIT =  4,
+    REQ_ECHO =  5,
     REP_ADD  = 10,
     REP_GET  = 20,
     REP_CMD  = 30,
-    REP_QUIT = 40
+    REP_QUIT = 40,
+    REP_ECHO = 50
 };
 
 enum MessageKind {
@@ -22,7 +24,8 @@ enum MessageKind {
 };
 
 enum MessageCmd {
-    QUIT = 0
+    QUIT = 0,
+    ECHO = 1
 };
 
 class Message {

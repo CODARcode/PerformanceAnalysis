@@ -226,7 +226,7 @@ bool chimbuko::operator>(const Event_t& lhs, const Event_t& rhs) {
 }
 
 std::ostream& chimbuko::operator<<(std::ostream& os, const Event_t& ev) {
-    os << ev.ts() << ":" << ev.strtype() << ": " 
+    os << ev.ts() << ": " << ev.strtype() << ": " 
        << ev.pid() << ": " << ev.rid() << ": " << ev.tid();
        
     return os;

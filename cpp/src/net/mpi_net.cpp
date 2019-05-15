@@ -1,4 +1,4 @@
-#ifdef CHIMBUKO_USE_MPINET
+#ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
@@ -108,14 +108,23 @@ void MPINet::run()
                 else if (_msg.type() == MessageType::REQ_GET) {
                     _msg_reply.set_msg(param->serialize(), false);
                 }
-
-                this->send(client, 
-                    _msg_reply.data(), 
-                    _msg_reply.dst(), 
-                    _msg_reply.type(), 
-                    _msg_reply.count()
-                );
             }
+            else if (_msg.kind() == MessageKind::DEFAULT)
+            {
+                if (_msg.type() == MessageType::REQ_ECHO) {
+                    _msg_reply.set_msg(
+                        _msg.data_buffer() + ">I am MPINET!", false
+                    );
+                }
+            }
+            
+            this->send(client, 
+                _msg_reply.data(), 
+                _msg_reply.dst(), 
+                _msg_reply.type(), 
+                _msg_reply.count()
+            );
+
         }, source, tag, count);
     }
 }

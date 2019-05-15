@@ -8,7 +8,7 @@ using namespace chimbuko;
 
 NetInterface& DefaultNetInterface::get()
 {
-#ifdef CHIMBUKO_USE_MPINET
+#ifdef _USE_MPINET
     static MPINet net;
     return net;
 #else
@@ -29,9 +29,9 @@ NetInterface::~NetInterface()
     }
 }
 
-void NetInterface::set_parameter(ParamInterface* param, ParamKind kind)
+void NetInterface::set_parameter(ParamInterface* param)
 {
-    m_kind = kind;
+    //m_kind = kind;
     m_param = param;
 }
 
