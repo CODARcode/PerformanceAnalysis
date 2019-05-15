@@ -25,7 +25,6 @@ public:
     EventDataType type() const { return m_t; }
     std::string strtype() const;
 
-
     // for function event
     unsigned long fid() const;
 
@@ -63,6 +62,9 @@ public:
     unsigned long tar() const { return m_tar; }
 
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
+
+    bool is_same(const CommData_t& other) const;
+
     friend std::ostream& operator<<(std::ostream& os, CommData_t& comm);
     friend std::istream& operator>>(std::istream& is, CommData_t& comm);
 
@@ -109,6 +111,9 @@ public:
 
     void set_use(bool use) { m_used = use; }
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
+
+    bool is_same(const ExecData_t& other) const;
+    
     friend std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
     friend std::istream& operator>>(std::istream& is, ExecData_t& exec);
 

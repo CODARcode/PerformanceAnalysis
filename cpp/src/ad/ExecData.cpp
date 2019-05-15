@@ -46,6 +46,32 @@ bool ExecData_t::add_message(const CommData_t& comm) {
     return true;
 }
 
+bool ExecData_t::is_same(const ExecData_t& other) const {
+    if (!(m_id == other.m_id)) return false;
+    if (!(m_funcname == other.m_funcname)) return false;
+    if (!(m_pid == other.m_pid)) return false;
+    if (!(m_tid == other.m_tid)) return false;
+    if (!(m_rid == other.m_rid)) return false;
+    if (!(m_fid == other.m_fid)) return false;
+    if (!(m_entry == other.m_entry)) return false;
+    if (!(m_exit == other.m_exit)) return false;
+    if (!(m_runtime == other.m_runtime)) return false;
+    if (!(m_label == other.m_label)) return false;
+    if (!(m_parent == other.m_parent)) return false;
+    if (!(m_children.size() == other.m_children.size())) return false;
+    if (!(m_messages.size() == other.m_messages.size())) return false;
+
+    for (size_t i = 0; i < m_children.size(); i++)
+        if (!(m_children[i] == other.m_children[i]))
+            return false;
+
+    for (size_t i = 0; i < m_messages.size(); i++)
+        if (!(m_messages[i].is_same(other.m_messages[i])))
+            return false;
+
+    return true;
+}
+
 static void write_str(std::ostream& os, std::string& str) {
     // std::cout << str << ", " << str.size() << std::endl;
     size_t len = str.size();
@@ -239,6 +265,7 @@ CommData_t::CommData_t() : m_is_binary(false)
 {
 
 }
+
 CommData_t::CommData_t(Event_t& ev, std::string commType) 
 : m_commType(commType), m_is_binary(false) 
 {
@@ -257,6 +284,20 @@ CommData_t::CommData_t(Event_t& ev, std::string commType)
     m_bytes = ev.bytes();
     m_tag = ev.tag();
     m_ts = ev.ts();
+}
+
+bool CommData_t::is_same(const CommData_t& other) const 
+{
+    if (!(m_commType == other.m_commType)) return false;
+    if (!(m_pid == other.m_pid)) return false;
+    if (!(m_rid == other.m_rid)) return false;
+    if (!(m_tid == other.m_tid)) return false;
+    if (!(m_src == other.m_src)) return false;
+    if (!(m_bytes == other.m_bytes)) return false;
+    if (!(m_tag == other.m_tag)) return false;
+    if (!(m_ts == other.m_ts)) return false;
+
+    return true;
 }
 
 std::ostream& chimbuko::operator<<(std::ostream& os, CommData_t& comm) {

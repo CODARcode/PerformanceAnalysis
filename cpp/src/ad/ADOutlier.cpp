@@ -120,7 +120,7 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
 
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_ADD, msg.count());
 
-        msg.show(std::cout);
+        //msg.show(std::cout);
 
         MPI_Status status;
         int count;
@@ -133,7 +133,7 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
         );
         
         //std::cout << "rank: " << m_rank << std::endl;
-        msg.show(std::cout);
+        //msg.show(std::cout);
 
         g.assign(msg.data_buffer());
 #endif

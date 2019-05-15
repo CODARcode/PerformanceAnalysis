@@ -40,15 +40,15 @@ int main(int argc, char ** argv)
     outlier->set_sigma(sigma);
     outlier->connect_ps(world_rank);
 
-    io->setWinSize(5);
-    io->setDispatcher();
-    io->setHeader({
-        {"version", IO_VERSION}, {"rank", world_rank},
-        {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
-    });
+    // io->setWinSize(5);
+    // io->setDispatcher();
+    // io->setHeader({
+    //     {"version", IO_VERSION}, {"rank", world_rank},
+    //     {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
+    // });
 
-    io->open_curl(); // for VIS module
-    io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
+    // io->open_curl(); // for VIS module
+    // io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
     while ( parser->getStatus() )
     {

@@ -47,6 +47,12 @@ void DispatchQueue::dispatch(fp_t&& op)
     m_cv.notify_all();
 }
 
+size_t DispatchQueue::size() 
+{
+    std::unique_lock<std::mutex> lock(m_lock);
+    return m_q.size();
+}
+
 void DispatchQueue::thread_handler(void)
 {
     std::unique_lock<std::mutex> lock(m_lock);

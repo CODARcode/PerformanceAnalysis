@@ -7,12 +7,17 @@
 
 int main (int argc, char ** argv)
 {
+    int provided;
     chimbuko::MPINet net;
     chimbuko::SstdParam param;
 
-    net.init(&argc, &argv, 10);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+
+    // Note: for some reasons, internal MPI initialization cause segmentation error!! 
+    net.init(nullptr, nullptr, 10);
     net.set_parameter(&param);
     net.run();
-    net.finalize();
+
+    MPI_Finalize();
     return 0;
 }

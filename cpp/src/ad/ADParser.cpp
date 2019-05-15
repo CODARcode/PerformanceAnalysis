@@ -5,7 +5,7 @@
 using namespace chimbuko;
 
 ADParser::ADParser(std::string inputFile, std::string engineType)
-    : m_engineType(engineType), m_status(false), m_opened(false), m_current_step(-1)
+    : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1)
 {
     m_inputFile = inputFile;
     m_ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
@@ -67,10 +67,8 @@ void ADParser::endStep() {
 }
 
 void ADParser::update_attributes() {
-    static bool once = false;
-
     if (!m_opened) return;
-    if (m_engineType == "BPFile" && once) return;
+    if (m_engineType == "BPFile" && m_attr_once) return;
 
     const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes();
     for (const auto attributePair: attributes)
@@ -95,7 +93,7 @@ void ADParser::update_attributes() {
             m[key] = value;
         }
     }
-    once = true;
+    m_attr_once = true;
 }
 
 ParserError ADParser::fetchFuncData() {

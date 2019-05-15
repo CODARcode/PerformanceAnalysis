@@ -51,6 +51,7 @@ private:
     std::string m_engineType;
     bool m_status;
     bool m_opened;
+    bool m_attr_once;
     int  m_current_step;
 
     std::unordered_map<int, std::string> m_funcMap;

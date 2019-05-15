@@ -7,7 +7,7 @@ using namespace chimbuko;
  * Implementation of ADio class
  * --------------------------------------------------------------------------- */
 ADio::ADio() 
-: m_execWindow(5), m_dispatcher(nullptr), m_curl(nullptr) 
+: m_execWindow(0), m_data_fid(0), m_limit(1e10), m_dispatcher(nullptr), m_curl(nullptr) 
 {
 
 }
@@ -19,13 +19,16 @@ ADio::~ADio() {
     close_curl();
 }
 
-void ADio::open_curl() {
+bool ADio::open_curl(std::string url) {
     curl_global_init(CURL_GLOBAL_ALL);
     m_curl = curl_easy_init();
+    m_url = url;
     if (m_curl == nullptr) {
         std::cerr << "Failed to initialize curl easy handler\n";
-        exit(EXIT_FAILURE);
+        return false;
     }
+    //todo: make connection test
+    return true;
 }
 
 void ADio::close_curl() {
@@ -33,6 +36,7 @@ void ADio::close_curl() {
         curl_easy_cleanup(m_curl);
         curl_global_cleanup();
         m_curl = nullptr;
+        m_url = "";
     }
 }
 
@@ -49,7 +53,24 @@ void ADio::setDispatcher(std::string name, size_t thread_cnt) {
         m_dispatcher = new DispatchQueue(name, thread_cnt);
 }
 
-static void _open(std::fstream& f, std::string filename, IOOpenMode mode) {
+void ADio::setLimit(long long limit)
+{
+    m_limit = limit;
+}
+
+// static void _open(std::fstream& f, std::string filename, IOOpenMode mode) {
+//     if (mode == IOOpenMode::Write)
+//         f.open(filename, std::ios_base::out | std::ios_base::binary);
+//     else
+//         f.open(filename, std::ios_base::in | std::ios_base::binary);
+
+//     if (!f.is_open()) {
+//         std::cerr << "Cannot open " << filename << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+void ADio::_open(std::fstream& f, std::string filename, IOOpenMode mode)
+{
     if (mode == IOOpenMode::Write)
         f.open(filename, std::ios_base::out | std::ios_base::binary);
     else
@@ -61,9 +82,20 @@ static void _open(std::fstream& f, std::string filename, IOOpenMode mode) {
     }
 }
 
+void ADio::checkFileLimit(std::fstream& stream, long long required)
+{
+    if (static_cast<long long>(stream.tellp()) + required > m_limit)
+    {
+        stream.close();
+        m_data_fid += 1;
+        _open(stream, m_prefix + "." + std::to_string(m_data_fid) + ".data.dat", IOOpenMode::Write);
+    }
+}  
+
 void ADio::open(std::string prefix, IOOpenMode mode) {
-    _open(m_fHead, prefix + ".head.dat", mode);
-    _open(m_fData, prefix + ".data.dat", mode);
+    m_prefix = prefix;
+    _open(m_fHead, m_prefix + ".0.head.dat", mode);
+    _open(m_fData, m_prefix + ".0.data.dat", mode);
     //_open(m_fStat, prefix + ".stat.dat", mode);
 
     if (mode == IOOpenMode::Write) {
@@ -72,6 +104,7 @@ void ADio::open(std::string prefix, IOOpenMode mode) {
         m_fHead >> m_head;
     }
 }
+
 
 class WriteFunctor
 {
@@ -82,23 +115,29 @@ private:
     }
 
 public:
-    WriteFunctor(
-        std::fstream& fHead, std::fstream& fData, CURL* curl,
-        FileHeader_t& head, CallListMap_p_t* callList, long long step
-    ) 
-    : m_fHead(fHead), m_fData(fData), m_curl(curl), 
-      m_head(head), m_callList(callList), m_step(step)
+    // WriteFunctor(
+    //     std::fstream& fHead, std::fstream& fData, CURL* curl,
+    //     FileHeader_t& head, CallListMap_p_t* callList, long long step
+    // ) 
+    // : m_fHead(fHead), m_fData(fData), m_curl(curl), 
+    //   m_head(head), m_callList(callList), m_step(step)
+    // {
+
+    // }
+
+    WriteFunctor(ADio& io, CallListMap_p_t* callList, long long step) 
+    : m_io(io), m_callList(callList), m_step(step)
     {
 
     }
 
     void operator()() {
-        unsigned int winsz = m_head.get_winsize();
+        //unsigned int winsz = m_head.get_winsize();
+        unsigned int winsz = m_io.getWinSize();
         CallListIterator_t prev_n, next_n, beg, end;
         long long n_exec = 0;
 
         std::stringstream ss_data(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-
 
         for (auto it_p: *m_callList) {
             for (auto it_r: it_p.second) {
@@ -132,27 +171,46 @@ public:
             } // rank
         } // program
 
-        m_head.inc_nframes();
-        if (m_fHead.is_open() && m_fData.is_open()) {
-            m_fHead << m_head;
+        //m_head.inc_nframes();
+        m_io.getHeader().inc_nframes();
+        // if (m_fHead.is_open() && m_fData.is_open()) {
+        //     m_fHead << m_head;
+        if ( m_io.is_open(true) && m_io.is_open(false) ) {
+            std::fstream& fHead = m_io.getHeadFileStream();
+            std::fstream& fData = m_io.getDataFileStream();
+            
+            fHead << m_io.getHeader();
 
-            long long seekpos = m_fData.tellp();
-            long long offset = m_step * 3 * sizeof(long long);
-            m_fHead.seekp(m_head.get_offset() + offset, std::ios_base::beg);
-            m_fHead.write((const char*)& seekpos, sizeof(long long));
-            m_fHead.write((const char*)& n_exec, sizeof(long long));
-            m_fHead.write((const char*)& m_step, sizeof(long long));
+            ss_data.seekg(0, std::ios::end);
+            m_io.checkFileLimit(fData, ss_data.tellg());
+
+            long long seekpos = fData.tellp();
+            long long offset = m_step * FileHeader_t::SeekPos_t::SIZE;
+            long long fid = m_io.getDataFileIndex();
+            fHead.seekp(FileHeader_t::OFFSET + offset, std::ios_base::beg);
+            fHead.write((const char*)& seekpos, sizeof(long long));
+            fHead.write((const char*)& n_exec , sizeof(long long));
+            fHead.write((const char*)& m_step , sizeof(long long));
+            fHead.write((const char*)& fid  , sizeof(long long));
+
+            // std::cout << "step: " << m_step << ", "
+            //         << "n_exec: " << n_exec << ", "
+            //         << "fid: " << fid << ", "
+            //         << "pos: " << seekpos << std::endl;
 
             ss_data.seekg(0);
-            m_fData << ss_data.rdbuf();
+            fData << ss_data.rdbuf();
 
-            m_fHead.flush();
-            m_fData.flush();
+            fHead.flush();
+            fData.flush();
         }
 
-        if (m_curl) {
+        if (m_io.getCURL()) {
             std::stringstream oss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-            oss << m_head;
+            CURL* curl = m_io.getCURL();
+
+            //oss << m_head;
+            oss << m_io.getHeader();
             oss.write((const char*)&n_exec, sizeof(long long));
             
             ss_data.seekg(0);
@@ -163,14 +221,14 @@ public:
 
             std::string data = oss.str();
 
-            curl_easy_setopt(m_curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
-            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, data.c_str());
-            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDSIZE, data.size());
-            curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
-            curl_easy_setopt(m_curl, CURLOPT_VERBOSE, 0);
-            curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
+            curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
 
-            CURLcode res = curl_easy_perform(m_curl);
+            CURLcode res = curl_easy_perform(curl);
             if (res != CURLE_OK) {
                 std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
             }
@@ -180,18 +238,22 @@ public:
         delete m_callList;
     }
 
-
 private:
-    std::fstream& m_fHead;
-    std::fstream& m_fData;
-    CURL* m_curl;
-    FileHeader_t& m_head;
+    // std::fstream& m_fHead;
+    // std::fstream& m_fData;
+    // CURL* m_curl;
+    // FileHeader_t& m_head;
+    ADio& m_io;
     CallListMap_p_t* m_callList;
     long long m_step;
 };
 
 IOError ADio::write(CallListMap_p_t* callListMap, long long step) {
-    WriteFunctor wFunc(m_fHead, m_fData, m_curl, m_head, callListMap, step);
+    if (!m_fHead.is_open() && !m_fData.is_open() && m_curl == nullptr)
+        return IOError::OK;
+
+    // WriteFunctor wFunc(m_fHead, m_fData, m_curl, m_head, callListMap, step);
+    WriteFunctor wFunc(*this, callListMap, step);
     if (m_dispatcher)
         m_dispatcher->dispatch(wFunc);
     else
@@ -202,6 +264,13 @@ IOError ADio::write(CallListMap_p_t* callListMap, long long step) {
 IOError ADio::read(CallList_t& cl, long long idx) {
     FileHeader_t::SeekPos_t pos;
     if (m_head.get_datapos(pos, idx)) {
+        
+        if (m_data_fid != pos.fid) {
+            m_data_fid = pos.fid;
+            m_fData.close();
+            _open(m_fData, m_prefix + "." + std::to_string(m_data_fid) + ".data.dat", IOOpenMode::Read);
+        }
+
         m_fData.seekg(pos.pos);
         for (long long i = 0; i < pos.n_exec; i++) {
             ExecData_t exec;
@@ -228,6 +297,7 @@ std::ostream& chimbuko::operator<<(std::ostream& os, ADio& io) {
 std::ostream& chimbuko::operator<<(std::ostream& os, const FileHeader_t& head) {
     if (head.m_is_binary) {
         os.seekp(0, std::ios_base::beg);
+        os.write((const char*)&head.m_endianess, sizeof(char));
         os.write((const char*)&head.m_version, sizeof(unsigned int));
         os.write((const char*)&head.m_rank, sizeof(unsigned int));
         os.write((const char*)&head.m_nframes, sizeof(unsigned int));
@@ -235,8 +305,8 @@ std::ostream& chimbuko::operator<<(std::ostream& os, const FileHeader_t& head) {
         os.write((const char*)&head.m_winsize, sizeof(unsigned int));
         os.write((const char*)&head.m_nparam, sizeof(unsigned int));
         if (head.m_nparam) {
-            for (const unsigned int& param: head.m_uparams) {
-                os.write((const char*)&param, sizeof(unsigned int));
+            for (const int& param: head.m_uparams) {
+                os.write((const char*)&param, sizeof(int));
             }
             for (const double& param: head.m_dparams) {
                 os.write((const char*)&param, sizeof(double));
@@ -244,14 +314,15 @@ std::ostream& chimbuko::operator<<(std::ostream& os, const FileHeader_t& head) {
         }
     } else {
         os << "\nVersion    : " << head.m_version
+           << "\nEndian     : " << head.m_endianess
            << "\nRank       : " << head.m_rank
            << "\nNum. Frames: " << head.m_nframes
            << "\nAlgorithm  : " << head.m_algorithm
            << "\nWindow size: " << head.m_winsize
            << "\nNum. Params: " << head.m_nparam;
         if (head.m_nparam) {
-            os << "\nParameters (unsigned int): ";
-            for (const unsigned int& param: head.m_uparams)
+            os << "\nParameters (int): ";
+            for (const int& param: head.m_uparams)
                 os << param << " ";
             os << "\nParameters (double): ";
             for (const double& param: head.m_dparams)
@@ -262,29 +333,34 @@ std::ostream& chimbuko::operator<<(std::ostream& os, const FileHeader_t& head) {
     return os;
 }
 
+// TODO: read depends on endianess of a system who is reading a file and another system who
+//       wrote the file.
 std::istream& chimbuko::operator>>(std::istream& is, FileHeader_t& head) {
     if (head.m_is_binary) {
         is.seekg(0, std::ios_base::beg);
+        is.read((char*)&head.m_endianess, sizeof(char));
         is.read((char*)&head.m_version, sizeof(unsigned int));
         is.read((char*)&head.m_rank, sizeof(unsigned int));
         is.read((char*)&head.m_nframes, sizeof(unsigned int));
         is.read((char*)&head.m_algorithm, sizeof(unsigned int));
         is.read((char*)&head.m_winsize, sizeof(unsigned int));
         is.read((char*)&head.m_nparam, sizeof(unsigned int));
-        head.m_uparams.resize(2*head.m_nparam);
+        head.m_uparams.resize(head.m_nparam);
         head.m_dparams.resize(head.m_nparam);
         for (const unsigned int& param: head.m_uparams) {
-            is.read((char*)&param, sizeof(unsigned int));
+            is.read((char*)&param, sizeof(int));
         }
         for (const double& param: head.m_dparams) {
             is.read((char*)&param, sizeof(double));
         }
         if (head.m_nframes) {
+            is.seekg(FileHeader_t::OFFSET, std::ios::beg);
             FileHeader_t::SeekPos_t pos;
             for (unsigned int i = 0; i < head.m_nframes; i++) {
                 is.read((char*)&pos.pos, sizeof(long long));
                 is.read((char*)&pos.n_exec, sizeof(long long));
                 is.read((char*)&pos.step, sizeof(long long));
+                is.read((char*)&pos.fid, sizeof(long long));
                 head.m_datapos.push_back(pos);
             }
         }

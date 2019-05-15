@@ -18,6 +18,8 @@ public:
 
     void dispatch(const fp_t& op);
     void dispatch(fp_t&& op);
+    
+    size_t size();
 
 private:
     void thread_handler(void);
