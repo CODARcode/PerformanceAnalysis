@@ -4,10 +4,12 @@ import numpy as np
 
 from enum import Enum
 
+
 class OpenMode(Enum):
     READ   = "r"
     WRITE  = "w"
     APPEND = "a" # not yet supported
+
 
 class EngineType(Enum):
     BP3     = "BP"
@@ -20,8 +22,11 @@ class EngineType(Enum):
         t = t.lower()
         if 'bp' in t:
             return EngineType.BP3
+        elif 'sst' in t:
+            return EngineType.SST
         else:
             raise Exception("Unsupported engine type: %s" % t)
+
 
 def get_npdtype(t:str):
     t = t.lower()
@@ -59,6 +64,10 @@ class pyVariable(object):
         self.n_steps = int(AvailableStepsCount)
         self.shape = () if len(Shape) == 0 else [int(t) for t in Shape.split(',')]
         self.dtype = None if len(Type) == 0 else get_npdtype(Type)
+        self.type = Type
+        # Note that in adios2.x Value string comes with `"str"'.
+        if Type == 'string':
+            Value = Value.replace('"', '')
         self.value = np.array([Value], dtype=self.dtype) if self.is_scalar else None
         self.min = Min # string
         self.max = Max # string
@@ -70,23 +79,36 @@ class pyVariable(object):
             n_steps=self.n_steps,
             shape=self.shape,
             dtype=self.dtype,
+            type=self.type,
             value=self.value,
             min=self.min,
             max=self.max
         ))
+
 
 class pyAttribute(object):
     def __init__(self, name, Elements:str='', Value:str='', Type:str=''):
         self.name = name
         self.n_elements = int(Elements)
         self.dtype = get_npdtype(Type)
+        self.type = Type
+        # Note that in adios2.x Value string comes with `"str"'.
+        if Type == 'string':
+            Value = Value.replace('"', '')
         self._value = np.array([Value], dtype=self.dtype)
 
     def __repr__(self):
-        return "{}: {} {}".format(self.name, self.n_elements, self._value)
+        return str(dict(
+            name=self.name,
+            n_elements=self.n_elements,
+            dtype=self.dtype,
+            type=self.type,
+            value=self._value
+        ))
 
-    def value(self, idx=0):
-        return self._value[idx]
+    def value(self):
+        if self.type == 'string': return self._value[0]
+        return self._value.copy()
 
 
 class pyAdios(object):
@@ -95,42 +117,39 @@ class pyAdios(object):
     Wrapper class for Adios 2.x
 
     """
-
-    def __init__(self, method:str, parameters:str):
-        # MPI
-        # todo: what would be the correct way to handle MPI?
-        self.comm = MPI.COMM_WORLD
-        self.rank = self.comm.Get_rank()
-        self.size = self.comm.Get_size()
-
+    def __init__(self, method:str, parameters:str=None):
         # adios engine type
         self.engine_type = EngineType.get_type(method)
         # adios engine parameter
-        # todo: is this correct way to pass adios parameters?
         self.parameters = dict()
-        for param in parameters.split():
-            key, value = param.split("=")
-            self.parameters[key] = value
+        if parameters is not None:
+            for param in parameters.split():
+                key, value = param.split("=")
+                self.parameters[key] = value
 
         # adios file handler
         self.fh = None
-        # adios file stream
+        # adios file stream (only available for reader)
         self.stream = None
 
-    def open(self, filename:str, mode:OpenMode=OpenMode.READ):
+    def open(self, filename:str, mode:OpenMode=OpenMode.READ, comm=MPI.COMM_SELF):
         """
         Open a file with adios2
 
         Args:
             filename: (str), filename with full path
             mode: (OpenMode), open mode
-
+            comm: mpi context
         Returns:
 
         """
-        self.fh = adios2.open(filename, mode.value, self.comm, self.engine_type.value)
-        self.fh.set_parameters(self.parameters)
-        self.stream = self.fh.__next__()
+        if comm is None:
+            comm = MPI.COMM_SELF
+
+        self.fh = adios2.open(filename, mode.value, comm, self.engine_type.value)
+        #self.fh.set_parameters(self.parameters)
+        if mode == OpenMode.READ:
+            self.stream = self.fh.__next__()
 
     def current_step(self):
         """
@@ -147,15 +166,12 @@ class pyAdios(object):
         Returns:
             return current_step if next stream is available; otherwise -1
         """
-        # self.stream = self.fh.__next__()
-        # status = self.current_step()
-
         status = -1
         try:
-            self.stream = self.fh.__next__()
-            # todo: in streaming mode releases the current_step (what this means?)
-            # todo: no effect in file based engines
+            # note: in streaming mode releases the current_step
+            # note: no effect in file based engines
             self.fh.end_step()
+            self.stream = self.fh.__next__()
             status = self.current_step()
         except StopIteration:
             pass
@@ -176,10 +192,10 @@ class pyAdios(object):
         Returns: (dict), available variables in the current stream
         """
         if self.stream is None: return dict()
-        vars = dict()
+        avars = dict()
         for name, info in self.stream.available_variables().items():
-            vars[name] = pyVariable(name, **info)
-        return vars
+            avars[name] = pyVariable(name, **info)
+        return avars
 
     def available_attributes(self):
         """
@@ -196,10 +212,10 @@ class pyAdios(object):
         Returns: (dict), available variables in the current stream
         """
         if self.stream is None: return dict()
-        atts = dict()
+        aatts = dict()
         for name, info in self.stream.available_attributes().items():
-            atts[name] = pyAttribute(name, **info)
-        return atts
+            aatts[name] = pyAttribute(name, **info)
+        return aatts
 
     def read_variable(self, var_name:str,
                           start:list=None, count:list=None,
@@ -217,6 +233,7 @@ class pyAdios(object):
         Returns:
             stored data of `var_name`
         """
+        # return self.stream.read(var_name)
         variables = self.available_variables()
         if var_name not in variables.keys(): return None
 
@@ -224,46 +241,52 @@ class pyAdios(object):
         if v.is_scalar:
             return self.stream.read(var_name)
 
-        if step_start is None: step_start = self.current_step()
-        else:                  step_start = min(self.current_step(), step_start)
-        if step_count is None: step_count = 1
-        else:                  step_count = min(step_count, v.n_steps - step_start)
+        # todo: validate step start and step count
+        # if step_start is None: step_start = self.current_step()
+        # else:                  step_start = min(self.current_step(), step_start)
+        # if step_count is None: step_count = 1
+        # else:                  step_count = min(step_count, v.n_steps - step_start)
 
-        # todo: validate start and count
         ndim = len(v.shape)
         if start is None: start = [0] * ndim
         if count is None: count = v.shape
 
         return self.stream.read(var_name, start, count)
-        #return self.stream.read(var_name, start, count, step_start, step_count)
+        # return self.stream.read(var_name, start, count, step_start, step_count)
+
+    def write_variable(self, var_name:str, data:np.ndarray,
+                       start:list=None, count:[list, tuple]=None, end_step:bool=False):
+        """
+        Write a variable
+
+        Args:
+            var_name: str, variable name
+            data: np.ndarray, data
+            start: [int], start position (only for array data)
+            count: [int], number of elements (only for array data)
+            end_step: bool, if True, call end_step() after writing this variable.
+        """
+        if start is not None and count is not None:
+            self.fh.write(var_name, data, data.shape, start, count, end_step)
+        else:
+            self.fh.write(var_name, data, end_step)
+
+    def write_attribute(self, att_name:str, data):
+        """
+        Write a attribute
+        Args:
+            att_name: str, attribute name
+            data: [np.ndarray, str], attribute value either np.ndarray (for number) or string
+        """
+        self.fh.write_attribute(att_name, data)
+
+    def end_step(self):
+        """signal end_step(), mainly used for writers. for readers, see advance()"""
+        self.fh.end_step()
 
     def close(self):
+        """close adios file handler"""
         self.stream = None
         if self.fh is not None:
             self.fh.close()
         self.fh = None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

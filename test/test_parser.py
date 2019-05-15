@@ -1,6 +1,7 @@
 import os
 import sys
-import parser
+import configparser
+from parser import Parser
 import unittest
 
 
@@ -17,8 +18,14 @@ class TestGetStream(unittest.TestCase):
     def test_getStream(self):
         """Test getStream() function, which performs an Adios advance operation.
         """
-        
-        prs = parser.Parser("test.cfg")
+
+        config = configparser.ConfigParser(interpolation=None)
+        config.read("test.cfg")
+
+        config['Adios']['Method'] = 'BP'
+        config['Adios']['InputFile'] = '../data/nwchem/20180801/tau-metrics.bp'
+
+        prs = Parser(config)
         parseMethod = prs.getParseMethod()
         
         ctrl = 0

@@ -1,12 +1,23 @@
-TEST_DIR=test
-SCRIPT_DIR=scripts
-TEST_SCRIPT_NAME=run_test.sh
-GEN_DOC_SCRIPT_NAME=generate_doc.sh
+CXX		  := g++
+CXX_FLAGS := -Wall -Wextra -std=c++17 -ggdb
 
-.PHONY: test doc
+BIN		:= bin
+SRC		:= src
+INCLUDE	:= include
+LIB		:= lib
 
-test:
-	cd ./$(TEST_DIR) && bash $(TEST_SCRIPT_NAME)
+LIBRARIES	:=
+EXECUTABLE	:= main
 
-doc:
-	cd ./$(SCRIPT_DIR) && bash $(GEN_DOC_SCRIPT_NAME)
+
+all: $(BIN)/$(EXECUTABLE)
+
+run: clean all
+	clear
+	./$(BIN)/$(EXECUTABLE)
+
+$(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
+	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
+
+clean:
+	-rm $(BIN)/*

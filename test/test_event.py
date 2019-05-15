@@ -1,6 +1,4 @@
 import os
-import sys
-import configparser
 import pickle
 import numpy as np
 import event
@@ -74,7 +72,7 @@ class TestAddFun(unittest.TestCase):
             passFunCall = pickle.load(handle)
         
         passStack = True
-        passEvn = event.Event("test.cfg")
+        passEvn = event.Event()
         passEvn.setEventType(et)
         passEvn.initFunData(passFunCall.shape[0])
         for i in passFunCall:
@@ -91,14 +89,13 @@ class TestAddFun(unittest.TestCase):
             failFunCall = pickle.load(handle)
         
         failStack = True
-        failEvn = event.Event("test.cfg")
+        failEvn = event.Event()
         failEvn.setEventType(et)
         failEvn.initFunData(failFunCall.shape[0])
         for i in failFunCall:
             if failEvn.addFun(i): # Store function call data in event object
                 pass
             else:
-                
                 failStack = False
                 break    
         self.assertFalse(failStack)
