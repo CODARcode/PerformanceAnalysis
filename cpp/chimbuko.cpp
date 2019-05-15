@@ -2,6 +2,15 @@
 
 using namespace chimbuko;
 
+// input argument
+// - engineType (for BP, + data_dir)
+// - output_dir (for now) to dump
+
+// soon later
+// - inputFile prefix (i.e. tau-metrics)
+// - sigma
+// - ps server name 
+
 int main(int argc, char ** argv)
 {
     MPI_Init(&argc, &argv);
@@ -23,7 +32,7 @@ int main(int argc, char ** argv)
     ADio * io;
 
     int step = 0; 
-    unsigned long n_outliers;
+    //unsigned long n_outliers;
     size_t idx_funcData = 0, idx_commData = 0, i = 0;
     const unsigned long *funcData = nullptr, *commData = nullptr;
     PQUEUE pq;
@@ -40,15 +49,11 @@ int main(int argc, char ** argv)
     outlier->set_sigma(sigma);
     outlier->connect_ps(world_rank);
 
-    // io->setWinSize(5);
-    // io->setDispatcher();
-    // io->setHeader({
-    //     {"version", IO_VERSION}, {"rank", world_rank},
-    //     {"algorithm", 0}, {"nparam", 1}, {"winsz", 5}
-    // });
+    io->setDispatcher();
+    io->setHeader({{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
 
     // io->open_curl(); // for VIS module
-    // io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
+    io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
     while ( parser->getStatus() )
     {
@@ -118,8 +123,9 @@ int main(int argc, char ** argv)
             }
         }        
 
-        n_outliers = outlier->run();
-        std::cout << n_outliers << std::endl;
+        outlier->run();
+        //n_outliers = outlier->run();
+        //std::cout << n_outliers << std::endl;
 
         parser->endStep();
 
