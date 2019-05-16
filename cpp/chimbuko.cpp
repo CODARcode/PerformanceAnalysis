@@ -1,6 +1,8 @@
 #include "chimbuko/AD.hpp"
+#include <chrono>
 
 using namespace chimbuko;
+using namespace std::chrono;
 
 // input argument
 // - engineType (for BP, + data_dir)
@@ -19,12 +21,15 @@ int main(int argc, char ** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
 
+    // -----------------------------------------------------------------------
+    // parser command line arguments
     std::string engineType = argv[1]; // BPFile or SST
     std::string data_dir = argv[2]; // *.bp location
     std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     std::string output_dir = argv[3]; //output directory
 
-    std::cout << "rank       : " << world_rank << "\n"
+    std::cout << "\n" 
+              << "rank       : " << world_rank << "\n"
               << "Engine     : " << engineType << "\n"
               << "BP in dir  : " << data_dir << "\n"
               << "BP file    : " << inputFile << "\n"
@@ -32,17 +37,28 @@ int main(int argc, char ** argv)
 
     double sigma = 6.0;
 
+    // -----------------------------------------------------------------------
+    // AD module variables
     ADParser * parser;
     ADEvent * event;
     ADOutlierSSTD * outlier;
     ADio * io;
 
     int step = 0; 
-    //unsigned long n_outliers;
     size_t idx_funcData = 0, idx_commData = 0, i = 0;
     const unsigned long *funcData = nullptr, *commData = nullptr;
     PQUEUE pq;
 
+    // -----------------------------------------------------------------------
+    // Measurement variables
+    unsigned long total_frames = 0, frames = 0;
+    unsigned long total_n_outliers = 0, n_outliers = 0;
+    unsigned long total_processing_time = 0, processing_time = 0;
+    high_resolution_clock::time_point t1, t2;
+
+
+    // -----------------------------------------------------------------------
+    // Init. AD module
     parser = new ADParser(data_dir + "/" + inputFile, engineType);
     event = new ADEvent();
     outlier = new ADOutlierSSTD();
@@ -61,6 +77,11 @@ int main(int argc, char ** argv)
     // io->open_curl(); // for VIS module
     io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
+
+    // -----------------------------------------------------------------------
+    // Start analysis
+    std::cout << "rank: " << world_rank << " analysis start " << (outlier->use_ps() ? "with": "without") << " pserver" << std::endl;
+    t1 = high_resolution_clock::now();
     while ( parser->getStatus() )
     {
         parser->beginStep();
@@ -129,16 +150,47 @@ int main(int argc, char ** argv)
             }
         }        
 
-        outlier->run();
-        //n_outliers = outlier->run();
+        //outlier->run();
+        n_outliers += outlier->run();
+        frames++;
         //std::cout << n_outliers << std::endl;
 
         parser->endStep();
 
         io->write(event->trimCallList(), step);
     }
+    t2 = high_resolution_clock::now();
+    std::cout << "rank: " << world_rank << " analysis done!\n";
 
+    // -----------------------------------------------------------------------
+    // Average analysis time and total number of outliers
     MPI_Barrier(MPI_COMM_WORLD);
+    processing_time = duration_cast<milliseconds>(t2 - t1).count();
+
+    const unsigned long local_measures[] = {processing_time, n_outliers, frames};
+    unsigned long global_measures[] = {0, 0, 0};
+    MPI_Reduce(
+        local_measures, global_measures, 3, MPI_UNSIGNED_LONG,
+        MPI_SUM, 0, MPI_COMM_WORLD
+    );
+    // MPI_Reduce(&processing_time, &total_processing_time, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    // MPI_Reduce(&n_outliers, &total_n_outliers, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    // MPI_Reduce(&total_frames, &frames, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (world_rank == 0) {
+        total_processing_time = global_measures[0];
+        total_n_outliers = global_measures[1];
+        total_frames = global_measures[2];
+
+        std::cout << "\n"
+            << "Avg. num. frames     : " << (double)total_frames/(double)world_size << "\n"
+            << "Avg. processing time : " << (double)total_processing_time/(double)world_size << " msec\n"
+            << "Total num. outliers  : " << total_n_outliers 
+            << std::endl;
+    }
+
+    // -----------------------------------------------------------------------
+    // Finalize
     outlier->disconnect_ps();
 
     delete parser;

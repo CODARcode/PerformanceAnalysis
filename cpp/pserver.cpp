@@ -19,7 +19,7 @@ int main (int argc, char ** argv)
     chimbuko::ZMQNet net;
 #endif
 
-    nt = std::thread::hardware_concurrency();
+    nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
     std::cout << "Run parameter server with " << nt << " threads" << std::endl;
 
     // Note: for some reasons, internal MPI initialization cause segmentation error!! 
