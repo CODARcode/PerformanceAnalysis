@@ -20,6 +20,7 @@ public:
     std::string serialize() override;
     std::string update(const std::string& parameters, bool flag=false) override;
     void assign(const std::string& parameters) override;
+    void show(std::ostream& os) const override;
 
     std::string serialize(std::unordered_map<unsigned long, RunStats>& runstats);
     void deserialize(

@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <string>
+#include <iostream>
 
 namespace chimbuko {
 
@@ -21,6 +22,8 @@ public:
     virtual std::string serialize() = 0;
     virtual std::string update(const std::string& parameters, bool flag=false) = 0;
     virtual void assign(const std::string& parameters) = 0;
+
+    virtual void show(std::ostream& os) const = 0;
 
 protected:
     std::mutex m_mutex;    

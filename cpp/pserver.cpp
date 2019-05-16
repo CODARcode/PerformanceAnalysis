@@ -27,6 +27,8 @@ int main (int argc, char ** argv)
     net.set_parameter(&param);
     net.run();
 
+    param.show(std::cout);
+
 #ifdef _USE_MPINET
     MPI_Finalize();
 #endif

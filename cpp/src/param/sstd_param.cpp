@@ -95,3 +95,18 @@ void SstdParam::update(std::unordered_map<unsigned long, RunStats>& runstats)
         pair.second = m_runstats[pair.first];
     }    
 }
+
+void SstdParam::show(std::ostream& os) const 
+{
+    os << "\n"
+       << "Parameters: " << m_runstats.size() << std::endl;
+
+    for (auto stat: m_runstats)
+    {
+        os << "Function " << stat.first << ": "
+           << "Mean: " << stat.second.mean() << ", "
+           << "Std: " << stat.second.std() << std::endl;
+    }
+
+    os << std::endl;
+}
