@@ -9,7 +9,7 @@ SRC_DIRS ?= src
 TEST_DIR ?= test
 LIB_DIR ?= lib
 
-CXX := mpic++
+CXX := /opt/openmpi-4.0.1/bin/mpic++
 CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 

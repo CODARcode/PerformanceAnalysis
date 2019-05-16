@@ -19,10 +19,16 @@ int main(int argc, char ** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
 
-    std::string data_dir = "./data";
-    std::string output_dir = "./data";
+    std::string engineType = argv[1]; // BPFile or SST
+    std::string data_dir = argv[2]; // *.bp location
     std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-    std::string engineType = "BPFile";
+    std::string output_dir = argv[3]; //output directory
+
+    std::cout << "rank       : " << world_rank << "\n"
+              << "Engine     : " << engineType << "\n"
+              << "BP in dir  : " << data_dir << "\n"
+              << "BP file    : " << inputFile << "\n"
+              << "BP out dir : " << output_dir << std::endl;
 
     double sigma = 6.0;
 
@@ -140,5 +146,6 @@ int main(int argc, char ** argv)
     delete outlier;
     delete io;
 
+    MPI_Finalize();
     return 0;
 }
