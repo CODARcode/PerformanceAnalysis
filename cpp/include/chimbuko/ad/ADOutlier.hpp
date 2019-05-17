@@ -15,10 +15,8 @@ public:
 
     void linkExecDataMap(const ExecDataMap_t* m) { m_execDataMap = m; }
     bool use_ps() const { return m_use_ps; }
-#ifdef _USE_MPINET
     void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
     void disconnect_ps();
-#endif
     virtual unsigned long run() = 0;
 
 

@@ -65,7 +65,7 @@ void MPINet::run()
     MPI_Info_create(&info);
     MPI_Info_set(info, "ompi_global_scope", "true");
     MPI_Publish_name(name().c_str(), info, port_name);
-
+    std::cout << "[SERVER] port name: " << port_name << std::endl;
     // single connection only!!
     MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &client);
 
@@ -74,7 +74,7 @@ void MPINet::run()
         // blocking probe whether message comes
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, client, &status);
         MPI_Get_count(&status, MPI_BYTE, &count);
-
+	std::cout << "receive request\n";
         int source = status.MPI_SOURCE;
         int tag = status.MPI_TAG;
         
@@ -118,6 +118,7 @@ void MPINet::run()
                 }
             }
             
+	    std::cout << "reply request\n";
             this->send(client, 
                 _msg_reply.data(), 
                 _msg_reply.dst(), 

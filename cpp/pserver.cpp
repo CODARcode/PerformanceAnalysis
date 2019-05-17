@@ -10,7 +10,7 @@
 int main (int argc, char ** argv)
 {
     chimbuko::SstdParam param;
-    int nt = 1;
+    int nt = 10;
 #ifdef _USE_MPINET
     int provided;
     chimbuko::MPINet net;
@@ -19,7 +19,7 @@ int main (int argc, char ** argv)
     chimbuko::ZMQNet net;
 #endif
 
-    nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
+    //nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
     std::cout << "Run parameter server with " << nt << " threads" << std::endl;
 
     // Note: for some reasons, internal MPI initialization cause segmentation error!! 
