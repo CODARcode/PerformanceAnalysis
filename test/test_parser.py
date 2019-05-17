@@ -1,7 +1,7 @@
 import os
 import sys
 import configparser
-from parser2 import Parser
+from parser import Parser
 import unittest
 
 
