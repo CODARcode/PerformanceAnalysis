@@ -130,3 +130,4 @@ untracked/results/*.pkl
 .vscode
 cpp/bin/*
 cpp/extern/*
+.DS_Store

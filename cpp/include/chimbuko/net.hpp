@@ -82,11 +82,10 @@ protected:
      * 
      * @param nt the number threads in the pool
      */
-    void init_thread_pool(int nt);
+    virtual void init_thread_pool(int nt) = 0;
 
 protected:
     int              m_nt;    // the number of threads in the pool
-    threadPool *     m_tpool; // thread pool
     //ParamKind        m_kind;  // parameter kind
     ParamInterface * m_param; // pointer to parameter (storage)
     std::atomic_bool m_stop;

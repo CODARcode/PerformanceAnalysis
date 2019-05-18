@@ -83,8 +83,13 @@ public:
     static std::string recv(MPI_Comm& comm, int src, int tag, int count);  
     static void send(MPI_Comm& comm, const std::string& buf, int dest, int tag, int count);
 
+protected:
+    void init_thread_pool(int nt) override;
+
 
 private:
+    threadPool *     m_tpool; // thread pool
+
     int m_thread_provided;
     int m_inited;
     int m_rank;

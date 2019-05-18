@@ -9,7 +9,9 @@ SRC_DIRS ?= src
 TEST_DIR ?= test
 LIB_DIR ?= lib
 
-CXX := /opt/openmpi-4.0.1/bin/mpic++
+# for MPINet, need the latest OpenMPI (>= 3.x)
+#CXX := /opt/openmpi-4.0.1/bin/mpic++
+CXX := mpic++
 CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 
@@ -19,7 +21,8 @@ ADIOS_LIBS = `${ADIOS}/bin/adios2-config --cxx-libs`
 
 CURL_FLAGS = `curl-config --libs`
 
-PS_FLAGS = -D_USE_MPINET
+#PS_FLAGS = -D_USE_MPINET
+PS_FLAGS = -D_USE_ZMQNET
 
 TARGET_LIB := lib/lib${LIB_NAME}.so
 EXEC_SRCS := $(wildcard *.cpp)
@@ -33,13 +36,11 @@ TEST_SIMPLE_SRCS := test/mainSimple.cpp test/test_utils.cpp test/test_param.cpp
 
 TEST_MPINET := test/mainMpinet
 TEST_MPINET_SRCS := test/mainMpinet.cpp test/test_mpinet.cpp
-TEST_CLINET := test/mpiClient
 
 TEST_AD := test/mainAd
 TEST_AD_SRCS := test/mainAD.cpp test/test_ad.cpp
-TEST_SERVER := test/mpiServer
 
-all: $(EXEC_TARS) $(TARGET_LIB) $(TEST_SIMPLE) $(TEST_MPINET) $(TEST_CLINET) $(TEST_AD) $(TEST_SERVER)
+all: $(EXEC_TARS) $(TARGET_LIB) $(TEST_SIMPLE) $(TEST_MPINET) $(TEST_AD)
 
 debugvars:
 	@echo $(SRCS)
@@ -50,22 +51,16 @@ debugvars:
 
 bin/%: build/%.o | $(TARGET_LIB)
 	$(MKDIR_P) $(@D)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -lboost_system -lboost_thread -o $@ 
 
 $(TEST_SIMPLE): $(TEST_SIMPLE_SRCS) | $(TARGET_LIB) 
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
 
 $(TEST_MPINET): $(TEST_MPINET_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
-
-$(TEST_CLINET): test/ps/mpi_client.cpp | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
 
 $(TEST_AD): $(TEST_AD_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lgtest -o $@ 
-
-$(TEST_SERVER): test/ps/mpi_server.cpp | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
 
 lib/lib$(LIB_NAME).so: $(OBJS)
 	$(MKDIR_P) $(@D)

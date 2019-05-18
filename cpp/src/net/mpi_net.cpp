@@ -8,12 +8,16 @@
 #include <mpi.h>
 using namespace chimbuko;
 
-MPINet::MPINet() : m_inited(0)
+MPINet::MPINet() : m_inited(0), m_tpool(nullptr)
 {
 }
 
 MPINet::~MPINet()
 {
+    if (m_tpool)
+    {
+        delete m_tpool;
+    }    
 }
 
 void MPINet::init(int* argc, char*** argv, int nt)
@@ -65,7 +69,7 @@ void MPINet::run()
     MPI_Info_create(&info);
     MPI_Info_set(info, "ompi_global_scope", "true");
     MPI_Publish_name(name().c_str(), info, port_name);
-    std::cout << "[SERVER] port name: " << port_name << std::endl;
+    //std::cout << "[SERVER] port name: " << port_name << std::endl;
     // single connection only!!
     MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &client);
 
@@ -74,7 +78,7 @@ void MPINet::run()
         // blocking probe whether message comes
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, client, &status);
         MPI_Get_count(&status, MPI_BYTE, &count);
-	std::cout << "receive request\n";
+	    //std::cout << "receive request\n";
         int source = status.MPI_SOURCE;
         int tag = status.MPI_TAG;
         
@@ -118,7 +122,7 @@ void MPINet::run()
                 }
             }
             
-	    std::cout << "reply request\n";
+	        //std::cout << "reply request\n";
             this->send(client, 
                 _msg_reply.data(), 
                 _msg_reply.dst(), 
@@ -139,6 +143,15 @@ void MPINet::stop()
     }
     delete m_tpool;
     m_tpool = nullptr;
+}
+
+void MPINet::init_thread_pool(int nt)
+{
+    if (m_tpool == nullptr && nt > 0)
+    {
+        m_nt = nt;
+        m_tpool = new threadPool(nt);
+    }
 }
 
 std::string MPINet::recv(MPI_Comm& comm, int src, int tag, int count) 
