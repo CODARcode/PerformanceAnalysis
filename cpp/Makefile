@@ -34,8 +34,8 @@ DEPS = $(OBJS:.o=.d)
 TEST_SIMPLE := test/mainSimple
 TEST_SIMPLE_SRCS := test/mainSimple.cpp test/test_utils.cpp test/test_param.cpp
 
-TEST_MPINET := test/mainMpinet
-TEST_MPINET_SRCS := test/mainMpinet.cpp test/test_mpinet.cpp
+TEST_MPINET := test/mainNet
+TEST_MPINET_SRCS := test/mainNet.cpp test/test_net.cpp
 
 TEST_AD := test/mainAd
 TEST_AD_SRCS := test/mainAD.cpp test/test_ad.cpp
@@ -51,16 +51,16 @@ debugvars:
 
 bin/%: build/%.o | $(TARGET_LIB)
 	$(MKDIR_P) $(@D)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -lboost_system -lboost_thread -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -o $@ 
 
 $(TEST_SIMPLE): $(TEST_SIMPLE_SRCS) | $(TARGET_LIB) 
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
 
 $(TEST_MPINET): $(TEST_MPINET_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
 
 $(TEST_AD): $(TEST_AD_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lboost_system -lboost_thread -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lgtest -o $@ 
 
 lib/lib$(LIB_NAME).so: $(OBJS)
 	$(MKDIR_P) $(@D)
@@ -78,7 +78,7 @@ test/%.o: %.cpp
 
 clean:
 	$(RM) -r $(BUILD_DIR) $(BIN_DIR) $(LIB_DIR)
-	$(RM) $(TEST_AD) $(TEST_CLINET) $(TEST_SERVER) $(TEST_SIMPLE) $(TEST_MPINET) test/*.d
+	$(RM) $(TEST_AD) $(TEST_SIMPLE) $(TEST_MPINET) test/*.d test/*.txt
 
 -include $(DEPS)
 

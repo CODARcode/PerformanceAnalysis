@@ -5,11 +5,13 @@
 #endif
 #include <mpi.h>
 #include "chimbuko/param/sstd_param.hpp"
+#include <fstream>
 
 int main (int argc, char ** argv)
 {
     chimbuko::SstdParam param;
     int nt = -1;
+    std::string outFile = "./parameters.txt";
 #ifdef _USE_MPINET
     int provided;
     chimbuko::MPINet net;
@@ -21,6 +23,9 @@ int main (int argc, char ** argv)
 
     if (argc > 1) {
         nt = atoi(argv[1]);
+    }
+    if (argc > 2) {
+        outFile = std::string(argv[2]);
     }
 
     if (nt <= 0) {
@@ -38,7 +43,15 @@ int main (int argc, char ** argv)
     net.set_parameter(&param);
     net.run();
 
-    param.show(std::cout);
+    // could be output to a file
+    //param.show(std::cout);
+    std::ofstream o;
+    o.open(outFile);
+    if (o.is_open())
+    {
+        param.show(o);
+        o.close();
+    }
 
     net.finalize();
 #ifdef _USE_ZMQNET

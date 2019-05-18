@@ -3,7 +3,11 @@
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
-#include <mpi.h>
+#ifdef _USE_MPINET
+#include "chimbuko/net/mpi_net.hpp"
+#else
+#include "chimbuko/net/zmq_net.hpp"
+#endif
 
 namespace chimbuko {
 
@@ -28,10 +32,13 @@ protected:
 
 protected:
     bool m_use_ps;
-#ifdef _USE_MPINET
     int m_rank;   // ad rank
     int m_srank;  // server rank
+#ifdef _USE_MPINET
     MPI_Comm m_comm;
+#else
+    void* m_context;
+    void* m_socket;
 #endif
 
     const ExecDataMap_t * m_execDataMap;

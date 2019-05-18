@@ -229,8 +229,7 @@ TEST_F(ADTest, BpfileTest)
     delete io;
 }
 
-#ifdef _USE_MPINET
-TEST_F(ADTest, BpfileWithMpiNetTest)
+TEST_F(ADTest, BpfileWithNetTest)
 {
     using namespace chimbuko;
 
@@ -284,7 +283,11 @@ TEST_F(ADTest, BpfileWithMpiNetTest)
 
     outlier->linkExecDataMap(event->getExecDataMap());
     outlier->set_sigma(sigma);
+#ifdef _USE_MPINET
     outlier->connect_ps(world_rank);
+#else
+    outlier->connect_ps(world_rank, 0, "tcp://localhost:5559");
+#endif
 
     io->setDispatcher();
     io->setHeader({{"rank", world_rank},{"algorithm", 0}, {"nparam", 1}, {"winsz", 5}});
@@ -380,7 +383,6 @@ TEST_F(ADTest, BpfileWithMpiNetTest)
         if (world_rank == 0) {
             MPI_Recv(&token, 1, MPI_INT, world_size-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
-
 
         parser->endStep();
 
@@ -507,5 +509,3 @@ TEST_F(ADTest, ioReadWriteBinaryTest)
     delete callList;
     delete ioR;
 }
-
-#endif
