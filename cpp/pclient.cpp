@@ -159,6 +159,11 @@ int main (int argc, char ** argv)
 {
     MPI_Init(&argc, &argv);
 
+    int wrank, wsize;
+    MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
+    MPI_Comm_size(MPI_COMM_WORLD, &wsize);
+
+
     void* context = zmq_init(1);
     void* socket = zmq_socket(context, ZMQ_REQ);
     //zmq_connect(socket, "tcp://localhost:5559");
@@ -166,7 +171,7 @@ int main (int argc, char ** argv)
 
     for(int i = 0; i != 10; ++i)
     {
-        std::cout << "Sending " << i << std::endl;
+        std::cout << "Rank: " << wrank << ", Sending " << i << std::endl;
         zmq_send(socket, &i, sizeof(int), 0); // 1
     
         int buffer;
@@ -174,9 +179,12 @@ int main (int argc, char ** argv)
         if(len < sizeof(int) || len > sizeof(int)) // 2
             std::cout << "Unexpected answer (" << len << ") discarded";
         else
-            std::cout << "Received " << buffer << std::endl;
+            std::cout << "Rank: " << wrank << ", Received " << buffer << std::endl;
     }
-    zmq_send(socket, NULL, 0, 0); // 3
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (wrank == 0)
+        zmq_send(socket, NULL, 0, 0); // 3
     
     zmq_close(socket);
     zmq_term(context);

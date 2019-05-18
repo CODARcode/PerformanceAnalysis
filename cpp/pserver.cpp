@@ -110,12 +110,14 @@ void doWork(void* context) // 1
 
 void mtServer(int nt, const char * addr)
 {
+    
+
     boost::thread_group threads; // 1
  
     void* context = zmq_init(1);
     void* frontend = zmq_socket(context, ZMQ_ROUTER); // 2
-    //zmq_bind(frontend, "tcp://*:5559");
-    zmq_bind(frontend, addr);
+    zmq_bind(frontend, "tcp://*:5559");
+    //zmq_bind(frontend, addr);
 
     void* backend = zmq_socket(context, ZMQ_DEALER); // 3
     zmq_bind(backend, "inproc://workers"); // 4
