@@ -38,6 +38,7 @@
 
 #include <zmq.h>
 #include <string>
+#include <iostream>
 #include <boost/thread.hpp>
 #include <mpi.h>
 
