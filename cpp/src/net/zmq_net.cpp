@@ -3,13 +3,11 @@
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include <iostream>
-#include <chrono>
-#include <thread>
+#include <string.h>
 
 using namespace chimbuko;
 
-ZMQNet::ZMQNet() 
-: m_context(nullptr), m_frontend(nullptr), m_backend(nullptr)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0)
 {
 }
 
@@ -19,144 +17,181 @@ ZMQNet::~ZMQNet()
 
 void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 {
-    std::cout << "Init ZMQNet\n";
-    m_context = zmq_ctx_new();
-    m_frontend = zmq_socket(m_context, ZMQ_ROUTER);
-    m_backend = zmq_socket(m_context, ZMQ_DEALER);
-
-    zmq_bind(m_frontend, "tcp://*:5559");
-
-    
-    int rc = zmq_bind(m_backend, "inproc://workers");
-    std::cout << "zmq_bind backend: " << rc << std::endl;
-
-    // set thread pool
-    std::cout << "Init. thread pool ... \n";
+    m_context  = zmq_ctx_new();
     init_thread_pool(nt);
 }
 
-void doWork(void* context) 
+void doWork(void* context, ParamInterface* param) 
 {
-    int rc;
     void* socket = zmq_socket(context, ZMQ_REP); 
-    rc = zmq_connect(socket, "inproc://workers");
-    std::cout << "[" << std::this_thread::get_id() << "]" 
-        << "zmq_connect: " << rc << std::endl;
+    zmq_connect(socket, "inproc://workers");
     
     zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
  
-    std::cout << "I am " << std::this_thread::get_id() << std::endl;
     while(true)
     {
-        // if(zmq_poll(items, 1, -1) < 1) // 4
-        // {
-        //     // terminate condition
-        //     std::cout << "error???\n";
-        //     break;
-        // }
-        rc = zmq_poll(items, 1, -1);
-        std::cout << "[" << std::this_thread::get_id() << "]" 
-            << "zmq_poll: " << rc << std::endl;
+        if(zmq_poll(items, 1, -1) < 1) 
+        {
+            break;
+        }
  
-        zmq_msg_t msg;
-        rc = zmq_msg_init(&msg);
-        std::cout << "[" << std::this_thread::get_id() << "]" 
-            << "zmq_msg_init: " << rc << std::endl;
-        
-        int len = zmq_msg_recv(&msg, socket, 0);
-        printf("Received: %d, %s\n", len, (char*)zmq_msg_data(&msg));
-        zmq_msg_close(&msg);
-        std::cout << "[" << std::this_thread::get_id() << "]" 
-            << "done. " << std::endl;        
+        std::string strmsg;
+        ZMQNet::recv(socket, strmsg);
+
+        // -------------------------------------------------------------------
+        // this block could be managed to use for all network interface!!
+        // todo: will move this part somewhere to make the code simple.
+        Message msg, msg_reply;
+        msg.set_msg(strmsg, true);
+
+        msg_reply = msg.createReply();
+        if (msg.kind() == MessageKind::SSTD)
+        {
+            SstdParam* p = (SstdParam*)param;
+            if (msg.type() == MessageType::REQ_ADD) {
+                //std::cout << "REQ_ADD" << std::endl;
+                msg_reply.set_msg(p->update(msg.data_buffer(), true), false);
+            }
+            else if (msg.type() == MessageType::REQ_GET) {
+                //std::cout << "REQ_GET" << std::endl;
+                msg_reply.set_msg(p->serialize(), false);
+            }
+        }
+        else if (msg.kind() == MessageKind::DEFAULT)
+        {
+            if (msg.type() == MessageType::REQ_ECHO) {
+                //std::cout << "REQ_ECHO" << std::endl;
+                msg_reply.set_msg(msg.data_buffer() + ">I am ZMQNET!", false);
+            }
+        }
+        else 
+        {
+            std::cout << "Unknow" << std::endl;
+        }
+        // -------------------------------------------------------------------
+
+        ZMQNet::send(socket, msg_reply.data());
     }
     zmq_close(socket);
 }
 
 void ZMQNet::init_thread_pool(int nt)
 {
-    for(int i = 0; i < nt; ++i)
-        m_threads.create_thread(std::bind(&doWork, std::ref(m_context))); 
+    for (int i = 0; i < nt; i++) {
+        m_threads.push_back(
+            std::thread(&doWork, std::ref(m_context), std::ref(m_param))    
+        );
+    }
 }
-
-
 
 void ZMQNet::finalize()
 {
-    if (m_frontend) zmq_close(m_frontend);
-    if (m_backend) zmq_close(m_backend);
     if (m_context) zmq_ctx_term(m_context);
-    m_frontend = nullptr;
-    m_backend = nullptr;
     m_context = nullptr;
+    for (auto& t: m_threads)
+        if (t.joinable())
+            t.join();
 }
 
 void ZMQNet::run()
-{
+{    
+    void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
+    void* backend  = zmq_socket(m_context, ZMQ_DEALER);
+
+    zmq_bind(frontend, "tcp://*:5559");
+    zmq_bind(backend, "inproc://workers");
+
     const int NR_ITEMS = 2; 
     zmq_pollitem_t items[NR_ITEMS] = 
     {
-        { m_frontend, 0, ZMQ_POLLIN, 0 },
-        { m_backend , 0, ZMQ_POLLIN, 0 }
+        { frontend, 0, ZMQ_POLLIN, 0 },
+        { backend , 0, ZMQ_POLLIN, 0 }
     };
 
-
+    m_n_requests = 0;
     while(true)
     {
-        std::cout << "Waiting ....\n";
         zmq_poll(items, NR_ITEMS, -1); 
  
-        if(items[0].revents & ZMQ_POLLIN) 
-        {
-            std::cout << "call recvAndSend\n";
-            recvAndSend(m_frontend, m_backend);
-        } 
-
-            // if(receiveAndSend(frontend, backend))
-            //     break;
+        if(items[0].revents & ZMQ_POLLIN) { 
+            if (recvAndSend(frontend, backend)) {
+                stop();
+                break;
+            }
+            m_n_requests++;
+        }
 
         if(items[1].revents & ZMQ_POLLIN) {
-            std::cout << "shouldn't happen\n";
-            // retrieve request from workder and send to client
-
-            //receiveAndSend(backend, frontend);
-        }
+            recvAndSend(backend, frontend);
+            m_n_requests--;
+        } 
     }
+
+    zmq_close(frontend);
+    zmq_close(backend);
 }
 
 bool ZMQNet::recvAndSend(void* skFrom, void* skTo)
 {
-    std::cout << "in recvAndSend\n";
-    int more, len=0, temp;
+    int more, len;
     size_t more_size = sizeof(int);
 
-    zmq_msg_t msg;
-    zmq_msg_init(&msg);
-
     do {
-        temp = zmq_msg_recv(&msg, skFrom, 0);
-        zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size);
-        printf("[while] %d, %d, %s\n",
-            temp, more, (char*)zmq_msg_data(&msg)
-        );
-        // if (more == 0 && len == 0)
-        // {
-        //     return true;            
-        // }
-        len += temp;
-    } while (more);
-    printf("[end] %d, %d, %s\n",
-        len, more, (char*)zmq_msg_data(&msg)
-    );
+        zmq_msg_t msg;
+        zmq_msg_init(&msg);
 
-    temp = zmq_msg_send(&msg, skTo, 0);
-    std::cout << "send to worker err code: " << temp << std::endl;
-    zmq_msg_close(&msg);
+        len = zmq_msg_recv(&msg, skFrom, 0);
+        zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size);
+        if (more == 0 && len == 0)
+        {
+            return true;
+        }
+        zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
+        zmq_msg_close(&msg);
+    } while (more);
 
     return false;
 }
 
 void ZMQNet::stop()
 {
+    int n_tries = 60;
+    while (m_n_requests && n_tries) {
+        n_tries--;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+int ZMQNet::send(void* socket, const std::string& strmsg)
+{
+    zmq_msg_t msg;
+    int ret;
+    // zero-copy version (need to think again...)
+    // zmq_msg_init_data(
+    //     &msg, (void*)strmsg.data(), strmsg.size(), 
+    //     [](void* _data, void* _hint){
+    //         // std::cout << "free message\n";
+    //         // free(_data);
+    //     }, 
+    //     nullptr
+    // );
+    // internal-copy version
+    zmq_msg_init_size(&msg, strmsg.size());
+    memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
+    ret = zmq_msg_send(&msg, socket, 0);
+    zmq_msg_close(&msg);
+    return ret;
+}
+
+int ZMQNet::recv(void* socket, std::string& strmsg)
+{
+    zmq_msg_t msg;
+    int ret;
+    zmq_msg_init(&msg);
+    ret = zmq_msg_recv(&msg, socket, 0);
+    strmsg.assign((char*)zmq_msg_data(&msg), ret);
+    zmq_msg_close(&msg);
+    return ret;
 }
 
 
