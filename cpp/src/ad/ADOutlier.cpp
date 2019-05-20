@@ -1,9 +1,7 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/param/sstd_param.hpp"
-#ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
-#endif
 #include "chimbuko/message.hpp"
+#include <mpi.h>
 
 using namespace chimbuko;
 
@@ -13,6 +11,10 @@ using namespace chimbuko;
 ADOutlier::ADOutlier() 
 : m_use_ps(false), m_execDataMap(nullptr), m_param(nullptr)
 {
+#ifdef _USE_ZMQNET
+    m_context = nullptr;
+    m_socket = nullptr;
+#endif
 }
 
 ADOutlier::~ADOutlier() {
@@ -22,6 +24,9 @@ ADOutlier::~ADOutlier() {
 }
 
 void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
+    m_rank = rank;
+    m_srank = srank;
+
 #ifdef _USE_MPINET
     int rs;
     char port[MPI_MAX_PORT_NAME];
@@ -31,10 +36,6 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
 
     rs = MPI_Comm_connect(port, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &m_comm);
     if (rs != MPI_SUCCESS) return;
-
-    m_rank = rank;
-    m_srank = srank;
-    m_use_ps = true;
 
     // test connection
     Message msg;
@@ -58,27 +59,60 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
         std::cerr << "Connect error to parameter server (MPINET)!\n";
         exit(1);
     }
+    m_use_ps = true;
     //std::cout << "rank: " << m_rank << ", " << msg.data_buffer() << std::endl;
+#else
+    m_context = zmq_ctx_new();
+    m_socket = zmq_socket(m_context, ZMQ_REQ);
+    zmq_connect(m_socket, sname.c_str());
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // test connection
+    Message msg;
+    std::string strmsg;
+
+    msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
+    msg.set_msg("Hello!");
+
+    ZMQNet::send(m_socket, msg.data());
+
+    msg.clear();
+    ZMQNet::recv(m_socket, strmsg);
+    msg.set_msg(strmsg, true);
+
+    if (msg.data_buffer().compare("Hello!>I am ZMQNET!") != 0)
+    {
+        std::cerr << "Connect error to parameter server (ZMQNET)!\n";
+        exit(1);
+    } 
+    m_use_ps = true;      
 #endif
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void ADOutlier::disconnect_ps() {
     if (!m_use_ps) return;
-#ifdef _USE_MPINET
+
     MPI_Barrier(MPI_COMM_WORLD);
     if (m_rank == 0)
     {
+#ifdef _USE_MPINET
         Message msg;
         msg.set_info(m_rank, m_srank, MessageType::REQ_QUIT, MessageKind::CMD);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_QUIT, msg.count());
+#else
+        zmq_send(m_socket, nullptr, 0, 0);
+#endif
     }
     MPI_Barrier(MPI_COMM_WORLD);
+
+#ifdef _USE_MPINET
     MPI_Comm_disconnect(&m_comm);
-    m_use_ps = false;
+#else
+    zmq_close(m_socket);
+    zmq_ctx_term(m_context);
 #endif
+    m_use_ps = false;
 }
 
 void ADOutlier::sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m)
@@ -113,14 +147,13 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
         g.update(l);
     }
     else {
-#ifdef _USE_MPINET
         Message msg;
+        std::string strmsg;
+
         msg.set_info(m_rank, m_srank, MessageType::REQ_ADD, MessageKind::SSTD);
         msg.set_msg(l.serialize(), false);
-
+#ifdef _USE_MPINET
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_ADD, msg.count());
-
-        //msg.show(std::cout);
 
         MPI_Status status;
         int count;
@@ -128,15 +161,15 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
         MPI_Get_count(&status, MPI_BYTE, &count);
 
         msg.clear();
-        msg.set_msg(
-            MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count), true
-        );
-        
-        //std::cout << "rank: " << m_rank << std::endl;
-        //msg.show(std::cout);
+        strmsg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
+#else
+        ZMQNet::send(m_socket, msg.data());
 
-        g.assign(msg.data_buffer());
+        msg.clear();
+        ZMQNet::recv(m_socket, strmsg);   
 #endif
+        msg.set_msg(strmsg , true);
+        g.assign(msg.data_buffer());
     }
 }
 

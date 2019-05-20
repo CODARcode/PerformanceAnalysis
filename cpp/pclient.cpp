@@ -1,12 +1,14 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
+
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
 #else
 #include "chimbuko/net/zmq_net.hpp"
-#endif
-#include <iostream>
 #include <mpi.h>
+#endif
+
+#include <iostream>
 #include <string.h>
 #include <random>
 
@@ -14,17 +16,17 @@ using namespace chimbuko;
 
 int main (int argc, char** argv)
 {
-    int size, rank, count;
+    int size, rank;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 #ifdef _USE_MPINET
+    int count;
     MPI_Comm server;
     MPI_Status status;
     char port_name[MPI_MAX_PORT_NAME];
-
     MPI_Lookup_name("MPINET", MPI_INFO_NULL, port_name);
     //strcpy(port_name, argv[1]);
     //std::cout << "[CLIENT] port name: " << port_name << std::endl;
@@ -40,7 +42,12 @@ int main (int argc, char** argv)
     MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &server);
     MPI_Barrier(MPI_COMM_WORLD);
 #else
-// zmq code here
+    void* context;
+    void* socket;
+    context = zmq_ctx_new();
+    socket = zmq_socket(context, ZMQ_REQ);
+    //zmq_connect(socket, "tcp://localhost:5559");
+    zmq_connect(socket, argv[1]);
 #endif
     const int n_functions = 4;
     const double mean[n_functions] = {1.0, 10.0, 100.0, 1000.0};
@@ -67,29 +74,32 @@ int main (int argc, char** argv)
         }
         // set message
         msg.clear();
-        msg.set_info(rank, 0, (int)MessageType::REQ_ADD, (int)MessageKind::SSTD, iFrame);
+        msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::SSTD, iFrame);
         msg.set_msg(l_param.serialize(), false);
 
 #ifdef _USE_MPINET
         // send to server
-        std::cout << "send message to server\n";
         MPINet::send(server, msg.data(), 0, MessageType::REQ_ADD, msg.count());
         
-	// receive reply
+    	// receive reply
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
         //MPI_Probe(0, MessageType::REP_ADD, server, &status);
         std::cout << "receive reply from server\n";
-	MPI_Get_count(&status, MPI_BYTE, &count);
+    	MPI_Get_count(&status, MPI_BYTE, &count);
         msg.clear();
         msg.set_msg(
             MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count),
             true
         );
-        //std::cout << status.MPI_SOURCE << std::endl;
 #else
-// zmq code here
+        ZMQNet::send(socket, msg.data());
+
+        msg.clear();
+        std::string strmsg;
+        ZMQNet::recv(socket, strmsg);
+        msg.set_msg(strmsg, true);
 #endif
-        g_param.assign(msg.data_buffer());
+        //g_param.assign(msg.data_buffer());
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -116,14 +126,15 @@ int main (int argc, char** argv)
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(server, msg.data(), 0, MessageType::REQ_QUIT, msg.count());
 #else
-// zmq code here
+        zmq_send(socket, nullptr, 0, 0);
 #endif
     }
 
 #ifdef _USE_MPINET
     MPI_Comm_disconnect(&server);
 #else
-// zmq code here
+    zmq_close(socket);
+    zmq_ctx_term(context);
 #endif
 
     MPI_Finalize();

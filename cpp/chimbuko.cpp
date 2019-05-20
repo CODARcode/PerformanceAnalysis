@@ -27,13 +27,20 @@ int main(int argc, char ** argv)
     std::string data_dir = argv[2]; // *.bp location
     std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     std::string output_dir = argv[3]; //output directory
+#ifdef _USE_ZMQNET
+    std::string addr = argv[4]; // (e.g. "tcp://hostname:5559")
+#endif
 
     std::cout << "\n" 
               << "rank       : " << world_rank << "\n"
               << "Engine     : " << engineType << "\n"
               << "BP in dir  : " << data_dir << "\n"
               << "BP file    : " << inputFile << "\n"
-              << "BP out dir : " << output_dir << std::endl;
+              << "BP out dir : " << output_dir 
+#ifdef _USE_ZMQNET
+              << "\nPS Addr    : " << addr
+#endif
+              << std::endl;
 
     double sigma = 6.0;
 
@@ -69,7 +76,11 @@ int main(int argc, char ** argv)
 
     outlier->linkExecDataMap(event->getExecDataMap());
     outlier->set_sigma(sigma);
+#ifdef _USE_MPINET
     outlier->connect_ps(world_rank);
+#else
+    outlier->connect_ps(world_rank, 0, addr);
+#endif
 
     io->setDispatcher();
     io->setHeader({{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});

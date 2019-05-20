@@ -17,16 +17,13 @@ NetInterface& DefaultNetInterface::get()
 #endif
 }
 
-NetInterface::NetInterface() : m_nt(0), m_tpool(nullptr), m_param(nullptr), m_stop(false)
+NetInterface::NetInterface() : m_nt(0), m_param(nullptr), m_stop(false)
 {
 }
 
 NetInterface::~NetInterface()
 {
-    if (m_tpool)
-    {
-        delete m_tpool;
-    }
+
 }
 
 void NetInterface::set_parameter(ParamInterface* param)
@@ -35,11 +32,4 @@ void NetInterface::set_parameter(ParamInterface* param)
     m_param = param;
 }
 
-void NetInterface::init_thread_pool(int nt)
-{
-    if (m_tpool == nullptr && nt > 0)
-    {
-        m_nt = nt;
-        m_tpool = new threadPool(nt);
-    }
-}
+
