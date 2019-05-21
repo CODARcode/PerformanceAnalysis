@@ -34,6 +34,7 @@ int main(int argc, char ** argv)
         std::string addr = argv[4]; // (e.g. "tcp://hostname:5559")
 #endif
 
+        if (world_rank == 0) {
         std::cout << "\n" 
                 << "rank       : " << world_rank << "\n"
                 << "Engine     : " << engineType << "\n"
@@ -44,6 +45,7 @@ int main(int argc, char ** argv)
                 << "\nPS Addr    : " << addr
 #endif
                 << std::endl;
+        }
 
         double sigma = 6.0;
 
