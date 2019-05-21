@@ -13,7 +13,9 @@ public:
     ~Event_t() {}
 
     // common for all kinds of events
-    bool valid() const { return m_data != nullptr; }
+    bool valid() const { 
+        return m_data != nullptr; 
+    }
     std::string id() const { return m_id; }
     size_t idx() const { return m_idx; }
     unsigned long pid() const { return m_data[IDX_P]; }
@@ -53,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, const Event_t& ev);
 class CommData_t {
 public:
     CommData_t();
-    CommData_t(Event_t& ev, std::string commType);
+    CommData_t(const Event_t& ev, std::string commType);
     ~CommData_t() {};
 
     std::string type() const { return m_commType; }
@@ -84,7 +86,7 @@ class ExecData_t {
 
 public:
     ExecData_t();
-    ExecData_t(Event_t& ev);
+    ExecData_t(const Event_t& ev);
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
@@ -105,7 +107,7 @@ public:
     void set_parent(std::string parent) { m_parent = parent; }
     void set_funcname(std::string funcname) { m_funcname = funcname; }
 
-    bool update_exit(Event_t& ev);
+    bool update_exit(const Event_t& ev);
     void add_child(std::string child);
     bool add_message(const CommData_t& comm);
 

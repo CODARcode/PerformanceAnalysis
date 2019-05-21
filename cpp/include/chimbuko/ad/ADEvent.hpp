@@ -43,9 +43,9 @@ public:
 
     void clear();
 
-    EventError addEvent(Event_t& event);
-    EventError addFunc(Event_t& event);
-    EventError addComm(Event_t& event);
+    EventError addEvent(const Event_t& event);
+    EventError addFunc(const Event_t& event);
+    EventError addComm(const Event_t& event);
 
     CallListMap_p_t* trimCallList();
     void show_status(bool verbose=false) const;

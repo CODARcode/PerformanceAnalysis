@@ -12,7 +12,7 @@ LIB_DIR ?= lib
 # for MPINet, need the latest OpenMPI (>= 3.x)
 #CXX := /opt/openmpi-4.0.1/bin/mpic++
 CXX := mpic++
-CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 
+CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 
 ADIOS = /opt/adios2

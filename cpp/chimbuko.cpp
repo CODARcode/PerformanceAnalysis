@@ -131,14 +131,20 @@ int main(int argc, char ** argv)
             }
 
             while (!pq.empty()) {
-                Event_t ev = pq.top();
-                pq.pop();
-
+                const Event_t& ev = pq.top();
+                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
+                {
+                    //std::cout << world_rank << "::::::" << ev << std::endl;
+                    pq.pop();
+                    continue;
+                }
                 if (event->addEvent(ev) == EventError::CallStackViolation)
                 {
                     std::cerr << "\n***** Call stack violation *****\n";
                     exit(EXIT_FAILURE);
                 }
+                pq.pop();
+
 
                 switch (ev.type())
                 {

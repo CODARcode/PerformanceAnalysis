@@ -10,7 +10,7 @@ ExecData_t::ExecData_t()
 {
 
 }
-ExecData_t::ExecData_t(Event_t& ev) 
+ExecData_t::ExecData_t(const Event_t& ev) 
     : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
 {
     m_id = ev.id();
@@ -25,7 +25,7 @@ ExecData_t::~ExecData_t() {
 
 }
 
-bool ExecData_t::update_exit(Event_t& ev)
+bool ExecData_t::update_exit(const Event_t& ev)
 {
     if (m_fid != ev.fid() || m_entry > ev.ts())
         return false;
@@ -266,7 +266,7 @@ CommData_t::CommData_t() : m_is_binary(false)
 
 }
 
-CommData_t::CommData_t(Event_t& ev, std::string commType) 
+CommData_t::CommData_t(const Event_t& ev, std::string commType) 
 : m_commType(commType), m_is_binary(false) 
 {
     m_pid = ev.pid();

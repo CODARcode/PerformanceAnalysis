@@ -102,6 +102,7 @@ ParserError ADParser::fetchFuncData() {
     size_t nelements;
 
     m_timer_event_count = 0;
+    //m_event_timestamps.clear();
 
     in_timer_event_count = m_io.InquireVariable<size_t>("timer_event_count");
     in_event_timestamps = m_io.InquireVariable<unsigned long>("event_timestamps");
@@ -111,6 +112,7 @@ ParserError ADParser::fetchFuncData() {
         m_reader.Get<size_t>(in_timer_event_count, &m_timer_event_count, adios2::Mode::Sync);
 
         nelements = m_timer_event_count * FUNC_EVENT_DIM; 
+        //m_event_timestamps.resize(nelements);
         if (nelements > m_event_timestamps.size())
             m_event_timestamps.resize(nelements);
 
@@ -127,6 +129,7 @@ ParserError ADParser::fetchCommData() {
     size_t nelements;
 
     m_comm_count = 0;
+    //m_comm_timestamps.clear();
 
     in_comm_count = m_io.InquireVariable<size_t>("comm_count");
     in_comm_timestamps = m_io.InquireVariable<unsigned long>("comm_timestamps");
@@ -136,6 +139,7 @@ ParserError ADParser::fetchCommData() {
         m_reader.Get<size_t>(in_comm_count, &m_comm_count, adios2::Mode::Sync);
 
         nelements = m_comm_count * COMM_EVENT_DIM;
+        //m_comm_timestamps.resize(nelements);
         if (nelements > m_comm_timestamps.size())
             m_comm_timestamps.resize(nelements);
 
