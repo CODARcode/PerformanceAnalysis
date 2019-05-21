@@ -25,6 +25,7 @@ int main(int argc, char ** argv)
     {
         // -----------------------------------------------------------------------
         // parser command line arguments
+        // -----------------------------------------------------------------------
         std::string engineType = argv[1]; // BPFile or SST
         std::string data_dir = argv[2]; // *.bp location
         std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
@@ -48,6 +49,7 @@ int main(int argc, char ** argv)
 
         // -----------------------------------------------------------------------
         // AD module variables
+        // -----------------------------------------------------------------------
         ADParser * parser;
         ADEvent * event;
         ADOutlierSSTD * outlier;
@@ -60,6 +62,7 @@ int main(int argc, char ** argv)
 
         // -----------------------------------------------------------------------
         // Measurement variables
+        // -----------------------------------------------------------------------
         unsigned long total_frames = 0, frames = 0;
         unsigned long total_n_outliers = 0, n_outliers = 0;
         unsigned long total_processing_time = 0, processing_time = 0;
@@ -68,14 +71,24 @@ int main(int argc, char ** argv)
 
         // -----------------------------------------------------------------------
         // Init. AD module
-        parser = new ADParser(data_dir + "/" + inputFile, engineType);
-        event = new ADEvent();
-        outlier = new ADOutlierSSTD();
+        // First, init io to make sure file (or connection) handler
+        // -----------------------------------------------------------------------
         io = new ADio();
+        io->setDispatcher();
+        io->setHeader({{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
+        // io->open_curl(); // for VIS module
+        io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
+        // Second, init parser because it will hold shared memory with event and outlier object
+        // also, process will be blocked at this line until it finds writer (in SST mode)
+        parser = new ADParser(data_dir + "/" + inputFile, engineType);
+
+        // Thrid, init event and outlier objects
+        event = new ADEvent();
         event->linkFuncMap(parser->getFuncMap());
         event->linkEventType(parser->getEventType());
 
+        outlier = new ADOutlierSSTD();
         outlier->linkExecDataMap(event->getExecDataMap());
         outlier->set_sigma(sigma);
 #ifdef _USE_MPINET
@@ -84,15 +97,9 @@ int main(int argc, char ** argv)
         outlier->connect_ps(world_rank, 0, addr);
 #endif
 
-        io->setDispatcher();
-        io->setHeader({{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
-
-        // io->open_curl(); // for VIS module
-        io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
-
-
         // -----------------------------------------------------------------------
         // Start analysis
+        // -----------------------------------------------------------------------
         std::cout << "rank: " << world_rank << " analysis start " << (outlier->use_ps() ? "with": "without") << " pserver" << std::endl;
         t1 = high_resolution_clock::now();
         while ( parser->getStatus() )
@@ -132,6 +139,11 @@ int main(int argc, char ** argv)
 
             while (!pq.empty()) {
                 const Event_t& ev = pq.top();
+                // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
+                // very large number for pid, rid and tid. This issue is also observed in python version.
+                // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
+                // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
+                // adios team later.
                 if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
                 {
                     //std::cout << world_rank << "::::::" << ev << std::endl;
@@ -183,6 +195,7 @@ int main(int argc, char ** argv)
 
         // -----------------------------------------------------------------------
         // Average analysis time and total number of outliers
+        // -----------------------------------------------------------------------
         MPI_Barrier(MPI_COMM_WORLD);
         processing_time = duration_cast<milliseconds>(t2 - t1).count();
 
@@ -210,6 +223,7 @@ int main(int argc, char ** argv)
 
         // -----------------------------------------------------------------------
         // Finalize
+        // -----------------------------------------------------------------------
         outlier->disconnect_ps();
 
         delete parser;
@@ -232,7 +246,6 @@ int main(int argc, char ** argv)
         std::cout << "Exception caught\n";
         std::cout << e.what() << std::endl;
     }
-
 
     MPI_Finalize();
     return 0;
