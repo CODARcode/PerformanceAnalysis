@@ -47,7 +47,7 @@ void ADEvent::createCallList(unsigned long pid, unsigned long rid, unsigned long
         m_callList[pid][rid][tid] = CallList_t();
 }
 
-EventError ADEvent::addEvent(Event_t event) {
+EventError ADEvent::addEvent(Event_t& event) {
     switch (event.type())
     {
     case EventDataType::FUNC: return addFunc(event);
@@ -56,7 +56,7 @@ EventError ADEvent::addEvent(Event_t event) {
     }
 }
 
-EventError ADEvent::addFunc(Event_t event) {
+EventError ADEvent::addFunc(Event_t& event) {
     if (m_eventType == nullptr) {
         //std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
@@ -131,7 +131,7 @@ EventError ADEvent::addFunc(Event_t event) {
     return EventError::UnknownEvent;
 }
 
-EventError ADEvent::addComm(Event_t event) {
+EventError ADEvent::addComm(Event_t& event) {
     if (m_eventType == nullptr)
         return EventError::UnknownEvent;
 

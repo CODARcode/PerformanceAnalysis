@@ -47,7 +47,7 @@ void doWork(void* context, ParamInterface* param)
         msg_reply = msg.createReply();
         if (msg.kind() == MessageKind::SSTD)
         {
-            SstdParam* p = (SstdParam*)param;
+            SstdParam* p = dynamic_cast<SstdParam*>(param);
             if (msg.type() == MessageType::REQ_ADD) {
                 //std::cout << "REQ_ADD" << std::endl;
                 msg_reply.set_msg(p->update(msg.data_buffer(), true), false);
