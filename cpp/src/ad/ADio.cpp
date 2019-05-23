@@ -182,7 +182,7 @@ public:
             fHead << m_io.getHeader();
 
             ss_data.seekg(0, std::ios::end);
-            m_io.checkFileLimit(fData, ss_data.tellg());
+            //m_io.checkFileLimit(fData, ss_data.tellg());
 
             long long seekpos = fData.tellp();
             long long offset = m_step * FileHeader_t::SeekPos_t::SIZE;
@@ -196,13 +196,19 @@ public:
             // std::cout << "step: " << m_step << ", "
             //         << "n_exec: " << n_exec << ", "
             //         << "fid: " << fid << ", "
-            //         << "pos: " << seekpos << std::endl;
+            //         << "pos: " << seekpos << ","
+            //         << "good: " << fData.good() << ", "
+            //         << "bad: " << fData.bad() << ", "
+            //         << "fail: " << fData.fail() << ", "
+            //         << "eof: " << fData.eof()
+            //         << std::endl;
 
-            ss_data.seekg(0);
-            fData << ss_data.rdbuf();
-
+            if (n_exec > 0) {
+                ss_data.seekg(0);
+                fData << ss_data.rdbuf();
+                fData.flush();
+            }
             fHead.flush();
-            fData.flush();
         }
 
         if (m_io.getCURL()) {
