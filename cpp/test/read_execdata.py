@@ -22,6 +22,17 @@ class CommData(object):
     def __str__(self):
         return "{}: {}: {}: {}".format(self.m_ts, self.m_commType, self.m_src, self.m_tar)
 
+    def to_dict(self):
+        return {
+            "event-type": self.m_commType,
+            "source-node-id": int(self.m_src),
+            "destination-node-id": int(self.m_tar),
+            "thread-id": int(self.m_tid),
+            "message_size": str(self.m_bytes),
+            "message_tag": str(self.m_tag),
+            "time": str(self.m_ts)
+        }
+
     @staticmethod
     def fromBinary(stream):
         comm = CommData()
@@ -66,17 +77,30 @@ class ExecData(object):
 
     def to_dict(self):
         return {
-            'id': self.m_id,
-            'funcname': self.m_funcname,
-            'pid': self.m_pid,
-            'tid': self.m_tid,
-            'rid': self.m_rid,
-            'fid': self.m_fid,
-            'entry': self.m_entry,
-            'exit': self.m_exit,
-            'runtime': self.m_runtime,
-            'label': self.m_label
+            "prog names": str(self.m_pid),
+            "name": self.m_funcname,
+            "comm ranks": int(self.m_rid),
+            "threads": int(self.m_tid),
+            "findex": str(self.m_id),
+            "anomaly_score": str(self.m_label),
+            "parent": str(self.m_parent),
+            "children": [str(c) for c in self.m_children],
+            "entry": str(self.m_entry),
+            "exit": str(self.m_exit),
+            "messages": [msg.to_dict() for msg in self.m_messages]
         }
+        # return {
+        #     'id': self.m_id,
+        #     'funcname': self.m_funcname,
+        #     'pid': self.m_pid,
+        #     'tid': self.m_tid,
+        #     'rid': self.m_rid,
+        #     'fid': self.m_fid,
+        #     'entry': self.m_entry,
+        #     'exit': self.m_exit,
+        #     'runtime': self.m_runtime,
+        #     'label': self.m_label
+        # }
 
     def getNumChildren(self):
         return len(self.m_children)
@@ -244,8 +268,10 @@ class ExecDataParser(object):
         return self.body.getFrame(seekpos.pos, seekpos.n_exec)
 
 if __name__ == "__main__":
-    parser = ExecDataParser()
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
 
+    parser = ExecDataParser()
     parser.load('./execdata', 'execdata', 9)
 
     for step in range(parser.getNumFrames()):
@@ -253,3 +279,4 @@ if __name__ == "__main__":
         for d in frame:
             if d.getNumMessage():
                 print(d)
+                pp.pprint(d.to_dict())
