@@ -58,15 +58,25 @@ EventError ADEvent::addEvent(const Event_t& event) {
 
 EventError ADEvent::addFunc(const Event_t& event) {
     if (m_eventType == nullptr) {
-        //std::cerr << "Uninitialized eventType\n";
+        std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
     }
 
     std::string eventType;
     int eid = static_cast<int>(event.eid());
     if (m_eventType->count(eid) == 0) {
-        //std::cerr << "Unknown event in eventType: " << eid << std::endl;
+        std::cerr << "Unknown event in eventType: " << eid << std::endl;
         return EventError::UnknownEvent;
+    }
+
+    if (m_funcMap->count(event.fid()) == 0) {
+        std::cerr << "Unknown function event\n";
+        return EventError::UnknownFunc;
+    }
+
+    if ( m_funcMap->find(event.fid())->second.find("adios2") != std::string::npos ) {
+        std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
+        return EventError::OK;
     }
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
