@@ -100,20 +100,20 @@ EventError ADEvent::addFunc(const Event_t& event) {
         }
 
         CallListIterator_t& it = cs.top();
-        cs.pop();
-
         if (!it->update_exit(event)) {
             std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
             std::cerr << event << ": "
                       << m_eventType->find(event.eid())->second << ": "
                       << m_funcMap->find(event.fid())->second << std::endl;
             std::cerr << *it << std::endl;
-            while (!cs.empty()) {
-                std::cerr << *cs.top() << std::endl;
-                cs.pop();
-            }            
+            // while (!cs.empty()) {
+            //     std::cerr << *cs.top() << std::endl;
+            //     cs.pop();
+            // }            
             return EventError::CallStackViolation;
         }
+        cs.pop();
+
 
         CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
         while (!comm.empty()) {

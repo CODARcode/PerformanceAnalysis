@@ -32,7 +32,7 @@ ADParser::~ADParser() {
 int ADParser::beginStep() {
     if (m_opened)
     {
-        const int max_tries = 10;
+        const int max_tries = 100;
         int n_tries = 0;
         adios2::StepStatus status;
         while (n_tries < max_tries)
@@ -40,7 +40,7 @@ int ADParser::beginStep() {
             status = m_reader.BeginStep(adios2::StepMode::NextAvailable, 10.0f);
             if (status == adios2::StepStatus::NotReady)
             {
-                std::this_thread::sleep_for(std::chrono::microseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 n_tries++;
                 continue;
             }

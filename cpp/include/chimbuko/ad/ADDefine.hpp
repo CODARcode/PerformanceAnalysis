@@ -1,20 +1,20 @@
 #pragma once
 #include <climits>
 
-#define IDX_P 0
-#define IDX_R 1
-#define IDX_T 2
-#define IDX_E 3
+#define IDX_P 0    // program index
+#define IDX_R 1    // rank index
+#define IDX_T 2    // thread index
+#define IDX_E 3    // event index (entry/exit/send/recv)
 
-#define FUNC_EVENT_DIM 6
-#define FUNC_IDX_F 4
-#define FUNC_IDX_TS 5
+#define FUNC_EVENT_DIM 6  // function event vector dimension
+#define FUNC_IDX_F 4      // function index 
+#define FUNC_IDX_TS 5     // timestamp index
 
-#define COMM_EVENT_DIM 8
-#define COMM_IDX_TAG     4
-#define COMM_IDX_PARTNER 5
-#define COMM_IDX_BYTES   6 // size in bytes
-#define COMM_IDX_TS      7
+#define COMM_EVENT_DIM 8    // communication event vector dimension
+#define COMM_IDX_TAG     4  // communication tag index
+#define COMM_IDX_PARTNER 5  // partner
+#define COMM_IDX_BYTES   6  // size in bytes
+#define COMM_IDX_TS      7  // timestamp
 
 #define MAX_RUNTIME ULONG_MAX
 

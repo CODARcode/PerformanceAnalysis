@@ -29,3 +29,6 @@ std::string generate_event_id(int rank, int step, size_t idx) {
     return std::to_string(rank) + "_" + std::to_string(step) + "_" + std::to_string(idx);
 }
 
+std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid) {
+    return generate_event_id(rank, step, idx) + "_" + std::to_string(eid);
+}

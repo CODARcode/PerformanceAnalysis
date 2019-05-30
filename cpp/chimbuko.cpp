@@ -58,9 +58,9 @@ int main(int argc, char ** argv)
         ADio * io;
 
         int step = 0; 
-        size_t idx_funcData = 0, idx_commData = 0, i = 0;
+        size_t idx_funcData = 0, idx_commData = 0;
         const unsigned long *funcData = nullptr, *commData = nullptr;
-        PQUEUE pq;
+        //PQUEUE pq;
 
         // -----------------------------------------------------------------------
         // Measurement variables
@@ -80,8 +80,10 @@ int main(int argc, char ** argv)
         io = new ADio();
         io->setDispatcher();
         io->setHeader({{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
+        // Note: currently, dump to disk is probablimatic on large scale. Considering overall chimuko architecture
+        //       we want to go with data stream! For the test purpose, we don't dump or stream any data but just delete them.
         // io->open_curl(); // for VIS module
-        io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
+        //io->open(output_dir + "/execdata." + std::to_string(world_rank), IOOpenMode::Write); // for file output
 
         // Second, init parser because it will hold shared memory with event and outlier object
         // also, process will be blocked at this line until it finds writer (in SST mode)
@@ -104,13 +106,20 @@ int main(int argc, char ** argv)
         // -----------------------------------------------------------------------
         // Start analysis
         // -----------------------------------------------------------------------
-        std::cout << "rank: " << world_rank << " analysis start " << (outlier->use_ps() ? "with": "without") << " pserver" << std::endl;
+        if (world_rank == 0) {
+            std::cout << "rank: " << world_rank 
+                    << " analysis start " << (outlier->use_ps() ? "with": "without") 
+                    << " pserver" << std::endl;
+        }
         t1 = high_resolution_clock::now();
         while ( parser->getStatus() )
         {
             parser->beginStep();
             if (!parser->getStatus())
-                break;
+            {
+                // No more steps available.
+                break;                
+            }
 
             step = parser->getCurrentStep();
             parser->update_attributes();
@@ -123,70 +132,74 @@ int main(int argc, char ** argv)
             idx_funcData = idx_commData = 0;
             funcData = nullptr;
             commData = nullptr;
-            if (!pq.empty()) {
-                std::cerr << "\n***** None empty priority queue!*****\n";
-                exit(EXIT_FAILURE);
-            }        
 
-            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
-            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
-            for (i = 0; i < 10; i++) {
-                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                    pq.push(Event_t(
-                        funcData, EventDataType::FUNC, idx_funcData, 
-                        generate_event_id(world_rank, step, idx_funcData))
-                    );
-                    idx_funcData++;
+            funcData = parser->getFuncData(idx_funcData);
+            commData = parser->getCommData(idx_commData);
+            while (funcData != nullptr || commData != nullptr)
+            {
+                // Determine event to handle
+                // : if both, funcData and commData, are available, select one that occurs earlier.
+                // : priority is on funcData because communication might happen within a function.
+                const unsigned long* data = nullptr;
+                bool is_func_event = true;
+                if ( (funcData != nullptr && commData == nullptr) ) {
+                    data = funcData;
+                    is_func_event = true;
                 }
-                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                    idx_commData++;
+                else if (funcData == nullptr && commData != nullptr) {
+                    data = commData;
+                    is_func_event = false;
                 }
-            }
+                else if (funcData[FUNC_IDX_TS] <= commData[COMM_IDX_TS]){
+                    data = funcData;
+                    is_func_event = true;                    
+                }
+                else {
+                    data = commData;
+                    is_func_event = false;
+                }
 
-            while (!pq.empty()) {
-                const Event_t& ev = pq.top();
+                // Create event
+                const Event_t ev = Event_t(
+                    data, 
+                    (is_func_event ? EventDataType::FUNC: EventDataType::COMM),
+                    (is_func_event ? idx_funcData-1: idx_commData-1),
+                    (
+                        is_func_event ? 
+                            generate_event_id(world_rank, step, idx_funcData-1, data[FUNC_IDX_F]):
+                            generate_event_id(world_rank, step, idx_commData-1)
+                    )
+                );
+                
+                // Validate the event
                 // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
-                // very large number for pid, rid and tid. This issue is also observed in python version.
+                // very large number for pid, rid and tid. This issue was also observed in python version.
                 // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
                 // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
-                // adios team later.
-                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
+                // adios team later.                
+                if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
                 {
-                    //std::cout << world_rank << "::::::" << ev << std::endl;
-                    pq.pop();
-                    continue;
+                    ; // do nothing
                 }
-                if (event->addEvent(ev) == EventError::CallStackViolation)
+                else 
                 {
-                    std::cerr << "\n***** Call stack violation *****\n";
-                    exit(EXIT_FAILURE);
-                }
-                pq.pop();
-
-
-                switch (ev.type())
-                {
-                case EventDataType::FUNC:
-                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                        pq.push(Event_t(
-                            funcData, EventDataType::FUNC, idx_funcData, 
-                            generate_event_id(world_rank, step, idx_funcData))
-                        );
-                        idx_funcData++;
+                    if (event->addEvent(ev) == EventError::CallStackViolation)
+                    {
+                        std::cerr << "\n***** Call stack violation *****\n";
+                        // ignore this particular event.
+                        // it will possibly keep rasing call stack violation error.
                     }
-                    break;
-                case EventDataType::COMM:
-                    // event->addFunc(ev, generate_event_id(world_rank, step))
-                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                        idx_commData++;
-                    }
-                    break;
-                default:
-                    break;
                 }
-            }        
+                
+                // go next event
+                if (is_func_event) {
+                    idx_funcData++;
+                    funcData = parser->getFuncData(idx_funcData);
+                } else {
+                    idx_commData++;
+                    commData = parser->getCommData(idx_commData);
+                }
+            }
 
             //outlier->run();
             n_outliers += outlier->run();
@@ -198,7 +211,10 @@ int main(int argc, char ** argv)
             io->write(event->trimCallList(), step);
         }
         t2 = high_resolution_clock::now();
-        std::cout << "rank: " << world_rank << " analysis done!\n";
+        if (world_rank == 0) {
+            std::cout << "rank: " << world_rank << " analysis done!\n";
+            event->show_status(true);
+        }
 
         // -----------------------------------------------------------------------
         // Average analysis time and total number of outliers
@@ -269,3 +285,76 @@ int main(int argc, char ** argv)
     MPI_Finalize();
     return 0;
 }
+
+/*
+           if (!pq.empty()) {
+                std::cerr << "\n***** None empty priority queue!*****\n";
+                exit(EXIT_FAILURE);
+            }        
+
+            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
+            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
+            for (i = 0; i < 10; i++) {
+                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                    pq.push(Event_t(
+                        funcData, EventDataType::FUNC, idx_funcData, 
+                        generate_event_id(world_rank, step, idx_funcData))
+                    );
+                    idx_funcData++;
+                }
+                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                    idx_commData++;
+                }
+            }
+
+            // std::cout << "rank: " << world_rank << ", "
+            //         << "Num. func events: " << parser->getNumFuncData() << ", "
+            //         << "Num. comm events: " << parser->getNumCommData() << ", "
+            //         << "Queue: " << pq.size() << std::endl;
+
+            while (!pq.empty()) {
+                const Event_t& ev = pq.top();
+                // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
+                // very large number for pid, rid and tid. This issue is also observed in python version.
+                // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
+                // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
+                // adios team later.
+                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
+                {
+                    //std::cout << world_rank << "::::::" << ev << std::endl;
+                    pq.pop();
+                    continue;
+                }
+                if (event->addEvent(ev) == EventError::CallStackViolation)
+                {
+                    std::cerr << "\n***** Call stack violation *****\n";
+                    exit(EXIT_FAILURE);
+                }
+                pq.pop();
+
+
+                switch (ev.type())
+                {
+                case EventDataType::FUNC:
+                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                        pq.push(Event_t(
+                            funcData, EventDataType::FUNC, idx_funcData, 
+                            generate_event_id(world_rank, step, idx_funcData))
+                        );
+                        idx_funcData++;
+                    }
+                    break;
+                case EventDataType::COMM:
+                    // event->addFunc(ev, generate_event_id(world_rank, step))
+                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                        idx_commData++;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }   
+
+*/

@@ -86,7 +86,7 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
     } 
     m_use_ps = true;      
 #endif
-    MPI_Barrier(MPI_COMM_WORLD);
+    //MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void ADOutlier::disconnect_ps() {
