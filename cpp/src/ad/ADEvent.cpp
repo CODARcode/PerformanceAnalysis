@@ -74,10 +74,10 @@ EventError ADEvent::addFunc(const Event_t& event) {
         return EventError::UnknownFunc;
     }
 
-    if ( m_funcMap->find(event.fid())->second.find("adios2") != std::string::npos ) {
-        std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
-        return EventError::OK;
-    }
+    //if ( m_funcMap->find(event.fid())->second.find("adios2") != std::string::npos ) {
+    //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
+    //    return EventError::OK;
+    //}
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
     this->createCallList(event.pid(), event.rid(), event.tid());
@@ -106,6 +106,9 @@ EventError ADEvent::addFunc(const Event_t& event) {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size() == 0) {
             std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
+            std::cerr << event << ": "
+		      << m_eventType->find(event.eid())->second << ": "
+		      << m_funcMap->find(event.fid())->second << std::endl;
             return EventError::CallStackViolation;
         }
 
