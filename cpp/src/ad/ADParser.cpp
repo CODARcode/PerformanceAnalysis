@@ -1,6 +1,7 @@
 #include "chimbuko/ad/ADParser.hpp"
 #include <thread>
 #include <chrono>
+#include <iostream>
 
 using namespace chimbuko;
 
@@ -29,7 +30,7 @@ ADParser::~ADParser() {
     }
 }
 
-int ADParser::beginStep() {
+int ADParser::beginStep(bool verbose) {
     if (m_opened)
     {
         const int max_tries = 100;
@@ -55,6 +56,11 @@ int ADParser::beginStep() {
                 m_current_step = -1;
                 break;
             }
+        }
+
+        if (verbose)
+        {
+            std::cout << m_current_step << ": after " << n_tries << std::endl;
         }
     }
     return m_current_step;

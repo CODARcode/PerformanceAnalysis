@@ -23,7 +23,7 @@ public:
     bool getStatus() const { return m_status; }
     int getCurrentStep() const { return m_current_step; }
 
-    int beginStep();
+    int beginStep(bool verbose=false);
     void endStep();
 
     void update_attributes();

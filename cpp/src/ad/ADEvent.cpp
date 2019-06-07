@@ -58,19 +58,19 @@ EventError ADEvent::addEvent(const Event_t& event) {
 
 EventError ADEvent::addFunc(const Event_t& event) {
     if (m_eventType == nullptr) {
-        std::cerr << "Uninitialized eventType\n";
+        //std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
     }
 
     std::string eventType;
     int eid = static_cast<int>(event.eid());
     if (m_eventType->count(eid) == 0) {
-        std::cerr << "Unknown event in eventType: " << eid << std::endl;
+        //std::cerr << "Unknown event in eventType: " << eid << std::endl;
         return EventError::UnknownEvent;
     }
 
     if (m_funcMap->count(event.fid()) == 0) {
-        std::cerr << "Unknown function event\n";
+        //std::cerr << "Unknown function event\n";
         return EventError::UnknownFunc;
     }
 
@@ -105,20 +105,20 @@ EventError ADEvent::addFunc(const Event_t& event) {
     {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size() == 0) {
-            std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
-            std::cerr << event << ": "
-		      << m_eventType->find(event.eid())->second << ": "
-		      << m_funcMap->find(event.fid())->second << std::endl;
+            //std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
+            //std::cerr << event << ": "
+	//	      << m_eventType->find(event.eid())->second << ": "
+	//	      << m_funcMap->find(event.fid())->second << std::endl;
             return EventError::CallStackViolation;
         }
 
         CallListIterator_t& it = cs.top();
         if (!it->update_exit(event)) {
-            std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
-            std::cerr << event << ": "
-                      << m_eventType->find(event.eid())->second << ": "
-                      << m_funcMap->find(event.fid())->second << std::endl;
-            std::cerr << *it << std::endl;
+            //std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
+            //std::cerr << event << ": "
+            //          << m_eventType->find(event.eid())->second << ": "
+            //          << m_funcMap->find(event.fid())->second << std::endl;
+            //std::cerr << *it << std::endl;
             // while (!cs.empty()) {
             //     std::cerr << *cs.top() << std::endl;
             //     cs.pop();
