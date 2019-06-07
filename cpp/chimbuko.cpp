@@ -30,8 +30,10 @@ int main(int argc, char ** argv)
         std::string data_dir = argv[2]; // *.bp location
         std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
         std::string output_dir = argv[3]; //output directory
+        std::string addr;
 #ifdef _USE_ZMQNET
-        std::string addr = argv[4]; // (e.g. "tcp://hostname:5559")
+        if (argc == 5)
+            addr = std::string(argv[4]); // (e.g. "tcp://hostname:5559")
 #endif
 
         if (world_rank == 0) {
@@ -97,11 +99,13 @@ int main(int argc, char ** argv)
         outlier = new ADOutlierSSTD();
         outlier->linkExecDataMap(event->getExecDataMap());
         outlier->set_sigma(sigma);
+        if (addr.length() > 0) {
 #ifdef _USE_MPINET
-        outlier->connect_ps(world_rank);
+            outlier->connect_ps(world_rank);
 #else
-        outlier->connect_ps(world_rank, 0, addr);
+            outlier->connect_ps(world_rank, 0, addr);
 #endif
+        }
 
         // -----------------------------------------------------------------------
         // Start analysis
@@ -163,11 +167,11 @@ int main(int argc, char ** argv)
                 const Event_t ev = Event_t(
                     data, 
                     (is_func_event ? EventDataType::FUNC: EventDataType::COMM),
-                    (is_func_event ? idx_funcData-1: idx_commData-1),
+                    (is_func_event ? idx_funcData: idx_commData),
                     (
                         is_func_event ? 
-                            generate_event_id(world_rank, step, idx_funcData-1, data[FUNC_IDX_F]):
-                            generate_event_id(world_rank, step, idx_commData-1)
+                            generate_event_id(world_rank, step, idx_funcData, data[FUNC_IDX_F]):
+                            generate_event_id(world_rank, step, idx_commData)
                     )
                 );
                 

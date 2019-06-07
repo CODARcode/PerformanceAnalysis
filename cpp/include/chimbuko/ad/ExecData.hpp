@@ -90,18 +90,23 @@ public:
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
+    std::string get_funcname() const { return m_funcname; }
+    unsigned long get_pid() const { return m_pid; }
+    unsigned long get_tid() const { return m_tid; }
+    unsigned long get_rid() const { return m_rid; }
+    unsigned long get_fid() const { return m_fid; }
     unsigned long get_entry() const { return m_entry; }
     unsigned long get_exit() const { return m_exit; }
     unsigned long get_runtime() const { return m_runtime; }
     int get_label() const { return m_label; }
+    std::string get_parent() const { return m_parent; }
+    const std::vector<std::string>& get_children() const { return m_children; }
+    const std::vector<CommData_t>& get_message() const { return m_messages; }
 
     size_t get_n_message() const { return m_messages.size(); }
     size_t get_n_children() const { return m_children.size(); }
 
     bool is_used() const { return m_used; }
-
-    const std::vector<std::string>& get_children() const { return m_children; }
-    const std::vector<CommData_t>& get_message() const { return m_messages; }
 
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
