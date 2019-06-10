@@ -102,7 +102,7 @@ do
   sed -i "s|NGPUS|$NGPUS|g" "${LSF}"
   sed -i "s|SINKMODE|$SINKMODE|g" "${LSF}"
   # submit the job
-  #bsub "${LSF}"
+  bsub "${LSF}"
   sleep 1 
   cd .. 
 done
