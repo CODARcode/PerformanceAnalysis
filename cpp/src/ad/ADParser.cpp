@@ -41,7 +41,7 @@ int ADParser::beginStep(bool verbose) {
         adios2::StepStatus status;
         while (n_tries < max_tries)
         {
-            status = m_reader.BeginStep(adios2::StepMode::NextAvailable, 10.0f);
+            status = m_reader.BeginStep(adios2::StepMode::Read, 10.0f);
             if (status == adios2::StepStatus::NotReady)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
