@@ -139,14 +139,14 @@ std::ostream& chimbuko::operator<<(std::ostream& os, ExecData_t& exec)
             << ", # messages: " << exec.m_messages.size();
 
         if (exec.m_children.size()) {
-            os << "\nChildren: ";
-            for (auto c: exec.m_children)
-                os << c << ", ";
+            //os << "\nChildren: ";
+            //for (auto c: exec.m_children)
+            //    os << c << ", ";
         }
         if (exec.m_messages.size()) {
-            os << "\nMessage: \n";
-            for (auto msg: exec.m_messages)
-                os << msg << std::endl;
+            //os << "\nMessage: \n";
+            //for (auto msg: exec.m_messages)
+            //    os << msg << std::endl;
         }
     }
     return os;

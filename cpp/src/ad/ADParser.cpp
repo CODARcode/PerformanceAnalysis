@@ -14,7 +14,10 @@ ADParser::ADParser(std::string inputFile, std::string engineType)
     // set io and engine
     m_io = m_ad.DeclareIO("tau-metrics");
     m_io.SetEngine(m_engineType);
-    //m_io.SetParameters();
+    m_io.SetParameters({
+        {"MarshalMethod", "BP"},
+        {"DataTransport", "RDMA"}
+    });
     
     // open file
     // for sst engine, is the adios2 internally blocked here until *.sst file is found?
@@ -33,7 +36,7 @@ ADParser::~ADParser() {
 int ADParser::beginStep(bool verbose) {
     if (m_opened)
     {
-        const int max_tries = 100;
+        const int max_tries = 10000;
         int n_tries = 0;
         adios2::StepStatus status;
         while (n_tries < max_tries)

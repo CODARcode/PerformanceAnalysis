@@ -74,10 +74,10 @@ EventError ADEvent::addFunc(const Event_t& event) {
         return EventError::UnknownFunc;
     }
 
-    //if ( m_funcMap->find(event.fid())->second.find("adios2") != std::string::npos ) {
+    if ( m_funcMap->find(event.fid())->second.find("pthread") != std::string::npos ) {
     //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
-    //    return EventError::OK;
-    //}
+        return EventError::OK;
+    }
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
     this->createCallList(event.pid(), event.rid(), event.tid());
@@ -107,18 +107,18 @@ EventError ADEvent::addFunc(const Event_t& event) {
         if (cs.size() == 0) {
             //std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
             //std::cerr << event << ": "
-	//	      << m_eventType->find(event.eid())->second << ": "
-	//	      << m_funcMap->find(event.fid())->second << std::endl;
-            return EventError::CallStackViolation;
+            //		      << m_eventType->find(event.eid())->second << ": "
+            //		      << m_funcMap->find(event.fid())->second << std::endl;
+            return EventError::EmptyCallStack;
         }
 
         CallListIterator_t& it = cs.top();
         if (!it->update_exit(event)) {
-            //std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
-            //std::cerr << event << ": "
-            //          << m_eventType->find(event.eid())->second << ": "
-            //          << m_funcMap->find(event.fid())->second << std::endl;
-            //std::cerr << *it << std::endl;
+            std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
+            std::cerr << event << ": "
+                      << m_eventType->find(event.eid())->second << ": "
+                      << m_funcMap->find(event.fid())->second << std::endl;
+            std::cerr << *it << std::endl;
             // while (!cs.empty()) {
             //     std::cerr << *cs.top() << std::endl;
             //     cs.pop();

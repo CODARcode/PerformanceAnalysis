@@ -59,10 +59,10 @@ int main(int argc, char ** argv)
         ADOutlierSSTD * outlier;
         ADio * io;
 
-        int step = 0; 
+        int step = 0, i; 
         size_t idx_funcData = 0, idx_commData = 0;
         const unsigned long *funcData = nullptr, *commData = nullptr;
-        //PQUEUE pq;
+        PQUEUE pq;
 
         // -----------------------------------------------------------------------
         // Measurement variables
@@ -116,6 +116,93 @@ int main(int argc, char ** argv)
                     << " pserver" << std::endl;
         }
         t1 = high_resolution_clock::now();
+
+
+        while ( parser->getStatus() ) 
+        {
+           parser->beginStep();
+           if (!parser->getStatus())
+              break;
+
+           step = parser->getCurrentStep();
+           parser->update_attributes();
+           parser->fetchFuncData();
+           parser->fetchCommData();   
+
+           idx_funcData = idx_commData = 0;
+           funcData = nullptr;
+           commData = nullptr;
+           if (!pq.empty()) {
+                std::cerr << "\n***** None empty priority queue!*****\n";
+                exit(EXIT_FAILURE);
+            }        
+
+            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
+            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
+            for (i = 0; i < 100; i++) {
+                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                    pq.push(Event_t(
+                        funcData, EventDataType::FUNC, idx_funcData, 
+                        generate_event_id(world_rank, step, idx_funcData))
+                    );
+                    idx_funcData++;
+                }
+                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                    idx_commData++;
+                }
+            }
+
+            while (!pq.empty()) {
+                const Event_t& ev = pq.top();
+                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
+                {
+                    //std::cout << world_rank << "::::::" << ev << std::endl;
+                    //pq.pop();
+                    //continue;
+                    ;
+                }
+                else if (event->addEvent(ev) == EventError::CallStackViolation)
+                {
+                    ;
+                    //std::cerr << "\n***** Call stack violation *****\n";
+                    //exit(EXIT_FAILURE);
+                }
+                pq.pop();
+
+
+                switch (ev.type())
+                {
+                case EventDataType::FUNC:
+                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
+                        pq.push(Event_t(
+                            funcData, EventDataType::FUNC, idx_funcData, 
+                            generate_event_id(world_rank, step, idx_funcData))
+                        );
+                        idx_funcData++;
+                    }
+                    break;
+                case EventDataType::COMM:
+                    // event->addFunc(ev, generate_event_id(world_rank, step))
+                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
+                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
+                        idx_commData++;
+                    }
+                    break;
+                default:
+                    break;
+                } // end switch
+            } // end of inner while
+            
+            n_outliers = outlier->run();
+            frames++;
+
+            parser->endStep();
+            io->write(event->trimCallList(), step);
+	}// end of outer while 
+
+
+/*
         while ( parser->getStatus() )
         {
             parser->beginStep();
@@ -183,7 +270,8 @@ int main(int argc, char ** argv)
                 // adios team later.                
                 if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
                 {
-                    ; // do nothing
+                    std::cerr << "\n***** Invalid event *****\n";
+                    std::cerr << "[" << world_rank << "] " <<  ev << std::endl;
                 }
                 else 
                 {
@@ -215,6 +303,9 @@ int main(int argc, char ** argv)
 
             io->write(event->trimCallList(), step);
         }
+*/
+
+
         t2 = high_resolution_clock::now();
         if (world_rank == 0) {
             std::cout << "rank: " << world_rank << " analysis done!\n";

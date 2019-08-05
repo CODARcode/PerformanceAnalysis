@@ -34,7 +34,8 @@ enum class EventError
     OK = 0,
     UnknownEvent = 1,
     UnknownFunc = 2,
-    CallStackViolation = 3
+    CallStackViolation = 3,
+    EmptyCallStack = 4
 };
 
 enum class IOError
