@@ -59,10 +59,15 @@ int main(int argc, char ** argv)
         ADOutlierSSTD * outlier;
         ADio * io;
 
-        int step = 0, i; 
+        int step = 0; 
         size_t idx_funcData = 0, idx_commData = 0;
         const unsigned long *funcData = nullptr, *commData = nullptr;
-        PQUEUE pq;
+
+        // priority queue was used to mitigate a minor problem from TAU plug-in code
+        // (e.g. pthread_create in wrong position). Actually, it doesn't casue 
+        // call stack violation and the priority queue approach is not the ultimate
+        // solution. So, it is deprecated and hope the problem is solved in TAU side.
+        // PQUEUE pq;
 
         // -----------------------------------------------------------------------
         // Measurement variables
@@ -120,106 +125,24 @@ int main(int argc, char ** argv)
 
         while ( parser->getStatus() ) 
         {
-           parser->beginStep();
-           if (!parser->getStatus())
-              break;
-
-           step = parser->getCurrentStep();
-           parser->update_attributes();
-           parser->fetchFuncData();
-           parser->fetchCommData();   
-
-           idx_funcData = idx_commData = 0;
-           funcData = nullptr;
-           commData = nullptr;
-           if (!pq.empty()) {
-                std::cerr << "\n***** None empty priority queue!*****\n";
-                exit(EXIT_FAILURE);
-            }        
-
-            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
-            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
-            for (i = 0; i < 100; i++) {
-                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                    pq.push(Event_t(
-                        funcData, EventDataType::FUNC, idx_funcData, 
-                        generate_event_id(world_rank, step, idx_funcData))
-                    );
-                    idx_funcData++;
-                }
-                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                    idx_commData++;
-                }
-            }
-
-            while (!pq.empty()) {
-                const Event_t& ev = pq.top();
-                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
-                {
-                    //std::cout << world_rank << "::::::" << ev << std::endl;
-                    //pq.pop();
-                    //continue;
-                    ;
-                }
-                else if (event->addEvent(ev) == EventError::CallStackViolation)
-                {
-                    ;
-                    //std::cerr << "\n***** Call stack violation *****\n";
-                    //exit(EXIT_FAILURE);
-                }
-                pq.pop();
-
-
-                switch (ev.type())
-                {
-                case EventDataType::FUNC:
-                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                        pq.push(Event_t(
-                            funcData, EventDataType::FUNC, idx_funcData, 
-                            generate_event_id(world_rank, step, idx_funcData))
-                        );
-                        idx_funcData++;
-                    }
-                    break;
-                case EventDataType::COMM:
-                    // event->addFunc(ev, generate_event_id(world_rank, step))
-                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                        idx_commData++;
-                    }
-                    break;
-                default:
-                    break;
-                } // end switch
-            } // end of inner while
-            
-            n_outliers = outlier->run();
-            frames++;
-
-            parser->endStep();
-            io->write(event->trimCallList(), step);
-	}// end of outer while 
-
-
-/*
-        while ( parser->getStatus() )
-        {
             parser->beginStep();
             if (!parser->getStatus())
-            {
-                // No more steps available.
-                break;                
-            }
+                break;
 
+            // get trace data via SST
             step = parser->getCurrentStep();
             parser->update_attributes();
             parser->fetchFuncData();
-            parser->fetchCommData();
+            parser->fetchCommData();   
 
+            // early SST buffer release
+            parser->endStep();
+
+            // count total number of events
             n_func_events += (unsigned long long)parser->getNumFuncData();
             n_comm_events += (unsigned long long)parser->getNumCommData();
 
+            // prepare to analyze current step
             idx_funcData = idx_commData = 0;
             funcData = nullptr;
             commData = nullptr;
@@ -229,8 +152,9 @@ int main(int argc, char ** argv)
             while (funcData != nullptr || commData != nullptr)
             {
                 // Determine event to handle
-                // : if both, funcData and commData, are available, select one that occurs earlier.
-                // : priority is on funcData because communication might happen within a function.
+                // - if both, funcData and commData, are available, select one that occurs earlier.
+                // - priority is on funcData because communication might happen within a function.
+                // - in the future, we may not need to process on commData (i.e. exclude it from execution data).
                 const unsigned long* data = nullptr;
                 bool is_func_event = true;
                 if ( (funcData != nullptr && commData == nullptr) ) {
@@ -241,9 +165,9 @@ int main(int argc, char ** argv)
                     data = commData;
                     is_func_event = false;
                 }
-                else if (funcData[FUNC_IDX_TS] <= commData[COMM_IDX_TS]){
+                else if (funcData[FUNC_IDX_TS] <= commData[COMM_IDX_TS]) {
                     data = funcData;
-                    is_func_event = true;                    
+                    is_func_event = true;
                 }
                 else {
                     data = commData;
@@ -252,38 +176,33 @@ int main(int argc, char ** argv)
 
                 // Create event
                 const Event_t ev = Event_t(
-                    data, 
+                    data,
                     (is_func_event ? EventDataType::FUNC: EventDataType::COMM),
                     (is_func_event ? idx_funcData: idx_commData),
-                    (
-                        is_func_event ? 
-                            generate_event_id(world_rank, step, idx_funcData, data[FUNC_IDX_F]):
-                            generate_event_id(world_rank, step, idx_commData)
-                    )
+                    (is_func_event ? generate_event_id(world_rank, step, idx_funcData): "event_id")
                 );
-                
+
                 // Validate the event
-                // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
-                // very large number for pid, rid and tid. This issue was also observed in python version.
-                // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
-                // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
-                // adios team later.                
+                // NOTE: in SST mode with large rank number (>=10), sometimes I got
+                // very large number of pid, rid and tid. This issue was also observed in python version.
+                // In BP mode, it doesn't have such problem. As temporal solution, we skip those data and
+                // it doesn't cause any problems (e.g. call stack violation). Need to consult with 
+                // adios team later
                 if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
                 {
-                    std::cerr << "\n***** Invalid event *****\n";
-                    std::cerr << "[" << world_rank << "] " <<  ev << std::endl;
+                    ;
+                    // std::cerr << "\n***** Invalid event *****\n";
+                    // std::cerr << "[" << world_rank << "] " << ev << std::endl;
                 }
-                else 
+                else
                 {
                     if (event->addEvent(ev) == EventError::CallStackViolation)
                     {
-			; // do nothing
-                        //std::cerr << "\n***** Call stack violation *****\n";
-                        // ignore this particular event.
-                        // it will possibly keep rasing call stack violation error.
+                        ;
+                        // std::cerr << "\n***** Call stack violation *****\n";
                     }
                 }
-                
+
                 // go next event
                 if (is_func_event) {
                     idx_funcData++;
@@ -293,18 +212,12 @@ int main(int argc, char ** argv)
                     commData = parser->getCommData(idx_commData);
                 }
             }
-
-            //outlier->run();
-            n_outliers += outlier->run();
+            
+            n_outliers = outlier->run();
             frames++;
-            //std::cout << n_outliers << std::endl;
-
-            parser->endStep();
 
             io->write(event->trimCallList(), step);
-        }
-*/
-
+	    } // end of parser while loop
 
         t2 = high_resolution_clock::now();
         if (world_rank == 0) {
@@ -381,76 +294,3 @@ int main(int argc, char ** argv)
     MPI_Finalize();
     return 0;
 }
-
-/*
-           if (!pq.empty()) {
-                std::cerr << "\n***** None empty priority queue!*****\n";
-                exit(EXIT_FAILURE);
-            }        
-
-            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
-            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
-            for (i = 0; i < 10; i++) {
-                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                    pq.push(Event_t(
-                        funcData, EventDataType::FUNC, idx_funcData, 
-                        generate_event_id(world_rank, step, idx_funcData))
-                    );
-                    idx_funcData++;
-                }
-                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                    idx_commData++;
-                }
-            }
-
-            // std::cout << "rank: " << world_rank << ", "
-            //         << "Num. func events: " << parser->getNumFuncData() << ", "
-            //         << "Num. comm events: " << parser->getNumCommData() << ", "
-            //         << "Queue: " << pq.size() << std::endl;
-
-            while (!pq.empty()) {
-                const Event_t& ev = pq.top();
-                // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
-                // very large number for pid, rid and tid. This issue is also observed in python version.
-                // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
-                // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
-                // adios team later.
-                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
-                {
-                    //std::cout << world_rank << "::::::" << ev << std::endl;
-                    pq.pop();
-                    continue;
-                }
-                if (event->addEvent(ev) == EventError::CallStackViolation)
-                {
-                    std::cerr << "\n***** Call stack violation *****\n";
-                    exit(EXIT_FAILURE);
-                }
-                pq.pop();
-
-
-                switch (ev.type())
-                {
-                case EventDataType::FUNC:
-                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                        pq.push(Event_t(
-                            funcData, EventDataType::FUNC, idx_funcData, 
-                            generate_event_id(world_rank, step, idx_funcData))
-                        );
-                        idx_funcData++;
-                    }
-                    break;
-                case EventDataType::COMM:
-                    // event->addFunc(ev, generate_event_id(world_rank, step))
-                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                        idx_commData++;
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }   
-
-*/

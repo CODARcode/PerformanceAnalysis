@@ -46,7 +46,7 @@ int main(int argc, char ** argv)
         // -----------------------------------------------------------------------
         ADParser * parser;
 
-        int step = 0; 
+        // int step = 0; 
 
         // -----------------------------------------------------------------------
         // Measurement variables
@@ -77,12 +77,14 @@ int main(int argc, char ** argv)
                 break;                
             }
 
-            step = parser->getCurrentStep();
-	    if (fetch_data) {
-               parser->update_attributes();
-               parser->fetchFuncData();
-               parser->fetchCommData();
-	    }
+            // step = parser->getCurrentStep();
+
+            if (fetch_data) {
+                parser->update_attributes();
+                parser->fetchFuncData();
+                parser->fetchCommData();
+            }
+
             frames++;
             parser->endStep();
         }
@@ -139,76 +141,3 @@ int main(int argc, char ** argv)
     MPI_Finalize();
     return 0;
 }
-
-/*
-           if (!pq.empty()) {
-                std::cerr << "\n***** None empty priority queue!*****\n";
-                exit(EXIT_FAILURE);
-            }        
-
-            // warm-up: currently, this is required to resolve the issue that `pthread_create` apprears 
-            // at the beginning of the first frame even though it timestamp say it shouldn't be at the beginning.
-            for (i = 0; i < 10; i++) {
-                if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                    pq.push(Event_t(
-                        funcData, EventDataType::FUNC, idx_funcData, 
-                        generate_event_id(world_rank, step, idx_funcData))
-                    );
-                    idx_funcData++;
-                }
-                if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                    pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                    idx_commData++;
-                }
-            }
-
-            // std::cout << "rank: " << world_rank << ", "
-            //         << "Num. func events: " << parser->getNumFuncData() << ", "
-            //         << "Num. comm events: " << parser->getNumCommData() << ", "
-            //         << "Queue: " << pq.size() << std::endl;
-
-            while (!pq.empty()) {
-                const Event_t& ev = pq.top();
-                // NOTE: in SST mode with large rank number (>= 10), sometimes I got 
-                // very large number for pid, rid and tid. This issue is also observed in python version.
-                // Also, with BP mode, it doesn't have such problem. As temporal solution, we skip those 
-                // data and it doesn't cause any problems (e.g. call stack violation). Need to consult with
-                // adios team later.
-                if (!ev.valid() || ev.pid() != 0 || (int)ev.rid() != world_rank || ev.tid() >= 1000000)
-                {
-                    //std::cout << world_rank << "::::::" << ev << std::endl;
-                    pq.pop();
-                    continue;
-                }
-                if (event->addEvent(ev) == EventError::CallStackViolation)
-                {
-                    std::cerr << "\n***** Call stack violation *****\n";
-                    exit(EXIT_FAILURE);
-                }
-                pq.pop();
-
-
-                switch (ev.type())
-                {
-                case EventDataType::FUNC:
-                    if ( (funcData = parser->getFuncData(idx_funcData)) != nullptr ) {
-                        pq.push(Event_t(
-                            funcData, EventDataType::FUNC, idx_funcData, 
-                            generate_event_id(world_rank, step, idx_funcData))
-                        );
-                        idx_funcData++;
-                    }
-                    break;
-                case EventDataType::COMM:
-                    // event->addFunc(ev, generate_event_id(world_rank, step))
-                    if ( (commData = parser->getCommData(idx_commData)) != nullptr ) {
-                        pq.push(Event_t(commData, EventDataType::COMM, idx_commData));
-                        idx_commData++;
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }   
-
-*/

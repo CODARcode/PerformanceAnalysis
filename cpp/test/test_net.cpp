@@ -42,8 +42,9 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 
     chimbuko::SstdParam param;
 
+    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+
     net.init(nullptr, nullptr, 10);
-    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 1;
@@ -76,8 +77,8 @@ TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 
     chimbuko::SstdParam param;
 
+    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
     net.init(nullptr, nullptr, 10);
-    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 10;
@@ -110,8 +111,8 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 
     chimbuko::SstdParam param;
 
+    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
     net.init(nullptr, nullptr, 1);
-    net.set_parameter(&param);
     net.run();
 
     const int n_clients = 10;
