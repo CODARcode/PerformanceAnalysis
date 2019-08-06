@@ -24,6 +24,7 @@ sleep 5
 echo "AD module test"
 echo "Wait for next tests for 5 seconds ..."
 sleep 5
+./run_ad.sh
 # mkdir -p temp
 # ${MPIRUN} --allow-run-as-root -n 1 --ompi-server file:${MPIURI} mpiServer &
 # ${MPIRUN} --allow-run-as-root -n 4 --ompi-server file:${MPIURI} mainAd -n 4

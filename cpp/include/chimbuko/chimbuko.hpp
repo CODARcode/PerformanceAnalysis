@@ -10,21 +10,26 @@ public:
     Chimbuko();
     ~Chimbuko();
 
-    void init_io(int rank, std::string output_dir);
+    void init_io(int rank, std::string output_dir, 
+        std::unordered_map<std::string, unsigned int> params, 
+        IOMode mode=IOMode::Offline);
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
     void init_event();
-    void init_outlier(int rank, double sigma, std::string addr);
+    void init_outlier(int rank, double sigma, std::string addr="");
 
     void finalize();
 
     bool use_ps() const { return m_outlier->use_ps(); }
     void show_status(bool verbose=false ) const { m_event->show_status(verbose); }
+    bool get_status() const { return m_parser->getStatus(); }
+    int get_step() const { return m_parser->getCurrentStep(); }
 
     void run(int rank, 
         unsigned long long& n_func_events, 
         unsigned long long& n_comm_events,
         unsigned long& n_outliers,
-        unsigned long& frames);
+        unsigned long& frames,
+        bool only_one_frame=false);
 
 private:
     // int m_rank;

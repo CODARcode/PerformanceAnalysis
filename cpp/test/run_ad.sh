@@ -3,7 +3,10 @@
 
 mkdir -p temp
 
-mpirun --allow-run-as-root -n 1 ../bin/pserver 4 & 
+# mpirun --allow-run-as-root -n 1 ../bin/pserver 4 & 
+../bin/pserver 4 &
+
+sleep 5
 mpirun --allow-run-as-root -n 4 mainAd -n 4
 
 rm -r temp

@@ -84,6 +84,10 @@ void ADio::_open(std::fstream& f, std::string filename, IOOpenMode mode)
 
 void ADio::checkFileLimit(std::fstream& stream, long long required)
 {
+    // std::cout << "checkFileLimit: " 
+    //     << static_cast<long long>(stream.tellp()) + required << " vs. " << m_limit 
+    //     << std::endl; 
+
     if (static_cast<long long>(stream.tellp()) + required > m_limit)
     {
         stream.close();
@@ -182,7 +186,7 @@ public:
             fHead << m_io.getHeader();
 
             ss_data.seekg(0, std::ios::end);
-            //m_io.checkFileLimit(fData, ss_data.tellg());
+            m_io.checkFileLimit(fData, ss_data.tellg());
 
             long long seekpos = fData.tellp();
             long long offset = m_step * FileHeader_t::SeekPos_t::SIZE;

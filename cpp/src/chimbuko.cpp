@@ -15,22 +15,39 @@ Chimbuko::~Chimbuko()
 
 }
 
-void Chimbuko::init_io(int rank, std::string output_dir)
+void Chimbuko::init_io(int rank, std::string output_dir, 
+    std::unordered_map<std::string, unsigned int> info, IOMode mode)
 {
     // m_rank = rank;
     // m_output_dir = output_dir
 
     m_io = new ADio();
     m_io->setDispatcher();
-    m_io->setHeader({{"rank", rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
+    m_io->setHeader(info);
+    //m_io->setHeader({{"rank", rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
     // Note: currently, dump to disk is probablimatic on large scale. 
     // Considering overall chimuko architecture we want to go with data stream! 
     // For the test purpose, we don't dump or stream any data but just delete them.
-    // m_io->open_curl(url); // for VIS module
-    m_io->open(
-        output_dir + "/execdata." + std::to_string(rank),
-        IOOpenMode::Write
-    ); // for file output
+    if (mode == IOMode::Online)
+    {
+        ;
+        // m_io->open_curl(url); // for VIS module
+    }
+    else if (mode == IOMode::Offline)
+    {
+        m_io->open(
+            output_dir + "/execdata." + std::to_string(rank),
+            IOOpenMode::Write
+        ); // for file output
+    }
+    else if (mode == IOMode::Both)
+    {
+        // m_io->open_curl(url); // for VIS module
+        m_io->open(
+            output_dir + "/execdata." + std::to_string(rank),
+            IOOpenMode::Write
+        ); // for file output
+    }
 }
 
 void Chimbuko::init_parser(std::string data_dir, std::string inputFile, std::string engineType)
@@ -80,13 +97,9 @@ void Chimbuko::run(int rank,
     unsigned long long& n_func_events, 
     unsigned long long& n_comm_events,
     unsigned long& n_outliers,
-    unsigned long& frames)
+    unsigned long& frames,
+    bool only_one_frame)
 {
-    n_func_events = 0;
-    n_comm_events = 0;
-    n_outliers = 0;
-    frames = 0;
-
     int step = 0; 
     size_t idx_funcData = 0, idx_commData = 0;
     const unsigned long *funcData = nullptr, *commData = nullptr;
@@ -185,5 +198,8 @@ void Chimbuko::run(int rank,
         frames++;
 
         m_io->write(m_event->trimCallList(), step);
+
+        if (only_one_frame)
+            break;
     } // end of parser while loop
 }

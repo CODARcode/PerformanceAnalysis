@@ -72,7 +72,9 @@ int main(int argc, char ** argv)
         // Init. AD module
         // -----------------------------------------------------------------------
         // First, init io to make sure file (or connection) handler
-        driver.init_io(world_rank, output_dir);
+        driver.init_io(world_rank, output_dir,
+            {{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}},
+            IOMode::Offline);
 
         // Second, init parser because it will hold shared memory with event and outlier object
         // also, process will be blocked at this line until it finds writer (in SST mode)
