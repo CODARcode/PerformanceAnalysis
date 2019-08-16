@@ -54,11 +54,12 @@ TEST_F(UtilTest, RunStatSimpleTest)
     std::normal_distribution<double> dist(mean, std);
     std::vector<double> data;
 
-    RunStats stat;
-
+    RunStats stat(true, false);
+    double sum = 0.0;
     for (int i = 0; i < nrolls; i++)
     {
         double num = dist(generator);
+        sum += num;
         data.push_back(num);
         stat.push(num);
     }
@@ -66,10 +67,12 @@ TEST_F(UtilTest, RunStatSimpleTest)
     double static_mean = chimbuko::static_mean(data);
     double static_std = chimbuko::static_std(data);
     double run_mean = stat.mean();
-    double run_std = stat.std();
+    double run_std = stat.stddev();
+    double run_sum = stat.accumulate();
 
     EXPECT_NEAR(static_mean, run_mean, 0.001);
     EXPECT_NEAR(static_std, run_std, 0.001);
+    EXPECT_NEAR(sum, run_sum, 0.001);
 }
 
 TEST_F(UtilTest, RunStatMergeTest)
@@ -101,7 +104,7 @@ TEST_F(UtilTest, RunStatMergeTest)
     double static_mean = chimbuko::static_mean(data);
     double static_std = chimbuko::static_std(data);
     double run_mean = merged.mean();
-    double run_std = merged.std();
+    double run_std = merged.stddev();
 
     EXPECT_NEAR(static_mean, run_mean, 0.001);
     EXPECT_NEAR(static_std, run_std, 0.001);
@@ -128,14 +131,14 @@ TEST_F(UtilTest, RunStatSerializeTest)
     ss >> c_stat;
     c_stat.set_stream(false);
 
-    double static_mean = chimbuko::static_mean(data);
+    double static_mean = chimbuko::static_mean(data, 0.0);
     double static_std = chimbuko::static_std(data);
     double run_mean = stat.mean();
-    double run_std = stat.std();    
+    double run_std = stat.stddev();  
     EXPECT_NEAR(run_mean, static_mean, 0.001);
     EXPECT_NEAR(run_std, static_std, 0.001);
-    EXPECT_EQ(stat.N(), c_stat.N());
+    EXPECT_EQ(stat.count(), c_stat.count());
     EXPECT_DOUBLE_EQ(run_mean, c_stat.mean());
-    EXPECT_DOUBLE_EQ(run_std, c_stat.std());
+    EXPECT_DOUBLE_EQ(run_std, c_stat.stddev());
     EXPECT_EQ(stat, c_stat);
 }

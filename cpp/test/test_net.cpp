@@ -57,9 +57,9 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
     for (int i = 0; i < n_functions; i++)
     {
         unsigned long funcid = (unsigned long)i;
-        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].N());
+        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].count());
         EXPECT_NEAR(mean[i], param[funcid].mean(), mean[i]*0.01);
-        EXPECT_NEAR(std[i], param[funcid].std(), std[i]*0.01);
+        EXPECT_NEAR(std[i], param[funcid].stddev(), std[i]*0.01);
     }
 
 #ifdef _USE_ZMQNET
@@ -91,9 +91,9 @@ TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
     for (int i = 0; i < n_functions; i++)
     {
         unsigned long funcid = (unsigned long)i;
-        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].N());
+        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].count());
         EXPECT_NEAR(mean[i], param[funcid].mean(), mean[i]*0.01);
-        EXPECT_NEAR(std[i], param[funcid].std(), std[i]*0.01);
+        EXPECT_NEAR(std[i], param[funcid].stddev(), std[i]*0.01);
     }
 
 #ifdef _USE_ZMQNET
@@ -125,9 +125,9 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
     for (int i = 0; i < n_functions; i++)
     {
         unsigned long funcid = (unsigned long)i;
-        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].N());
+        EXPECT_EQ(n_clients*n_rolls*n_frames, param[funcid].count());
         EXPECT_NEAR(mean[i], param[funcid].mean(), mean[i]*0.01);
-        EXPECT_NEAR(std[i], param[funcid].std(), std[i]*0.01);
+        EXPECT_NEAR(std[i], param[funcid].stddev(), std[i]*0.01);
     }
 
 #ifdef _USE_ZMQNET

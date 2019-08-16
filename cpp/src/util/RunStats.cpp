@@ -128,7 +128,7 @@ RunStats chimbuko::operator+(const RunStats a, const RunStats b)
 
     double sum_rho = (
         a.m_state.rho + b.m_state.rho 
-        + delta2 * a.m_state.count * b.m_state.count / sum_count;
+        + delta2 * a.m_state.count * b.m_state.count / sum_count
     );
 
     double sum_tau = (
@@ -155,7 +155,7 @@ RunStats chimbuko::operator+(const RunStats a, const RunStats b)
     }
 
     RunStats combined(do_accumulate);
-    combined.set_state(State(
+    combined.set_state(RunStats::State(
         sum_count,
         sum_eta, sum_rho, sum_tau, sum_phi,
         sum_min, sum_max, sum_acc
@@ -174,23 +174,23 @@ RunStats& RunStats::operator+=(const RunStats& rs)
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
     return 
-        a.m_count == b.m_count &&
-        a.m_eta == b.m_eta &&
-        a.m_rho == b.m_rho &&
-        a.m_tau == b.m_tau &&
-        a.m_min == b.m_min &&
-        a.m_max == b.m_max
+        a.m_state.count == b.m_state.count &&
+        a.m_state.eta == b.m_state.eta &&
+        a.m_state.rho == b.m_state.rho &&
+        a.m_state.tau == b.m_state.tau &&
+        a.m_state.min == b.m_state.min &&
+        a.m_state.max == b.m_state.max;
 }
 
 bool chimbuko::operator!=(const RunStats& a, const RunStats& b)
 {
     return 
-        a.m_count != b.m_count ||
-        a.m_eta != b.m_eta ||
-        a.m_rho != b.m_rho ||
-        a.m_tau != b.m_tau ||
-        a.m_min != b.m_min ||
-        a.m_max != b.m_max
+        a.m_state.count != b.m_state.count ||
+        a.m_state.eta != b.m_state.eta ||
+        a.m_state.rho != b.m_state.rho ||
+        a.m_state.tau != b.m_state.tau ||
+        a.m_state.min != b.m_state.min ||
+        a.m_state.max != b.m_state.max;
 }
 
 std::ostream& chimbuko::operator<<(std::ostream& os, const RunStats& rs)
@@ -211,7 +211,7 @@ std::ostream& chimbuko::operator<<(std::ostream& os, const RunStats& rs)
             << ", max: " << rs.maximum()
             << ", acc: " << rs.accumulate() 
             << ", mean: " << rs.mean() 
-            << ", std: " << rs.std() 
+            << ", std: " << rs.stddev() 
             << ", skewness: " << rs.skewness() 
             << ", kurtosis: " << rs.kurtosis() 
             << std::endl;

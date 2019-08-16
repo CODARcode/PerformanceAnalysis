@@ -209,11 +209,11 @@ unsigned long ADOutlierSSTD::compute_outliers(
     const unsigned long func_id, std::vector<CallListIterator_t>& data) 
 {
     SstdParam& param = *(SstdParam*)m_param;
-    if (param[func_id].N() < 2) return 0;
+    if (param[func_id].count() < 2) return 0;
     unsigned long n_outliers = 0;
 
     const double mean = param[func_id].mean();
-    const double std = param[func_id].std();
+    const double std = param[func_id].stddev();
 
     const double thr_hi = mean + m_sigma * std;
     const double thr_lo = mean - m_sigma * std;

@@ -30,7 +30,7 @@ public:
         {
 
         }
-        clear()
+        void clear()
         {
             count = eta = rho = tau = phi = acc = 0.0;
             min = std::numeric_limits<double>::max();
