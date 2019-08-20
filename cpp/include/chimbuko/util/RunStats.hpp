@@ -84,6 +84,7 @@ public:
     double kurtosis() const;
     
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
+    void set_do_accumulate(bool do_accumulate) { m_do_accumulate = do_accumulate; }
     
     friend RunStats operator+(const RunStats a, const RunStats b);
     RunStats& operator+=(const RunStats& rs);

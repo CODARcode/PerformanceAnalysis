@@ -174,23 +174,25 @@ RunStats& RunStats::operator+=(const RunStats& rs)
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
     return 
-        a.m_state.count == b.m_state.count &&
-        a.m_state.eta == b.m_state.eta &&
-        a.m_state.rho == b.m_state.rho &&
-        a.m_state.tau == b.m_state.tau &&
-        a.m_state.min == b.m_state.min &&
-        a.m_state.max == b.m_state.max;
+        std::abs(a.m_state.count - b.m_state.count) < 1e-6 &&
+        std::abs(a.m_state.eta - b.m_state.eta) < 1e-6 &&
+        std::abs(a.m_state.rho - b.m_state.rho) < 1e-6 &&
+        std::abs(a.m_state.tau - b.m_state.tau) < 1e-6 &&
+        std::abs(a.m_state.min - b.m_state.min) < 1e-6 &&
+        std::abs(a.m_state.max - b.m_state.max) < 1e-6 &&
+        std::abs(a.m_state.acc - b.m_state.acc) < 1e-6;
 }
 
 bool chimbuko::operator!=(const RunStats& a, const RunStats& b)
 {
     return 
-        a.m_state.count != b.m_state.count ||
-        a.m_state.eta != b.m_state.eta ||
-        a.m_state.rho != b.m_state.rho ||
-        a.m_state.tau != b.m_state.tau ||
-        a.m_state.min != b.m_state.min ||
-        a.m_state.max != b.m_state.max;
+        std::abs(a.m_state.count - b.m_state.count) > 1e-6 ||
+        std::abs(a.m_state.eta - b.m_state.eta) > 1e-6 ||
+        std::abs(a.m_state.rho - b.m_state.rho) > 1e-6 ||
+        std::abs(a.m_state.tau - b.m_state.tau) > 1e-6 ||
+        std::abs(a.m_state.min - b.m_state.min) > 1e-6 ||
+        std::abs(a.m_state.max - b.m_state.max) > 1e-6 ||
+        std::abs(a.m_state.acc - b.m_state.acc) > 1e-6;
 }
 
 std::ostream& chimbuko::operator<<(std::ostream& os, const RunStats& rs)

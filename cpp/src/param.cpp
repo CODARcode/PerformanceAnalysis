@@ -2,16 +2,32 @@
 
 using namespace chimbuko;
 
-ParamInterface::ParamInterface() : m_anomaly_data(nullptr)
+ParamInterface::ParamInterface()
 {
-    m_anomaly_data = new std::list<std::string>();
+}
+
+ParamInterface::ParamInterface(const std::vector<int>& n_ranks)
+{
+    if (n_ranks.size() == 0)
+        return;
+
+    // pre-allocate AnomalyStat to avoid race-condition
+    for (int app_id = 0; app_id < (int)n_ranks.size(); app_id++) {
+        for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++)
+        {
+            std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
+            m_anomaly_stats[stat_id] = new AnomalyStat();
+        }
+    }
 }
 
 ParamInterface::~ParamInterface()
 {
-    if (m_anomaly_data)
-        delete m_anomaly_data;
+    for (auto pair: m_anomaly_stats)
+        delete pair.second;
 }
+
+
 
 void ParamInterface::add_anomaly_data(const std::string& data)
 {

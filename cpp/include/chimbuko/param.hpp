@@ -2,18 +2,16 @@
 #include <mutex>
 #include <string>
 #include <iostream>
-#include <list>
+#include <vector>
 #include <unordered_map>
-#include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/ad/AnomalyStat.hpp"
 
 namespace chimbuko {
 
 class ParamInterface {
 public:
-    typedef std::unordered_map<std::string, RunStats> RunStatsMap_t; 
-
-public:
     ParamInterface();
+    ParamInterface(const std::vector<int>& n_ranks);
     virtual ~ParamInterface();
     virtual void clear() = 0;
 
@@ -33,9 +31,7 @@ protected:
     std::mutex m_mutex; // used to update parameters
 
     // for anomaly statistics
-    std::mutex m_data_lock; // used to update list
-    std::list<std::string>  * m_anomaly_data;
-    RunStatsMap_t             m_anomaly_stats;
+    std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats;
 };
 
 } // end of chimbuko namespace

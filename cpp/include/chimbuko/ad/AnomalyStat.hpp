@@ -30,6 +30,12 @@ public:
             m_stat_id = std::to_string(m_app) + ":" + std::to_string(m_rank);
         }
     }
+
+    AnomalyData(const std::string& binary)
+    {
+        set_binary(binary);
+    }
+
     ~AnomalyData()
     {
 
@@ -85,11 +91,22 @@ std::ostream& operator<<(std::ostream& os, AnomalyData& d);
 std::istream& operator>>(std::istream& is, AnomalyData& d);
 
 
-// class AnomalyStat : public RunStats {
-// public:
+class AnomalyStat {
+public:
+    AnomalyStat();
+    ~AnomalyStat();
 
-// private:
-//     std::mutex m_mutex;
-// };
+    void add(AnomalyData& d, bool bStore = true);
+    void add(const std::string& binary, bool bStore = true);
+
+    std::pair<RunStats, std::list<std::string>*> get();
+    RunStats get_stats() const { return m_stats; }
+    std::list<std::string>* get_data() { return m_data; }
+
+private:
+    std::mutex               m_mutex;
+    RunStats                 m_stats;
+    std::list<std::string> * m_data;
+};
 
 } // end of chimbuko namespace

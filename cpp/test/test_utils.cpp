@@ -5,6 +5,7 @@
 #include <chrono>
 #include <random>
 #include <sstream>
+#include <unordered_map>
 
 class UtilTest : public ::testing::Test
 {
@@ -158,4 +159,77 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
     EXPECT_EQ(d, c_d);
     EXPECT_TRUE(d==c_d);
     EXPECT_TRUE(d!=d2);
+}
+
+TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
+{
+    using namespace chimbuko;
+
+    const std::vector<int> N_RANKS = {20, 30, 50};
+    const int MIN_STEPS = 1000;
+    const int MAX_STEPS = 2000;
+    std::default_random_engine generator;
+
+    std::vector<std::string> anomaly_data;
+    std::unordered_map<std::string, AnomalyStat*> anomaly_stats, c_anomaly_stats;
+    std::unordered_map<std::string, int> n_anomaly_data;
+
+    // generate pseudo data
+    for (int app_id = 0; app_id < (int)N_RANKS.size(); app_id++)
+    {
+        for (int rank_id = 0; rank_id < N_RANKS[app_id]; rank_id++)
+        {
+            const int max_steps = rand() % (MAX_STEPS - MIN_STEPS + 1) + MIN_STEPS;
+            const double mean = (double)rand() / (double)RAND_MAX * 100.0;
+            const double stddev = mean * (double)rand() / (double)RAND_MAX;
+            // std::cout << "App: " << app_id << ", rank: " << rank_id 
+            //     << ", mean: " << mean << ", stddev: " << stddev << std::endl;
+            std::normal_distribution<double> dist(mean, stddev);
+
+            for (int step = 0; step < max_steps; step++)
+            {
+                const int n_anomalies = std::max((int)dist(generator), 0);
+                // std::cout << "Step: " << step << ", n: " << n_anomalies << std::endl;
+                AnomalyData d(app_id, rank_id, step, 0, 0, n_anomalies);
+                anomaly_data.push_back(d.get_binary());
+
+                if (step == 0)
+                {
+                    anomaly_stats[d.get_stat_id()] = new AnomalyStat();
+                    c_anomaly_stats[d.get_stat_id()] = new AnomalyStat();
+                    n_anomaly_data[d.get_stat_id()] = max_steps;
+                }
+
+                c_anomaly_stats[d.get_stat_id()]->add(d);
+            }
+        }
+    }
+
+    // simulated parameter server
+    threadPool tpool(10);
+    std::vector<threadPool::TaskFuture<void>> v;
+    for (int i = 0; i < (int)anomaly_data.size(); ++i)
+    {
+        v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, i](){
+            AnomalyData d;
+            d.set_binary(anomaly_data[i]);
+            anomaly_stats[d.get_stat_id()]->add(anomaly_data[i]);
+        }));
+    }
+    for (auto& item: v)
+        item.get();
+
+
+    // check the result
+    for (auto pair: anomaly_stats) {
+        auto stats = pair.second->get();
+        RunStats c_stats = c_anomaly_stats[pair.first]->get_stats();
+        
+        EXPECT_EQ(c_stats, stats.first);
+        EXPECT_EQ(n_anomaly_data[pair.first], stats.second->size());
+        delete pair.second;
+        delete stats.second;
+        delete c_anomaly_stats[pair.first];
+    }
+    
 }
