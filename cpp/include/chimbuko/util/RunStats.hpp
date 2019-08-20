@@ -5,8 +5,24 @@
 
 namespace chimbuko {
 
+/**
+ * @brief Compute statistics in a single pass
+ * 
+ * Computes the minimum, maximum, mean, variance, standard deviation,
+ * skewness, and kurtosis. Optionally, also computes accumulated values.
+ * 
+ * RunStats objects may also be added together and copied.
+ * 
+ * Based entirely on the C++ code by John D Cook at
+ * http://www.johndcook.com/skewness_kurtosis.html
+ * 
+ */
 class RunStats {
 public:
+    /**
+     * @brief Internal state of RunStats object
+     * 
+     */
     typedef struct State {
         double count;
         double eta;

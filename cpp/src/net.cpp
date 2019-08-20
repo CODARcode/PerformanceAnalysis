@@ -17,7 +17,7 @@ NetInterface& DefaultNetInterface::get()
 #endif
 }
 
-NetInterface::NetInterface() : m_nt(0), m_param(nullptr), m_stop(false)
+NetInterface::NetInterface() : m_nt(0), m_param(nullptr)
 {
 }
 
@@ -28,7 +28,6 @@ NetInterface::~NetInterface()
 
 void NetInterface::set_parameter(ParamInterface* param)
 {
-    //m_kind = kind;
     m_param = param;
 }
 

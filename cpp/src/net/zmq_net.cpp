@@ -57,6 +57,17 @@ void doWork(void* context, ParamInterface* param)
                 msg_reply.set_msg(p->serialize(), false);
             }
         }
+        if (msg.kind() == MessageKind::ANOMALY_STATS)
+        {
+            // SstdParam* p = dynamic_cast<SstdParam*>(param);
+            if (msg.type() == MessageType::REQ_ADD) {
+                std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
+                // p->add_anomaly_data(msg.data_buffer());
+            }
+            else if (msg.type() == MessageType::REQ_GET) {
+                std::cout << "N_ANOMALY::REQ_GET" << std::endl;
+            }
+        }
         else if (msg.kind() == MessageKind::DEFAULT)
         {
             if (msg.type() == MessageType::REQ_ECHO) {
@@ -193,8 +204,4 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     zmq_msg_close(&msg);
     return ret;
 }
-
-
 #endif
-
-

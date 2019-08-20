@@ -2,7 +2,6 @@
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/param.hpp"
 #include <string>
-#include <atomic>
 
 namespace chimbuko {
 
@@ -88,7 +87,6 @@ protected:
     int              m_nt;    // the number of threads in the pool
     //ParamKind        m_kind;  // parameter kind
     ParamInterface * m_param; // pointer to parameter (storage)
-    std::atomic_bool m_stop;
 };
 
 namespace DefaultNetInterface

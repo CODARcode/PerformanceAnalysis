@@ -1,0 +1,74 @@
+#include "chimbuko/ad/AnomalyStat.hpp"
+#include <sstream>
+
+using namespace chimbuko;
+
+std::string AnomalyData::get_binary()
+{
+    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    ss << *this;
+    return ss.str();
+}
+
+void AnomalyData::set_binary(std::string binary)
+{
+    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    ss << binary;
+    ss >> *this;
+}
+
+void AnomalyData::show(std::ostream& os) const
+{
+    os << "App: " << m_app 
+        << "\nRank: " << m_rank
+        << "\nStep: " << m_step
+        << "\ntimestamp: [" << m_min_timestamp
+        << ", " << m_max_timestamp 
+        << "]\n# Anomalies: " << m_n_anomalies
+        << "\nStat id: " << m_stat_id << std::endl;
+}
+
+std::ostream& chimbuko::operator<<(std::ostream& os, AnomalyData& d)
+{
+    os.write((const char*)&d.m_app, sizeof(unsigned long));
+    os.write((const char*)&d.m_rank, sizeof(unsigned long));
+    os.write((const char*)&d.m_step, sizeof(unsigned long));
+    os.write((const char*)&d.m_min_timestamp, sizeof(unsigned long));
+    os.write((const char*)&d.m_max_timestamp, sizeof(unsigned long));
+    os.write((const char*)&d.m_n_anomalies, sizeof(unsigned long));
+    return os;
+}
+
+std::istream& chimbuko::operator>>(std::istream& is, AnomalyData& d)
+{
+    is.read((char*)&d.m_app, sizeof(unsigned long));
+    is.read((char*)&d.m_rank, sizeof(unsigned long));
+    is.read((char*)&d.m_step, sizeof(unsigned long));
+    is.read((char*)&d.m_min_timestamp, sizeof(unsigned long));
+    is.read((char*)&d.m_max_timestamp, sizeof(unsigned long));
+    is.read((char*)&d.m_n_anomalies, sizeof(unsigned long));
+    d.m_stat_id = std::to_string(d.m_app) + ":" + std::to_string(d.m_rank);
+    return is;
+}
+
+bool chimbuko::operator==(const AnomalyData& a, const AnomalyData& b)
+{
+    return 
+        a.m_app == b.m_app &&
+        a.m_rank == b.m_rank &&
+        a.m_step == b.m_step &&
+        a.m_min_timestamp == b.m_min_timestamp &&
+        a.m_max_timestamp == b.m_max_timestamp &&
+        a.m_n_anomalies == b.m_n_anomalies;
+}
+
+bool chimbuko::operator!=(const AnomalyData& a, const AnomalyData& b)
+{
+    return 
+        a.m_app != b.m_app ||
+        a.m_rank != b.m_rank ||
+        a.m_step != b.m_step ||
+        a.m_min_timestamp != b.m_min_timestamp ||
+        a.m_max_timestamp != b.m_max_timestamp ||
+        a.m_n_anomalies != b.m_n_anomalies;
+}

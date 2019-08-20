@@ -4,6 +4,7 @@
 #include "chimbuko/net.hpp"
 #include <mpi.h>
 #include <iostream>
+#include <atomic>
 
 namespace chimbuko {
 
@@ -94,6 +95,8 @@ private:
     int m_inited;
     int m_rank;
     int m_size;
+
+    std::atomic_bool m_stop;
 };
 
 } // end of chimbuko namespace

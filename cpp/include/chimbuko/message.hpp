@@ -20,7 +20,8 @@ enum MessageType {
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
-    SSTD    = 2
+    SSTD    = 2,
+    ANOMALY_STATS = 3
 };
 
 enum MessageCmd {

@@ -1,5 +1,6 @@
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/ad/AnomalyStat.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <random>
@@ -141,4 +142,20 @@ TEST_F(UtilTest, RunStatSerializeTest)
     EXPECT_DOUBLE_EQ(run_mean, c_stat.mean());
     EXPECT_DOUBLE_EQ(run_std, c_stat.stddev());
     EXPECT_EQ(stat, c_stat);
+}
+
+TEST_F(UtilTest, AnomalyDataSerializeTest)
+{
+    using namespace chimbuko;
+
+    AnomalyData d, c_d, d2;
+
+    d.set(1, 1000, 2000, 1234567890, 912345678, 123);
+    d2.set(1, 1001, 2000, 1234567890, 912345678, 123);
+
+    c_d.set_binary(d.get_binary());
+
+    EXPECT_EQ(d, c_d);
+    EXPECT_TRUE(d==c_d);
+    EXPECT_TRUE(d!=d2);
 }
