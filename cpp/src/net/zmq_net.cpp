@@ -59,13 +59,14 @@ void doWork(void* context, ParamInterface* param)
         }
         if (msg.kind() == MessageKind::ANOMALY_STATS)
         {
-            // SstdParam* p = dynamic_cast<SstdParam*>(param);
             if (msg.type() == MessageType::REQ_ADD) {
-                std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
-                // p->add_anomaly_data(msg.data_buffer());
+                // std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
+                param->add_anomaly_data(msg.data_buffer());
+                msg_reply.set_msg("", false);
             }
             else if (msg.type() == MessageType::REQ_GET) {
-                std::cout << "N_ANOMALY::REQ_GET" << std::endl;
+                // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
+                msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
             }
         }
         else if (msg.kind() == MessageKind::DEFAULT)

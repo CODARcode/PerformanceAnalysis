@@ -100,8 +100,8 @@ public:
     void add(const std::string& binary, bool bStore = true);
 
     std::pair<RunStats, std::list<std::string>*> get();
-    RunStats get_stats() const { return m_stats; }
-    std::list<std::string>* get_data() { return m_data; }
+    RunStats get_stats() const;
+    std::list<std::string>* get_data();
 
 private:
     std::mutex               m_mutex;

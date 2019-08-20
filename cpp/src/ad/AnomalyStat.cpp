@@ -106,6 +106,16 @@ void AnomalyStat::add(const std::string& binary, bool bStore)
     }
 }
 
+RunStats AnomalyStat::get_stats() const {
+    std::lock_guard<std::mutex> _(m_mutex);
+    return m_stats;
+}
+
+std::list<std::string>* AnomalyStat::get_data() {
+    std::lock_guard<std::mutex> _(m_mutex);
+    return m_data;
+}
+
 std::pair<RunStats, std::list<std::string>*> AnomalyStat::get()
 {
     std::lock_guard<std::mutex> _(m_mutex);

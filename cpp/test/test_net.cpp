@@ -134,3 +134,8 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
         net.finalize();
 #endif
 }
+
+TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
+{
+    
+}

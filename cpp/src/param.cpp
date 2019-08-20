@@ -27,22 +27,17 @@ ParamInterface::~ParamInterface()
         delete pair.second;
 }
 
-
-
 void ParamInterface::add_anomaly_data(const std::string& data)
 {
-    /*
-        anomaly data
-        - app id
-        - rank id
-        - step
-        - min_timestamp
-        - max_timestamp
-        - # anomalies
-        - stat_id
+    AnomalyData d(data);
+    m_anomaly_stats[d.get_stat_id()]->add(d);
+}
 
-        create class: used by ADOutlier.hpp and param.hpp
-         - this is a part of message, logically...
-         - put in message.hpp!!
-    */
+std::string ParamInterface::get_anomaly_stat(const std::string& stat_id)
+{
+    if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+        return "";
+
+    RunStats stat = m_anomaly_stats[stat_id]->get_stats();
+    return stat.get_binary_state();
 }

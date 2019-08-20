@@ -1,6 +1,7 @@
 #include "chimbuko/util/RunStats.hpp"
 #include <cmath>
 #include <limits>
+#include <sstream>
 
 using namespace chimbuko;
 
@@ -28,6 +29,24 @@ void RunStats::set_state(const State& s)
     m_state.min = s.min;
     m_state.max = s.max;
     m_state.acc = s.acc;
+}
+
+std::string RunStats::get_binary_state()
+{
+    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    set_stream(true);
+    ss << *this;
+    set_stream(false);
+    return ss.str();
+}
+
+void RunStats::set_binary_state(const std::string& binary)
+{
+    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    ss << binary;
+    set_stream(true);
+    ss >> *this;
+    set_stream(false);
 }
 
 void RunStats::push(double x)

@@ -71,6 +71,14 @@ public:
         return from_state(get_state());
     }
 
+    std::string get_binary_state();
+    void set_binary_state(const std::string& binary);
+    static RunStats from_binary_state(const std::string& binary) {
+        RunStats stats;
+        stats.set_binary_state(binary);
+        return stats;
+    }
+
     void push(double x);
 
     double count() const;
