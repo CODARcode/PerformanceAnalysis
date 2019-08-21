@@ -177,6 +177,17 @@ public:
 
     int kind() const { return m_head.kind(); }
 
+    std::string kind_str() const {
+        switch(m_head.kind())
+        {
+            case 0: return "DEFAULT";
+            case 1: return "CMD";
+            case 2: return "SSTD";
+            case 3: return "ANOMALY_STATS";
+            default: return "UNKNOWN";
+        }
+    }
+
     int size() const { return m_head.size(); }
 
     int frame() const { return m_head.frame(); } 

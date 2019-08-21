@@ -41,3 +41,11 @@ std::string ParamInterface::get_anomaly_stat(const std::string& stat_id)
     RunStats stat = m_anomaly_stats[stat_id]->get_stats();
     return stat.get_binary_state();
 }
+
+size_t ParamInterface::get_n_anomaly_data(const std::string& stat_id)
+{
+    if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+        return 0;
+
+    return m_anomaly_stats[stat_id]->get_n_data();
+}

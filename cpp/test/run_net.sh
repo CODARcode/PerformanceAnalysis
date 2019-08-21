@@ -33,3 +33,6 @@ mpirun --allow-run-as-root -n 10 ../bin/pclient "tcp://localhost:5559"
 
 sleep 1
 mpirun --allow-run-as-root -n 10 ../bin/pclient "tcp://localhost:5559"
+
+sleep 1
+mpirun --allow-run-as-root -n 10 ../bin/pclient_stats "tcp://localhost:5559"

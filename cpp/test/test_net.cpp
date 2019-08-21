@@ -4,6 +4,7 @@
 #include "chimbuko/net/zmq_net.hpp"
 #endif
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/ad/AnomalyStat.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 
@@ -137,5 +138,48 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 
 TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 {
-    
+    using namespace chimbuko;
+
+#ifdef _USE_MPINET
+    chimbuko::MPINet net;
+#else
+    chimbuko::ZMQNet net;
+#endif
+    const int N_MPI_PROCESSORS = 10;
+
+    chimbuko::SstdParam param({N_MPI_PROCESSORS});
+
+    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    net.init(nullptr, nullptr, 10);
+    net.run();
+
+    // check results (see pclient_stats.cpp)
+    const std::vector<double> means = {
+        100, 200, 300, 400, 500,
+        150, 250, 350, 450, 550
+    };
+    const std::vector<double> stddevs = {
+        10, 20, 30, 40, 50,
+        15, 25, 35, 45, 55
+    };
+    const int MAX_STEPS = 1000;    
+
+    for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
+    {
+        std::string stat_id = "0:" + std::to_string(rank);
+
+        std::string stat_binary = param.get_anomaly_stat(stat_id);
+        ASSERT_GT(stat_binary.size(), 0);
+        
+        size_t n = param.get_n_anomaly_data(stat_id);
+        EXPECT_EQ(MAX_STEPS, (int)n);
+
+        RunStats stats = RunStats::from_binary_state(stat_binary);
+        EXPECT_NEAR(means[rank], stats.mean(), means[rank]*0.1);
+        EXPECT_NEAR(stddevs[rank], stats.stddev(), stddevs[rank]*0.1);
+    }
+
+#ifdef _USE_ZMQNET
+    net.finalize();
+#endif
 }

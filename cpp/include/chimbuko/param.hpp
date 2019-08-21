@@ -26,6 +26,7 @@ public:
     // anomaly statistics related ...
     void add_anomaly_data(const std::string& data);
     std::string get_anomaly_stat(const std::string& stat_id);
+    size_t get_n_anomaly_data(const std::string& stat_id);
 
 protected:
     // for parameters of an anomaly detection algorithm

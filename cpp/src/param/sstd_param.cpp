@@ -8,6 +8,12 @@ SstdParam::SstdParam()
     clear();
 }
 
+SstdParam::SstdParam(const std::vector<int>& n_ranks)
+: ParamInterface(n_ranks)
+{
+    clear();
+}
+
 SstdParam::~SstdParam()
 {
 

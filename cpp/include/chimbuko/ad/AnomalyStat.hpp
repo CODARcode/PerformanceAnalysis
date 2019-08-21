@@ -99,9 +99,31 @@ public:
     void add(AnomalyData& d, bool bStore = true);
     void add(const std::string& binary, bool bStore = true);
 
+    /**
+     * @brief Get copy of the current statistics and the pointer 
+     *        to data list.
+     * 
+     * WARN: Once this function is called, the pointer to the 
+     * current data list is returned and new (empty) data list is
+     * allocated. So, it is callee's responsibility to free the 
+     * allocated memory.
+     * 
+     * @return std::pair<RunStats, std::list<std::string>*> 
+     */
     std::pair<RunStats, std::list<std::string>*> get();
-    RunStats get_stats() const;
+    RunStats get_stats();
+
+    /**
+     * @brief Get the pointer to the data list
+     * 
+     * WARN: As it returns the pointer to the data list,
+     * new data can be added to the list in other threads. 
+     * Also, it shouldn't be freed by the callee.
+     * 
+     * @return std::list<std::string>* 
+     */
     std::list<std::string>* get_data();
+    size_t get_n_data();
 
 private:
     std::mutex               m_mutex;

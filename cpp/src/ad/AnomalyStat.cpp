@@ -89,6 +89,7 @@ void AnomalyStat::add(AnomalyData& d, bool bStore)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     m_stats.push(d.get_n_anomalies());
+    // std::cout << "add: " << d.get_stat_id() << ": " << d.get_n_anomalies() << std::endl; 
     if (bStore)
     {
         m_data->push_back(d.get_binary());
@@ -106,7 +107,7 @@ void AnomalyStat::add(const std::string& binary, bool bStore)
     }
 }
 
-RunStats AnomalyStat::get_stats() const {
+RunStats AnomalyStat::get_stats() {
     std::lock_guard<std::mutex> _(m_mutex);
     return m_stats;
 }
@@ -114,6 +115,13 @@ RunStats AnomalyStat::get_stats() const {
 std::list<std::string>* AnomalyStat::get_data() {
     std::lock_guard<std::mutex> _(m_mutex);
     return m_data;
+}
+
+size_t AnomalyStat::get_n_data() {
+    std::lock_guard<std::mutex> _(m_mutex);
+    if (m_data == nullptr) 
+        return 0;
+    return m_data->size();
 }
 
 std::pair<RunStats, std::list<std::string>*> AnomalyStat::get()

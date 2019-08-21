@@ -45,6 +45,8 @@ void doWork(void* context, ParamInterface* param)
         msg.set_msg(strmsg, true);
 
         msg_reply = msg.createReply();
+
+        // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
         if (msg.kind() == MessageKind::SSTD)
         {
             SstdParam* p = dynamic_cast<SstdParam*>(param);
@@ -57,7 +59,7 @@ void doWork(void* context, ParamInterface* param)
                 msg_reply.set_msg(p->serialize(), false);
             }
         }
-        if (msg.kind() == MessageKind::ANOMALY_STATS)
+        else if (msg.kind() == MessageKind::ANOMALY_STATS)
         {
             if (msg.type() == MessageType::REQ_ADD) {
                 // std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
@@ -67,6 +69,10 @@ void doWork(void* context, ParamInterface* param)
             else if (msg.type() == MessageType::REQ_GET) {
                 // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
                 msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
+            }
+            else 
+            {
+                std::cout << "Unknown Type: " << msg.type() << std::endl;
             }
         }
         else if (msg.kind() == MessageKind::DEFAULT)
@@ -78,7 +84,7 @@ void doWork(void* context, ParamInterface* param)
         }
         else 
         {
-            std::cout << "Unknow" << std::endl;
+            std::cout << "Unknow message kind: " << msg.kind_str() << std::endl;
         }
         // -------------------------------------------------------------------
 
