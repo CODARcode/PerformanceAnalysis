@@ -231,6 +231,7 @@ public:
 
             std::string data = oss.str();
 
+            // TODO: url?? it must be fixed!!!
             curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());

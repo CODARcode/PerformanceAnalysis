@@ -2,6 +2,7 @@
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/param.hpp"
 #include <string>
+#include <thread>
 
 namespace chimbuko {
 
@@ -75,6 +76,9 @@ public:
 
     ParamInterface* get_parameter() { return m_param; } 
 
+    void run_stat_sender(std::string url, bool bTest=false);
+    void stop_stat_sender();
+
 protected:
     /**
      * @brief initialize thread pool 
@@ -85,8 +89,12 @@ protected:
 
 protected:
     int              m_nt;    // the number of threads in the pool
-    //ParamKind        m_kind;  // parameter kind
     ParamInterface * m_param; // pointer to parameter (storage)
+
+    // thread workder to periodically send anomaly statistics to web server
+    // , if it is available.
+    std::thread     * m_stat_sender; 
+    std::atomic_bool  m_stop_sender;
 };
 
 namespace DefaultNetInterface

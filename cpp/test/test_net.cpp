@@ -7,6 +7,8 @@
 #include "chimbuko/ad/AnomalyStat.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
+#include <thread>
+#include <chrono>
 
 class NetTest : public ::testing::Test
 {
@@ -178,6 +180,35 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
         EXPECT_NEAR(means[rank], stats.mean(), means[rank]*0.1);
         EXPECT_NEAR(stddevs[rank], stats.stddev(), stddevs[rank]*0.1);
     }
+
+#ifdef _USE_ZMQNET
+    net.finalize();
+#endif
+}
+
+TEST_F(NetTest, NetStatSenderTest)
+{
+    using namespace chimbuko;
+#ifdef _USE_MPINET
+    MPINet net;
+#else
+    ZMQNet net;
+#endif
+
+    std::string url = "http://0.0.0.0:5000/post";
+
+    try
+    {
+        net.run_stat_sender(url, true);
+        std::this_thread::sleep_for(std::chrono::seconds(10));    
+        net.stop_stat_sender();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
+    SUCCEED();
 
 #ifdef _USE_ZMQNET
     net.finalize();
