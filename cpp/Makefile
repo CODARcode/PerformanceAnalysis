@@ -1,6 +1,6 @@
 LIB_NAME = chimbuko
 
-INC_DIRS := include
+INC_DIRS := include 3rdparty
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 BIN_DIR ?= bin

@@ -17,6 +17,17 @@ void AnomalyData::set_binary(std::string binary)
     ss >> *this;
 }
 
+nlohmann::json AnomalyData::get_json() const
+{
+    return {
+        {"n_anomaly", get_n_anomalies()},
+        {"step", get_step()},
+        {"min_timestamp", get_min_ts()},
+        {"max_timestamp", get_max_ts()},
+        {"stat_id", get_stat_id()}
+    };
+}
+
 void AnomalyData::show(std::ostream& os) const
 {
     os << "App: " << m_app 

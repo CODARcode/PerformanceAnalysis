@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <limits>
+#include <nlohmann/json.hpp>
 
 namespace chimbuko {
 
@@ -93,6 +94,8 @@ public:
     
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
     void set_do_accumulate(bool do_accumulate) { m_do_accumulate = do_accumulate; }
+
+    void to_json(nlohmann::json& json);
     
     friend RunStats operator+(const RunStats a, const RunStats b);
     RunStats& operator+=(const RunStats& rs);

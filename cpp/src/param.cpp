@@ -49,3 +49,38 @@ size_t ParamInterface::get_n_anomaly_data(const std::string& stat_id)
 
     return m_anomaly_stats[stat_id]->get_n_data();
 }
+
+std::string ParamInterface::collect_stat_data()
+{
+    nlohmann::json jsonObjects = nlohmann::json::array();
+    
+    for (auto pair: m_anomaly_stats)
+    {
+        std::string stat_id = pair.first;
+        // std::pair<RunStats, std::list<std::string>*> dd = pair.second->get();
+        auto stats = pair.second->get();
+        if (stats.second && stats.second->size())
+        {
+            nlohmann::json object;
+            object["key"] = stat_id;
+            stats.first.to_json(object);
+
+            // nlohmann::json dataObjects = nlohmann::json::array();
+            object["data"] = nlohmann::json::array();
+            for (auto strdata: *stats.second)
+            {
+                object["data"].push_back(
+                    AnomalyData(strdata).get_json()
+                );
+                //dataObjects.push_back(AnomalyData(strdata).get_json());
+            }
+
+            jsonObjects.push_back(object);
+
+            delete stats.second;            
+        }
+        // pair.second->get();
+    }
+
+    return jsonObjects.dump();
+}

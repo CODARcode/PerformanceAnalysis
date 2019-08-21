@@ -4,7 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <nlohmann/json.hpp>
 #include "chimbuko/ad/AnomalyStat.hpp"
+
 
 namespace chimbuko {
 
@@ -27,6 +29,7 @@ public:
     void add_anomaly_data(const std::string& data);
     std::string get_anomaly_stat(const std::string& stat_id);
     size_t get_n_anomaly_data(const std::string& stat_id);
+    std::string collect_stat_data();
 
 protected:
     // for parameters of an anomaly detection algorithm

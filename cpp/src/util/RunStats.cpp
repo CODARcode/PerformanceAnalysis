@@ -190,6 +190,20 @@ RunStats& RunStats::operator+=(const RunStats& rs)
     return *this;
 }
 
+void RunStats::to_json(nlohmann::json& json)
+{
+    json["stats"] = {
+        {"n_updates", count()},
+        {"n_anomalies", accumulate()},
+        {"n_min_anomalies", minimum()},
+        {"n_max_anomalies", maximum()},
+        {"mean", mean()},
+        {"stddev", stddev()},
+        {"skewness", skewness()},
+        {"kurtosis", kurtosis()}
+    };
+}
+
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
     return 

@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <list>
+#include <nlohmann/json.hpp>
 #include "chimbuko/util/RunStats.hpp"
 
 namespace chimbuko {
@@ -61,6 +62,7 @@ public:
 
     unsigned long get_app() const { return m_app; }
     unsigned long get_rank() const { return m_rank; }
+    unsigned long get_step() const { return m_step; }
     unsigned long get_min_ts() const { return m_min_timestamp; }
     unsigned long get_max_ts() const { return m_max_timestamp; }
     unsigned long get_n_anomalies() const { return m_n_anomalies; }
@@ -74,6 +76,8 @@ public:
 
     std::string get_binary();
     void set_binary(std::string binary);
+
+    nlohmann::json get_json() const;
 
     void show(std::ostream& os = std::cout) const;
 

@@ -69,7 +69,11 @@ static std::string test_packet(double& test_num)
     return ss.str();
 }
 
-static void send_stat(std::string url, std::atomic_bool& bStop, bool bTest)
+static void send_stat(
+    std::string url, 
+    std::atomic_bool& bStop, 
+    ParamInterface*& param, 
+    bool bTest)
 {
     curl_global_init(CURL_GLOBAL_ALL);
     
@@ -100,6 +104,10 @@ static void send_stat(std::string url, std::atomic_bool& bStop, bool bTest)
 
         if (bTest)
             packet = test_packet(test_num);
+        // else 
+        // {
+        //     packet = param->collect_stat_data();
+        // }
 
         if (packet.length() == 0)
         {
@@ -150,7 +158,7 @@ static void send_stat(std::string url, std::atomic_bool& bStop, bool bTest)
 void NetInterface::run_stat_sender(std::string url, bool bTest)
 {
     m_stat_sender = new std::thread(
-        &send_stat, url, std::ref(m_stop_sender), bTest
+        &send_stat, url, std::ref(m_stop_sender), std::ref(m_param), bTest
     );
 }
 

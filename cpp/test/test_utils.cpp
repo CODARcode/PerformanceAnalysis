@@ -231,5 +231,6 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
         delete stats.second;
         delete c_anomaly_stats[pair.first];
     }
-    
 }
+
+
