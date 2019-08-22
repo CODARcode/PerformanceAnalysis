@@ -20,7 +20,8 @@ enum MessageType {
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
-    SSTD    = 2
+    SSTD    = 2,
+    ANOMALY_STATS = 3
 };
 
 enum MessageCmd {
@@ -175,6 +176,17 @@ public:
     int type() const { return m_head.type(); }
 
     int kind() const { return m_head.kind(); }
+
+    std::string kind_str() const {
+        switch(m_head.kind())
+        {
+            case 0: return "DEFAULT";
+            case 1: return "CMD";
+            case 2: return "SSTD";
+            case 3: return "ANOMALY_STATS";
+            default: return "UNKNOWN";
+        }
+    }
 
     int size() const { return m_head.size(); }
 

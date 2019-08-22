@@ -12,13 +12,14 @@ CXX := mpic++
 CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 
-ADIOS = /ccs/proj/csc299/amalik/codar_chimbuko/adios2/install
+ADIOS = /ccs/proj/csc299/codar/sw/adios2
 ADIOS_FLAGS = -isystem ${ADIOS}/include
 ADIOS_LIBS = `${ADIOS}/bin/adios2-config --cxx-libs`
 
 CURL_FLAGS = `curl-config --libs`
 
-PS_FLAGS = -D_USE_MPINET
+#PS_FLAGS = -D_USE_MPINET
+PS_FLAGS = -D_USE_ZMQNET
 
 TARGET_LIB := lib/lib${LIB_NAME}.so
 EXEC_SRCS := $(wildcard *.cpp)
@@ -38,7 +39,7 @@ debugvars:
 
 bin/%: build/%.o | $(TARGET_LIB)
 	$(MKDIR_P) $(@D)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -lboost_system -lboost_thread -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -o $@ 
 
 lib/lib$(LIB_NAME).so: $(OBJS)
 	$(MKDIR_P) $(@D)

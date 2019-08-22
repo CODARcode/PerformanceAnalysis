@@ -1,6 +1,7 @@
 #include "chimbuko/ad/ADParser.hpp"
 #include <thread>
 #include <chrono>
+#include <iostream>
 
 using namespace chimbuko;
 
@@ -13,7 +14,10 @@ ADParser::ADParser(std::string inputFile, std::string engineType)
     // set io and engine
     m_io = m_ad.DeclareIO("tau-metrics");
     m_io.SetEngine(m_engineType);
-    //m_io.SetParameters();
+    m_io.SetParameters({
+        {"MarshalMethod", "BP"},
+        {"DataTransport", "RDMA"}
+    });
     
     // open file
     // for sst engine, is the adios2 internally blocked here until *.sst file is found?
@@ -29,18 +33,18 @@ ADParser::~ADParser() {
     }
 }
 
-int ADParser::beginStep() {
+int ADParser::beginStep(bool verbose) {
     if (m_opened)
     {
-        const int max_tries = 10;
+        const int max_tries = 10000;
         int n_tries = 0;
         adios2::StepStatus status;
         while (n_tries < max_tries)
         {
-            status = m_reader.BeginStep(adios2::StepMode::NextAvailable, 10.0f);
+            status = m_reader.BeginStep(adios2::StepMode::Read, 10.0f);
             if (status == adios2::StepStatus::NotReady)
             {
-                std::this_thread::sleep_for(std::chrono::microseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 n_tries++;
                 continue;
             }
@@ -55,6 +59,11 @@ int ADParser::beginStep() {
                 m_current_step = -1;
                 break;
             }
+        }
+
+        if (verbose)
+        {
+            std::cout << m_current_step << ": after " << n_tries << std::endl;
         }
     }
     return m_current_step;
@@ -102,6 +111,7 @@ ParserError ADParser::fetchFuncData() {
     size_t nelements;
 
     m_timer_event_count = 0;
+    //m_event_timestamps.clear();
 
     in_timer_event_count = m_io.InquireVariable<size_t>("timer_event_count");
     in_event_timestamps = m_io.InquireVariable<unsigned long>("event_timestamps");
@@ -111,6 +121,7 @@ ParserError ADParser::fetchFuncData() {
         m_reader.Get<size_t>(in_timer_event_count, &m_timer_event_count, adios2::Mode::Sync);
 
         nelements = m_timer_event_count * FUNC_EVENT_DIM; 
+        //m_event_timestamps.resize(nelements);
         if (nelements > m_event_timestamps.size())
             m_event_timestamps.resize(nelements);
 
@@ -127,6 +138,7 @@ ParserError ADParser::fetchCommData() {
     size_t nelements;
 
     m_comm_count = 0;
+    //m_comm_timestamps.clear();
 
     in_comm_count = m_io.InquireVariable<size_t>("comm_count");
     in_comm_timestamps = m_io.InquireVariable<unsigned long>("comm_timestamps");
@@ -136,6 +148,7 @@ ParserError ADParser::fetchCommData() {
         m_reader.Get<size_t>(in_comm_count, &m_comm_count, adios2::Mode::Sync);
 
         nelements = m_comm_count * COMM_EVENT_DIM;
+        //m_comm_timestamps.resize(nelements);
         if (nelements > m_comm_timestamps.size())
             m_comm_timestamps.resize(nelements);
 

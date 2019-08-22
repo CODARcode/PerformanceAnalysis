@@ -13,7 +13,9 @@ public:
     ~Event_t() {}
 
     // common for all kinds of events
-    bool valid() const { return m_data != nullptr; }
+    bool valid() const { 
+        return m_data != nullptr; 
+    }
     std::string id() const { return m_id; }
     size_t idx() const { return m_idx; }
     unsigned long pid() const { return m_data[IDX_P]; }
@@ -53,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, const Event_t& ev);
 class CommData_t {
 public:
     CommData_t();
-    CommData_t(Event_t& ev, std::string commType);
+    CommData_t(const Event_t& ev, std::string commType);
     ~CommData_t() {};
 
     std::string type() const { return m_commType; }
@@ -84,28 +86,33 @@ class ExecData_t {
 
 public:
     ExecData_t();
-    ExecData_t(Event_t& ev);
+    ExecData_t(const Event_t& ev);
     ~ExecData_t();
 
     std::string get_id() const { return m_id; }
+    std::string get_funcname() const { return m_funcname; }
+    unsigned long get_pid() const { return m_pid; }
+    unsigned long get_tid() const { return m_tid; }
+    unsigned long get_rid() const { return m_rid; }
+    unsigned long get_fid() const { return m_fid; }
     unsigned long get_entry() const { return m_entry; }
     unsigned long get_exit() const { return m_exit; }
     unsigned long get_runtime() const { return m_runtime; }
     int get_label() const { return m_label; }
+    std::string get_parent() const { return m_parent; }
+    const std::vector<std::string>& get_children() const { return m_children; }
+    const std::vector<CommData_t>& get_message() const { return m_messages; }
 
     size_t get_n_message() const { return m_messages.size(); }
     size_t get_n_children() const { return m_children.size(); }
 
     bool is_used() const { return m_used; }
 
-    const std::vector<std::string>& get_children() const { return m_children; }
-    const std::vector<CommData_t>& get_message() const { return m_messages; }
-
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
     void set_funcname(std::string funcname) { m_funcname = funcname; }
 
-    bool update_exit(Event_t& ev);
+    bool update_exit(const Event_t& ev);
     void add_child(std::string child);
     bool add_message(const CommData_t& comm);
 

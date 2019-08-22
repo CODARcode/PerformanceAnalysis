@@ -23,7 +23,12 @@
 
 
 echo "run test ZMQNet"
+echo "First run web-server for NetStatSenderTest"
+python3 ws_flask_stat.py &
+sleep 1
+
 mpirun --allow-run-as-root -n 1 mainNet -n 1 &
+test_pid=$!
 
 sleep 1
 mpirun --allow-run-as-root -n 1 ../bin/pclient "tcp://localhost:5559"
@@ -33,3 +38,9 @@ mpirun --allow-run-as-root -n 10 ../bin/pclient "tcp://localhost:5559"
 
 sleep 1
 mpirun --allow-run-as-root -n 10 ../bin/pclient "tcp://localhost:5559"
+
+sleep 1
+mpirun --allow-run-as-root -n 10 ../bin/pclient_stats "tcp://localhost:5559"
+
+wait $test_pid
+curl -X POST "http://0.0.0.0:5000/shutdown"

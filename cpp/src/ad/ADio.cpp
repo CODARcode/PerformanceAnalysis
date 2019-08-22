@@ -84,6 +84,10 @@ void ADio::_open(std::fstream& f, std::string filename, IOOpenMode mode)
 
 void ADio::checkFileLimit(std::fstream& stream, long long required)
 {
+    // std::cout << "checkFileLimit: " 
+    //     << static_cast<long long>(stream.tellp()) + required << " vs. " << m_limit 
+    //     << std::endl; 
+
     if (static_cast<long long>(stream.tellp()) + required > m_limit)
     {
         stream.close();
@@ -196,13 +200,19 @@ public:
             // std::cout << "step: " << m_step << ", "
             //         << "n_exec: " << n_exec << ", "
             //         << "fid: " << fid << ", "
-            //         << "pos: " << seekpos << std::endl;
+            //         << "pos: " << seekpos << ","
+            //         << "good: " << fData.good() << ", "
+            //         << "bad: " << fData.bad() << ", "
+            //         << "fail: " << fData.fail() << ", "
+            //         << "eof: " << fData.eof()
+            //         << std::endl;
 
-            ss_data.seekg(0);
-            fData << ss_data.rdbuf();
-
+            if (n_exec > 0) {
+                ss_data.seekg(0);
+                fData << ss_data.rdbuf();
+                fData.flush();
+            }
             fHead.flush();
-            fData.flush();
         }
 
         if (m_io.getCURL()) {
@@ -221,6 +231,7 @@ public:
 
             std::string data = oss.str();
 
+            // TODO: url?? it must be fixed!!!
             curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());

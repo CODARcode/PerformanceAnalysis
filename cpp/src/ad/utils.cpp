@@ -26,6 +26,10 @@ std::string generate_hex(const unsigned int len) {
 }
 
 std::string generate_event_id(int rank, int step, size_t idx) {
-    return std::to_string(rank) + "_" + std::to_string(step) + "_" + std::to_string(idx);
+    return std::to_string(rank) + ":" + std::to_string(step) + ":" + std::to_string(idx);
 }
 
+std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid) {
+    return std::to_string(rank) + "-" + std::to_string(eid) + ":" + std::to_string(step) + ":" + std::to_string(idx);
+    // return generate_event_id(rank, step, idx) + "_" + std::to_string(eid);
+}

@@ -8,7 +8,7 @@
 #include <mpi.h>
 using namespace chimbuko;
 
-MPINet::MPINet() : m_inited(0), m_tpool(nullptr)
+MPINet::MPINet() : m_inited(0), m_tpool(nullptr), m_stop(false)
 {
 }
 

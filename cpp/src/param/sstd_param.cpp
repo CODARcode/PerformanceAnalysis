@@ -8,6 +8,12 @@ SstdParam::SstdParam()
     clear();
 }
 
+SstdParam::SstdParam(const std::vector<int>& n_ranks)
+: ParamInterface(n_ranks)
+{
+    clear();
+}
+
 SstdParam::~SstdParam()
 {
 
@@ -105,7 +111,7 @@ void SstdParam::show(std::ostream& os) const
     {
         os << "Function " << stat.first << ": "
            << "Mean: " << stat.second.mean() << ", "
-           << "Std: " << stat.second.std() << std::endl;
+           << "Std: " << stat.second.stddev() << std::endl;
     }
 
     os << std::endl;

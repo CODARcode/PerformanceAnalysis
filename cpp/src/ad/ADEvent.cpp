@@ -47,7 +47,7 @@ void ADEvent::createCallList(unsigned long pid, unsigned long rid, unsigned long
         m_callList[pid][rid][tid] = CallList_t();
 }
 
-EventError ADEvent::addEvent(Event_t event) {
+EventError ADEvent::addEvent(const Event_t& event) {
     switch (event.type())
     {
     case EventDataType::FUNC: return addFunc(event);
@@ -56,7 +56,7 @@ EventError ADEvent::addEvent(Event_t event) {
     }
 }
 
-EventError ADEvent::addFunc(Event_t event) {
+EventError ADEvent::addFunc(const Event_t& event) {
     if (m_eventType == nullptr) {
         //std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
@@ -67,6 +67,16 @@ EventError ADEvent::addFunc(Event_t event) {
     if (m_eventType->count(eid) == 0) {
         //std::cerr << "Unknown event in eventType: " << eid << std::endl;
         return EventError::UnknownEvent;
+    }
+
+    if (m_funcMap->count(event.fid()) == 0) {
+        //std::cerr << "Unknown function event\n";
+        return EventError::UnknownFunc;
+    }
+
+    if ( m_funcMap->find(event.fid())->second.find("pthread") != std::string::npos ) {
+    //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
+        return EventError::OK;
     }
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
@@ -95,25 +105,28 @@ EventError ADEvent::addFunc(Event_t event) {
     {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size() == 0) {
-            std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
-            return EventError::CallStackViolation;
+            //std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
+            //std::cerr << event << ": "
+            //		      << m_eventType->find(event.eid())->second << ": "
+            //		      << m_funcMap->find(event.fid())->second << std::endl;
+            return EventError::EmptyCallStack;
         }
 
         CallListIterator_t& it = cs.top();
-        cs.pop();
-
         if (!it->update_exit(event)) {
             std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
             std::cerr << event << ": "
                       << m_eventType->find(event.eid())->second << ": "
                       << m_funcMap->find(event.fid())->second << std::endl;
             std::cerr << *it << std::endl;
-            while (!cs.empty()) {
-                std::cerr << *cs.top() << std::endl;
-                cs.pop();
-            }            
+            // while (!cs.empty()) {
+            //     std::cerr << *cs.top() << std::endl;
+            //     cs.pop();
+            // }            
             return EventError::CallStackViolation;
         }
+        cs.pop();
+
 
         CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
         while (!comm.empty()) {
@@ -131,7 +144,7 @@ EventError ADEvent::addFunc(Event_t event) {
     return EventError::UnknownEvent;
 }
 
-EventError ADEvent::addComm(Event_t event) {
+EventError ADEvent::addComm(const Event_t& event) {
     if (m_eventType == nullptr)
         return EventError::UnknownEvent;
 
