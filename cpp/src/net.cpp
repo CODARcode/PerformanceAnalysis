@@ -39,10 +39,9 @@ void NetInterface::set_parameter(ParamInterface* param)
 
 // holder for curl fetch
 struct curl_fetch_str {
-    unsigned long m_count;
     std::string m_payload;
     bool        m_do_fetch;
-    curl_fetch_str(bool do_fetch) : m_count(0), m_do_fetch(do_fetch)
+    curl_fetch_str(bool do_fetch) : m_do_fetch(do_fetch)
     {
 
     }
@@ -106,8 +105,6 @@ static void send_stat(
     headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    // std::cout << "Inialized CURL @ " << url << std::endl;
-    // std::cout << "start ..." << std::endl;
     while (!bStop || packet.length())
     {
         // collect data
@@ -120,13 +117,11 @@ static void send_stat(
         }
         else 
         {
-            // std::cout << "Try to collect stat data!" << std::endl;
             packet = param->collect_stat_data();
         }
 
         if (packet.length() == 0)
         {
-            // std::cout << "empty packet!" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             continue;
         }
@@ -165,7 +160,6 @@ static void send_stat(
 
     if (curl)
     {
-        // std::cout << "Clean-up CURL ..." << std::endl;
         if (headers) curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
         curl_global_cleanup();

@@ -162,7 +162,7 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
     SstdParam param(N_RANKS);
 
     // empty case
-    EXPECT_STREQ("[]", param.collect_stat_data().c_str());
+    EXPECT_STREQ("", param.collect_stat_data().c_str());
 
     param.add_anomaly_data(AnomalyData(0, 0, 0, 0, 10, 10).get_binary());
     param.add_anomaly_data(AnomalyData(0, 0, 1, 11, 20, 20).get_binary());
