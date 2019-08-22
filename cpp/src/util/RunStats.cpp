@@ -109,7 +109,7 @@ double RunStats::mean() const {
 }
 
 double RunStats::variance(double ddof) const {
-    if (m_state.count - ddof < 0.0)
+    if (m_state.count - ddof <= 0.0)
         return 0.0;
     return m_state.rho / (m_state.count - ddof);
 }
@@ -208,9 +208,9 @@ bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
     return 
         std::abs(a.m_state.count - b.m_state.count) < 1e-6 &&
-        std::abs(a.m_state.eta - b.m_state.eta) < 1e-6 &&
-        std::abs(a.m_state.rho - b.m_state.rho) < 1e-6 &&
-        std::abs(a.m_state.tau - b.m_state.tau) < 1e-6 &&
+        std::abs(a.m_state.eta - b.m_state.eta) < 1e-3 &&
+        std::abs(a.m_state.rho - b.m_state.rho) < 1e-3 &&
+        std::abs(a.m_state.tau - b.m_state.tau) < 1e-3 &&
         std::abs(a.m_state.min - b.m_state.min) < 1e-6 &&
         std::abs(a.m_state.max - b.m_state.max) < 1e-6 &&
         std::abs(a.m_state.acc - b.m_state.acc) < 1e-6;
@@ -220,9 +220,9 @@ bool chimbuko::operator!=(const RunStats& a, const RunStats& b)
 {
     return 
         std::abs(a.m_state.count - b.m_state.count) > 1e-6 ||
-        std::abs(a.m_state.eta - b.m_state.eta) > 1e-6 ||
-        std::abs(a.m_state.rho - b.m_state.rho) > 1e-6 ||
-        std::abs(a.m_state.tau - b.m_state.tau) > 1e-6 ||
+        std::abs(a.m_state.eta - b.m_state.eta) > 1e-3 ||
+        std::abs(a.m_state.rho - b.m_state.rho) > 1e-3 ||
+        std::abs(a.m_state.tau - b.m_state.tau) > 1e-3 ||
         std::abs(a.m_state.min - b.m_state.min) > 1e-6 ||
         std::abs(a.m_state.max - b.m_state.max) > 1e-6 ||
         std::abs(a.m_state.acc - b.m_state.acc) > 1e-6;

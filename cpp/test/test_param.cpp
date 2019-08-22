@@ -2,6 +2,7 @@
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
+#include <nlohmann/json.hpp>
 
 class ParamTest : public ::testing::Test
 {
@@ -150,5 +151,130 @@ TEST_F(ParamTest, SstdMessageTest)
         dummy = g_param.update(msg.data_buffer(), true);
         EXPECT_STREQ(c_param.serialize().c_str(), dummy.c_str());
     }
+}
+
+TEST_F(ParamTest, AnomalyStatJsonTest)
+{
+    using namespace chimbuko;
+
+    const std::vector<int> N_RANKS = {2, 1};
+
+    SstdParam param(N_RANKS);
+
+    // empty case
+    EXPECT_STREQ("[]", param.collect_stat_data().c_str());
+
+    param.add_anomaly_data(AnomalyData(0, 0, 0, 0, 10, 10).get_binary());
+    param.add_anomaly_data(AnomalyData(0, 0, 1, 11, 20, 20).get_binary());
+    param.add_anomaly_data(AnomalyData(0, 0, 2, 21, 30, 30).get_binary());
+
+    nlohmann::json j = nlohmann::json::parse(
+        param.collect_stat_data()
+    );
+    ASSERT_EQ(1, j.size());
+    
+    j = j[0];
+    ASSERT_EQ(3 , j["data"].size());
+
+    EXPECT_EQ(0 , j["data"][0]["step"]);
+    EXPECT_EQ(0 , j["data"][0]["min_timestamp"]);
+    EXPECT_EQ(10, j["data"][0]["max_timestamp"]);
+    EXPECT_EQ(10, j["data"][0]["n_anomaly"]);
+    EXPECT_STREQ("0:0" , j["data"][0]["stat_id"].get<std::string>().c_str());
+
+    EXPECT_EQ(1 , j["data"][1]["step"]);
+    EXPECT_EQ(11 , j["data"][1]["min_timestamp"]);
+    EXPECT_EQ(20, j["data"][1]["max_timestamp"]);
+    EXPECT_EQ(20, j["data"][1]["n_anomaly"]);
+    EXPECT_STREQ("0:0" , j["data"][1]["stat_id"].get<std::string>().c_str());
+
+    EXPECT_EQ(2 , j["data"][2]["step"]);
+    EXPECT_EQ(21 , j["data"][2]["min_timestamp"]);
+    EXPECT_EQ(30, j["data"][2]["max_timestamp"]);
+    EXPECT_EQ(30, j["data"][2]["n_anomaly"]);
+    EXPECT_STREQ("0:0" , j["data"][2]["stat_id"].get<std::string>().c_str());
+
+    EXPECT_STREQ("0:0", j["key"].get<std::string>().c_str());
+
+    EXPECT_NEAR(-1.5, j["stats"]["kurtosis"], 1e-3);
+    EXPECT_NEAR(20.0, j["stats"]["mean"], 1e-3);
+    EXPECT_NEAR(60.0, j["stats"]["n_anomalies"], 1e-3);
+    EXPECT_NEAR(30.0, j["stats"]["n_max_anomalies"], 1e-3);
+    EXPECT_NEAR(10.0, j["stats"]["n_min_anomalies"], 1e-3);
+    EXPECT_NEAR(3.0, j["stats"]["n_updates"], 1e-3);
+    EXPECT_NEAR(0.0, j["stats"]["skewness"], 1e-3);
+    EXPECT_NEAR(10.0, j["stats"]["stddev"], 1e-3);
+
+    param.add_anomaly_data(AnomalyData(0, 0, 3, 31, 40, 40).get_binary());
+    param.add_anomaly_data(AnomalyData(0, 1, 0, 0, 10, 10).get_binary());
+    param.add_anomaly_data(AnomalyData(1, 0, 1, 11, 20, 20).get_binary());
+
+    j = nlohmann::json::parse(param.collect_stat_data());
+    EXPECT_EQ(3, j.size());
+    for (auto& jj: j)
+    {
+        if (jj["key"].get<std::string>() == "1:0")
+        {
+            ASSERT_EQ(1, jj["data"].size());
+
+            EXPECT_EQ(1 , jj["data"][0]["step"]);
+            EXPECT_EQ(11 , jj["data"][0]["min_timestamp"]);
+            EXPECT_EQ(20, jj["data"][0]["max_timestamp"]);
+            EXPECT_EQ(20, jj["data"][0]["n_anomaly"]);
+            EXPECT_STREQ("1:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+
+            EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["mean"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["n_anomalies"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["n_max_anomalies"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["n_min_anomalies"], 1e-3);
+            EXPECT_NEAR(1.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
+            EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
+        }
+        else if (jj["key"].get<std::string>() == "0:1")
+        {
+            ASSERT_EQ(1, jj["data"].size());
+
+            EXPECT_EQ(0 , jj["data"][0]["step"]);
+            EXPECT_EQ(0 , jj["data"][0]["min_timestamp"]);
+            EXPECT_EQ(10, jj["data"][0]["max_timestamp"]);
+            EXPECT_EQ(10, jj["data"][0]["n_anomaly"]);
+            EXPECT_STREQ("0:1" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+
+            EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["mean"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["n_anomalies"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["n_max_anomalies"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["n_min_anomalies"], 1e-3);
+            EXPECT_NEAR(1.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
+            EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
+        }
+        else if (jj["key"].get<std::string>() == "0:0")
+        {
+            ASSERT_EQ(1, jj["data"].size());
+
+            EXPECT_EQ(3 , jj["data"][0]["step"]);
+            EXPECT_EQ(31 , jj["data"][0]["min_timestamp"]);
+            EXPECT_EQ(40, jj["data"][0]["max_timestamp"]);
+            EXPECT_EQ(40, jj["data"][0]["n_anomaly"]);
+            EXPECT_STREQ("0:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+
+            EXPECT_NEAR(-1.36, jj["stats"]["kurtosis"], 1e-3);
+            EXPECT_NEAR(25.0, jj["stats"]["mean"], 1e-3);
+            EXPECT_NEAR(100.0, jj["stats"]["n_anomalies"], 1e-3);
+            EXPECT_NEAR(40.0, jj["stats"]["n_max_anomalies"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["n_min_anomalies"], 1e-3);
+            EXPECT_NEAR(4.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
+            EXPECT_NEAR(12.9099, jj["stats"]["stddev"], 1e-3);
+        }
+        else
+        {
+            FAIL();
+        }
+    }
+    // std::cout << j.dump(4) << std::endl;
 }
 
