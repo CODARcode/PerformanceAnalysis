@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <curl/curl.h>
+#include <nlohmann/json.hpp>
 
 using namespace chimbuko;
 
@@ -38,9 +39,10 @@ void NetInterface::set_parameter(ParamInterface* param)
 
 // holder for curl fetch
 struct curl_fetch_str {
+    unsigned long m_count;
     std::string m_payload;
     bool        m_do_fetch;
-    curl_fetch_str(bool do_fetch) : m_do_fetch(do_fetch)
+    curl_fetch_str(bool do_fetch) : m_count(0), m_do_fetch(do_fetch)
     {
 
     }
@@ -48,7 +50,7 @@ struct curl_fetch_str {
 
 static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
 {
-    // std::cout << std::string(ptr) << std::endl;
+    // std::cout << "curl_writefunc: " << std::string(ptr) << std::endl;
     struct curl_fetch_str *p = (struct curl_fetch_str *) userp;
 
     if (ptr && p->m_do_fetch) {
@@ -61,12 +63,14 @@ static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
 static std::string test_packet(double& test_num)
 {
     static double num = 0;
-    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-    ss.write((const char*)&num, sizeof(double));
-    // std::cout << "Packet: " << num << std::endl;
+
+    if (num >= 10.0)
+        return "";
+
+    nlohmann::json j = {{"num", num}};
     test_num = num;
     num += 1.0;
-    return ss.str();
+    return j.dump();
 }
 
 static void send_stat(
@@ -83,34 +87,46 @@ static void send_stat(
     std::string packet;
     struct curl_fetch_str fetch(bTest);
     double test_num = 0; // only used for test
+    long httpCode(0);
 
     curl = curl_easy_init();
     if (curl == nullptr)
     {
         throw "Failed to initialize curl easy handler";
     }
-    headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    // Dont bother trying IPv6, which would increase DNS resolution time
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    // Don't wait forever, time out after 10 seconds
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+    // Follow HTTP redirects if necessary
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    // header
+    headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     // std::cout << "Inialized CURL @ " << url << std::endl;
     // std::cout << "start ..." << std::endl;
-    while (!bStop)
+    while (!bStop || packet.length())
     {
         // collect data
         packet.clear();        
         fetch.m_payload.clear();
 
         if (bTest)
+        {
             packet = test_packet(test_num);
-        // else 
-        // {
-        //     packet = param->collect_stat_data();
-        // }
+        }
+        else 
+        {
+            // std::cout << "Try to collect stat data!" << std::endl;
+            packet = param->collect_stat_data();
+        }
 
         if (packet.length() == 0)
         {
+            // std::cout << "empty packet!" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             continue;
         }
@@ -128,16 +144,17 @@ static void send_stat(
             std::cerr << "curl_easy_perform() failed: "
                 << curl_easy_strerror(res) << std::endl;
         }
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
         if (bTest)
         {
-            std::string payload = fetch.m_payload.substr(1, fetch.m_payload.size() - 3);
-            std::string strnum = payload.substr(payload.find_first_of(':') + 1);
-            // std::cout << payload << ", " << strnum << ", " << std::atof(strnum.c_str()) << std::endl;
-            if (std::abs(test_num - std::atof(strnum.c_str())) > 1e-6)
+            nlohmann::json j_received = nlohmann::json::parse(fetch.m_payload);
+            nlohmann::json j_expected = nlohmann::json::parse(packet);
+            if (std::abs(j_received["num"].get<double>() - j_expected["num"].get<double>()) > 1e-6)
             {
-                std::cout << "Expected:  " << test_num 
-                    << "\nReceived:  " << std::atof(strnum.c_str()) 
+                std::cout 
+                    << "Expected:  " << j_expected["num"].get<double>()
+                    << "\nReceived:  " << j_received["num"].get<double>() 
                     << std::endl;
                 throw "test failed!";
             }
@@ -158,19 +175,24 @@ static void send_stat(
 void NetInterface::run_stat_sender(std::string url, bool bTest)
 {
     m_stat_sender = new std::thread(
-        &send_stat, url, std::ref(m_stop_sender), std::ref(m_param), bTest
+        &send_stat, url, 
+        std::ref(m_stop_sender), 
+        std::ref(m_param), 
+        bTest
     );
 }
 
-void NetInterface::stop_stat_sender()
+void NetInterface::stop_stat_sender(int wait_msec)
 {
     if (m_stat_sender)
     {
+        // before stoping sender thread, we will wait 'wait_msec' msec
+        std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
         m_stop_sender = true;
-        if (m_stat_sender->joinable())
+        if (m_stat_sender->joinable()) {
             m_stat_sender->join();
-        delete m_stat_sender;
-        m_stat_sender = nullptr;
+            delete m_stat_sender;
+            m_stat_sender = nullptr;
+        }
     }    
 }
-

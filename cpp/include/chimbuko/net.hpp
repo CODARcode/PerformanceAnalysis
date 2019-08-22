@@ -77,7 +77,7 @@ public:
     ParamInterface* get_parameter() { return m_param; } 
 
     void run_stat_sender(std::string url, bool bTest=false);
-    void stop_stat_sender();
+    void stop_stat_sender(int wait_msec=0);
 
 protected:
     /**

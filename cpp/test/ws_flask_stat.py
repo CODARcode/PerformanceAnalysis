@@ -23,7 +23,9 @@ def shutdown():
 def new_message_from_ps():
     if request.headers['Content-Type'] == 'application/json':
         # print('Got json type, this should not happen!')
-        return "JSON Message received."
+        # print(request.get_json())
+        return jsonify(request.get_json())
+        # return jsonify({"payload": "thank you"})
     if request.headers['Content-Type'] == 'application/octet-stream':
         msg = struct.unpack('d', request.data)[0]
         # print('Got {}'.format(msg))

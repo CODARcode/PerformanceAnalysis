@@ -79,6 +79,8 @@ int main (int argc, char** argv)
         msg.set_msg(strmsg, true);
         // std::cout << "Rank: " << rank << " receive " << step << "-th reply" << std::endl;
 #endif
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

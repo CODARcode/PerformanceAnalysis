@@ -104,7 +104,8 @@ void AnomalyStat::add(AnomalyData& d, bool bStore)
     if (bStore)
     {
         m_data->push_back(d.get_binary());
-    }    
+    }
+    // std::cout << "add: " << d.get_stat_id() << ": " << m_stats << std::endl;    
 }
 
 void AnomalyStat::add(const std::string& binary, bool bStore)

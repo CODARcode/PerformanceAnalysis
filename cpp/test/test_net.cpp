@@ -189,6 +189,66 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 TEST_F(NetTest, NetStatSenderTest)
 {
     using namespace chimbuko;
+
+#ifdef _USE_MPINET
+    MPINet net;
+#else
+    ZMQNet net;
+#endif
+    const int N_MPI_PROCESSORS = 10;
+
+    SstdParam param({N_MPI_PROCESSORS});
+    nlohmann::json resp;
+
+    net.set_parameter(dynamic_cast<ParamInterface*>(&param));
+    net.init(nullptr, nullptr, 10);
+    net.run_stat_sender("http://0.0.0.0:5000/post", false);
+    net.run();
+
+    // at this point, all pseudo AD modules finished sending 
+    // anomaly statistics data.
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    net.stop_stat_sender(1000);
+    
+    // check results (see pclient_stats.cpp)
+    const std::vector<double> means = {
+        100, 200, 300, 400, 500,
+        150, 250, 350, 450, 550
+    };
+    const std::vector<double> stddevs = {
+        10, 20, 30, 40, 50,
+        15, 25, 35, 45, 55
+    };
+    // const int MAX_STEPS = 1000;    
+
+    EXPECT_STREQ("", param.collect_stat_data().c_str());
+
+    for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
+    {
+        std::string stat_id = "0:" + std::to_string(rank);
+
+        std::string stat_binary = param.get_anomaly_stat(stat_id);
+        ASSERT_GT(stat_binary.size(), 0);
+        
+        // As we send all anomaly data to the web server, 
+        // it should be zero!
+        size_t n = param.get_n_anomaly_data(stat_id);
+        EXPECT_EQ(0, (int)n);
+
+        RunStats stats = RunStats::from_binary_state(stat_binary);
+        EXPECT_NEAR(means[rank], stats.mean(), means[rank]*0.1);
+        EXPECT_NEAR(stddevs[rank], stats.stddev(), stddevs[rank]*0.1);
+    }    
+
+#ifdef _USE_ZMQNET
+    net.finalize();
+#endif
+}
+
+TEST_F(NetTest, NetStatSenderPseudoTest)
+{
+    using namespace chimbuko;
 #ifdef _USE_MPINET
     MPINet net;
 #else
