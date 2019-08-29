@@ -8,13 +8,26 @@ ParamInterface::ParamInterface()
 
 ParamInterface::ParamInterface(const std::vector<int>& n_ranks)
 {
+    reset_anomaly_stat(n_ranks);
+}
+
+void ParamInterface::reset_anomaly_stat(const std::vector<int>& n_ranks)
+{
     if (n_ranks.size() == 0)
         return;
 
+    if (m_anomaly_stats.size())
+    {
+        for (auto item: m_anomaly_stats)
+        {
+            delete item.second;
+        }
+        m_anomaly_stats.clear();
+    }
+
     // pre-allocate AnomalyStat to avoid race-condition
     for (int app_id = 0; app_id < (int)n_ranks.size(); app_id++) {
-        for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++)
-        {
+        for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++){
             std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
             m_anomaly_stats[stat_id] = new AnomalyStat();
         }

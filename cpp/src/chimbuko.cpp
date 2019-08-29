@@ -194,7 +194,7 @@ void Chimbuko::run(int rank,
             }
         }
         
-        n_outliers += m_outlier->run();
+        n_outliers += m_outlier->run(step);
         frames++;
 
         m_io->write(m_event->trimCallList(), step);

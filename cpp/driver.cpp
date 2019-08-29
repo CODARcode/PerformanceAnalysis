@@ -29,12 +29,13 @@ int main(int argc, char ** argv)
         // -----------------------------------------------------------------------
         std::string engineType = argv[1]; // BPFile or SST
         std::string data_dir = argv[2]; // *.bp location
-        std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-        std::string output_dir = argv[3]; //output directory
-        std::string addr;
+        std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
+        std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
+        std::string output_dir = argv[4]; //output directory
+        std::string addr;         // parameter server (e.g. "tcp://hostname:5559")
 #ifdef _USE_ZMQNET
-        if (argc == 5)
-            addr = std::string(argv[4]); // (e.g. "tcp://hostname:5559")
+        if (argc == 6)
+            addr = std::string(argv[5]); 
 #endif
 
         if (world_rank == 0) {
@@ -66,7 +67,6 @@ int main(int argc, char ** argv)
         unsigned long long n_func_events = 0, n_comm_events = 0;
         unsigned long long total_n_func_events = 0, total_n_comm_events = 0; 
         high_resolution_clock::time_point t1, t2;
-
 
         // -----------------------------------------------------------------------
         // Init. AD module

@@ -21,14 +21,14 @@ public:
     bool use_ps() const { return m_use_ps; }
     void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
     void disconnect_ps();
-    virtual unsigned long run() = 0;
-
+    virtual unsigned long run(int step=0) = 0;
 
 protected:
     virtual unsigned long compute_outliers(
         const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
     virtual void sync_param(ParamInterface* param) = 0;
     void sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m);
+    void sync_outliers(unsigned long n_outliers, int step);
 
 protected:
     bool m_use_ps;
@@ -54,7 +54,7 @@ public:
 
     void set_sigma(double sigma) { m_sigma = sigma; }
 
-    unsigned long run() override;
+    unsigned long run(int step=0) override;
 
 protected:
     unsigned long compute_outliers(

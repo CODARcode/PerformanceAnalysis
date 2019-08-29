@@ -11,7 +11,7 @@ ARG JOBS=16
 WORKDIR /Downloads
 RUN wget http://tau.uoregon.edu/pdt_lite.tar.gz \
  && tar -xzf pdt_lite.tar.gz
-WORKDIR /Downloads/pdtoolkit-3.25
+WORKDIR /Downloads/pdtoolkit-3.25.1
 RUN ./configure -GNU -prefix=/opt/pdt \
  && make -j$JOBS \
  && make install

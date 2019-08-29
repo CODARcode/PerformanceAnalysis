@@ -1,5 +1,4 @@
-#FROM chimbuko/sosflow:latest
-FROM chimbuko/perfanal:latest
+FROM chimbuko/tau2:latest
 
 # ----------------------------------------------------------------------------
 # Install some required packages
@@ -9,21 +8,23 @@ RUN apt-get install -y libopenblas-base libopenblas-dev
 # ----------------------------------------------------------------------------
 # set environment variables
 # ----------------------------------------------------------------------------
-ENV export PATH=${PATH}:/opt/sos_flow/bin
-ENV export PATH=${PATH}:/opt/papi/bin
-ENV PATH=${PATH}:/opt/pdt/x86_64/bin
-ENV PATH=${PATH}:/opt/tau2/x86_64/bin
 
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/sos_flow/lib
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
+ENV PATH=${PATH}:/opt/tau2/x86_64/bin
+ENV PATH=${PATH}:/opt/adios2/bin
+
+# libfabric, blosc, pdt-3.25, papi-5.6.0, sz-1.4.13, adios2, tau2
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/pdt/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/jemalloc/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
 
 # this depends on how tau2 is compiled
 # NOTE: TAU_MAKEFILE depends on how tau2 is compiled. Need to be changed 
 # accordingly. Are there better way like the second example that doesn't work? 
-ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-sos
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 #ENV TAU_MAKEFILE="`find /opt/tau2/x86_64/lib -name Makefile.tau*`"
 
 # -----------------------------------------------------------------------------

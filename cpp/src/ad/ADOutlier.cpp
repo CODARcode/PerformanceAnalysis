@@ -115,19 +115,6 @@ void ADOutlier::disconnect_ps() {
     m_use_ps = false;
 }
 
-void ADOutlier::sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m)
-{
-    if (false && m_use_ps) {
-        std::cout << "Update anomaly statistics with parameter server" << std::endl;
-    }
-
-    else {
-        for (auto it : m) {
-            m_outliers[it.first] += it.second;
-        }
-    }    
-}
-
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
@@ -173,7 +160,42 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
     }
 }
 
-unsigned long ADOutlierSSTD::run() {
+void ADOutlier::sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m)
+{
+    if (false && m_use_ps) {
+        std::cout << "Update anomaly statistics with parameter server" << std::endl;
+    }
+
+    else {
+        for (auto it : m) {
+            m_outliers[it.first] += it.second;
+        }
+    }    
+}
+
+void ADOutlier::sync_outliers(unsigned long n_outliers, int step)
+{
+    if (!m_use_ps)
+        return;
+
+    Message msg;
+    std::string strmsg;
+    AnomalyData d(0, m_rank, step, 0, 0, n_outliers);
+
+    msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
+    msg.set_msg(d.get_binary(), false);
+#ifdef _USE_MPINET
+    throw "Not implemented yet.";
+#else
+    ZMQNet::send(m_socket, msg.data());
+
+    msg.clear();
+    ZMQNet::recv(m_socket, strmsg);
+#endif
+    // do post-processing, if necessary
+}
+
+unsigned long ADOutlierSSTD::run(int step) {
     if (m_execDataMap == nullptr) return 0;
 
     SstdParam param;
@@ -200,7 +222,8 @@ unsigned long ADOutlierSSTD::run() {
     }
 
     // update # anomaly
-    sync_outliers(temp_outliers);
+    sync_outliers(temp_outliers); // this is experimental & not completed
+    sync_outliers(n_outliers, step);
 
     return n_outliers;
 }

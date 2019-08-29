@@ -26,6 +26,7 @@ public:
     virtual void show(std::ostream& os) const = 0;
 
     // anomaly statistics related ...
+    void reset_anomaly_stat(const std::vector<int>& n_ranks);
     void add_anomaly_data(const std::string& data);
     std::string get_anomaly_stat(const std::string& stat_id);
     size_t get_n_anomaly_data(const std::string& stat_id);

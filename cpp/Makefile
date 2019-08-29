@@ -41,6 +41,7 @@ TEST_AD := test/mainAd
 TEST_AD_SRCS := test/mainAD.cpp test/test_ad.cpp
 
 all: $(EXEC_TARS) $(TARGET_LIB) $(TEST_SIMPLE) $(TEST_MPINET) $(TEST_AD)
+	cp ws_flask_stat.py bin
 
 debugvars:
 	@echo $(SRCS)
@@ -79,6 +80,7 @@ test/%.o: %.cpp
 clean:
 	$(RM) -r $(BUILD_DIR) $(BIN_DIR) $(LIB_DIR)
 	$(RM) $(TEST_AD) $(TEST_SIMPLE) $(TEST_MPINET) test/*.d test/*.txt
+	$(RM) -rf scripts/docker/test
 
 -include $(DEPS)
 

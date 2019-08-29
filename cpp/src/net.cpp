@@ -168,12 +168,14 @@ static void send_stat(
 
 void NetInterface::run_stat_sender(std::string url, bool bTest)
 {
-    m_stat_sender = new std::thread(
-        &send_stat, url, 
-        std::ref(m_stop_sender), 
-        std::ref(m_param), 
-        bTest
-    );
+    if (url.size()) {
+        m_stat_sender = new std::thread(
+            &send_stat, url, 
+            std::ref(m_stop_sender), 
+            std::ref(m_param), 
+            bTest
+        );
+    }
 }
 
 void NetInterface::stop_stat_sender(int wait_msec)
