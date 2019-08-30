@@ -1,6 +1,6 @@
 LIB_NAME = chimbuko
 
-INC_DIRS := include
+INC_DIRS := include 3rdparty
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 BIN_DIR ?= bin
@@ -29,6 +29,7 @@ OBJS = $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
 
 all: $(EXEC_TARS) $(TARGET_LIB)
+	cp ws_flask_stat.py bin
 
 debugvars:
 	@echo $(SRCS)
@@ -57,6 +58,7 @@ test/%.o: %.cpp
 
 clean:
 	$(RM) -r $(BUILD_DIR) $(BIN_DIR) $(LIB_DIR)
+	$(RM) -rf scripts/docker/test scripts/summit/test
 
 -include $(DEPS)
 

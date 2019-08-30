@@ -87,11 +87,11 @@ EventError ADEvent::addFunc(const Event_t& event) {
 
     eventType = m_eventType->find(eid)->second;
 
-    if (m_verbose)
-        std::cerr << event << ": "
-                        << m_eventType->find(event.eid())->second << ": "
-                        << m_funcMap->find(event.fid())->second << std::endl;
-    return EventError::OK;
+    //if (m_verbose)
+    //    std::cerr << event << ": "
+    //                    << m_eventType->find(event.eid())->second << ": "
+    //                    << m_funcMap->find(event.fid())->second << std::endl;
+    //return EventError::OK;
 
 
     if (eventType.compare("ENTRY") == 0)

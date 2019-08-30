@@ -32,6 +32,7 @@ def new_message_from_ps():
     if request.headers['Content-Type'] == 'application/json':
         if n_posts == 0:
             t_start = time.time()
+            print(request.get_json())
         n_posts = n_posts + 1
         return "OK"
     return "Wrong content-type"

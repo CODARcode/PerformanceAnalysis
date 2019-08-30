@@ -28,8 +28,9 @@ int main(int argc, char ** argv)
         // -----------------------------------------------------------------------
         std::string engineType = argv[1]; // BPFile or SST
         std::string data_dir = argv[2]; // *.bp location
-        std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-        int fetch_data = atoi(argv[3]);
+        std::string prefix = argv[3]; // "tau-metrics-nwchem"
+        std::string inputFile = prefix + "-" + std::to_string(world_rank) + ".bp";
+        int fetch_data = atoi(argv[4]);
 
         if (world_rank == 0) {
         std::cout << "\n" 
@@ -96,10 +97,10 @@ int main(int argc, char ** argv)
         // -----------------------------------------------------------------------
         // Average analysis time and total number of outliers
         // -----------------------------------------------------------------------
-        MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD);
         processing_time = duration_cast<milliseconds>(t2 - t1).count();
 
-        {
+        if (false) {
             const unsigned long local_measures[] = {processing_time, frames};
             unsigned long global_measures[] = {0, 0};
             MPI_Reduce(
@@ -110,7 +111,7 @@ int main(int argc, char ** argv)
             total_frames = global_measures[1];
         }
         
-        if (world_rank == 0) {
+        if (false && world_rank == 0) {
             std::cout << "\n"
                 << "Avg. num. frames     : " << (double)total_frames/(double)world_size << "\n"
                 << "Avg. processing time : " << (double)total_processing_time/(double)world_size << " msec\n"

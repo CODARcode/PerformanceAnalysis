@@ -94,6 +94,8 @@ private:
 std::ostream& operator<<(std::ostream& os, AnomalyData& d);
 std::istream& operator>>(std::istream& is, AnomalyData& d);
 
+bool operator==(const AnomalyData& a, const AnomalyData& b);
+bool operator!=(const AnomalyData& a, const AnomalyData& b);
 
 class AnomalyStat {
 public:
