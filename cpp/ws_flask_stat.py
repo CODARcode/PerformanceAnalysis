@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import time
+import pprint
 
 app = Flask(__name__)
 
@@ -32,7 +33,8 @@ def new_message_from_ps():
     if request.headers['Content-Type'] == 'application/json':
         if n_posts == 0:
             t_start = time.time()
-            print(request.get_json())
+            pp = pprint.PrettyPrinter(indent=2)
+            pp.pprint(request.get_json())
         n_posts = n_posts + 1
         return "OK"
     return "Wrong content-type"
