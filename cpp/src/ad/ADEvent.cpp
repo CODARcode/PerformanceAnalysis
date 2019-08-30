@@ -3,7 +3,9 @@
 
 using namespace chimbuko;
 
-ADEvent::ADEvent() : m_funcMap(nullptr), m_eventType(nullptr) {
+ADEvent::ADEvent(bool verbose) 
+: m_funcMap(nullptr), m_eventType(nullptr), m_verbose(verbose) 
+{
 
 }
 
@@ -58,35 +60,47 @@ EventError ADEvent::addEvent(const Event_t& event) {
 
 EventError ADEvent::addFunc(const Event_t& event) {
     if (m_eventType == nullptr) {
-        //std::cerr << "Uninitialized eventType\n";
+        std::cerr << "Uninitialized eventType\n";
         return EventError::UnknownEvent;
     }
 
     std::string eventType;
     int eid = static_cast<int>(event.eid());
     if (m_eventType->count(eid) == 0) {
-        //std::cerr << "Unknown event in eventType: " << eid << std::endl;
+        std::cerr << "Unknown event in eventType: " << eid << std::endl;
         return EventError::UnknownEvent;
     }
 
     if (m_funcMap->count(event.fid()) == 0) {
-        //std::cerr << "Unknown function event\n";
+        std::cerr << "Unknown function event\n";
         return EventError::UnknownFunc;
     }
 
-    if ( m_funcMap->find(event.fid())->second.find("pthread") != std::string::npos ) {
-    //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
-        return EventError::OK;
-    }
+    // if ( m_funcMap->find(event.fid())->second.find("pthread") != std::string::npos ) {
+    // //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
+    //     return EventError::OK;
+    // }
 
     this->createCallStack(event.pid(), event.rid(), event.tid());
     this->createCallList(event.pid(), event.rid(), event.tid());
     this->createCommStack(event.pid(), event.rid(), event.tid());
 
     eventType = m_eventType->find(eid)->second;
-    
+
+    if (m_verbose)
+        std::cerr << event << ": "
+                        << m_eventType->find(event.eid())->second << ": "
+                        << m_funcMap->find(event.fid())->second << std::endl;
+    return EventError::OK;
+
+
     if (eventType.compare("ENTRY") == 0)
     {
+        // if (m_funcMap->find(event.fid())->second.compare("Tau_plugin_adios2_dump") == 0)
+        //     std::cerr << event << ": "
+        //                     << m_eventType->find(event.eid())->second << ": "
+        //                     << m_funcMap->find(event.fid())->second << std::endl;
+
         CallList_t& cl = m_callList[event.pid()][event.rid()][event.tid()];
         cl.push_back(ExecData_t(event));
 
@@ -105,10 +119,10 @@ EventError ADEvent::addFunc(const Event_t& event) {
     {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size() == 0) {
-            //std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
-            //std::cerr << event << ": "
-            //		      << m_eventType->find(event.eid())->second << ": "
-            //		      << m_funcMap->find(event.fid())->second << std::endl;
+            std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
+            std::cerr << event << ": "
+            		      << m_eventType->find(event.eid())->second << ": "
+            		      << m_funcMap->find(event.fid())->second << std::endl;
             return EventError::EmptyCallStack;
         }
 

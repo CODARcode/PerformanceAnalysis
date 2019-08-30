@@ -30,7 +30,7 @@ typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecD
 class ADEvent {
 
 public:
-    ADEvent();
+    ADEvent(bool verbose=false);
     ~ADEvent();
 
     void linkEventType(const std::unordered_map<int, std::string>* m) { m_eventType = m; }
@@ -63,6 +63,8 @@ private:
     CallStackMap_p_t  m_callStack;
     CallListMap_p_t   m_callList;
     ExecDataMap_t     m_execDataMap;
+
+    bool m_verbose;
 };
 
 } // end of AD namespace

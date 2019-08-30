@@ -16,12 +16,14 @@ cd test
 mkdir -p BP
 WORK_DIR=`pwd`
 
+ADIOS_MODE=SST
 BP_PREFIX=tau-metrics
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
 export TAU_ADIOS2_SELECTION_FILE=$WORK_DIR/sos_filter.txt
-export TAU_ADIOS2_ENGINE=SST
+export TAU_ADIOS2_ENGINE=$ADIOS_MODE
 export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/$BP_PREFIX
+#export TAU_VERBOSE=1
 
 cp $NWCHEM_TOP/bin/LINUX64/nwchem .
 cp $NWCHEM_DAT/ethanol_md.nw .
@@ -34,6 +36,8 @@ cp -r $CHIMBUKO_ROOT/lib .
 
 sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
+sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
+sed -i 's/data 1000/data 500/' ethanol_md.nw
 
 date
 hostname
@@ -50,11 +54,20 @@ bin/pserver 2 pserver.log $NMPIS "http://0.0.0.0:5001/post" &
 ps_pid=$!
 sleep 1
 
-# run nwchem
-mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >nwchem.log 2>&1 &
+if [ "$ADIOS_MODE" == "SST" ]
+then
+    # run ad modules
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" >ad.log 2>&1 &
+    sleep 1
+    # run nwchem
+    mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >nwchem.log 2>&1 
+else
+    # run nwchem
+    mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >nwchem.log 2>&1 
 
-# run ad modules
-mpirun --allow-run-as-root -n $NMPIS bin/driver SST $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559"
+    # run ad modules
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" >ad.log 2>&1 
+fi
 
 # shutdown parameter server
 # bin/pshutdown "tcp://0.0.0.0:5559"

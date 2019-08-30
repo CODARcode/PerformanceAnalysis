@@ -81,7 +81,7 @@ int main(int argc, char ** argv)
         driver.init_parser(data_dir, inputFile, engineType);
 
         // Thrid, init event and outlier objects
-        driver.init_event();
+        driver.init_event(world_rank == 0);
         driver.init_outlier(world_rank, sigma, addr);
 
         // -----------------------------------------------------------------------

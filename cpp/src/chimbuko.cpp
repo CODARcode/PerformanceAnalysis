@@ -58,9 +58,9 @@ void Chimbuko::init_parser(std::string data_dir, std::string inputFile, std::str
     m_parser = new ADParser(data_dir + "/" + inputFile, engineType);
 }
 
-void Chimbuko::init_event()
+void Chimbuko::init_event(bool verbose)
 {
-    m_event = new ADEvent();
+    m_event = new ADEvent(verbose);
     m_event->linkFuncMap(m_parser->getFuncMap());
     m_event->linkEventType(m_parser->getEventType());
 }
@@ -171,17 +171,16 @@ void Chimbuko::run(int rank,
             // adios team later
             if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000)
             {
-                ;
-                // std::cerr << "\n***** Invalid event *****\n";
-                // std::cerr << "[" << world_rank << "] " << ev << std::endl;
+                std::cout << "\n***** Invalid event *****\n";
+                std::cout << "[" << rank << "] " << ev << std::endl;
             }
             else
             {
-                if (m_event->addEvent(ev) == EventError::CallStackViolation)
-                {
-                    ;
-                    // std::cerr << "\n***** Call stack violation *****\n";
-                }
+                EventError err = m_event->addEvent(ev);
+                // if (err == EventError::CallStackViolation)
+                // {
+                //     std::cout << "\n***** Call stack violation *****\n";
+                // }
             }
 
             // go next event
