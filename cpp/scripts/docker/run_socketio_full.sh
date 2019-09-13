@@ -50,7 +50,7 @@ date
 hostname
 ls -l
 
-NMPIS=2
+NMPIS=5
 
 # echo ""
 # echo "=========================================="
@@ -113,7 +113,7 @@ else
     fi
     echo "Run anomaly detectors"
     mpirun --allow-run-as-root -n $NMPIS \
-        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559"
+        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" 1000
         # >logs/ad.log 2>&1 
 fi
 

@@ -98,7 +98,8 @@ void Chimbuko::run(int rank,
     unsigned long long& n_comm_events,
     unsigned long& n_outliers,
     unsigned long& frames,
-    bool only_one_frame)
+    bool only_one_frame,
+    int interval_msec)
 {
     int step = 0; 
     size_t idx_funcData = 0, idx_commData = 0;
@@ -201,6 +202,7 @@ void Chimbuko::run(int rank,
         if (only_one_frame)
             break;
 
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (interval_msec)
+            std::this_thread::sleep_for(std::chrono::microseconds(interval_msec));
     } // end of parser while loop
 }

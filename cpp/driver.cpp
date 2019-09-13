@@ -33,10 +33,13 @@ int main(int argc, char ** argv)
         std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
         std::string output_dir = argv[4]; //output directory
         std::string addr;         // parameter server (e.g. "tcp://hostname:5559")
+        int         interval_msec = 0;
 #ifdef _USE_ZMQNET
-        if (argc == 6)
+        if (argc >= 6)
             addr = std::string(argv[5]); 
 #endif
+        if (argc == 7)
+            interval_msec = atoi(argv[6]);
 
         if (world_rank == 0) {
         std::cout << "\n" 
@@ -48,6 +51,7 @@ int main(int argc, char ** argv)
 #ifdef _USE_ZMQNET
                 << "\nPS Addr    : " << addr
 #endif
+                << "\nInterval   : " << interval_msec << " msec\n"
                 << std::endl;
         }
 
@@ -94,7 +98,8 @@ int main(int argc, char ** argv)
         }
 
         t1 = high_resolution_clock::now();
-        driver.run(world_rank, n_func_events, n_comm_events, n_outliers, frames);
+        driver.run(world_rank, n_func_events, n_comm_events, n_outliers, 
+            frames, false, interval_msec);
         t2 = high_resolution_clock::now();
         
         if (world_rank == 0) {

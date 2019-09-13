@@ -29,7 +29,8 @@ public:
         unsigned long long& n_comm_events,
         unsigned long& n_outliers,
         unsigned long& frames,
-        bool only_one_frame=false);
+        bool only_one_frame=false,
+        int interval_msec=0);
 
 private:
     // int m_rank;

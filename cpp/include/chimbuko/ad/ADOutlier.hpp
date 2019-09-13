@@ -25,10 +25,12 @@ public:
 
 protected:
     virtual unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
+        const unsigned long func_id, std::vector<CallListIterator_t>& data,
+        unsigned long& min_ts, unsigned long& max_ts) = 0;
     virtual void sync_param(ParamInterface* param) = 0;
     void sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m);
-    void sync_outliers(unsigned long n_outliers, int step);
+    void sync_outliers(unsigned long n_outliers, 
+        int step, unsigned long min_ts, unsigned long max_ts);
 
 protected:
     bool m_use_ps;
@@ -58,7 +60,8 @@ public:
 
 protected:
     unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
+        const unsigned long func_id, std::vector<CallListIterator_t>& data,
+        unsigned long& min_ts, unsigned long& max_ts) override;
     void sync_param(ParamInterface* param) override;
 
 private:

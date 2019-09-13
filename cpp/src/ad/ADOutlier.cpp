@@ -173,14 +173,15 @@ void ADOutlier::sync_outliers(const std::unordered_map<unsigned long, unsigned l
     }    
 }
 
-void ADOutlier::sync_outliers(unsigned long n_outliers, int step)
+void ADOutlier::sync_outliers(unsigned long n_outliers, 
+    int step, unsigned long min_ts, unsigned long max_ts)
 {
     if (!m_use_ps)
         return;
 
     Message msg;
     std::string strmsg;
-    AnomalyData d(0, m_rank, step, 0, 0, n_outliers);
+    AnomalyData d(0, m_rank, step, min_ts, max_ts, n_outliers);
 
     msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
     msg.set_msg(d.get_binary(), false);
@@ -213,23 +214,27 @@ unsigned long ADOutlierSSTD::run(int step) {
 
     // run anomaly detection algorithm
     unsigned long n_outliers = 0;
+    unsigned long min_ts = 0, max_ts = 0;
     std::unordered_map<unsigned long, unsigned long> temp_outliers;
+
     for (auto it : *m_execDataMap) {
         const unsigned long func_id = it.first;
-        const unsigned long n = compute_outliers(func_id, it.second);
+        const unsigned long n = compute_outliers(func_id, it.second, min_ts, max_ts);
         n_outliers += n;
         temp_outliers[func_id] = n;
     }
 
     // update # anomaly
     sync_outliers(temp_outliers); // this is experimental & not completed
-    sync_outliers(n_outliers, step);
+    sync_outliers(n_outliers, step, min_ts, max_ts);
 
     return n_outliers;
 }
 
 unsigned long ADOutlierSSTD::compute_outliers(
-    const unsigned long func_id, std::vector<CallListIterator_t>& data) 
+    const unsigned long func_id, 
+    std::vector<CallListIterator_t>& data,
+    unsigned long& min_ts, unsigned long& max_ts) 
 {
     SstdParam& param = *(SstdParam*)m_param;
     if (param[func_id].count() < 2) return 0;
@@ -241,8 +246,14 @@ unsigned long ADOutlierSSTD::compute_outliers(
     const double thr_hi = mean + m_sigma * std;
     const double thr_lo = mean - m_sigma * std;
 
+    min_ts = max_ts = 0;
     for (auto itt : data) {
         const double runtime = static_cast<double>(itt->get_runtime());
+        if (min_ts == 0 || min_ts > itt->get_entry())
+            min_ts = itt->get_entry();
+        if (max_ts == 0 || max_ts < itt->get_exit())
+            max_ts = itt->get_exit();
+
         int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
         if (label == -1) {
             n_outliers += 1;
