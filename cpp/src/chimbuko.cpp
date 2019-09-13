@@ -200,5 +200,7 @@ void Chimbuko::run(int rank,
 
         if (only_one_frame)
             break;
+
+        //std::this_thread::sleep_for(std::chrono::seconds(1));
     } // end of parser while loop
 }

@@ -1,9 +1,34 @@
 #!/bin/bash
+#
+# this is only for test purpose and not for job submmission. 
+#
 
-export NWCHEM_TOP=/Codar/nwchem-1
+module load gcc/8.1.1
+module load curl/7.63.0
+module load zlib
+module load zeromq
+module load bzip2
+module load python/3.7.0-anaconda3-5.3.0
+module unload darshan-runtime
+
+source activate chimbuko_viz
+
+CODAR=/ccs/proj/csc299/codar
+SW=$CODAR/sw
+
+ADIOS_MODE=SST
+BP_PREFIX=tau-metrics
+NMPIS=3
+
+export NWCHEM=$CODAR/NWChem/nwchem-1-tau
+export NWCHEM_TOP=$NWCHEM
+# export NWCHEM_DAT=$CODAR/NWX_TA/TM_BI_4PGS/nwc_md
 export NWCHEM_DAT=$NWCHEM_TOP/QA/tests/ethanol
 
-export CHIMBUKO_ROOT=/PerformanceAnalysis
+# export CHIMBUKO_ROOT=$SW/chimbuko
+export CHIMBUKO_ROOT=/ccs/proj/csc299/codar/downloads/PerformanceAnalysis/cpp
+
+# starting from here ...
 export CHIMBUKO_VIS_ROOT=/ChimbukoVisualization
 
 export TAU_ROOT=/opt/tau2/x86_64
@@ -44,7 +69,7 @@ cp -r $CHIMBUKO_ROOT/lib .
 sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
-sed -i 's/data 1000/data 1000/' ethanol_md.nw
+sed -i 's/data 1000/data 10000/' ethanol_md.nw
 
 date
 hostname

@@ -44,7 +44,9 @@ void ParamInterface::add_anomaly_data(const std::string& data)
 {
     // std::cout << "add_anomaly_data" << std::endl;
     AnomalyData d(data);
-    m_anomaly_stats[d.get_stat_id()]->add(d);
+
+    if (m_anomaly_stats.count(d.get_stat_id()))
+        m_anomaly_stats[d.get_stat_id()]->add(d);
 }
 
 std::string ParamInterface::get_anomaly_stat(const std::string& stat_id)

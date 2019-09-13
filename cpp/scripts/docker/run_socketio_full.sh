@@ -14,8 +14,8 @@ export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
 rm -rf test
 mkdir -p test
 cd test
-mkdir -p BP
 mkdir -p logs
+mkdir -p BP
 WORK_DIR=`pwd`
 
 ADIOS_MODE=BPFile
@@ -44,7 +44,7 @@ cp -r $CHIMBUKO_ROOT/lib .
 sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
-sed -i 's/data 1000/data 1000/' ethanol_md.nw
+sed -i 's/data 1000/data 10000/' ethanol_md.nw
 
 date
 hostname
@@ -52,11 +52,14 @@ ls -l
 
 NMPIS=2
 
-echo ""
-echo "=========================================="
-echo "Launch Chimbuko visualization server"
-echo "=========================================="
+# echo ""
+# echo "=========================================="
+# echo "Launch Chimbuko visualization server"
+# echo "=========================================="
 cd $CHIMBUKO_VIS_ROOT
+echo "create database @ ${DATABASE_URL}"
+python3 manager.py createdb
+
 echo "run redis ..."
 webserver/run-redis.sh >"${WORK_DIR}/logs/redis.log" 2>&1 &
 sleep 1
@@ -65,30 +68,27 @@ echo "run celery ..."
 # only for docker
 export C_FORCE_ROOT=1
 # python3 manager.py celery --loglevel=info --concurrency=10 -f "${WORK_DIR}/logs/celery.log" &
-python3 manager.py celery --loglevel=info --concurrency=10 \
+python3 manager.py celery --loglevel=info --concurrency=2 \
     >"${WORK_DIR}/logs/celery.log" 2>&1 &
 sleep 1
 
 echo "run webserver ..."
-uwsgi --gevent 100 --http 127.0.0.1:5001 --wsgi-file server/wsgi.py \
-    --pidfile "${WORK_DIR}/logs/webserver.pid" \
+python3 manager.py runserver --host 0.0.0.0 --port 5000 --no-debug --no-reload \
     >"${WORK_DIR}/logs/webserver.log" 2>&1 &
-
-echo "create database @ ${DATABASE_URL}"
-python3 manager.py createdb
+sleep 5
 
 cd $WORK_DIR
-
 echo ""
 echo "=========================================="
 echo "Launch Chimbuko parameter server"
 echo "=========================================="
 echo "run parameter server ..."
-bin/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS \
-    "http://127.0.0.1:5001/api/anomalydata" \
-    >"${WORK_DIR}/logs/ps.log" 2>&1 &
+bin/pserver 2 "${WORK_DIR}/logs/parameters.log" \
+    $NMPIS \
+    "http://0.0.0.0:5000/api/anomalydata" &
+    # >"${WORK_DIR}/logs/ps.log" 2>&1 &
 ps_pid=$!
-sleep 1
+sleep 5
 
 echo ""
 echo "=========================================="
@@ -98,23 +98,23 @@ if [ "$ADIOS_MODE" == "SST" ]
 then
     echo "Use SST mode: NWChem + AD"
     mpirun --allow-run-as-root -n $NMPIS \
-        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" \
-        >logs/ad.log 2>&1 &
-    sleep 1
-    mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw \
-        >logs/nwchem.log 2>&1 
+        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP &
+        # >logs/ad.log 2>&1 &
+    sleep 5
+    mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw 
+        # >logs/nwchem.log 2>&1 
 else
     echo "Use BP mode"
     if ! $HAS_BPFILE
     then
         echo "Run NWChem"
-        mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw \
-            >logs/nwchem.log 2>&1 
+        mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw 
+            # >logs/nwchem.log 2>&1 
     fi
     echo "Run anomaly detectors"
     mpirun --allow-run-as-root -n $NMPIS \
-        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" \
-        >logs/ad.log 2>&1 
+        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559"
+        # >logs/ad.log 2>&1 
 fi
 
 echo ""
@@ -131,7 +131,7 @@ echo "=========================================="
 echo "Shutdown Chimbuko visualization server"
 echo "=========================================="
 echo "shutdown webserver ..."
-uwsgi --stop "${WORK_DIR}/logs/webserver.pid"
+curl -X GET http://0.0.0.0:5000/stop
 echo "shutdown celery workers ..."
 pkill -9 -f 'celery worker'
 echo "shutdown redis server ..."
