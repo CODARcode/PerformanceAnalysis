@@ -88,6 +88,29 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     return true;
 }
 
+nlohmann::json ExecData_t::get_json() const
+{
+    return {
+        {"id", m_id},
+        {"name", m_funcname},
+        {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
+        {"entry", m_entry}, {"exit", m_exit}, 
+        {"runtime", m_runtime}, {"exclusive", m_exclusive},
+        {"label", m_label}, 
+        {"parent", m_parent},
+        {"n_children", m_n_children}, {"n_messages", m_n_messages}
+    };
+}
+
+void ExecData_t::to_json(nlohmann::json& execArray, nlohmann::json& commArray) const
+{
+    execArray.push_back(get_json());
+    for (auto comm: m_messages)
+    {
+        commArray.push_back(comm.get_json());
+    }
+}
+
 static void write_str(std::ostream& os, std::string& str) {
     // std::cout << str << ", " << str.size() << std::endl;
     size_t len = str.size();
@@ -319,6 +342,18 @@ bool CommData_t::is_same(const CommData_t& other) const
     if (!(m_fid == other.m_fid)) return false;
     if (!(m_fname == other.m_fname)) return false;
     return true;
+}
+
+nlohmann::json CommData_t::get_json() const
+{
+    return {
+        {"type", m_commType},
+        {"pid", m_pid}, {"rid", m_rid}, {"tid", m_tid},
+        {"src", m_src}, {"tar", m_tar},
+        {"bytes", m_bytes}, {"tag", m_tag},
+        {"ts", m_ts},
+        {"fid", m_fid}, {"name", m_fname}
+    };
 }
 
 std::ostream& chimbuko::operator<<(std::ostream& os, CommData_t& comm) {

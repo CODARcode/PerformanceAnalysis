@@ -1,5 +1,6 @@
 #include "chimbuko/ad/ADio.hpp"
 #include <sstream>
+#include <nlohmann/json.hpp>
 
 using namespace chimbuko;
 
@@ -141,7 +142,10 @@ public:
         CallListIterator_t prev_n, next_n, beg, end;
         long long n_exec = 0;
 
-        std::stringstream ss_data(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+        //std::stringstream ss_data(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+        nlohmann::json jExec = nlohmann::json::array();
+        nlohmann::json jComm = nlohmann::json::array();
+        nlohmann::json jData;
 
         for (auto it_p: *m_callList) {
             for (auto it_r: it_p.second) {
@@ -163,7 +167,8 @@ public:
                             if (!prev_n->is_used()) {
                                 prev_n->set_use(true);
                                 prev_n->set_stream(true);
-                                ss_data << *prev_n;
+                                //ss_data << *prev_n;
+                                prev_n->to_json(jExec, jComm);
                                 n_exec++;
                             }
                             prev_n++;
@@ -175,18 +180,28 @@ public:
             } // rank
         } // program
 
+        if (jExec.size() == 0) {
+            delete m_callList;
+            return;
+        }
+
+        jData = {
+            {"exec", jExec},
+            {"comm", jComm}
+        };
+
         //m_head.inc_nframes();
         m_io.getHeader().inc_nframes();
         // if (m_fHead.is_open() && m_fData.is_open()) {
         //     m_fHead << m_head;
-        if ( m_io.is_open(true) && m_io.is_open(false) ) {
+        if ( false && m_io.is_open(true) && m_io.is_open(false) ) {
             std::fstream& fHead = m_io.getHeadFileStream();
             std::fstream& fData = m_io.getDataFileStream();
             
             fHead << m_io.getHeader();
 
-            ss_data.seekg(0, std::ios::end);
-            m_io.checkFileLimit(fData, ss_data.tellg());
+            //ss_data.seekg(0, std::ios::end);
+            //m_io.checkFileLimit(fData, ss_data.tellg());
 
             long long seekpos = fData.tellp();
             long long offset = m_step * FileHeader_t::SeekPos_t::SIZE;
@@ -208,35 +223,40 @@ public:
             //         << std::endl;
 
             if (n_exec > 0) {
-                ss_data.seekg(0);
-                fData << ss_data.rdbuf();
+                //ss_data.seekg(0);
+                //fData << ss_data.rdbuf();
                 fData.flush();
             }
             fHead.flush();
         }
 
         if (m_io.getCURL()) {
-            std::stringstream oss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+            //std::stringstream oss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
             CURL* curl = m_io.getCURL();
 
             //oss << m_head;
-            oss << m_io.getHeader();
-            oss.write((const char*)&n_exec, sizeof(long long));
+            //oss << m_io.getHeader();
+            //oss.write((const char*)&n_exec, sizeof(long long));
             
-            ss_data.seekg(0);
-            oss << ss_data.rdbuf();
+            //ss_data.seekg(0);
+            //oss << ss_data.rdbuf();
 
             struct curl_slist * headers = nullptr;
-            headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
+            headers = curl_slist_append(headers, "Content-Type: application/json");
 
-            std::string data = oss.str();
+            //std::string data = oss.str();
 
             // TODO: url?? it must be fixed!!!
             curl_easy_setopt(curl, CURLOPT_URL, "http://0.0.0.0:5500/post");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
+            curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-            curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
+
+            std::string packet = jData.dump();
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
 
             CURLcode res = curl_easy_perform(curl);

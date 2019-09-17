@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 namespace chimbuko {
 
@@ -68,6 +69,7 @@ public:
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
 
     bool is_same(const CommData_t& other) const;
+    nlohmann::json get_json() const;
 
     // todo: need to review!!!
     friend std::ostream& operator<<(std::ostream& os, CommData_t& comm);
@@ -131,6 +133,9 @@ public:
     void set_stream(bool is_binary) { m_is_binary = is_binary; }
 
     bool is_same(const ExecData_t& other) const;
+
+    nlohmann::json get_json() const;
+    void to_json(nlohmann::json& execArray, nlohmann::json& commArray) const;
     
     // todo: need to update!!!!!
     friend std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
