@@ -2,6 +2,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
 #include <mpi.h>
+#include <sstream>
 
 using namespace chimbuko;
 
@@ -160,31 +161,21 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
     }
 }
 
-void ADOutlier::sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m)
-{
-    if (false && m_use_ps) {
-        std::cout << "Update anomaly statistics with parameter server" << std::endl;
-    }
-
-    else {
-        for (auto it : m) {
-            m_outliers[it.first] += it.second;
-        }
-    }    
-}
-
 void ADOutlier::sync_outliers(unsigned long n_outliers, 
-    int step, unsigned long min_ts, unsigned long max_ts)
+    int step, long min_ts, long max_ts, std::string func_stats)
 {
     if (!m_use_ps)
         return;
 
     Message msg;
     std::string strmsg;
-    AnomalyData d(0, m_rank, step, min_ts, max_ts, n_outliers);
+    AnomalyData d(0, m_rank, step, (unsigned long)min_ts, (unsigned long)max_ts, n_outliers);
 
     msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
-    msg.set_msg(d.get_binary(), false);
+    if (func_stats.length())
+        msg.set_msg(d.get_binary() + " " + func_stats, false);
+    else
+        msg.set_msg(d.get_binary(), false);
 #ifdef _USE_MPINET
     throw "Not implemented yet.";
 #else
@@ -200,9 +191,16 @@ unsigned long ADOutlierSSTD::run(int step) {
     if (m_execDataMap == nullptr) return 0;
 
     SstdParam param;
+    std::unordered_map<unsigned long, std::string> l_func;
+    std::unordered_map<unsigned long, RunStats> l_inclusive;
+    std::unordered_map<unsigned long, RunStats> l_exclusive;
+
     for (auto it : *m_execDataMap) {        
         for (auto itt : it.second) {
             param[it.first].push(static_cast<double>(itt->get_runtime()));
+            l_func[it.first] = itt->get_funcname();
+            l_inclusive[it.first].push(static_cast<double>(itt->get_inclusive()));
+            l_exclusive[it.first].push(static_cast<double>(itt->get_exclusive()));
         }
     }
 
@@ -214,19 +212,22 @@ unsigned long ADOutlierSSTD::run(int step) {
 
     // run anomaly detection algorithm
     unsigned long n_outliers = 0;
-    unsigned long min_ts = 0, max_ts = 0;
-    std::unordered_map<unsigned long, unsigned long> temp_outliers;
+    long min_ts = 0, max_ts = 0;
 
+    // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
+    std::stringstream ss;
     for (auto it : *m_execDataMap) {
         const unsigned long func_id = it.first;
         const unsigned long n = compute_outliers(func_id, it.second, min_ts, max_ts);
         n_outliers += n;
-        temp_outliers[func_id] = n;
+        
+        ss << func_id << "@" << l_func[func_id] << "@" << n << "@"
+            << l_inclusive[func_id].get_binary_state() << " "
+            << l_exclusive[func_id].get_binary_state() << " ";
     }
 
     // update # anomaly
-    sync_outliers(temp_outliers); // this is experimental & not completed
-    sync_outliers(n_outliers, step, min_ts, max_ts);
+    sync_outliers(n_outliers, step, min_ts, max_ts, ss.str());
 
     return n_outliers;
 }
@@ -234,7 +235,7 @@ unsigned long ADOutlierSSTD::run(int step) {
 unsigned long ADOutlierSSTD::compute_outliers(
     const unsigned long func_id, 
     std::vector<CallListIterator_t>& data,
-    unsigned long& min_ts, unsigned long& max_ts) 
+    long& min_ts, long& max_ts) 
 {
     SstdParam& param = *(SstdParam*)m_param;
     if (param[func_id].count() < 2) return 0;
@@ -246,7 +247,6 @@ unsigned long ADOutlierSSTD::compute_outliers(
     const double thr_hi = mean + m_sigma * std;
     const double thr_lo = mean - m_sigma * std;
 
-    min_ts = max_ts = 0;
     for (auto itt : data) {
         const double runtime = static_cast<double>(itt->get_runtime());
         if (min_ts == 0 || min_ts > itt->get_entry())

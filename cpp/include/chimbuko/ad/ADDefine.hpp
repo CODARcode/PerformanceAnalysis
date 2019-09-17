@@ -16,7 +16,7 @@
 #define COMM_IDX_BYTES   6  // size in bytes
 #define COMM_IDX_TS      7  // timestamp
 
-#define MAX_RUNTIME ULONG_MAX
+#define MAX_RUNTIME LONG_MAX;
 
 #define IO_VERSION 1
 

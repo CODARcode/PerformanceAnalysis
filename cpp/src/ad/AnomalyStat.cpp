@@ -85,9 +85,9 @@ bool chimbuko::operator!=(const AnomalyData& a, const AnomalyData& b)
 }
 
 
-AnomalyStat::AnomalyStat() : m_data(nullptr)
+AnomalyStat::AnomalyStat(bool do_accumulate) : m_data(nullptr)
 {
-    m_stats.set_do_accumulate(true);
+    m_stats.set_do_accumulate(do_accumulate);
     m_data = new std::list<std::string>();
 }
 
@@ -117,6 +117,18 @@ void AnomalyStat::add(const std::string& binary, bool bStore)
     {
         m_data->push_back(binary);
     }
+}
+
+void AnomalyStat::add(double x)
+{
+    std::lock_guard<std::mutex> _(m_mutex);
+    m_stats.push(x);
+}
+
+void AnomalyStat::add(const RunStats& other)
+{
+    std::lock_guard<std::mutex> _(m_mutex);
+    m_stats += other;
 }
 
 RunStats AnomalyStat::get_stats() {

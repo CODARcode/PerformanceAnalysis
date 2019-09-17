@@ -6,19 +6,28 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
+    : m_runtime(0), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
 {
-
+    m_exclusive = 0;
+    m_n_children = 0;
+    m_n_messages = 0;
 }
 ExecData_t::ExecData_t(const Event_t& ev) 
-    : m_runtime(MAX_RUNTIME), m_label(1), m_parent("-1"), m_is_binary(false), m_used(false)
+    : m_is_binary(false), m_used(false)
 {
     m_id = ev.id();
     m_pid = ev.pid();
     m_rid = ev.rid();
     m_tid = ev.tid();
     m_fid = ev.fid();
-    m_entry = ev.ts();    
+    m_entry = (long)ev.ts();
+    m_exit = 0;
+    m_runtime = 0;
+    m_exclusive = 0;
+    m_label = 1;
+    m_parent = "-1";
+    m_n_children = 0;
+    m_n_messages = 0;    
 }
 
 ExecData_t::~ExecData_t() {
@@ -27,22 +36,26 @@ ExecData_t::~ExecData_t() {
 
 bool ExecData_t::update_exit(const Event_t& ev)
 {
-    if (m_fid != ev.fid() || m_entry > ev.ts())
+    if (m_fid != ev.fid() || m_entry > (long)ev.ts())
         return false;
     m_exit = ev.ts();
     m_runtime = m_exit - m_entry;
+    m_exclusive += m_runtime;
     return true;
 }
 
-void ExecData_t::add_child(std::string child)
-{
-    m_children.push_back(child);
-}
+// void ExecData_t::add_child(std::string child)
+// {
+//     m_children.push_back(child);
+// }
 
-bool ExecData_t::add_message(const CommData_t& comm) {
-    if (comm.ts() < m_entry || comm.ts() > m_exit)
+bool ExecData_t::add_message(CommData_t& comm) {
+    if ((long)comm.ts() < m_entry || (long)comm.ts() > m_exit)
         return false;
+    comm.set_fid(m_fid);
+    comm.set_fname(m_funcname);
     m_messages.push_back(comm);
+    m_n_messages++;
     return true;
 }
 
@@ -56,18 +69,21 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     if (!(m_entry == other.m_entry)) return false;
     if (!(m_exit == other.m_exit)) return false;
     if (!(m_runtime == other.m_runtime)) return false;
+    if (!(m_exclusive == other.m_exclusive)) return false;
     if (!(m_label == other.m_label)) return false;
     if (!(m_parent == other.m_parent)) return false;
-    if (!(m_children.size() == other.m_children.size())) return false;
-    if (!(m_messages.size() == other.m_messages.size())) return false;
+    if (!(m_n_children == other.m_n_children)) return false;
+    if (!(m_n_messages == other.m_n_messages)) return false;
+    // if (!(m_children.size() == other.m_children.size())) return false;
+    // if (!(m_messages.size() == other.m_messages.size())) return false;
 
-    for (size_t i = 0; i < m_children.size(); i++)
-        if (!(m_children[i] == other.m_children[i]))
-            return false;
+    // for (size_t i = 0; i < m_children.size(); i++)
+    //     if (!(m_children[i] == other.m_children[i]))
+    //         return false;
 
-    for (size_t i = 0; i < m_messages.size(); i++)
-        if (!(m_messages[i].is_same(other.m_messages[i])))
-            return false;
+    // for (size_t i = 0; i < m_messages.size(); i++)
+    //     if (!(m_messages[i].is_same(other.m_messages[i])))
+    //         return false;
 
     return true;
 }
@@ -118,36 +134,37 @@ std::ostream& chimbuko::operator<<(std::ostream& os, ExecData_t& exec)
         write_num<int>(os, exec.m_label);
         write_str(os, exec.m_parent);
 
-        write_num<size_t>(os, exec.m_children.size());
-        for (auto c: exec.m_children) { 
-            write_str(os, c);
-        }
+        // write_num<size_t>(os, exec.m_children.size());
+        // for (auto c: exec.m_children) { 
+        //     write_str(os, c);
+        // }
 
-        write_num<size_t>(os, exec.m_messages.size());
-        for (auto m: exec.m_messages) {
-            m.set_stream(true);
-            os << m;
-            m.set_stream(false);
-        }
+        // write_num<size_t>(os, exec.m_messages.size());
+        // for (auto m: exec.m_messages) {
+        //     m.set_stream(true);
+        //     os << m;
+        //     m.set_stream(false);
+        // }
     }
     else {
         os << exec.m_id 
             << "\npid: " << exec.m_pid << ", rid: " << exec.m_rid << ", tid: " << exec.m_tid
             << "\nfid: " << exec.m_fid << ", name: " << exec.m_funcname << ", label: " << exec.m_label 
             << "\nentry: " << exec.m_entry << ", exit: " << exec.m_exit << ", runtime: " << exec.m_runtime
-            << "\nparent: " << exec.m_parent << ", # children: " << exec.m_children.size() 
-            << ", # messages: " << exec.m_messages.size();
+            << "\nparent: " << exec.m_parent;
+            // << ", # children: " << exec.m_children.size() 
+            // << ", # messages: " << exec.m_messages.size();
 
-        if (exec.m_children.size()) {
-            //os << "\nChildren: ";
-            //for (auto c: exec.m_children)
-            //    os << c << ", ";
-        }
-        if (exec.m_messages.size()) {
-            //os << "\nMessage: \n";
-            //for (auto msg: exec.m_messages)
-            //    os << msg << std::endl;
-        }
+        // if (exec.m_children.size()) {
+        //     //os << "\nChildren: ";
+        //     //for (auto c: exec.m_children)
+        //     //    os << c << ", ";
+        // }
+        // if (exec.m_messages.size()) {
+        //     //os << "\nMessage: \n";
+        //     //for (auto msg: exec.m_messages)
+        //     //    os << msg << std::endl;
+        // }
     }
     return os;
 }
@@ -167,19 +184,19 @@ std::istream& chimbuko::operator>>(std::istream& is, ExecData_t& exec)
         exec.m_label = read_num<int>(is);
         exec.m_parent = read_str(is);
 
-        size_t n_children = read_num<size_t>(is);
-        exec.m_children.resize(n_children);
-        for (size_t i = 0; i < n_children; i++) {
-            exec.m_children[i] = read_str(is);
-        }
+        // size_t n_children = read_num<size_t>(is);
+        // exec.m_children.resize(n_children);
+        // for (size_t i = 0; i < n_children; i++) {
+        //     exec.m_children[i] = read_str(is);
+        // }
 
-        size_t n_msg = read_num<size_t>(is);
-        exec.m_messages.resize(n_msg);
-        for (size_t i = 0; i < n_msg; i++) {
-            exec.m_messages[i].set_stream(true);
-            is >> exec.m_messages[i];
-            exec.m_messages[i].set_stream(false);
-        }
+        // size_t n_msg = read_num<size_t>(is);
+        // exec.m_messages.resize(n_msg);
+        // for (size_t i = 0; i < n_msg; i++) {
+        //     exec.m_messages[i].set_stream(true);
+        //     is >> exec.m_messages[i];
+        //     exec.m_messages[i].set_stream(false);
+        // }
     }
     else {
         std::cerr << "Currently, only binary format is supported for ExecData_t!" << std::endl;
@@ -284,6 +301,9 @@ CommData_t::CommData_t(const Event_t& ev, std::string commType)
     m_bytes = ev.bytes();
     m_tag = ev.tag();
     m_ts = ev.ts();
+
+    m_fid = 0;
+    m_fname = "";
 }
 
 bool CommData_t::is_same(const CommData_t& other) const 
@@ -296,7 +316,8 @@ bool CommData_t::is_same(const CommData_t& other) const
     if (!(m_bytes == other.m_bytes)) return false;
     if (!(m_tag == other.m_tag)) return false;
     if (!(m_ts == other.m_ts)) return false;
-
+    if (!(m_fid == other.m_fid)) return false;
+    if (!(m_fname == other.m_fname)) return false;
     return true;
 }
 

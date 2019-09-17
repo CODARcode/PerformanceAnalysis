@@ -117,7 +117,7 @@ static void send_stat(
         }
         else 
         {
-            packet = param->collect_stat_data();
+            packet = param->collect();
         }
 
         if (packet.length() == 0)

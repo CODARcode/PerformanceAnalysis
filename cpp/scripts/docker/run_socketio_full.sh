@@ -44,7 +44,7 @@ cp -r $CHIMBUKO_ROOT/lib .
 sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
-sed -i 's/data 1000/data 10000/' ethanol_md.nw
+sed -i 's/data 1000/data 20000/' ethanol_md.nw
 
 date
 hostname

@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <nlohmann/json.hpp>
+#include <sstream>
+#include <unordered_map>
 
 class ParamTest : public ::testing::Test
 {
@@ -153,7 +155,7 @@ TEST_F(ParamTest, SstdMessageTest)
     }
 }
 
-TEST_F(ParamTest, AnomalyStatJsonTest)
+TEST_F(ParamTest, AnomalyStatTest1)
 {
     using namespace chimbuko;
 
@@ -162,15 +164,16 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
     SstdParam param(N_RANKS);
 
     // empty case
-    EXPECT_STREQ("", param.collect_stat_data().c_str());
+    EXPECT_EQ(0, param.collect_stat_data().size());
 
     param.add_anomaly_data(AnomalyData(0, 0, 0, 0, 10, 10).get_binary());
     param.add_anomaly_data(AnomalyData(0, 0, 1, 11, 20, 20).get_binary());
     param.add_anomaly_data(AnomalyData(0, 0, 2, 21, 30, 30).get_binary());
 
-    nlohmann::json j = nlohmann::json::parse(
-        param.collect_stat_data()
-    );
+    nlohmann::json j = param.collect_stat_data();
+    //nlohmann::json::parse(
+    //    param.collect_stat_data()
+    //);
     ASSERT_EQ(1, j.size());
     
     j = j[0];
@@ -198,10 +201,10 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
 
     EXPECT_NEAR(-1.5, j["stats"]["kurtosis"], 1e-3);
     EXPECT_NEAR(20.0, j["stats"]["mean"], 1e-3);
-    EXPECT_NEAR(60.0, j["stats"]["n_anomalies"], 1e-3);
-    EXPECT_NEAR(30.0, j["stats"]["n_max_anomalies"], 1e-3);
-    EXPECT_NEAR(10.0, j["stats"]["n_min_anomalies"], 1e-3);
-    EXPECT_NEAR(3.0, j["stats"]["n_updates"], 1e-3);
+    EXPECT_NEAR(60.0, j["stats"]["acc"], 1e-3);
+    EXPECT_NEAR(30.0, j["stats"]["max"], 1e-3);
+    EXPECT_NEAR(10.0, j["stats"]["min"], 1e-3);
+    EXPECT_NEAR(3.0, j["stats"]["count"], 1e-3);
     EXPECT_NEAR(0.0, j["stats"]["skewness"], 1e-3);
     EXPECT_NEAR(10.0, j["stats"]["stddev"], 1e-3);
 
@@ -209,7 +212,8 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
     param.add_anomaly_data(AnomalyData(0, 1, 0, 0, 10, 10).get_binary());
     param.add_anomaly_data(AnomalyData(1, 0, 1, 11, 20, 20).get_binary());
 
-    j = nlohmann::json::parse(param.collect_stat_data());
+    //j = nlohmann::json::parse(param.collect_stat_data());
+    j = param.collect_stat_data();
     EXPECT_EQ(3, j.size());
     for (auto& jj: j)
     {
@@ -225,10 +229,10 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(20.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["n_anomalies"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["n_max_anomalies"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["n_min_anomalies"], 1e-3);
-            EXPECT_NEAR(1.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["acc"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["max"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(1.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
         }
@@ -244,10 +248,10 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["n_anomalies"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["n_max_anomalies"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["n_min_anomalies"], 1e-3);
-            EXPECT_NEAR(1.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["acc"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["max"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(1.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
         }
@@ -263,10 +267,10 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
 
             EXPECT_NEAR(-1.36, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(25.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(100.0, jj["stats"]["n_anomalies"], 1e-3);
-            EXPECT_NEAR(40.0, jj["stats"]["n_max_anomalies"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["n_min_anomalies"], 1e-3);
-            EXPECT_NEAR(4.0, jj["stats"]["n_updates"], 1e-3);
+            EXPECT_NEAR(100.0, jj["stats"]["acc"], 1e-3);
+            EXPECT_NEAR(40.0, jj["stats"]["max"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(4.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(12.9099, jj["stats"]["stddev"], 1e-3);
         }
@@ -276,5 +280,114 @@ TEST_F(ParamTest, AnomalyStatJsonTest)
         }
     }
     // std::cout << j.dump(4) << std::endl;
+}
+
+TEST_F(ParamTest, AnomalyStatTest2)
+{
+    using namespace chimbuko;
+
+    const std::vector<int> N_RANKS = {2};
+
+    SstdParam param(N_RANKS);
+
+    // empty case
+    EXPECT_EQ(0, param.collect_stat_data().size());
+
+    std::stringstream ss;
+    std::unordered_map<unsigned long, RunStats> g_inclusive, g_exclusive;
+    RunStats l_inclusive, l_exclusive;
+    nlohmann::json j;
+
+    // app = 0, rank = 0, step = 0, ts = [0, 10], n = 10
+    ss << AnomalyData(0, 0, 0, 0, 10, 10).get_binary() << " ";
+    // func 0: 10 calls = 6 nomal + 4 abnormal
+    l_inclusive.clear();
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(15); l_inclusive.push(15.5); l_inclusive.push(14.5); l_inclusive.push(6.5);
+    l_exclusive.clear();
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
+    ss << 0 << "@" << "func 0" << "@" << 4 << "@" << l_inclusive.get_binary_state() << " " << l_exclusive.get_binary_state() << " ";
+    g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
+    // func 1: 10 calls = 4 nomal + 6 abnormal
+    l_inclusive.clear();
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(15); l_inclusive.push(15.5); l_inclusive.push(14.5); l_inclusive.push(6.5);
+    l_exclusive.clear();
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
+    ss << 1 << "@" << "func 1" << "@" << 4 << "@" << l_inclusive.get_binary_state() << " " << l_exclusive.get_binary_state() << " ";
+    g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
+    param.add_anomaly_data(ss.str());
+    ss.str(std::string());
+
+    ss << AnomalyData(0, 0, 0, 0, 10, 10).get_binary() << " ";
+    // func 0: 10 calls = 6 nomal + 4 abnormal
+    l_inclusive.clear();
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(15); l_inclusive.push(15.5); l_inclusive.push(14.5); l_inclusive.push(6.5);
+    l_exclusive.clear();
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
+    ss << 0 << "@" << "func 0" << "@" << 4 << "@" << l_inclusive.get_binary_state() << " " << l_exclusive.get_binary_state() << " ";
+    g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
+    // func 1: 10 calls = 4 nomal + 6 abnormal
+    l_inclusive.clear();
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
+    l_inclusive.push(15); l_inclusive.push(15.5); l_inclusive.push(14.5); l_inclusive.push(6.5);
+    l_exclusive.clear();
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
+    l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
+    ss << 1 << "@" << "func 1" << "@" << 4 << "@" << l_inclusive.get_binary_state() << " " << l_exclusive.get_binary_state() << " ";
+    g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
+    param.add_anomaly_data(ss.str());
+    ss.str(std::string());
+
+    j = nlohmann::json::parse(param.collect());
+    
+    // std::cout << g_exclusive[1].get_json().dump(4) << std::endl;
+    // std::cout << j.dump(4) << std::endl;
+    EXPECT_EQ(2, j["func"].size());
+    EXPECT_EQ(1, j["stat"].size());
+
+    for (auto f: j["func"])
+    {
+        unsigned long fid = f["fid"];
+
+        EXPECT_NEAR(g_exclusive[fid].kurtosis(), f["exclusive"]["kurtosis"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].mean(), f["exclusive"]["mean"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].accumulate(), f["exclusive"]["acc"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].maximum(), f["exclusive"]["max"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].minimum(), f["exclusive"]["min"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].count(), f["exclusive"]["count"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].skewness(), f["exclusive"]["skewness"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].stddev(), f["exclusive"]["stddev"], 1e-3);
+
+        EXPECT_NEAR(g_inclusive[fid].kurtosis(), f["inclusive"]["kurtosis"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].mean(), f["inclusive"]["mean"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].accumulate(), f["inclusive"]["acc"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].maximum(), f["inclusive"]["max"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].minimum(), f["inclusive"]["min"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].count(), f["inclusive"]["count"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].skewness(), f["inclusive"]["skewness"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].stddev(), f["inclusive"]["stddev"], 1e-3);      
+        
+        EXPECT_EQ(8.0, f["stats"]["acc"]);
+        EXPECT_EQ(2.0, f["stats"]["count"]);
+        EXPECT_EQ(0.0, f["stats"]["kurtosis"]);
+        EXPECT_EQ(4.0, f["stats"]["max"]);
+        EXPECT_EQ(4.0, f["stats"]["mean"]);
+        EXPECT_EQ(4.0, f["stats"]["min"]);
+        EXPECT_EQ(0.0, f["stats"]["skewness"]);
+        EXPECT_EQ(0.0, f["stats"]["stddev"]);
+    }
 }
 

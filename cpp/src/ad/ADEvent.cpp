@@ -108,7 +108,8 @@ EventError ADEvent::addFunc(const Event_t& event) {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size()) {
             it->set_parent(cs.top()->get_id());
-            cs.top()->add_child(it->get_id());
+            //cs.top()->add_child(it->get_id());
+            cs.top()->inc_n_children();
         }
         it->set_funcname(m_funcMap->find(event.fid())->second);
         cs.push(it);
@@ -140,7 +141,9 @@ EventError ADEvent::addFunc(const Event_t& event) {
             return EventError::CallStackViolation;
         }
         cs.pop();
-
+        if (!cs.empty()) {
+            cs.top()->update_exclusive(it->get_runtime());
+        }
 
         CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
         while (!comm.empty()) {
@@ -149,7 +152,6 @@ EventError ADEvent::addFunc(const Event_t& event) {
             comm.pop();
         }
 
-        // todo: update depth (is this needed?)
         m_execDataMap[event.fid()].push_back(it);
 
         return EventError::OK;
@@ -204,7 +206,7 @@ CallListMap_p_t* ADEvent::trimCallList() {
                 auto it = cl.begin();
                 while (it != cl.end()) {
                     // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
-                    if (it->get_runtime() < MAX_RUNTIME) {
+                    if (it->get_runtime()) {
                         cpList.push_back(*it);
                         it = cl.erase(it);
                     }

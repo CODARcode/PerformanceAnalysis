@@ -99,11 +99,13 @@ bool operator!=(const AnomalyData& a, const AnomalyData& b);
 
 class AnomalyStat {
 public:
-    AnomalyStat();
+    AnomalyStat(bool do_accumulate=false);
     ~AnomalyStat();
 
     void add(AnomalyData& d, bool bStore = true);
     void add(const std::string& binary, bool bStore = true);
+    void add(double x);
+    void add(const RunStats& other);
 
     /**
      * @brief Get copy of the current statistics and the pointer 

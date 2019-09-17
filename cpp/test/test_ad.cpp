@@ -53,13 +53,12 @@ protected:
             exec.set_funcname(fid + "_funcname");
 
             for (unsigned long i = 0; i < 5; i++) {
-                exec.add_child(fid + "_child_" + std::to_string(i));
+                // exec.add_child(fid + "_child_" + std::to_string(i));
 
                 unsigned long comm_d[] = {0, rid, 0, ts%(N_EVENT+2), ts%N_TAGS, (i+rid)%world_size, 10+i*1024, ts+1+i};
                 Event_t comm_ev(comm_d, EventDataType::COMM, COMM_IDX_TS);
-                exec.add_message(
-                    CommData_t(comm_ev, ((i%2==0)? "SEND": "RECV"))
-                );
+                CommData_t comm(comm_ev, ((i%2==0)? "SEND": "RECV"));
+                exec.add_message(comm);
             }
 
             if (ts%PARENT_STEP == 0) exec.set_parent(fid + "_parent");

@@ -30,14 +30,27 @@ public:
     void add_anomaly_data(const std::string& data);
     std::string get_anomaly_stat(const std::string& stat_id);
     size_t get_n_anomaly_data(const std::string& stat_id);
-    std::string collect_stat_data();
+    void update_func_stat(unsigned long id, 
+        const std::string& name, 
+        unsigned long n_anomaly,
+        const std::string& inclusive, 
+        const std::string& exclusive);
+    nlohmann::json collect_stat_data();
+    nlohmann::json collect_func_data();
+    std::string collect();
 
 protected:
     // for parameters of an anomaly detection algorithm
     std::mutex m_mutex; // used to update parameters
 
-    // for anomaly statistics
+    // for global anomaly statistics
     std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats;
+    // for global function statistics
+    std::mutex m_mutex_func;
+    std::unordered_map<unsigned long, std::string> m_func;
+    std::unordered_map<unsigned long, RunStats> m_func_anomaly;
+    std::unordered_map<unsigned long, RunStats> m_inclusive;
+    std::unordered_map<unsigned long, RunStats> m_exclusive;
 };
 
 } // end of chimbuko namespace

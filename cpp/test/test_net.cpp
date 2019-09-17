@@ -222,7 +222,7 @@ TEST_F(NetTest, NetStatSenderTest)
     };
     // const int MAX_STEPS = 1000;    
 
-    EXPECT_STREQ("", param.collect_stat_data().c_str());
+    EXPECT_EQ(0, param.collect_stat_data().size());
 
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {

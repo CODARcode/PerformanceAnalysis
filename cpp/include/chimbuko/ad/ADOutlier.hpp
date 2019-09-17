@@ -26,11 +26,11 @@ public:
 protected:
     virtual unsigned long compute_outliers(
         const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        unsigned long& min_ts, unsigned long& max_ts) = 0;
+        long& min_ts, long& max_ts) = 0;
     virtual void sync_param(ParamInterface* param) = 0;
-    void sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m);
+    // void sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m);
     void sync_outliers(unsigned long n_outliers, 
-        int step, unsigned long min_ts, unsigned long max_ts);
+        int step, long min_ts, long max_ts, std::string func_stats="");
 
 protected:
     bool m_use_ps;
@@ -45,7 +45,11 @@ protected:
 
     const ExecDataMap_t * m_execDataMap;
     ParamInterface * m_param;
-    std::unordered_map<unsigned long, unsigned long> m_outliers;
+
+    // number of outliers per function: func id -> # outliers
+    // std::unordered_map<unsigned long, unsigned long> m_outliers;
+    // inclusive runtime statistics per fucntion: func id -> run stats
+    // exclusive runtime statistics per function: func id -> run stats
 };
 
 class ADOutlierSSTD : public ADOutlier {
@@ -61,7 +65,7 @@ public:
 protected:
     unsigned long compute_outliers(
         const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        unsigned long& min_ts, unsigned long& max_ts) override;
+        long& min_ts, long& max_ts) override;
     void sync_param(ParamInterface* param) override;
 
 private:
