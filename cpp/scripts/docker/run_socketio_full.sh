@@ -46,13 +46,13 @@ sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
 sed -i '22s|#set|set|' ethanol_md.nw
-sed -i 's/data 1000/data 1000/' ethanol_md.nw
+sed -i 's/data 1000/data 2000/' ethanol_md.nw
 
 date
 hostname
 ls -l
 
-NMPIS=1
+NMPIS=4
 
 # echo ""
 # echo "=========================================="
@@ -70,7 +70,7 @@ echo "run celery ..."
 # only for docker
 export C_FORCE_ROOT=1
 # python3 manager.py celery --loglevel=info --concurrency=10 -f "${WORK_DIR}/logs/celery.log" &
-python3 manager.py celery --loglevel=info --concurrency=1 --logfile=${WORK_DIR}/logs/celery.log &
+python3 manager.py celery --loglevel=info --concurrency=4 --logfile=${WORK_DIR}/logs/celery.log &
 #    >"${WORK_DIR}/logs/celery.log" 2>&1 &
 sleep 10
 
@@ -114,7 +114,7 @@ else
         mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >logs/nwchem.log 2>&1 
     fi
     echo "Run anomaly detectors"
-    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP \
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX "" \
         "tcp://0.0.0.0:5559" "http://0.0.0.0:5000/api/executions" 1000
         # >logs/ad.log 2>&1 
 fi

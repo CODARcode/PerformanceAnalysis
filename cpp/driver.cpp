@@ -22,10 +22,13 @@ int main(int argc, char ** argv)
         std::string data_dir = argv[2]; // *.bp location
         std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
         std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
-        std::string output_dir = std::string(argv[4]) + "." + std::to_string(world_rank); //output directory
+        std::string output_dir = std::string(argv[4]); //output directory
         std::string ps_addr;         // parameter server (e.g. "tcp://hostname:5559")
         std::string vis_addr;        // visualization server
         int         interval_msec = 0;
+
+        if (output_dir.length())
+            output_dir = output_dir  + "." + std::to_string(world_rank);
 
 #ifdef _USE_ZMQNET
         if (argc >= 6)

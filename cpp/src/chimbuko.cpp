@@ -61,7 +61,6 @@ void Chimbuko::init_outlier(int rank, double sigma, std::string addr)
 void Chimbuko::finalize()
 {
     m_outlier->disconnect_ps();
-    m_io->close_curl();
     if (m_parser) delete m_parser;
     if (m_event) delete m_event;
     if (m_outlier) delete m_outlier;

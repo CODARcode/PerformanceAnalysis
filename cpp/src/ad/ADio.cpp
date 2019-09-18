@@ -1,6 +1,7 @@
 #include "chimbuko/ad/ADio.hpp"
 #include <unordered_set>
 #include <nlohmann/json.hpp>
+#include <chrono>
 
 using namespace chimbuko;
 
@@ -14,7 +15,15 @@ ADio::ADio()
 }
 
 ADio::~ADio() {
+    while (m_dispatcher->size())
+    {
+        std::cout << "wait for all jobs done: " << m_dispatcher->size() << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    // std::cout << "destroy ADio" << std::endl;
     if (m_dispatcher) delete m_dispatcher;
+    m_dispatcher = nullptr;
     close_curl();
 }
 
@@ -133,7 +142,7 @@ public:
 
             curl_easy_setopt(curl, CURLOPT_URL, m_io.getURL().c_str());
             curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 5000L);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 

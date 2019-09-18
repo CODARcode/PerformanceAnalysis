@@ -186,6 +186,7 @@ void NetInterface::stop_stat_sender(int wait_msec)
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
         m_stop_sender = true;
         if (m_stat_sender->joinable()) {
+            std::cout << "PS: join stat sender!" << std::endl;
             m_stat_sender->join();
             delete m_stat_sender;
             m_stat_sender = nullptr;
