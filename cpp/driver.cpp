@@ -5,15 +5,6 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
-// input argument
-// - engineType (for BP, + data_dir)
-// - output_dir (for now) to dump
-
-// soon later
-// - inputFile prefix (i.e. tau-metrics)
-// - sigma
-// - ps server name 
-
 int main(int argc, char ** argv)
 {
     MPI_Init(&argc, &argv);
@@ -31,15 +22,20 @@ int main(int argc, char ** argv)
         std::string data_dir = argv[2]; // *.bp location
         std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
         std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
-        std::string output_dir = argv[4]; //output directory
-        std::string addr;         // parameter server (e.g. "tcp://hostname:5559")
+        std::string output_dir = std::string(argv[4]) + "." + std::to_string(world_rank); //output directory
+        std::string ps_addr;         // parameter server (e.g. "tcp://hostname:5559")
+        std::string vis_addr;        // visualization server
         int         interval_msec = 0;
+
 #ifdef _USE_ZMQNET
         if (argc >= 6)
-            addr = std::string(argv[5]); 
+            ps_addr = std::string(argv[5]); 
 #endif
-        if (argc == 7)
-            interval_msec = atoi(argv[6]);
+        if (argc >= 7)
+            vis_addr = std::string(argv[6]);
+
+        if (argc >= 8)
+            interval_msec = atoi(argv[7]);
 
         if (world_rank == 0) {
         std::cout << "\n" 
@@ -49,8 +45,9 @@ int main(int argc, char ** argv)
                 << "BP file    : " << inputFile << "\n"
                 << "BP out dir : " << output_dir 
 #ifdef _USE_ZMQNET
-                << "\nPS Addr    : " << addr
+                << "\nPS Addr    : " << ps_addr
 #endif
+                << "\nVIS Addr   : " << vis_addr
                 << "\nInterval   : " << interval_msec << " msec\n"
                 << std::endl;
         }
@@ -76,9 +73,7 @@ int main(int argc, char ** argv)
         // Init. AD module
         // -----------------------------------------------------------------------
         // First, init io to make sure file (or connection) handler
-        driver.init_io(world_rank, output_dir,
-            {{"rank", world_rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}},
-            IOMode::Offline);
+        driver.init_io(IOMode::Both, output_dir, vis_addr, 0);
 
         // Second, init parser because it will hold shared memory with event and outlier object
         // also, process will be blocked at this line until it finds writer (in SST mode)
@@ -86,7 +81,7 @@ int main(int argc, char ** argv)
 
         // Thrid, init event and outlier objects
         driver.init_event(world_rank == 0);
-        driver.init_outlier(world_rank, sigma, addr);
+        driver.init_outlier(world_rank, sigma, ps_addr);
 
         // -----------------------------------------------------------------------
         // Start analysis

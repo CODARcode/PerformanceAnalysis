@@ -28,9 +28,7 @@ protected:
         const unsigned long func_id, std::vector<CallListIterator_t>& data,
         long& min_ts, long& max_ts) = 0;
     virtual void sync_param(ParamInterface* param) = 0;
-    // void sync_outliers(const std::unordered_map<unsigned long, unsigned long>& m);
-    void sync_outliers(unsigned long n_outliers, 
-        int step, long min_ts, long max_ts, std::string func_stats="");
+    void update_local_statistics(std::string l_stats, int step);
 
 protected:
     bool m_use_ps;

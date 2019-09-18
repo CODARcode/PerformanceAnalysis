@@ -96,11 +96,6 @@ EventError ADEvent::addFunc(const Event_t& event) {
 
     if (eventType.compare("ENTRY") == 0)
     {
-        // if (m_funcMap->find(event.fid())->second.compare("Tau_plugin_adios2_dump") == 0)
-        //     std::cerr << event << ": "
-        //                     << m_eventType->find(event.eid())->second << ": "
-        //                     << m_funcMap->find(event.fid())->second << std::endl;
-
         CallList_t& cl = m_callList[event.pid()][event.rid()][event.tid()];
         cl.push_back(ExecData_t(event));
 
@@ -108,7 +103,6 @@ EventError ADEvent::addFunc(const Event_t& event) {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size()) {
             it->set_parent(cs.top()->get_id());
-            //cs.top()->add_child(it->get_id());
             cs.top()->inc_n_children();
         }
         it->set_funcname(m_funcMap->find(event.fid())->second);
@@ -121,19 +115,19 @@ EventError ADEvent::addFunc(const Event_t& event) {
         CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
         if (cs.size() == 0) {
             std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
-            std::cerr << event << ": "
-            		      << m_eventType->find(event.eid())->second << ": "
-            		      << m_funcMap->find(event.fid())->second << std::endl;
+            std::cerr << event.get_json().dump() << std::endl
+            		  << m_eventType->find(event.eid())->second << ": "
+            		  << m_funcMap->find(event.fid())->second << std::endl;
             return EventError::EmptyCallStack;
         }
 
         CallListIterator_t& it = cs.top();
         if (!it->update_exit(event)) {
             std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
-            std::cerr << event << ": "
+            std::cerr << event.get_json().dump() << std::endl
                       << m_eventType->find(event.eid())->second << ": "
                       << m_funcMap->find(event.fid())->second << std::endl;
-            std::cerr << *it << std::endl;
+            std::cerr << it->get_json().dump() << std::endl;
             // while (!cs.empty()) {
             //     std::cerr << *cs.top() << std::endl;
             //     cs.pop();
@@ -236,8 +230,7 @@ void ADEvent::show_status(bool verbose) const {
         for (auto it : m_execDataMap) {
             std::cout << "Function: " << m_funcMap->find(it.first)->second << std::endl;
             for (auto itt: it.second) {
-                if (itt->get_n_message() > 0 && itt->get_n_children())
-                    std::cout << *itt << std::endl;
+                std::cout << itt->get_json(true) << std::endl;
             }
         }
     }

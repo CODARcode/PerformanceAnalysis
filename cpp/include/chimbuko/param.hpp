@@ -33,8 +33,8 @@ public:
     void update_func_stat(unsigned long id, 
         const std::string& name, 
         unsigned long n_anomaly,
-        const std::string& inclusive, 
-        const std::string& exclusive);
+        const RunStats& inclusive, 
+        const RunStats& exclusive);
     nlohmann::json collect_stat_data();
     nlohmann::json collect_func_data();
     std::string collect();

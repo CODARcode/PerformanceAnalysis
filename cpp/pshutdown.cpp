@@ -29,11 +29,11 @@ int main (int argc, char ** argv)
     ZMQNet::recv(socket, strmsg);
     msg.set_msg(strmsg, true);
 
-    if (msg.data_buffer().compare("Hello!>I am ZMQNET!") != 0)
-    {
-        std::cerr << "Connect error to parameter server (ZMQNET)!\n";
-        exit(1);
-    }    
+    // if (msg.data_buffer().compare("Hello!>I am ZMQNET!") != 0)
+    // {
+    //     std::cerr << "Connect error to parameter server (ZMQNET)!\n";
+    //     exit(1);
+    // }    
 
     // shutdown
     zmq_send(socket, nullptr, 0, 0);

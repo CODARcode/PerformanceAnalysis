@@ -10,9 +10,8 @@ public:
     Chimbuko();
     ~Chimbuko();
 
-    void init_io(int rank, std::string output_dir, 
-        std::unordered_map<std::string, unsigned int> params, 
-        IOMode mode=IOMode::Offline);
+    void init_io(IOMode mode, std::string outputPath, 
+        std::string addr, unsigned int winSize=0);
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
     void init_event(bool verbose=false);
     void init_outlier(int rank, double sigma, std::string addr="");

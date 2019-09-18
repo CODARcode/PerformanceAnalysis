@@ -43,26 +43,24 @@ ParamInterface::~ParamInterface()
 
 void ParamInterface::add_anomaly_data(const std::string& data)
 {
-    std::stringstream ss(data);
-    std::string line;
-
-    std::getline(ss, line, ' ');
-    AnomalyData d(line);
-    while (std::getline(ss, line, '@'))
+    nlohmann::json j = nlohmann::json::parse(data);
+    if (j.count("anomaly"))
     {
-        unsigned long func_id = (unsigned long)std::atol(line.c_str());
-        unsigned long n_anomaly;
-        std::string fname, inclusive, exclusive;
-        std::getline(ss, fname, '@');
-        std::getline(ss, line, '@');
-        n_anomaly = (unsigned long)std::atol(line.c_str());
-        std::getline(ss, inclusive, ' ');
-        std::getline(ss, exclusive, ' ');
-        update_func_stat(func_id, fname, n_anomaly, inclusive, exclusive);
+        AnomalyData d(j["anomaly"].dump());
+        if (m_anomaly_stats.count(d.get_stat_id()))
+            m_anomaly_stats[d.get_stat_id()]->add(d);
     }
 
-    if (m_anomaly_stats.count(d.get_stat_id()))
-        m_anomaly_stats[d.get_stat_id()]->add(d);
+    if (j.count("func"))
+    {
+        for (auto f: j["func"]) {
+            update_func_stat(
+                f["id"], f["name"], f["n_anomaly"],
+                RunStats::from_strstate(f["inclusive"].dump()), 
+                RunStats::from_strstate(f["exclusive"].dump())
+            );
+        }
+    }
 }
 
 std::string ParamInterface::get_anomaly_stat(const std::string& stat_id)
@@ -71,7 +69,7 @@ std::string ParamInterface::get_anomaly_stat(const std::string& stat_id)
         return "";
 
     RunStats stat = m_anomaly_stats[stat_id]->get_stats();
-    return stat.get_binary_state();
+    return stat.get_json().dump();
 }
 
 size_t ParamInterface::get_n_anomaly_data(const std::string& stat_id)
@@ -94,7 +92,7 @@ nlohmann::json ParamInterface::collect_stat_data()
         {
             nlohmann::json object;
             object["key"] = stat_id;
-            stats.first.to_json(object);
+            object["stats"] = stats.first.get_json();
 
             object["data"] = nlohmann::json::array();
             for (auto strdata: *stats.second)
@@ -138,24 +136,26 @@ std::string ParamInterface::collect()
     if (object["stat"].size() == 0)
         return "";
     object["func"] = collect_func_data();
-    return object.dump();
+    try
+    {
+        return object.dump();
+    }
+    catch(const std::exception& e)
+    {
+        return "";
+    }
 }
 
 
 void ParamInterface::update_func_stat(unsigned long id, const std::string& name, 
-    unsigned long n_anomaly, const std::string& inclusive, const std::string& exclusive)
+    unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive)
 {
-    RunStats _inclusive = RunStats::from_binary_state(inclusive);
-    RunStats _exclusive = RunStats::from_binary_state(exclusive);
-    {
-        std::lock_guard<std::mutex> _(m_mutex_func);   
-        m_func[id] = name;
-        if (m_func_anomaly.count(id) == 0) {
-            m_func_anomaly[id] = RunStats();
-            m_func_anomaly[id].set_do_accumulate(true);
-        }
-        m_func_anomaly[id].push(n_anomaly);
-        m_inclusive[id] += _inclusive;
-        m_exclusive[id] += _exclusive;
+    std::lock_guard<std::mutex> _(m_mutex_func);   
+    m_func[id] = name;
+    if (m_func_anomaly.count(id) == 0) {
+        m_func_anomaly[id].set_do_accumulate(true);
     }
+    m_func_anomaly[id].push(n_anomaly);
+    m_inclusive[id] += inclusive;
+    m_exclusive[id] += exclusive;
 }

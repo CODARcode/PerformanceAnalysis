@@ -39,7 +39,8 @@ public:
     // compare
     friend bool operator<(const Event_t& lhs, const Event_t& rhs);
     friend bool operator>(const Event_t& lhs, const Event_t& rhs);
-    friend std::ostream& operator<<(std::ostream& os, const Event_t& ev);
+
+    nlohmann::json get_json() const;
 
 private:
     const unsigned long * m_data;
@@ -50,7 +51,6 @@ private:
 
 bool operator<(const Event_t& lhs, const Event_t& rhs);
 bool operator>(const Event_t& lhs, const Event_t& rhs);
-std::ostream& operator<<(std::ostream& os, const Event_t& ev);
 
 
 class CommData_t {
@@ -66,14 +66,9 @@ public:
 
     void set_fid(unsigned long fid) { m_fid = fid; }
     void set_fname(std::string fname) { m_fname = fname; }
-    void set_stream(bool is_binary) { m_is_binary = is_binary; }
 
     bool is_same(const CommData_t& other) const;
     nlohmann::json get_json() const;
-
-    // todo: need to review!!!
-    friend std::ostream& operator<<(std::ostream& os, CommData_t& comm);
-    friend std::istream& operator>>(std::istream& is, CommData_t& comm);
 
 private:
     std::string m_commType;
@@ -83,7 +78,6 @@ private:
     unsigned long m_ts;
     unsigned long m_fid;
     std::string m_fname;
-    bool m_is_binary;
 };
 
 std::ostream& operator<<(std::ostream& os, CommData_t& comm);
@@ -109,15 +103,10 @@ public:
     long get_exclusive() const { return m_exclusive; }
     int get_label() const { return m_label; }
     std::string get_parent() const { return m_parent; }
-    //const std::vector<std::string>& get_children() const { return m_children; }
-    //const std::vector<CommData_t>& get_message() const { return m_messages; }
+    std::vector<CommData_t>& get_messages() { return m_messages; }
 
-    //size_t get_n_message() const { return m_messages.size(); }
     unsigned long get_n_message() const { return m_n_messages; }
-    //size_t get_n_children() const { return m_children.size(); }
     unsigned long get_n_children() const { return m_n_children; }
-
-    bool is_used() const { return m_used; }
 
     void set_label(int label) { m_label = label; }
     void set_parent(std::string parent) { m_parent = parent; }
@@ -126,21 +115,12 @@ public:
     bool update_exit(const Event_t& ev);
     void update_exclusive(long t) { m_exclusive -= t; }
     void inc_n_children() { m_n_children++; }
-    //void add_child(std::string child);
     bool add_message(CommData_t& comm);
-
-    void set_use(bool use) { m_used = use; }
-    void set_stream(bool is_binary) { m_is_binary = is_binary; }
 
     bool is_same(const ExecData_t& other) const;
 
-    nlohmann::json get_json() const;
-    void to_json(nlohmann::json& execArray, nlohmann::json& commArray) const;
+    nlohmann::json get_json(bool with_message=false) const;
     
-    // todo: need to update!!!!!
-    friend std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
-    friend std::istream& operator>>(std::istream& is, ExecData_t& exec);
-
 private:
     std::string m_id;
     std::string m_funcname;
@@ -150,13 +130,7 @@ private:
     std::string m_parent;
     unsigned long m_n_children;
     unsigned long m_n_messages;
-    //std::vector<std::string> m_children;
     std::vector<CommData_t> m_messages;
-
-    bool m_is_binary;
-    bool m_used;
 };
 
-std::ostream& operator<<(std::ostream& os, ExecData_t& exec);
-std::istream& operator>>(std::istream& is, ExecData_t& exec);
 } // end of AD namespace

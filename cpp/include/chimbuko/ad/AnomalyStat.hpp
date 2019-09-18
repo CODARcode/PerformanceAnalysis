@@ -10,55 +10,23 @@ namespace chimbuko {
 
 class AnomalyData {
 public:
-    AnomalyData()
-    : m_app(0), m_rank(0), m_step(0), 
-    m_min_timestamp(0), m_max_timestamp(0), m_n_anomalies(0),
-    m_stat_id("")
-    {
-
-    }
+    AnomalyData();
 
     AnomalyData(
         unsigned long app, unsigned long rank, unsigned step,
         unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-        std::string stat_id="")
-        : m_app(app), m_rank(rank), m_step(step),
-        m_min_timestamp(min_ts), m_max_timestamp(max_ts), 
-        m_n_anomalies(n_anomalies), m_stat_id(stat_id) 
-    {
-        if (stat_id.length() == 0)
-        {
-            m_stat_id = std::to_string(m_app) + ":" + std::to_string(m_rank);
-        }
-    }
+        std::string stat_id="");
 
-    AnomalyData(const std::string& binary)
-    {
-        set_binary(binary);
-    }
+    AnomalyData(const std::string& s);
 
     ~AnomalyData()
     {
-
     }
 
     void set(
         unsigned long app, unsigned long rank, unsigned step,
         unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-        std::string stat_id="")
-    {
-        m_app = app;
-        m_rank = rank;
-        m_step = step;
-        m_min_timestamp = min_ts;
-        m_max_timestamp = max_ts,
-        m_n_anomalies = n_anomalies;
-        m_stat_id = stat_id;
-        if (stat_id.length() == 0)
-        {
-            m_stat_id = std::to_string(m_app) + ":" + std::to_string(m_rank);
-        }
-    }
+        std::string stat_id="");
 
     unsigned long get_app() const { return m_app; }
     unsigned long get_rank() const { return m_rank; }
@@ -68,18 +36,10 @@ public:
     unsigned long get_n_anomalies() const { return m_n_anomalies; }
     std::string get_stat_id() const { return m_stat_id; }
 
-    friend std::ostream& operator<<(std::ostream& os, AnomalyData& d);
-    friend std::istream& operator>>(std::istream& is, AnomalyData& d);
-
     friend bool operator==(const AnomalyData& a, const AnomalyData& b);
     friend bool operator!=(const AnomalyData& a, const AnomalyData& b);
 
-    std::string get_binary();
-    void set_binary(std::string binary);
-
     nlohmann::json get_json() const;
-
-    void show(std::ostream& os = std::cout) const;
 
 private:
     unsigned long m_app;
@@ -91,9 +51,6 @@ private:
     std::string   m_stat_id;
 };
 
-std::ostream& operator<<(std::ostream& os, AnomalyData& d);
-std::istream& operator>>(std::istream& is, AnomalyData& d);
-
 bool operator==(const AnomalyData& a, const AnomalyData& b);
 bool operator!=(const AnomalyData& a, const AnomalyData& b);
 
@@ -103,9 +60,7 @@ public:
     ~AnomalyStat();
 
     void add(AnomalyData& d, bool bStore = true);
-    void add(const std::string& binary, bool bStore = true);
-    void add(double x);
-    void add(const RunStats& other);
+    void add(const std::string& str, bool bStore = true);
 
     /**
      * @brief Get copy of the current statistics and the pointer 

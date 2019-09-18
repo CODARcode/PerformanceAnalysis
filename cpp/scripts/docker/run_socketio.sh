@@ -33,7 +33,7 @@ python3 manager.py celery --loglevel=info --concurrency=10 \
 sleep 1
 
 echo "run webserver ..."
-python3 manager.py runserver --host 0.0.0.0 --port 5000 --no-debug --no-reload \
+python3 manager.py runserver --host 0.0.0.0 --port 5000 \
     >"${WORK_DIR}/logs/webserver.log" 2>&1 &
 # uwsgi --gevent 100 --http 127.0.0.1:5001 --wsgi-file server/wsgi.py \
 #     --pidfile "${WORK_DIR}/logs/webserver.pid" \
@@ -44,7 +44,7 @@ echo ""
 echo "=========================================="
 echo "Launch test streaming"
 echo "=========================================="
-python3 scripts/send_anomalystats.py 20 300 1 http://0.0.0.0:5000/api/anomalydata
+python3 scripts/send_anomalystats.py 20 10 1 http://0.0.0.0:5000/api/anomalydata
 
 
 cd $CHIMBUKO_VIS_ROOT

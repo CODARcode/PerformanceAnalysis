@@ -4,11 +4,13 @@
 mkdir -p temp
 
 # mpirun --allow-run-as-root -n 1 ../bin/pserver 4 & 
-../bin/pserver 4 &
+mpirun --allow-run-as-root -n 1 ../bin/pserver 4 &
+ps_wid=$!
 
 sleep 5
-mpirun --allow-run-as-root -n 4 mainAd -n 4
+mpirun --allow-run-as-root -n 4 ./mainAd -n 4
 
+wait $ps_wid
 rm -r temp
 
 

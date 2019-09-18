@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace chimbuko {
 
@@ -37,8 +38,6 @@ public:
          * @brief header size in bytes 
          * 
          */
-        static const size_t headerSize = 8 * sizeof(int);
-
         Header() 
         {
             for (int i = 0; i < 8; i++)
@@ -88,22 +87,10 @@ public:
         int& frame() { return m_h[5]; }
         int frame() const { return m_h[5]; }
 
-        /**
-         * @brief write header to the binary stream
-         * 
-         * @param os binary output stream
-         * @param h message header object
-         * @return std::ostream& binary output stream
-         */
-        friend std::ostream& operator<<(std::ostream& os, const Header& h);
-        /**
-         * @brief read header from the binary stream
-         * 
-         * @param is binary input stream
-         * @param h message header object
-         * @return std::istream& binary input stream
-         */
-        friend std::istream& operator>>(std::istream& is, Header& h);
+        nlohmann::json get_json() const;
+        void set_header(const nlohmann::json& j);
+        void set_header(const std::string& s);
+
     private:
         /**
          * @brief header information
@@ -144,30 +131,11 @@ public:
      */
     void set_info(int src, int dst, int type, int kind, int frame = 0, int size = 0);
 
-    /**
-     * @brief Set the message buffer
-     * 
-     * @param msg binary message string
-     * @param include_head if true, the msg also contains header information.
-     */
     void set_msg(const std::string& msg, bool include_head=false); 
     void set_msg(int cmd);
 
-    /**
-     * @brief message size (data buffer size + header size)
-     * 
-     * @return size_t message size
-     */
-    size_t count() const { return Header::headerSize + m_buf.size(); }
-
-    /**
-     * @brief message buffer (header + data buffer)
-     * 
-     * @return std::string message buffer
-     */
-    std::string data() const; 
-
-    std::string data_buffer() const { return m_buf; }
+    std::string buf() const { return m_buf; }; 
+    std::string data() const;
 
     int src() const { return m_head.src(); }
 
@@ -201,21 +169,12 @@ public:
     Message createReply() const;
 
     void show(std::ostream& os) const {
-        os << "\nsrc: " << m_head.src() 
-           << "\ndst: " << m_head.dst()
-           << "\ntype: " << m_head.type()
-           << "\nkind: " << m_head.kind()
-           << "\nsize: " << m_head.size()
-           << "\nframe: " << m_head.frame()
-           << std::endl;
+        os << m_head.get_json().dump();
     }
 
 private:
     Header m_head;
     std::string m_buf;
 };
-
-std::ostream& operator<<(std::ostream& os, const Message::Header& h);
-std::istream& operator>>(std::istream& is, Message::Header& h);
 
 } // end of namespace chimbuko

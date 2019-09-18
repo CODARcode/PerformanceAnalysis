@@ -20,7 +20,9 @@ int main(int argc, char** argv)
         delete listeners.Release(listeners.default_result_printer());
 
     result = RUN_ALL_TESTS();
+    // std::cout << world_rank << ": " << result << std::endl;
     
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return result;
 }

@@ -20,12 +20,12 @@ WORK_DIR=`pwd`
 
 ADIOS_MODE=BPFile
 HAS_BPFILE=false
-BP_PREFIX=tau-metrics
+BP_PREFIX=tau-metrics-nwchem
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
 export TAU_ADIOS2_SELECTION_FILE=$WORK_DIR/sos_filter.txt
 export TAU_ADIOS2_ENGINE=$ADIOS_MODE
-export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/$BP_PREFIX
+export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/tau-metrics
 #export TAU_VERBOSE=1
 
 # visualization server
@@ -44,38 +44,43 @@ cp -r $CHIMBUKO_ROOT/lib .
 sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
-sed -i 's/data 1000/data 20000/' ethanol_md.nw
+sed -i '21s|set|#set|' ethanol_md.nw
+sed -i '22s|#set|set|' ethanol_md.nw
+sed -i 's/data 1000/data 1000/' ethanol_md.nw
 
 date
 hostname
 ls -l
 
-NMPIS=5
+NMPIS=1
 
 # echo ""
 # echo "=========================================="
 # echo "Launch Chimbuko visualization server"
 # echo "=========================================="
 cd $CHIMBUKO_VIS_ROOT
-echo "create database @ ${DATABASE_URL}"
-python3 manager.py createdb
 
 echo "run redis ..."
-webserver/run-redis.sh >"${WORK_DIR}/logs/redis.log" 2>&1 &
-sleep 1
+webserver/run-redis.sh &
+#>"${WORK_DIR}/logs/redis.log" &
+#2>&1 &
+sleep 10
 
 echo "run celery ..."
 # only for docker
 export C_FORCE_ROOT=1
 # python3 manager.py celery --loglevel=info --concurrency=10 -f "${WORK_DIR}/logs/celery.log" &
-python3 manager.py celery --loglevel=info --concurrency=2 \
-    >"${WORK_DIR}/logs/celery.log" 2>&1 &
-sleep 1
+python3 manager.py celery --loglevel=info --concurrency=1 --logfile=${WORK_DIR}/logs/celery.log &
+#    >"${WORK_DIR}/logs/celery.log" 2>&1 &
+sleep 10
+
+echo "create database @ ${DATABASE_URL}"
+python3 manager.py createdb
 
 echo "run webserver ..."
-python3 manager.py runserver --host 0.0.0.0 --port 5000 --no-debug --no-reload \
+python3 manager.py runserver --host 0.0.0.0 --port 5000 \
     >"${WORK_DIR}/logs/webserver.log" 2>&1 &
-sleep 5
+sleep 10
 
 cd $WORK_DIR
 echo ""
@@ -83,9 +88,7 @@ echo "=========================================="
 echo "Launch Chimbuko parameter server"
 echo "=========================================="
 echo "run parameter server ..."
-bin/pserver 2 "${WORK_DIR}/logs/parameters.log" \
-    $NMPIS \
-    "http://0.0.0.0:5000/api/anomalydata" &
+bin/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS "http://0.0.0.0:5000/api/anomalydata" &
     # >"${WORK_DIR}/logs/ps.log" 2>&1 &
 ps_pid=$!
 sleep 5
@@ -108,12 +111,11 @@ else
     if ! $HAS_BPFILE
     then
         echo "Run NWChem"
-        mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw 
-            # >logs/nwchem.log 2>&1 
+        mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >logs/nwchem.log 2>&1 
     fi
     echo "Run anomaly detectors"
-    mpirun --allow-run-as-root -n $NMPIS \
-        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP "tcp://0.0.0.0:5559" 1000
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP \
+        "tcp://0.0.0.0:5559" "http://0.0.0.0:5000/api/executions" 1000
         # >logs/ad.log 2>&1 
 fi
 

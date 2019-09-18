@@ -15,46 +15,25 @@ Chimbuko::~Chimbuko()
 
 }
 
-void Chimbuko::init_io(int rank, std::string output_dir, 
-    std::unordered_map<std::string, unsigned int> info, IOMode mode)
+void Chimbuko::init_io(IOMode mode, std::string outputPath, 
+    std::string addr, unsigned int winSize)
 {
-    // m_rank = rank;
-    // m_output_dir = output_dir
-
     m_io = new ADio();
     m_io->setDispatcher();
-    m_io->setHeader(info);
-    //m_io->setHeader({{"rank", rank}, {"algorithm", 0}, {"nparam", 1}, {"winsz", 0}});
-    // Note: currently, dump to disk is probablimatic on large scale. 
-    // Considering overall chimuko architecture we want to go with data stream! 
-    // For the test purpose, we don't dump or stream any data but just delete them.
-    if (mode == IOMode::Online)
+    m_io->setWinSize(winSize);
+    if ((mode == IOMode::Online || mode == IOMode::Both) && addr.size())
     {
-        ;
-        // m_io->open_curl(url); // for VIS module
+        m_io->open_curl(addr);
     }
-    else if (mode == IOMode::Offline)
+
+    if ((mode == IOMode::Offline || mode == IOMode::Both) && outputPath.size())
     {
-        m_io->open(
-            output_dir + "/execdata." + std::to_string(rank),
-            IOOpenMode::Write
-        ); // for file output
-    }
-    else if (mode == IOMode::Both)
-    {
-        // m_io->open_curl(url); // for VIS module
-        m_io->open(
-            output_dir + "/execdata." + std::to_string(rank),
-            IOOpenMode::Write
-        ); // for file output
+        m_io->setOutputPath(outputPath);
     }
 }
 
 void Chimbuko::init_parser(std::string data_dir, std::string inputFile, std::string engineType)
 {
-    // m_data_dir = data_dir;
-    // m_inputFile = inputFile;
-    // m_engineType = engineType;
     m_parser = new ADParser(data_dir + "/" + inputFile, engineType);
 }
 
@@ -82,6 +61,7 @@ void Chimbuko::init_outlier(int rank, double sigma, std::string addr)
 void Chimbuko::finalize()
 {
     m_outlier->disconnect_ps();
+    m_io->close_curl();
     if (m_parser) delete m_parser;
     if (m_event) delete m_event;
     if (m_outlier) delete m_outlier;
@@ -163,6 +143,7 @@ void Chimbuko::run(int rank,
                 (is_func_event ? idx_funcData: idx_commData),
                 (is_func_event ? generate_event_id(rank, step, idx_funcData): "event_id")
             );
+            // std::cout << ev << std::endl;
 
             // Validate the event
             // NOTE: in SST mode with large rank number (>=10), sometimes I got
@@ -173,7 +154,7 @@ void Chimbuko::run(int rank,
             if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000)
             {
                 std::cout << "\n***** Invalid event *****\n";
-                std::cout << "[" << rank << "] " << ev << std::endl;
+                //std::cout << "[" << rank << "] " << ev << std::endl;
             }
             else
             {

@@ -56,7 +56,7 @@ TEST_F(UtilTest, RunStatSimpleTest)
     std::normal_distribution<double> dist(mean, std);
     std::vector<double> data;
 
-    RunStats stat(true, false);
+    RunStats stat(true);
     double sum = 0.0;
     for (int i = 0; i < nrolls; i++)
     {
@@ -124,14 +124,7 @@ TEST_F(UtilTest, RunStatSerializeTest)
         data.push_back(num);
     }
 
-    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-    stat.set_stream(true);
-    ss << stat;
-    stat.set_stream(false);
-
-    c_stat.set_stream(true);
-    ss >> c_stat;
-    c_stat.set_stream(false);
+    c_stat.set_strstate(stat.get_strstate());
 
     double static_mean = chimbuko::static_mean(data, 0.0);
     double static_std = chimbuko::static_std(data);
@@ -149,12 +142,12 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
 {
     using namespace chimbuko;
 
-    AnomalyData d, c_d, d2;
+    AnomalyData d, d2;
 
     d.set(1, 1000, 2000, 1234567890, 912345678, 123);
     d2.set(1, 1001, 2000, 1234567890, 912345678, 123);
 
-    c_d.set_binary(d.get_binary());
+    AnomalyData c_d(d.get_json().dump());
 
     EXPECT_EQ(d, c_d);
     EXPECT_TRUE(d==c_d);
@@ -191,7 +184,7 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
                 const int n_anomalies = std::max((int)dist(generator), 0);
                 // std::cout << "Step: " << step << ", n: " << n_anomalies << std::endl;
                 AnomalyData d(app_id, rank_id, step, 0, 0, n_anomalies);
-                anomaly_data.push_back(d.get_binary());
+                anomaly_data.push_back(d.get_json().dump());
 
                 if (step == 0)
                 {
@@ -211,8 +204,7 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
     for (int i = 0; i < (int)anomaly_data.size(); ++i)
     {
         v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, i](){
-            AnomalyData d;
-            d.set_binary(anomaly_data[i]);
+            AnomalyData d(anomaly_data[i]);
             anomaly_stats[d.get_stat_id()]->add(anomaly_data[i]);
         }));
     }
@@ -232,5 +224,3 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
         delete c_anomaly_stats[pair.first];
     }
 }
-
-

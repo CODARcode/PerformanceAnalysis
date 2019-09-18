@@ -52,7 +52,7 @@ void doWork(void* context, ParamInterface* param)
             SstdParam* p = dynamic_cast<SstdParam*>(param);
             if (msg.type() == MessageType::REQ_ADD) {
                 //std::cout << "REQ_ADD" << std::endl;
-                msg_reply.set_msg(p->update(msg.data_buffer(), true), false);
+                msg_reply.set_msg(p->update(msg.buf(), true), false);
             }
             else if (msg.type() == MessageType::REQ_GET) {
                 //std::cout << "REQ_GET" << std::endl;
@@ -63,13 +63,13 @@ void doWork(void* context, ParamInterface* param)
         {
             if (msg.type() == MessageType::REQ_ADD) {
                 // std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
-                param->add_anomaly_data(msg.data_buffer());
+                param->add_anomaly_data(msg.buf());
                 msg_reply.set_msg("", false);
             }
-            else if (msg.type() == MessageType::REQ_GET) {
-                // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
-                msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
-            }
+            // else if (msg.type() == MessageType::REQ_GET) {
+            //     // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
+            //     //msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
+            // }
             else 
             {
                 std::cout << "Unknown Type: " << msg.type() << std::endl;
@@ -78,8 +78,7 @@ void doWork(void* context, ParamInterface* param)
         else if (msg.kind() == MessageKind::DEFAULT)
         {
             if (msg.type() == MessageType::REQ_ECHO) {
-                //std::cout << "REQ_ECHO" << std::endl;
-                msg_reply.set_msg(msg.data_buffer() + ">I am ZMQNET!", false);
+                msg_reply.set_msg(std::string("Hello!I am ZMQNET!"), false);
             }
         }
         else 

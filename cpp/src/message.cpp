@@ -6,18 +6,33 @@ using namespace chimbuko;
 // ---------------------------------------------------------------------------
 // Implementation of Message::Header class
 // ---------------------------------------------------------------------------
-std::ostream& chimbuko::operator<<(std::ostream& os, const Message::Header& h)
+nlohmann::json Message::Header::get_json() const 
 {
-    os.write((const char*)h.m_h, Message::Header::headerSize);
-    return os;
+    return {
+        {"src", src()},
+        {"dst", dst()},
+        {"type", type()},
+        {"kind", kind()},
+        {"size", size()},
+        {"frame", frame()}
+    };
 }
 
-std::istream& chimbuko::operator>>(std::istream& is, Message::Header& h)
+void Message::Header::set_header(const nlohmann::json& j)
 {
-    is.read((char*)h.m_h, Message::Header::headerSize);
-    return is;
+    src() = j["src"];
+    dst() = j["dst"];
+    type() = j["type"];
+    kind() = j["kind"];
+    size() = j["size"];
+    frame() = j["frame"];
 }
 
+void Message::Header::set_header(const std::string& s)
+{
+    nlohmann::json j = nlohmann::json::parse(s);
+    set_header(j);
+}
 
 // ---------------------------------------------------------------------------
 // Implementation of Message class
@@ -36,32 +51,38 @@ void Message::set_msg(const std::string& msg, bool include_head)
 {
     if (include_head)
     {
-        std::stringstream ss(
-            msg,
-            std::stringstream::out | std::stringstream::in | std::stringstream::binary
-        );
-        ss >> m_head;
-        m_buf = msg.substr(Message::Header::headerSize);
+        nlohmann::json j = nlohmann::json::parse(msg);
+        m_head.set_header(j["Header"]);
+        m_buf = j["Buffer"].dump();
     }
     else
     {
-        m_buf = std::string(msg);
-        m_head.size() = m_buf.size();            
-    }        
+        m_buf = msg;
+        m_head.size() = m_buf.size();
+    }            
 }
 
 void Message::set_msg(int cmd)
 {
-    set_msg(std::to_string(cmd), false);
+    set_msg(std::to_string(cmd));
 }
 
-std::string Message::data() const
+std::string Message::data() const 
 {
-    std::stringstream oss(std::stringstream::out | std::stringstream::binary);
-    oss << m_head;
-    oss << m_buf;
-    return oss.str();
+    nlohmann::json j;
+    j["Header"] = m_head.get_json();
+    try
+    {
+        j["Buffer"] = nlohmann::json::parse(m_buf);
+    }
+    catch(const std::exception& e)
+    {
+        j["Buffer"] = m_buf;
+    }
+    
+    return j.dump();
 }
+
 
 Message Message::createReply() const
 {

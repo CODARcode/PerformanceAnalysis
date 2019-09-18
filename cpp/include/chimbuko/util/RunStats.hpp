@@ -56,7 +56,7 @@ public:
     } State;
 
 public:
-    RunStats(bool do_accumulate = false, bool is_binary = false);
+    RunStats(bool do_accumulate = false);
     ~RunStats();
 
     void clear();
@@ -72,11 +72,11 @@ public:
         return from_state(get_state());
     }
 
-    std::string get_binary_state();
-    void set_binary_state(const std::string& binary);
-    static RunStats from_binary_state(const std::string& binary) {
+    std::string get_strstate();
+    void set_strstate(const std::string& s);
+    static RunStats from_strstate(const std::string& s) {
         RunStats stats;
-        stats.set_binary_state(binary);
+        stats.set_strstate(s);
         return stats;
     }
 
@@ -92,11 +92,10 @@ public:
     double skewness() const;
     double kurtosis() const;
     
-    void set_stream(bool is_binary) { m_is_binary = is_binary; }
     void set_do_accumulate(bool do_accumulate) { m_do_accumulate = do_accumulate; }
 
-    void to_json(nlohmann::json& json) const;
     nlohmann::json get_json() const;
+    nlohmann::json get_json_state() const;
     
     friend RunStats operator+(const RunStats a, const RunStats b);
     RunStats& operator+=(const RunStats& rs);
@@ -104,21 +103,14 @@ public:
     friend bool operator==(const RunStats& a, const RunStats& b);
     friend bool operator!=(const RunStats& a, const RunStats& b);
 
-    friend std::ostream& operator<<(std::ostream& os, const RunStats& rs);
-    friend std::istream& operator>>(std::istream& os, RunStats& rs);
-
 private:
     State m_state;
-    bool m_is_binary;
     bool m_do_accumulate;
 };
 
 RunStats operator+(const RunStats a, const RunStats b);
 bool operator==(const RunStats& a, const RunStats& b);
 bool operator!=(const RunStats& a, const RunStats& b);
-
-std::ostream& operator<<(std::ostream& os, const RunStats& rs);
-std::istream& operator>>(std::istream& is, RunStats& rs);
 
 double static_mean(const std::vector<double>& data, double ddof=1.0);
 double static_std(const std::vector<double>& data, double ddof=1.0);

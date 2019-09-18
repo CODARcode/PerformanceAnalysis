@@ -5,8 +5,8 @@
 
 using namespace chimbuko;
 
-RunStats::RunStats(bool do_accumulate, bool is_binary) 
-: m_is_binary(is_binary), m_do_accumulate(do_accumulate)
+RunStats::RunStats(bool do_accumulate) 
+: m_do_accumulate(do_accumulate)
 {
     clear();
 }
@@ -31,22 +31,32 @@ void RunStats::set_state(const State& s)
     m_state.acc = s.acc;
 }
 
-std::string RunStats::get_binary_state()
+std::string RunStats::get_strstate()
 {
-    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-    set_stream(true);
-    ss << *this;
-    set_stream(false);
-    return ss.str();
+    nlohmann::json s{
+        {"count", m_state.count},
+        {"eta", m_state.eta},
+        {"rho", m_state.rho},
+        {"tau", m_state.tau},
+        {"phi", m_state.phi},
+        {"min", m_state.min},
+        {"max", m_state.max},
+        {"acc", m_state.acc}
+    };
+    return s.dump();
 }
 
-void RunStats::set_binary_state(const std::string& binary)
+void RunStats::set_strstate(const std::string& s)
 {
-    std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
-    ss << binary;
-    set_stream(true);
-    ss >> *this;
-    set_stream(false);
+    nlohmann::json state = nlohmann::json::parse(s);
+    m_state.count = state["count"];
+    m_state.eta = state["eta"];
+    m_state.rho = state["rho"];
+    m_state.tau = state["tau"];
+    m_state.phi = state["phi"];
+    m_state.min = state["min"];
+    m_state.max = state["max"];
+    m_state.acc = state["acc"];
 }
 
 void RunStats::push(double x)
@@ -158,8 +168,12 @@ RunStats chimbuko::operator+(const RunStats a, const RunStats b)
 
     double sum_phi = (
         a.m_state.phi + b.m_state.phi
-        + delta4 * a.m_state.count * b.m_state.count * (a.m_state.count * a.m_state.count - a.m_state.count * b.m_state.count + b.m_state.count * b.m_state.count) / (sum_count * sum_count * sum_count)
-        + 6.0 * delta2 * (a.m_state.count * a.m_state.count * b.m_state.rho + b.m_state.count * b.m_state.count * b.m_state.rho) / (sum_count * sum_count)
+        + delta4 * a.m_state.count * b.m_state.count 
+        * (a.m_state.count * a.m_state.count - a.m_state.count * b.m_state.count + b.m_state.count * b.m_state.count) 
+        / (sum_count * sum_count * sum_count)
+        + 6.0 * delta2 * (
+            a.m_state.count * a.m_state.count * b.m_state.rho 
+            + b.m_state.count * b.m_state.count * a.m_state.rho) / (sum_count * sum_count)
         + 4.0 * delta * (a.m_state.count * b.m_state.tau - b.m_state.count * a.m_state.tau) / sum_count
     );
 
@@ -171,6 +185,7 @@ RunStats chimbuko::operator+(const RunStats a, const RunStats b)
     if (a.m_do_accumulate || b.m_do_accumulate)
     {
         sum_acc = a.m_state.acc + b.m_state.acc;
+        do_accumulate = true;
     }
 
     RunStats combined(do_accumulate);
@@ -190,22 +205,8 @@ RunStats& RunStats::operator+=(const RunStats& rs)
     return *this;
 }
 
-void RunStats::to_json(nlohmann::json& json) const
-{
-    json["stats"] = {
-        {"count", count()},
-        {"acc", accumulate()},
-        {"min", minimum()},
-        {"max", maximum()},
-        {"mean", mean()},
-        {"stddev", stddev()},
-        {"skewness", skewness()},
-        {"kurtosis", kurtosis()}
-    };
-}
-
 nlohmann::json RunStats::get_json() const {
-    nlohmann::json obj{
+    return {
         {"count", count()},
         {"acc", accumulate()},
         {"min", minimum()},
@@ -215,9 +216,20 @@ nlohmann::json RunStats::get_json() const {
         {"skewness", skewness()},
         {"kurtosis", kurtosis()}
     };
-    return obj;
 }
 
+nlohmann::json RunStats::get_json_state() const {
+    return {
+        {"count", m_state.count},
+        {"eta", m_state.eta},
+        {"rho", m_state.rho},
+        {"tau", m_state.tau},
+        {"phi", m_state.phi},
+        {"min", m_state.min},
+        {"max", m_state.max},
+        {"acc", m_state.acc}
+    };
+}
 
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
@@ -241,46 +253,6 @@ bool chimbuko::operator!=(const RunStats& a, const RunStats& b)
         std::abs(a.m_state.min - b.m_state.min) > 1e-6 ||
         std::abs(a.m_state.max - b.m_state.max) > 1e-6 ||
         std::abs(a.m_state.acc - b.m_state.acc) > 1e-6;
-}
-
-std::ostream& chimbuko::operator<<(std::ostream& os, const RunStats& rs)
-{
-    if (rs.m_is_binary) {
-        os.write((const char*)&rs.m_state.count, sizeof(double));
-        os.write((const char*)&rs.m_state.eta, sizeof(double));
-        os.write((const char*)&rs.m_state.rho, sizeof(double));
-        os.write((const char*)&rs.m_state.tau, sizeof(double));
-        os.write((const char*)&rs.m_state.phi, sizeof(double));
-        os.write((const char*)&rs.m_state.min, sizeof(double));
-        os.write((const char*)&rs.m_state.max, sizeof(double));
-        os.write((const char*)&rs.m_state.acc, sizeof(double));
-        os.write((const char*)&rs.m_do_accumulate, sizeof(bool));
-    } else {
-        os << "count: " << rs.count()
-            << ", min: " << rs.minimum()
-            << ", max: " << rs.maximum()
-            << ", acc: " << rs.accumulate() 
-            << ", mean: " << rs.mean() 
-            << ", std: " << rs.stddev() 
-            << ", skewness: " << rs.skewness() 
-            << ", kurtosis: " << rs.kurtosis() 
-            << std::endl;
-    }
-    return os;
-}
-
-std::istream& chimbuko::operator>>(std::istream& is, RunStats& rs)
-{
-    is.read((char*)&rs.m_state.count, sizeof(double));
-    is.read((char*)&rs.m_state.eta, sizeof(double));
-    is.read((char*)&rs.m_state.rho, sizeof(double));
-    is.read((char*)&rs.m_state.tau, sizeof(double));
-    is.read((char*)&rs.m_state.phi, sizeof(double));
-    is.read((char*)&rs.m_state.min, sizeof(double));
-    is.read((char*)&rs.m_state.max, sizeof(double));
-    is.read((char*)&rs.m_state.acc, sizeof(double));
-    is.read((char*)&rs.m_do_accumulate, sizeof(bool));
-    return is;
 }
 
 double chimbuko::static_mean(const std::vector<double>& data, double ddof)

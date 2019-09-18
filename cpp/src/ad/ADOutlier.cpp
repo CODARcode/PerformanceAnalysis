@@ -2,7 +2,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
 #include <mpi.h>
-#include <sstream>
+#include <nlohmann/json.hpp>
 
 using namespace chimbuko;
 
@@ -80,7 +80,7 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
     ZMQNet::recv(m_socket, strmsg);
     msg.set_msg(strmsg, true);
 
-    if (msg.data_buffer().compare("Hello!>I am ZMQNET!") != 0)
+    if (msg.buf().compare("\"Hello!I am ZMQNET!\"") != 0)
     {
         std::cerr << "Connect error to parameter server (ZMQNET)!\n";
         exit(1);
@@ -157,25 +157,20 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
         ZMQNet::recv(m_socket, strmsg);   
 #endif
         msg.set_msg(strmsg , true);
-        g.assign(msg.data_buffer());
+        g.assign(msg.buf());
     }
 }
 
-void ADOutlier::sync_outliers(unsigned long n_outliers, 
-    int step, long min_ts, long max_ts, std::string func_stats)
+void ADOutlier::update_local_statistics(std::string l_stats, int step)
 {
     if (!m_use_ps)
         return;
 
     Message msg;
     std::string strmsg;
-    AnomalyData d(0, m_rank, step, (unsigned long)min_ts, (unsigned long)max_ts, n_outliers);
 
     msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
-    if (func_stats.length())
-        msg.set_msg(d.get_binary() + " " + func_stats, false);
-    else
-        msg.set_msg(d.get_binary(), false);
+    msg.set_msg(l_stats);
 #ifdef _USE_MPINET
     throw "Not implemented yet.";
 #else
@@ -205,9 +200,6 @@ unsigned long ADOutlierSSTD::run(int step) {
     }
 
     // update temp runstats (parameter server)
-    // std::cout << "rank: " << m_rank << ", "
-    //         << "before sync: " << param.size() << ", "
-    //         <<  (*m_execDataMap).size() << std::endl;
     sync_param(&param);
 
     // run anomaly detection algorithm
@@ -215,19 +207,25 @@ unsigned long ADOutlierSSTD::run(int step) {
     long min_ts = 0, max_ts = 0;
 
     // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-    std::stringstream ss;
+    nlohmann::json g_info;
+    g_info["func"] = nlohmann::json::array();
     for (auto it : *m_execDataMap) {
         const unsigned long func_id = it.first;
         const unsigned long n = compute_outliers(func_id, it.second, min_ts, max_ts);
         n_outliers += n;
-        
-        ss << func_id << "@" << l_func[func_id] << "@" << n << "@"
-            << l_inclusive[func_id].get_binary_state() << " "
-            << l_exclusive[func_id].get_binary_state() << " ";
+
+        nlohmann::json obj;
+        obj["id"] = func_id;
+        obj["name"] = l_func[func_id];
+        obj["n_anomaly"] = n;
+        obj["inclusive"] = l_inclusive[func_id].get_json_state();
+        obj["exclusive"] = l_exclusive[func_id].get_json_state();
+        g_info["func"].push_back(obj);
     }
+    g_info["anomaly"] = AnomalyData(0, m_rank, step, min_ts, max_ts, n_outliers).get_json();
 
     // update # anomaly
-    sync_outliers(n_outliers, step, min_ts, max_ts, ss.str());
+    update_local_statistics(g_info.dump(), step);
 
     return n_outliers;
 }

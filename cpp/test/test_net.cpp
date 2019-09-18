@@ -155,6 +155,8 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
     net.init(nullptr, nullptr, 10);
     net.run();
 
+    std::cout << "check results" << std::endl;
+
     // check results (see pclient_stats.cpp)
     const std::vector<double> means = {
         100, 200, 300, 400, 500,
@@ -169,16 +171,21 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {
         std::string stat_id = "0:" + std::to_string(rank);
+        // std::cout << stat_id << std::endl;
 
-        std::string stat_binary = param.get_anomaly_stat(stat_id);
-        ASSERT_GT(stat_binary.size(), 0);
+        std::string strstats = param.get_anomaly_stat(stat_id);
+        // std::cout << strstats << std::endl;
+        ASSERT_GT(strstats.size(), 0);
         
         size_t n = param.get_n_anomaly_data(stat_id);
+        // std::cout << n << std::endl;
         EXPECT_EQ(MAX_STEPS, (int)n);
 
-        RunStats stats = RunStats::from_binary_state(stat_binary);
-        EXPECT_NEAR(means[rank], stats.mean(), means[rank]*0.1);
-        EXPECT_NEAR(stddevs[rank], stats.stddev(), stddevs[rank]*0.1);
+        //RunStats stats = RunStats::from_strstate(strstate);
+        //std::cout << stats.get_json().dump(2) << std::endl;
+        nlohmann::json j = nlohmann::json::parse(strstats);
+        EXPECT_NEAR(means[rank], j["mean"], means[rank]*0.1);
+        EXPECT_NEAR(stddevs[rank], j["stddev"], stddevs[rank]*0.1);
     }
 
 #ifdef _USE_ZMQNET
@@ -228,23 +235,25 @@ TEST_F(NetTest, NetStatSenderTest)
     {
         std::string stat_id = "0:" + std::to_string(rank);
 
-        std::string stat_binary = param.get_anomaly_stat(stat_id);
-        ASSERT_GT(stat_binary.size(), 0);
+        std::string strstats = param.get_anomaly_stat(stat_id);
+        ASSERT_GT(strstats.size(), 0);
         
         // As we send all anomaly data to the web server, 
         // it should be zero!
         size_t n = param.get_n_anomaly_data(stat_id);
         EXPECT_EQ(0, (int)n);
 
-        RunStats stats = RunStats::from_binary_state(stat_binary);
-        EXPECT_NEAR(means[rank], stats.mean(), means[rank]*0.1);
-        EXPECT_NEAR(stddevs[rank], stats.stddev(), stddevs[rank]*0.1);
+        nlohmann::json j = nlohmann::json::parse(strstats);
+        EXPECT_NEAR(means[rank], j["mean"], means[rank]*0.1);
+        EXPECT_NEAR(stddevs[rank], j["stddev"], stddevs[rank]*0.1);
     }    
 
 #ifdef _USE_ZMQNET
     net.finalize();
 #endif
 }
+
+// todo: function stat
 
 TEST_F(NetTest, NetStatSenderPseudoTest)
 {

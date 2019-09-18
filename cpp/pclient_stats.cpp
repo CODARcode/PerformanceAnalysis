@@ -23,7 +23,7 @@ int main (int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (size != N_MPI_PROCESSORS)
+    if (size > N_MPI_PROCESSORS)
     {
         std::cout << "Must -n 10" << std::endl;
         MPI_Finalize();
@@ -63,7 +63,9 @@ int main (int argc, char** argv)
         // create message
         msg.clear();
         msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
-        msg.set_msg(d.get_binary(), false);
+        msg.set_msg(
+            nlohmann::json::object({{"anomaly", d.get_json()}}).dump(), false
+        );
 
 #ifdef _USE_MPINET
     throw "Not implemented yet."

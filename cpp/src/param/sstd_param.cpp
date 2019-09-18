@@ -28,50 +28,33 @@ std::string SstdParam::serialize()
 
 std::string SstdParam::serialize(std::unordered_map<unsigned long, RunStats>& runstats) 
 {
-    std::stringstream ss(std::stringstream::out | std::stringstream::binary);
-    size_t n;
-
-    n = runstats.size();
-    ss.write((const char*)&n, sizeof(size_t));
+    nlohmann::json j;
     for (auto& pair: runstats)
     {
-        ss.write((const char*)&pair.first, sizeof(unsigned long));
-        pair.second.set_stream(true);
-        ss << pair.second;
-        pair.second.set_stream(false);
+        j[std::to_string(pair.first)] = pair.second.get_json_state();
     }
-    return ss.str();
+    return j.dump();
 }
 
 void SstdParam::deserialize(
     const std::string& parameters,
     std::unordered_map<unsigned long, RunStats>& runstats) 
 {
-    std::stringstream ss(parameters,
-        std::stringstream::out | std::stringstream::in | std::stringstream::binary
-    );
+    nlohmann::json j = nlohmann::json::parse(parameters);
 
-    size_t n;
-    unsigned long id;
-    RunStats stat;
-
-    ss.read((char*)&n, sizeof(size_t));
-    for (size_t i = 0; i < n; i++)
+    for (auto it = j.begin(); it != j.end(); it++)
     {
-        ss.read((char*)&id, sizeof(unsigned long));
-        stat.set_stream(true);
-        ss >> stat;
-        stat.set_stream(false);
-        runstats[id] = stat;
+        unsigned long key = std::stoul(it.key());
+        runstats[key] = RunStats::from_strstate(it.value().dump());
     }
 }
 
-std::string SstdParam::update(const std::string& parameters, bool flag)
+std::string SstdParam::update(const std::string& parameters, bool return_update)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
     deserialize(parameters, runstats);
     update(runstats);
-    return (flag) ? serialize(runstats): "";
+    return (return_update) ? serialize(runstats): "";
 }
 
 void SstdParam::assign(std::unordered_map<unsigned long, RunStats>& runstats)
@@ -110,9 +93,8 @@ void SstdParam::show(std::ostream& os) const
 
     for (auto stat: m_runstats)
     {
-        os << "Function " << stat.first << ": "
-           << "Mean: " << stat.second.mean() << ", "
-           << "Std: " << stat.second.stddev() << std::endl;
+        os << "Function " << stat.first << std::endl;
+        os << stat.second.get_json().dump(2) << std::endl;
     }
 
     os << std::endl;

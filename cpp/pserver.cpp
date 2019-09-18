@@ -61,7 +61,7 @@ int main (int argc, char ** argv)
         net.stop_stat_sender(1000);
 
         // could be output to a file
-        std::cout << "Shutdonw parameter server ..." << std::endl;
+        std::cout << "Shutdown parameter server ..." << std::endl;
         //param.show(std::cout);
         std::ofstream o;
         o.open(outFile);
