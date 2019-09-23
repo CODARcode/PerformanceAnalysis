@@ -208,9 +208,9 @@ RunStats& RunStats::operator+=(const RunStats& rs)
 nlohmann::json RunStats::get_json() const {
     return {
         {"count", count()},
-        {"acc", accumulate()},
-        {"min", minimum()},
-        {"max", maximum()},
+        {"accumulate", accumulate()},
+        {"minimum", minimum()},
+        {"maximum", maximum()},
         {"mean", mean()},
         {"stddev", stddev()},
         {"skewness", skewness()},

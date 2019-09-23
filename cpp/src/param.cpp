@@ -1,5 +1,5 @@
 #include "chimbuko/param.hpp"
-#include <sstream>
+#include <chrono>
 
 using namespace chimbuko;
 
@@ -132,18 +132,13 @@ nlohmann::json ParamInterface::collect_func_data()
 std::string ParamInterface::collect()
 {
     nlohmann::json object;
-    object["stat"] = collect_stat_data();
-    if (object["stat"].size() == 0)
+    object["anomaly"] = collect_stat_data();
+    if (object["anomaly"].size() == 0)
         return "";
     object["func"] = collect_func_data();
-    try
-    {
-        return object.dump();
-    }
-    catch(const std::exception& e)
-    {
-        return "";
-    }
+    object["created_at"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch() ).count();
+    return object.dump();
 }
 
 

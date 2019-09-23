@@ -24,7 +24,7 @@ ExecData_t::ExecData_t(const Event_t& ev)
     m_runtime = 0;
     m_exclusive = 0;
     m_label = 1;
-    m_parent = "-1";
+    m_parent = "root";
     m_n_children = 0;
     m_n_messages = 0;    
 }
@@ -46,8 +46,7 @@ bool ExecData_t::update_exit(const Event_t& ev)
 bool ExecData_t::add_message(CommData_t& comm) {
     if ((long)comm.ts() < m_entry || (long)comm.ts() > m_exit)
         return false;
-    comm.set_fid(m_fid);
-    comm.set_fname(m_funcname);
+    comm.set_exec_key(m_id);
     m_messages.push_back(comm);
     m_n_messages++;
     return true;
@@ -74,7 +73,7 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
 nlohmann::json ExecData_t::get_json(bool with_message) const
 {
     nlohmann::json j{
-        {"id", m_id},
+        {"key", m_id},
         {"name", m_funcname},
         {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
         {"entry", m_entry}, {"exit", m_exit}, 
@@ -201,8 +200,7 @@ CommData_t::CommData_t(const Event_t& ev, std::string commType)
     m_tag = ev.tag();
     m_ts = ev.ts();
 
-    m_fid = 0;
-    m_fname = "";
+    m_execkey = "unknown";
 }
 
 bool CommData_t::is_same(const CommData_t& other) const 
@@ -215,8 +213,7 @@ bool CommData_t::is_same(const CommData_t& other) const
     if (!(m_bytes == other.m_bytes)) return false;
     if (!(m_tag == other.m_tag)) return false;
     if (!(m_ts == other.m_ts)) return false;
-    if (!(m_fid == other.m_fid)) return false;
-    if (!(m_fname == other.m_fname)) return false;
+    if (!(m_execkey == other.m_execkey)) return false;
     return true;
 }
 
@@ -228,6 +225,6 @@ nlohmann::json CommData_t::get_json() const
         {"src", m_src}, {"tar", m_tar},
         {"bytes", m_bytes}, {"tag", m_tag},
         {"ts", m_ts},
-        {"fid", m_fid}, {"name", m_fname}
+        {"execdata_key", m_execkey}
     };
 }

@@ -64,8 +64,7 @@ public:
     unsigned long src() const { return m_src; }
     unsigned long tar() const { return m_tar; }
 
-    void set_fid(unsigned long fid) { m_fid = fid; }
-    void set_fname(std::string fname) { m_fname = fname; }
+    void set_exec_key(std::string key) { m_execkey = key; }
 
     bool is_same(const CommData_t& other) const;
     nlohmann::json get_json() const;
@@ -76,12 +75,8 @@ private:
     unsigned long m_src, m_tar;
     unsigned long m_bytes, m_tag;
     unsigned long m_ts;
-    unsigned long m_fid;
-    std::string m_fname;
+    std::string m_execkey;
 };
-
-std::ostream& operator<<(std::ostream& os, CommData_t& comm);
-std::istream& operator>>(std::istream& is, CommData_t& comm);
 
 class ExecData_t {
 

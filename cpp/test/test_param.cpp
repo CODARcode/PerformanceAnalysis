@@ -166,6 +166,8 @@ TEST_F(ParamTest, AnomalyStatTest1)
     nlohmann::json j = param.collect_stat_data();
     ASSERT_EQ(1, j.size());
     
+    // std::cout << j.dump(2) << std::endl;
+
     j = j[0];
     ASSERT_EQ(3 , j["data"].size());
 
@@ -191,9 +193,9 @@ TEST_F(ParamTest, AnomalyStatTest1)
 
     EXPECT_NEAR(-1.5, j["stats"]["kurtosis"], 1e-3);
     EXPECT_NEAR(20.0, j["stats"]["mean"], 1e-3);
-    EXPECT_NEAR(60.0, j["stats"]["acc"], 1e-3);
-    EXPECT_NEAR(30.0, j["stats"]["max"], 1e-3);
-    EXPECT_NEAR(10.0, j["stats"]["min"], 1e-3);
+    EXPECT_NEAR(60.0, j["stats"]["accumulate"], 1e-3);
+    EXPECT_NEAR(30.0, j["stats"]["maximum"], 1e-3);
+    EXPECT_NEAR(10.0, j["stats"]["minimum"], 1e-3);
     EXPECT_NEAR(3.0, j["stats"]["count"], 1e-3);
     EXPECT_NEAR(0.0, j["stats"]["skewness"], 1e-3);
     EXPECT_NEAR(10.0, j["stats"]["stddev"], 1e-3);
@@ -218,9 +220,9 @@ TEST_F(ParamTest, AnomalyStatTest1)
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(20.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["acc"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["max"], 1e-3);
-            EXPECT_NEAR(20.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["accumulate"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["maximum"], 1e-3);
+            EXPECT_NEAR(20.0, jj["stats"]["minimum"], 1e-3);
             EXPECT_NEAR(1.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
@@ -237,9 +239,9 @@ TEST_F(ParamTest, AnomalyStatTest1)
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["acc"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["max"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["accumulate"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["maximum"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["minimum"], 1e-3);
             EXPECT_NEAR(1.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["stddev"], 1e-3);
@@ -256,9 +258,9 @@ TEST_F(ParamTest, AnomalyStatTest1)
 
             EXPECT_NEAR(-1.36, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(25.0, jj["stats"]["mean"], 1e-3);
-            EXPECT_NEAR(100.0, jj["stats"]["acc"], 1e-3);
-            EXPECT_NEAR(40.0, jj["stats"]["max"], 1e-3);
-            EXPECT_NEAR(10.0, jj["stats"]["min"], 1e-3);
+            EXPECT_NEAR(100.0, jj["stats"]["accumulate"], 1e-3);
+            EXPECT_NEAR(40.0, jj["stats"]["maximum"], 1e-3);
+            EXPECT_NEAR(10.0, jj["stats"]["minimum"], 1e-3);
             EXPECT_NEAR(4.0, jj["stats"]["count"], 1e-3);
             EXPECT_NEAR(0.0, jj["stats"]["skewness"], 1e-3);
             EXPECT_NEAR(12.9099, jj["stats"]["stddev"], 1e-3);
@@ -381,28 +383,28 @@ TEST_F(ParamTest, AnomalyStatTest2)
 
         EXPECT_NEAR(g_exclusive[fid].kurtosis(), f["exclusive"]["kurtosis"], 1e-3);
         EXPECT_NEAR(g_exclusive[fid].mean(), f["exclusive"]["mean"], 1e-3);
-        EXPECT_NEAR(g_exclusive[fid].accumulate(), f["exclusive"]["acc"], 1e-3);
-        EXPECT_NEAR(g_exclusive[fid].maximum(), f["exclusive"]["max"], 1e-3);
-        EXPECT_NEAR(g_exclusive[fid].minimum(), f["exclusive"]["min"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].accumulate(), f["exclusive"]["accumulate"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].maximum(), f["exclusive"]["maximum"], 1e-3);
+        EXPECT_NEAR(g_exclusive[fid].minimum(), f["exclusive"]["minimum"], 1e-3);
         EXPECT_NEAR(g_exclusive[fid].count(), f["exclusive"]["count"], 1e-3);
         EXPECT_NEAR(g_exclusive[fid].skewness(), f["exclusive"]["skewness"], 1e-3);
         EXPECT_NEAR(g_exclusive[fid].stddev(), f["exclusive"]["stddev"], 1e-3);
 
         EXPECT_NEAR(g_inclusive[fid].kurtosis(), f["inclusive"]["kurtosis"], 1e-3);
         EXPECT_NEAR(g_inclusive[fid].mean(), f["inclusive"]["mean"], 1e-3);
-        EXPECT_NEAR(g_inclusive[fid].accumulate(), f["inclusive"]["acc"], 1e-3);
-        EXPECT_NEAR(g_inclusive[fid].maximum(), f["inclusive"]["max"], 1e-3);
-        EXPECT_NEAR(g_inclusive[fid].minimum(), f["inclusive"]["min"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].accumulate(), f["inclusive"]["accumulate"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].maximum(), f["inclusive"]["maximum"], 1e-3);
+        EXPECT_NEAR(g_inclusive[fid].minimum(), f["inclusive"]["minimum"], 1e-3);
         EXPECT_NEAR(g_inclusive[fid].count(), f["inclusive"]["count"], 1e-3);
         EXPECT_NEAR(g_inclusive[fid].skewness(), f["inclusive"]["skewness"], 1e-3);
         EXPECT_NEAR(g_inclusive[fid].stddev(), f["inclusive"]["stddev"], 1e-3);      
         
-        EXPECT_EQ(8.0, f["stats"]["acc"]);
+        EXPECT_EQ(8.0, f["stats"]["accumulate"]);
         EXPECT_EQ(2.0, f["stats"]["count"]);
         EXPECT_EQ(0.0, f["stats"]["kurtosis"]);
-        EXPECT_EQ(4.0, f["stats"]["max"]);
+        EXPECT_EQ(4.0, f["stats"]["maximum"]);
         EXPECT_EQ(4.0, f["stats"]["mean"]);
-        EXPECT_EQ(4.0, f["stats"]["min"]);
+        EXPECT_EQ(4.0, f["stats"]["minimum"]);
         EXPECT_EQ(0.0, f["stats"]["skewness"]);
         EXPECT_EQ(0.0, f["stats"]["stddev"]);
     }
