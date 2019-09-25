@@ -11,15 +11,16 @@ export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
 
-rm -rf test
+HAS_BPFILE=false
+
 mkdir -p test
 cd test
+rm -rf logs
 mkdir -p logs
 mkdir -p BP
 WORK_DIR=`pwd`
 
 ADIOS_MODE=BPFile
-HAS_BPFILE=false
 BP_PREFIX=tau-metrics-nwchem
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
@@ -46,13 +47,13 @@ sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
 sed -i '22s|#set|set|' ethanol_md.nw
-sed -i 's/data 1000/data 2000/' ethanol_md.nw
+sed -i 's/data 1000/data 50000/' ethanol_md.nw
 
 date
 hostname
 ls -l
 
-NMPIS=4
+NMPIS=5
 
 # echo ""
 # echo "=========================================="
@@ -114,8 +115,8 @@ else
         mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >logs/nwchem.log 2>&1 
     fi
     echo "Run anomaly detectors"
-    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX "" \
-        "tcp://0.0.0.0:5559" "http://0.0.0.0:5000/api/executions" 1000
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
+        "http://0.0.0.0:5000/api/executions"  "tcp://0.0.0.0:5559" 10000
         # >logs/ad.log 2>&1 
 fi
 
@@ -127,6 +128,7 @@ echo "=========================================="
 echo "shutdown parameter server ..."
 wait $ps_pid
 
+sleep 30
 cd $CHIMBUKO_VIS_ROOT
 echo ""
 echo "=========================================="

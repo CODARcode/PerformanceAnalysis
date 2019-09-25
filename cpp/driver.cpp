@@ -22,10 +22,18 @@ int main(int argc, char ** argv)
         std::string data_dir = argv[2]; // *.bp location
         std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
         std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
-        std::string output_dir = std::string(argv[4]); //output directory
+        std::string output = argv[4]; 
+        // if string starts with "http", use online mode; otherwise offline mode
+
+        std::string output_dir;      //output directory
         std::string ps_addr;         // parameter server (e.g. "tcp://hostname:5559")
         std::string vis_addr;        // visualization server
         int         interval_msec = 0;
+
+        if (output.find("http://") == std::string::npos)
+            output_dir = output;
+        else
+            vis_addr = output;
 
         if (output_dir.length())
             output_dir = output_dir  + "." + std::to_string(world_rank);
@@ -35,10 +43,7 @@ int main(int argc, char ** argv)
             ps_addr = std::string(argv[5]); 
 #endif
         if (argc >= 7)
-            vis_addr = std::string(argv[6]);
-
-        if (argc >= 8)
-            interval_msec = atoi(argv[7]);
+            interval_msec = atoi(argv[6]);
 
         if (world_rank == 0) {
         std::cout << "\n" 

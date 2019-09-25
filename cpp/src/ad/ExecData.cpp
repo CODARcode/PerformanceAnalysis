@@ -224,7 +224,7 @@ nlohmann::json CommData_t::get_json() const
         {"pid", m_pid}, {"rid", m_rid}, {"tid", m_tid},
         {"src", m_src}, {"tar", m_tar},
         {"bytes", m_bytes}, {"tag", m_tag},
-        {"ts", m_ts},
+        {"timestamp", m_ts},
         {"execdata_key", m_execkey}
     };
 }
