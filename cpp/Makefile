@@ -12,7 +12,7 @@ LIB_DIR ?= lib
 # for MPINet, need the latest OpenMPI (>= 3.x)
 #CXX := /opt/openmpi-4.0.1/bin/mpic++
 CXX := mpic++
-CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3
+CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 -lstdc++fs
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 
 ADIOS = /opt/adios2
@@ -52,16 +52,16 @@ debugvars:
 
 bin/%: build/%.o | $(TARGET_LIB)
 	$(MKDIR_P) $(@D)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -lstdc++fs -o $@ 
 
 $(TEST_SIMPLE): $(TEST_SIMPLE_SRCS) | $(TARGET_LIB) 
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -lstdc++fs -o $@ 
 
 $(TEST_MPINET): $(TEST_MPINET_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lgtest -lstdc++fs -o $@ 
 
 $(TEST_AD): $(TEST_AD_SRCS) | $(TARGET_LIB)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lgtest -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $^ $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) $(ADIOS_FLAGS) -lgtest -lstdc++fs -o $@ 
 
 lib/lib$(LIB_NAME).so: $(OBJS)
 	$(MKDIR_P) $(@D)

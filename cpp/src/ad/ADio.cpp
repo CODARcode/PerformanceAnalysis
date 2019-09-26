@@ -2,8 +2,10 @@
 #include <unordered_set>
 #include <nlohmann/json.hpp>
 #include <chrono>
+#include <experimental/filesystem>
 
 using namespace chimbuko;
+namespace fs = std::experimental::filesystem;
 
 /* ---------------------------------------------------------------------------
  * Implementation of ADio class
@@ -46,6 +48,17 @@ void ADio::close_curl() {
         m_curl = nullptr;
         m_url = "";
     }
+}
+
+static void makedir(std::string path) {
+    if (!fs::is_directory(path) || !fs::exists(path)) {
+        fs::create_directory(path);
+    }
+}
+
+void ADio::setOutputPath(std::string path) {
+    makedir(path);
+    m_outputPath = path;
 }
 
 void ADio::setDispatcher(std::string name, size_t thread_cnt) {
@@ -124,8 +137,12 @@ public:
         }).dump();
 
         if (m_io.getOutputPath().length()) {
-            std::string path = m_io.getOutputPath() 
-                + "." + std::to_string(m_step) + ".json";
+            std::string path = m_io.getOutputPath() + "/" + std::to_string(0);
+            makedir(path);
+            path += "/" + std::to_string(m_io.getRank());
+            makedir(path);
+
+            path += "/" + std::to_string(m_step) + ".json";
             std::ofstream f;
 
             f.open(path);

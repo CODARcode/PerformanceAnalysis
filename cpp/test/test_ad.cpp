@@ -72,7 +72,7 @@ TEST_F(ADTest, BpfileTest)
     unsigned long n_outliers = 0, frames = 0;
     unsigned long long n_func_events = 0, n_comm_events = 0;
 
-    driver.init_io(IOMode::Both, "", "", 0);
+    driver.init_io(world_rank, IOMode::Both, "", "", 0);
     driver.init_parser(data_dir, inputFile, engineType);
     driver.init_event();
     driver.init_outlier(world_rank, sigma);
@@ -130,7 +130,7 @@ TEST_F(ADTest, BpfileWithNetTest)
     std::string output_dir = "./data";
     std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     std::string engineType = "BPFile";
-    std::string execOutput = "./temp/exec-" + std::to_string(world_rank);
+    std::string execOutput = "./temp";
 
     double sigma = 6.0;
 
@@ -140,7 +140,7 @@ TEST_F(ADTest, BpfileWithNetTest)
     unsigned long n_outliers = 0, frames = 0;
     unsigned long long n_func_events = 0, n_comm_events = 0;
 
-    driver.init_io(IOMode::Both, execOutput, "", 0);
+    driver.init_io(world_rank, IOMode::Both, execOutput, "", 0);
     driver.init_parser(data_dir, inputFile, engineType);
     driver.init_event();
     driver.init_outlier(world_rank, sigma, "tcp://localhost:5559");
@@ -204,16 +204,12 @@ TEST_F(ADTest, ReadExecDataTest)
         { 76, 32, 47, 26, 26, 32, 27}
     };
 
-    std::string data_dir = "./data";
-    std::string output_dir = "./data";
-    std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-    std::string engineType = "BPFile";
-    std::string execOutput = "./temp/exec-" + std::to_string(world_rank);
+    std::string execOutput = "temp/0/" + std::to_string(world_rank);
 
     for (int i = 0; i < N_STEPS[world_rank]; i++)
     {
         std::ifstream f;
-        f.open(execOutput + "." + std::to_string(i) + ".json");
+        f.open(execOutput + "/" + std::to_string(i) + ".json");
         ASSERT_TRUE(f.is_open());
 
         nlohmann::json j;

@@ -11,11 +11,11 @@ export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
 
-HAS_BPFILE=false
+HAS_BPFILE=true
 
 mkdir -p test
 cd test
-rm -rf logs
+rm -rf logs executions
 mkdir -p logs
 mkdir -p BP
 WORK_DIR=`pwd`
@@ -47,7 +47,7 @@ sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
 sed -i '22s|#set|set|' ethanol_md.nw
-sed -i 's/data 1000/data 50000/' ethanol_md.nw
+sed -i 's/data 1000/data 5000/' ethanol_md.nw
 
 date
 hostname
@@ -79,7 +79,7 @@ echo "create database @ ${DATABASE_URL}"
 python3 manager.py createdb
 
 echo "run webserver ..."
-python3 manager.py runserver --host 0.0.0.0 --port 5000 \
+python3 manager.py runserver --host 0.0.0.0 --port 5000 --debug \
     >"${WORK_DIR}/logs/webserver.log" 2>&1 &
 sleep 10
 
@@ -116,7 +116,7 @@ else
     fi
     echo "Run anomaly detectors"
     mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
-        "http://0.0.0.0:5000/api/executions"  "tcp://0.0.0.0:5559" 10000
+        "${WORK_DIR}/executions"  "tcp://0.0.0.0:5559" 1000
         # >logs/ad.log 2>&1 
 fi
 
@@ -134,6 +134,7 @@ echo ""
 echo "=========================================="
 echo "Shutdown Chimbuko visualization server"
 echo "=========================================="
+curl -X GET http://0.0.0.0:5000/tasks/inspect
 echo "shutdown webserver ..."
 curl -X GET http://0.0.0.0:5000/stop
 echo "shutdown celery workers ..."

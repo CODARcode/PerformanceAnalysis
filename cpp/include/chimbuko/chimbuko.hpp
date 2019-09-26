@@ -10,7 +10,7 @@ public:
     Chimbuko();
     ~Chimbuko();
 
-    void init_io(IOMode mode, std::string outputPath, 
+    void init_io(int rank, IOMode mode, std::string outputPath, 
         std::string addr, unsigned int winSize=0);
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
     void init_event(bool verbose=false);

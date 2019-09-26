@@ -35,8 +35,8 @@ int main(int argc, char ** argv)
         else
             vis_addr = output;
 
-        if (output_dir.length())
-            output_dir = output_dir  + "." + std::to_string(world_rank);
+        // if (output_dir.length())
+        //     output_dir = output_dir  + "." + std::to_string(world_rank);
 
 #ifdef _USE_ZMQNET
         if (argc >= 6)
@@ -81,7 +81,7 @@ int main(int argc, char ** argv)
         // Init. AD module
         // -----------------------------------------------------------------------
         // First, init io to make sure file (or connection) handler
-        driver.init_io(IOMode::Both, output_dir, vis_addr, 0);
+        driver.init_io(world_rank, IOMode::Both, output_dir, vis_addr, 0);
 
         // Second, init parser because it will hold shared memory with event and outlier object
         // also, process will be blocked at this line until it finds writer (in SST mode)

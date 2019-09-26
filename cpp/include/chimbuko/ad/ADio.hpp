@@ -12,10 +12,13 @@ public:
     ADio();
     ~ADio();
 
+    void setRank(int rank) { m_rank = rank; }
+    int getRank() const { return m_rank; }
+
     bool open_curl(std::string url);
     void close_curl();
 
-    void setOutputPath(std::string path) { m_outputPath = path; }
+    void setOutputPath(std::string path);
     std::string getOutputPath() const { return m_outputPath; }
 
     void setDispatcher(std::string name="ioDispatcher", size_t thread_cnt=1);
@@ -42,6 +45,7 @@ private:
     DispatchQueue * m_dispatcher;
     CURL* m_curl;
     std::string m_url;
+    int m_rank;
 };
 
 } // end of AD namespace

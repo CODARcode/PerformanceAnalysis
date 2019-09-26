@@ -15,10 +15,11 @@ Chimbuko::~Chimbuko()
 
 }
 
-void Chimbuko::init_io(IOMode mode, std::string outputPath, 
+void Chimbuko::init_io(int rank, IOMode mode, std::string outputPath, 
     std::string addr, unsigned int winSize)
 {
     m_io = new ADio();
+    m_io->setRank(rank);
     m_io->setDispatcher();
     m_io->setWinSize(winSize);
     if ((mode == IOMode::Online || mode == IOMode::Both) && addr.size())
