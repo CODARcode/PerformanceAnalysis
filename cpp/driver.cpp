@@ -28,6 +28,8 @@ int main(int argc, char ** argv)
         std::string output_dir;      //output directory
         std::string ps_addr;         // parameter server (e.g. "tcp://hostname:5559")
         std::string vis_addr;        // visualization server
+        double      sigma = 6.0;     // anomaly detection algorithm parameter
+        int         winsz = 0;       // window size
         int         interval_msec = 0;
 
         if (output.find("http://") == std::string::npos)
@@ -43,7 +45,13 @@ int main(int argc, char ** argv)
             ps_addr = std::string(argv[5]); 
 #endif
         if (argc >= 7)
-            interval_msec = atoi(argv[6]);
+            sigma = atof(argv[6]);
+
+        if (argc >= 8)
+            winsz = atoi(argv[7]);
+
+        if (argc >= 9)
+            interval_msec = atoi(argv[8]);
 
         if (world_rank == 0) {
         std::cout << "\n" 
@@ -56,11 +64,12 @@ int main(int argc, char ** argv)
                 << "\nPS Addr    : " << ps_addr
 #endif
                 << "\nVIS Addr   : " << vis_addr
+                << "\nsigma      : " << sigma
+                << "\nwindow size: " << winsz
                 << "\nInterval   : " << interval_msec << " msec\n"
                 << std::endl;
         }
 
-        double sigma = 6.0;
 
         // -----------------------------------------------------------------------
         // AD module variables
@@ -81,7 +90,7 @@ int main(int argc, char ** argv)
         // Init. AD module
         // -----------------------------------------------------------------------
         // First, init io to make sure file (or connection) handler
-        driver.init_io(world_rank, IOMode::Both, output_dir, vis_addr, 0);
+        driver.init_io(world_rank, IOMode::Both, output_dir, vis_addr, winsz);
 
         // Second, init parser because it will hold shared memory with event and outlier object
         // also, process will be blocked at this line until it finds writer (in SST mode)

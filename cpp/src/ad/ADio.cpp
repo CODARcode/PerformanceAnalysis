@@ -132,6 +132,9 @@ public:
         }
 
         packet = nlohmann::json::object({
+            {"app", 0},
+            {"rank", m_io.getRank()},
+            {"step", m_step},
             {"exec", jExec},
             {"comm", jComm}
         }).dump();

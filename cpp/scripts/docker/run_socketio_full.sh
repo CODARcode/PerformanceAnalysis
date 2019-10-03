@@ -32,6 +32,15 @@ export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/tau-metrics
 # visualization server
 export SERVER_CONFIG="production"
 export DATABASE_URL="sqlite:///${WORK_DIR}/logs/test_db.sqlite"
+export ANOMALY_STATS_URL="sqlite:///${WORK_DIR}/logs/test_anomaly_stats_db.sqlite"
+export FUNC_STATS_URL="sqlite:///${WORK_DIR}/logs/test_func_stats_db.sqlite"
+export EXECUTION_PATH=$WORK_DIR/executions
+
+# anomaly detection
+AD_SIGMA=6
+AD_WINSZ=10
+AD_INTERVAL=1000
+
 
 cp $NWCHEM_TOP/bin/LINUX64/nwchem .
 cp $NWCHEM_DAT/ethanol_md.nw .
@@ -47,7 +56,7 @@ sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
 sed -i '22s|#set|set|' ethanol_md.nw
-sed -i 's/data 1000/data 5000/' ethanol_md.nw
+sed -i 's/data 1000/data 50000/' ethanol_md.nw
 
 date
 hostname
@@ -116,7 +125,7 @@ else
     fi
     echo "Run anomaly detectors"
     mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
-        "${WORK_DIR}/executions"  "tcp://0.0.0.0:5559" 1000
+        "http://0.0.0.0:5000/api/executions"  "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} ${AD_INTERVAL}
         # >logs/ad.log 2>&1 
 fi
 
