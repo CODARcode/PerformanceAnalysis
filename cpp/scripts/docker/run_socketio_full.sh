@@ -31,9 +31,10 @@ export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/tau-metrics
 
 # visualization server
 export SERVER_CONFIG="production"
-export DATABASE_URL="sqlite:///${WORK_DIR}/logs/test_db.sqlite"
-export ANOMALY_STATS_URL="sqlite:///${WORK_DIR}/logs/test_anomaly_stats_db.sqlite"
-export FUNC_STATS_URL="sqlite:///${WORK_DIR}/logs/test_func_stats_db.sqlite"
+export DATABASE_URL="sqlite:///${WORK_DIR}/logs/db.sqlite"
+export ANOMALY_STATS_URL="sqlite:///${WORK_DIR}/logs/anomaly_stats.sqlite"
+export ANOMALY_DATA_URL="sqlite:///${WORK_DIR}/logs/anomaly_data.sqlite"
+export FUNC_STATS_URL="sqlite:///${WORK_DIR}/logs/func_stats.sqlite"
 export EXECUTION_PATH=$WORK_DIR/executions
 
 # anomaly detection
@@ -64,6 +65,8 @@ ls -l
 
 NMPIS=5
 
+
+
 # echo ""
 # echo "=========================================="
 # echo "Launch Chimbuko visualization server"
@@ -91,6 +94,9 @@ echo "run webserver ..."
 python3 manager.py runserver --host 0.0.0.0 --port 5000 --debug \
     >"${WORK_DIR}/logs/webserver.log" 2>&1 &
 sleep 10
+
+# echo "just waiting..."
+# sleep 300
 
 cd $WORK_DIR
 echo ""
