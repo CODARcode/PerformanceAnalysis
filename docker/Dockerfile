@@ -1,26 +1,38 @@
 #FROM chimbuko/adios2:latest
 # chimbuko/sosflow contains adios2, tau2, and sos_flow
-FROM chimbuko/sosflow:latest
+#FROM chimbuko/sosflow:latest
+FROM chimbuko/adios2:latest
 
-# Create directory
-RUN mkdir -p /PerformanceAnalysis
-RUN mkdir -p /PerformanceAnalysis/untracked/results
+RUN apt-get update
+RUN apt-get install curl libcurl4-openssl-dev
+RUN apt-get install libgtest-dev
+RUN pip3 flask
 
-# Install necessary ubuntu packages
-RUN apt-get update && apt-get install -y build-essential wget openmpi-bin libopenmpi-dev g++ gfortran python3 python3-pip vim python3-tk
+WORKDIR /usr/src/gtest
+RUN cmake CMakeLists.txt
+RUN make
+RUN cp *.a /usr/lib
 
-# Copy current directory contents into the container
-ADD . /PerformanceAnalysis
+WORKDIR /Downloads
+# will be replaced with https://github.com/CODARcode/PerformanceAnalysis.git
+RUN git clone https://github.com/bsmind/PerformanceAnalysis.git
 
-# Install any needed packages specified in requirements.txt
-WORKDIR /PerformanceAnalysis
-RUN pip3 install numpy
-RUN pip3 install --trusted-host pypi.python.org -r deps/requirements.txt
+WORKDIR /Downloads/PerformanceAnalysis/3rdparty
+RUN ./install_nlohmann.sh
+WORKDIR /Downloads/PerformanceAnalysis
+RUN make
 
-# Run run perfanal.py when the container launches
-#CMD ["bash", "/PerformanceAnalysis/scripts/run_perfanal.sh", "perfanal.cfg"]
-# FIXME: keep getting following errors:
-# /PerformanceAnalysis/scripts/run_chimbuko.sh: line 13: ../untracked/results/writer.log: No such file or directory
-# python3: can't open file 'chimbuko.py': [Errno 2] No such file or directory
-# However, it works within this docker image.
+WORKDIR /Downloads/PerformanceAnalysis/test
+RUN ./run_all.sh
+
+WORKDIR /Downloads/PerformanceAnalysis
+RUN mkdir -p /opt/chimbuko
+RUN cp -r bin /opt/chimbuko
+RUN cp -r include /opt/chimbuko
+RUN cp -r lib /opt/chimbuko
+
+#ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/chimbuko/lib
+#ENV PATH=${PATH}:/opt/chimbuko/bin
+
+
 #CMD ["bash", "/PerformanceAnalysis/scripts/run_chimbuko.sh"]
