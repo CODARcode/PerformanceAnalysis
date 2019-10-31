@@ -16,6 +16,15 @@ AD_INTERVAL=$4
 # data steps
 DATA_STEPS=$5
 
+echo "============================"
+echo "ADIOS: ${ADIOS_MODE}"
+echo "HAS BPFile: ${HAS_BPFILE}"
+echo "AD SIGMA: ${AD_SIGMA}"
+echo "AD WINSZ: ${AD_WINSZ}"
+echo "AD INTERVAL: ${AD_INTERVAL} msec"
+echo "NWCHEM DATA STEPS: ${DATA_STEPS}"
+echo "============================"
+sleep 10
 
 export NWCHEM_TOP=/Codar/nwchem-1
 export NWCHEM_DAT=$NWCHEM_TOP/QA/tests/ethanol
