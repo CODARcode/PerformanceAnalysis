@@ -1,12 +1,10 @@
-#FROM chimbuko/adios2:latest
-# chimbuko/sosflow contains adios2, tau2, and sos_flow
-#FROM chimbuko/sosflow:latest
-FROM chimbuko/adios2:latest
+FROM chimbuko/tau2:latest
 
 RUN apt-get update
 RUN apt-get install curl libcurl4-openssl-dev
 RUN apt-get install libgtest-dev
-RUN pip3 flask
+RUN apt-get install zip unzip
+RUN pip3 install flask
 
 WORKDIR /usr/src/gtest
 RUN cmake CMakeLists.txt
@@ -15,24 +13,35 @@ RUN cp *.a /usr/lib
 
 WORKDIR /Downloads
 # will be replaced with https://github.com/CODARcode/PerformanceAnalysis.git
-RUN git clone https://github.com/bsmind/PerformanceAnalysis.git
+RUN git clone -b develop https://github.com/bsmind/PerformanceAnalysis.git
 
-WORKDIR /Downloads/PerformanceAnalysis/3rdparty
-RUN ./install_nlohmann.sh
+# install nlohmann json library
+# WORKDIR /Downloads/PerformanceAnalysis/3rdparty
+# RUN ./install_nlohmann.sh
+
+# compile and build
 WORKDIR /Downloads/PerformanceAnalysis
 RUN make
 
+# run test
 WORKDIR /Downloads/PerformanceAnalysis/test
 RUN ./run_all.sh
 
+# copy to /opt/chimbuko
 WORKDIR /Downloads/PerformanceAnalysis
 RUN mkdir -p /opt/chimbuko
 RUN cp -r bin /opt/chimbuko
 RUN cp -r include /opt/chimbuko
 RUN cp -r lib /opt/chimbuko
 
+# install chimbuko visualization module
+WORKDIR /Downloads
+RUN git clone https://github.com/bsmind/ChimbukoVisualizationII.git
+WORKDIR /Downloads/ChimbukoVisualizationII
+RUN pip3 install -r requirements.txt
+
 #ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/chimbuko/lib
 #ENV PATH=${PATH}:/opt/chimbuko/bin
 
-
-#CMD ["bash", "/PerformanceAnalysis/scripts/run_chimbuko.sh"]
+#WORKDIR /Downloads/PerformanceAnalysis
+#CMD ["bash", "run_test.sh"]

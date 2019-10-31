@@ -3,8 +3,8 @@
 export NWCHEM_TOP=/Codar/nwchem-1
 export NWCHEM_DAT=$NWCHEM_TOP/QA/tests/ethanol
 
-export CHIMBUKO_ROOT=/PerformanceAnalysis
-export CHIMBUKO_VIS_ROOT=/ChimbukoVisualization
+export CHIMBUKO_ROOT=/opt/chimbuko
+export CHIMBUKO_VIS_ROOT=/Downloads/ChimbukoVisualizationII
 
 export TAU_ROOT=/opt/tau2/x86_64
 export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
@@ -15,9 +15,11 @@ HAS_BPFILE=true
 
 mkdir -p test
 cd test
-rm -rf logs executions
+rm -rf DB executions logs
 mkdir -p logs
+mkdir -p DB
 mkdir -p BP
+mkdir -p executions
 WORK_DIR=`pwd`
 
 ADIOS_MODE=BPFile
@@ -31,10 +33,10 @@ export TAU_ADIOS2_FILENAME=$WORK_DIR/BP/tau-metrics
 
 # visualization server
 export SERVER_CONFIG="production"
-export DATABASE_URL="sqlite:///${WORK_DIR}/logs/db.sqlite"
-export ANOMALY_STATS_URL="sqlite:///${WORK_DIR}/logs/anomaly_stats.sqlite"
-export ANOMALY_DATA_URL="sqlite:///${WORK_DIR}/logs/anomaly_data.sqlite"
-export FUNC_STATS_URL="sqlite:///${WORK_DIR}/logs/func_stats.sqlite"
+export DATABASE_URL="sqlite:///${WORK_DIR}/DB/main.sqlite"
+export ANOMALY_STATS_URL="sqlite:///${WORK_DIR}/DB/anomaly_stats.sqlite"
+export ANOMALY_DATA_URL="sqlite:///${WORK_DIR}/DB/anomaly_data.sqlite"
+export FUNC_STATS_URL="sqlite:///${WORK_DIR}/DB/func_stats.sqlite"
 export EXECUTION_PATH=$WORK_DIR/executions
 
 # anomaly detection
@@ -104,7 +106,7 @@ echo "=========================================="
 echo "Launch Chimbuko parameter server"
 echo "=========================================="
 echo "run parameter server ..."
-bin/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS "http://0.0.0.0:5000/api/anomalydata" &
+bin/app/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS "http://0.0.0.0:5000/api/anomalydata" &
     # >"${WORK_DIR}/logs/ps.log" 2>&1 &
 ps_pid=$!
 sleep 5
@@ -116,8 +118,8 @@ echo "=========================================="
 if [ "$ADIOS_MODE" == "SST" ]
 then
     echo "Use SST mode: NWChem + AD"
-    mpirun --allow-run-as-root -n $NMPIS \
-        bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX $WORK_DIR/BP &
+    mpirun --allow-run-as-root -n $NMPIS bin/app/driver $ADIOS_MODE \
+        $WORK_DIR/BP $BP_PREFIX "${WORK_DIR}/executions" "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} 0 &
         # >logs/ad.log 2>&1 &
     sleep 5
     mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw 
@@ -130,8 +132,8 @@ else
         mpirun --allow-run-as-root -n $NMPIS nwchem ethanol_md.nw >logs/nwchem.log 2>&1 
     fi
     echo "Run anomaly detectors"
-    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
-        "http://0.0.0.0:5000/api/executions"  "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} ${AD_INTERVAL}
+    mpirun --allow-run-as-root -n $NMPIS bin/app/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
+        "${WORK_DIR}/executions"  "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} ${AD_INTERVAL}
         # >logs/ad.log 2>&1 
 fi
 

@@ -1,5 +1,4 @@
-# docker run -it chimbuko/adios2 /bin/bash
-FROM chimbuko/adios2
+FROM chimbuko/adios2:latest
 ARG JOBS=16
 
 # --------------------------------------------------------
