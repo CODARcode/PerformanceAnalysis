@@ -68,7 +68,7 @@ cp $NWCHEM_DAT/ethanol_md.nw .
 cp $NWCHEM_DAT/*.pdb .
 cp $NWCHEM_DAT/ethanol_md.rst .
 cp $NWCHEM_DAT/ethanol_md.out .
-cp $CHIMBUKO_ROOT/scripts/docker/sos_filter.txt .
+cp $CHIMBUKO_ROOT/scripts/sos_filter.txt .
 cp -r $CHIMBUKO_ROOT/bin .
 cp -r $CHIMBUKO_ROOT/lib .
 

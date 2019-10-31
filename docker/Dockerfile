@@ -33,6 +33,7 @@ RUN mkdir -p /opt/chimbuko
 RUN cp -r bin /opt/chimbuko
 RUN cp -r include /opt/chimbuko
 RUN cp -r lib /opt/chimbuko
+RUN cp -r scripts /opt/chimbuko
 
 # install chimbuko visualization module
 WORKDIR /Downloads
