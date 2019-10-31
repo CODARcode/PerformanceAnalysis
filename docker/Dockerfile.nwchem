@@ -38,22 +38,22 @@ WORKDIR /Codar/nwchem-1
 RUN git checkout pretauadio2
 
 WORKDIR /Codar/nwchem-1/src/space
-RUN sed -i 's3731|^|c|' sp_init.F
-RUN sed -i 's3732|^|c|' sp_init.F
-RUN sed -i 's3733|^|c|' sp_init.F
-RUN sed -i 's3734|^|c|' sp_init.F
-RUN sed -i 's3735|^|c|' sp_init.F
-RUN sed -i 's3736|^|c|' sp_init.F
-RUN sed -i 's3737|^|c|' sp_init.F
-RUN sed -i 's3738|^|c|' sp_init.F
+RUN sed -i "s3731|^|c|" sp_init.F
+RUN sed -i "s3732|^|c|" sp_init.F
+RUN sed -i "s3733|^|c|" sp_init.F
+RUN sed -i "s3734|^|c|" sp_init.F
+RUN sed -i "s3735|^|c|" sp_init.F
+RUN sed -i "s3736|^|c|" sp_init.F
+RUN sed -i "s3737|^|c|" sp_init.F
+RUN sed -i "s3738|^|c|" sp_init.F
 
-RUN sed -i 's3740|^|c|' sp_init.F
-RUN sed -i 's3741|^|c|' sp_init.F
-RUN sed -i 's3742|^|c|' sp_init.F
+RUN sed -i "s3740|^|c|" sp_init.F
+RUN sed -i "s3741|^|c|" sp_init.F
+RUN sed -i "s3742|^|c|" sp_init.F
 
-RUN sed -i 's3744|^|c|' sp_init.F
-RUN sed -i 's3745|^|c|' sp_init.F
-RUN sed -i 's3746|^|c|' sp_init.F
+RUN sed -i "s3744|^|c|" sp_init.F
+RUN sed -i "s3745|^|c|" sp_init.F
+RUN sed -i "s3746|^|c|" sp_init.F
 
 WORKDIR /Codar/nwchem-1
 # to enable tau compiler for nwchem
