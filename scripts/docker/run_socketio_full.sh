@@ -22,7 +22,7 @@ mkdir -p BP
 mkdir -p executions
 WORK_DIR=`pwd`
 
-ADIOS_MODE=BPFile
+ADIOS_MODE=SST
 BP_PREFIX=tau-metrics-nwchem
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
