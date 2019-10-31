@@ -1,20 +1,20 @@
 #!/bin/bash
 # ADIOS mode: [SST, BPFile]
-ADIOS_MODE=$1
+ADIOS_MODE=${1:-SST}
 # true if BPFile is available (currently, it must be false for docker run)
-HAS_BPFILE=$2
+HAS_BPFILE=${2:-false}
 
 # anomaly detection parameters
 # sigma value, [6]
-AD_SIGMA=$3
+AD_SIGMA=${3:-6}
 # window size, [10]
-AD_WINSZ=$4
+AD_WINSZ=${4:-10}
 # time interval (only for BP mode for simulation), [1000]
-AD_INTERVAL=$4
+AD_INTERVAL=${5:-1000}
 
 # nwchem
 # data steps
-DATA_STEPS=$5
+DATA_STEPS=${6:-50000}
 
 echo "============================"
 echo "ADIOS: ${ADIOS_MODE}"
