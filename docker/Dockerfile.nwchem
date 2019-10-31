@@ -72,7 +72,7 @@ WORKDIR /Codar/nwchem-1
 RUN cp /Downloads/PerformanceAnalysis/scripts/docker/run_socketio_full.sh run_nwchem_chimbuko.sh
 
 ENTRYPOINT [ "/Codar/nwchem-1/run_nwchem_chimbuko.sh" ]
-
+CMD [ "SST", "false", "6", "10", "1000", "50000" ]
 # Check point if it doesn't work
 # check environment variable
 # - PATH, LD_LIBRARY_PATH, 

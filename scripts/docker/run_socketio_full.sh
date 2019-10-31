@@ -1,4 +1,21 @@
 #!/bin/bash
+# ADIOS mode: [SST, BPFile]
+ADIOS_MODE=$1
+# true if BPFile is available (currently, it must be false for docker run)
+HAS_BPFILE=$2
+
+# anomaly detection parameters
+# sigma value, [6]
+AD_SIGMA=$3
+# window size, [10]
+AD_WINSZ=$4
+# time interval (only for BP mode for simulation), [1000]
+AD_INTERVAL=$4
+
+# nwchem
+# data steps
+DATA_STEPS=$5
+
 
 export NWCHEM_TOP=/Codar/nwchem-1
 export NWCHEM_DAT=$NWCHEM_TOP/QA/tests/ethanol
@@ -11,7 +28,6 @@ export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-pdt-adios2
 export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
 
-HAS_BPFILE=true
 
 mkdir -p test
 cd test
@@ -22,7 +38,6 @@ mkdir -p BP
 mkdir -p executions
 WORK_DIR=`pwd`
 
-ADIOS_MODE=SST
 BP_PREFIX=tau-metrics-nwchem
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
@@ -39,12 +54,6 @@ export ANOMALY_DATA_URL="sqlite:///${WORK_DIR}/DB/anomaly_data.sqlite"
 export FUNC_STATS_URL="sqlite:///${WORK_DIR}/DB/func_stats.sqlite"
 export EXECUTION_PATH=$WORK_DIR/executions
 
-# anomaly detection
-AD_SIGMA=6
-AD_WINSZ=10
-AD_INTERVAL=1000
-
-
 cp $NWCHEM_TOP/bin/LINUX64/nwchem .
 cp $NWCHEM_DAT/ethanol_md.nw .
 cp $NWCHEM_DAT/*.pdb .
@@ -59,7 +68,7 @@ sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
 sed -i '22s|#set|set|' ethanol_md.nw
-sed -i 's/data 1000/data 50000/' ethanol_md.nw
+sed -i "s|data 1000|data ${DATA_STEPS}| ethanol_md.nw
 
 date
 hostname

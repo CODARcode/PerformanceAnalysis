@@ -40,6 +40,14 @@ RUN git clone https://github.com/bsmind/ChimbukoVisualizationII.git
 WORKDIR /Downloads/ChimbukoVisualizationII
 RUN pip3 install -r requirements.txt
 
+RUN curl -O http://download.redis.io/redis-stable.tar.gz
+RUN tar xvzf redis-stable.tar.gz
+RUN rm redis-stable.tar.gz
+WORKDIR /Downloads/ChimbukoVisualizationII/redis-stable
+RUN make
+
+WORKDIR /
+
 #ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/chimbuko/lib
 #ENV PATH=${PATH}:/opt/chimbuko/bin
 
