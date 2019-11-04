@@ -1,0 +1,83 @@
+#!/bin/bash
+# Begin LSF Directives
+#BSUB -P CSC299
+#BSUB -W 30
+#BSUB -nnodes NNODES
+#BSUB -J JOBNAME
+#BSUB -o JOBNAME.o.%J
+#BSUB -e JOBNAME.e.%J
+
+module load gcc/8.1.1
+module load curl/7.63.0
+module load zlib
+module load zeromq
+module load bzip2
+module unload darshan-runtime
+
+set -x
+
+CODAR=/ccs/proj/csc299/codar
+SW=$CODAR/sw
+
+# NWCHEM
+export NWCHEM=$CODAR/NWChem/nwchem-1-tau
+export NWCHEM_TOP=${NWCHEM}
+export NWCHEM_DAT=$CODAR/NWX_TA/TM_BI_4PGS/nwc_md
+
+# required libraries
+export ADIOS_ROOT=$SW/adios2
+export TAU_ROOT=$SW/tau2/ibm64linux
+export PDT_ROOT=$SW/pdt-3.25/ibm64linux
+export PAPI_ROOT=$SW/papi-5.6.0
+
+# ld
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${ADIOS_ROOT}/lib64
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${TAU_ROOT}/lib
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PDT_ROOT}/lib
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_ROOT}/lib
+
+# create work directory first
+cd $MEMBERWORK/csc299
+mkdir -p JOB
+
+cd JOB
+rm -rf JOBNAME
+mkdir JOBNAME
+cd JOBNAME
+
+mkdir BP
+
+WORK_DIR=`pwd`
+
+# TAU environment
+export TAU_MAKEFILE=${TAU_ROOT}/lin/Makefile.tau-papi-gnu-mpi-pthread-pdt-adios2
+export TAU_PLUGINS_PATH=${TAU_ROOT}/lib/shared-papi-gnu-mpi-pthread-pdt-adios2
+export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
+export TAU_ADIOS2_PERIODIC=1
+export TAU_ADIOS2_PERIOD=25000000
+#export TAU_ADIOS2_SELECTON_FILE=${WORK_DIR}/sos_filter.txt
+export TAU_ADIOS2_ENGINE=BPFile
+export TAU_ADIOS2_FILENAME=${WORK_DIR}/BP/tau-metrics
+
+# copy nwchme binary
+cp $NWCHEM/bin/LINUX64/nwchem .
+# copy required data for the preparation
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat.top .
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat.db .
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat_md.rst .
+cp $NWCHEM_DAT/4pgs-1M-prepare-equil-md.nw .
+
+date
+hostname
+ls -l
+ 
+jsrun -n NSETS -a NMPIS -c NCORES -g NGPUS -r NSETSNODE -d packed -l cpu-cpu -b packed:1 ./nwchem 4pgs-1M-prepare-equil-md.nw
+
+jslist -R
+
+echo "BP size: `du -sh ./BP`"
+
+# clean
+rm -f *.top *.db *.rst *.nw nwchem
+rm profile*
+rm -rf BP

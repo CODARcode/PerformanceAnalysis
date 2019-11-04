@@ -130,3 +130,7 @@ untracked/results/*.pkl
 .vscode
 cpp/bin/*
 cpp/extern/*
+.DS_Store
+
+# cpp 3rd-party
+cpp/3rdparty/nlohmann
