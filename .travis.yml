@@ -2,8 +2,8 @@ language: cpp
 services:
   - docker
 before_install:
-  - docker build -f docker/Dockerfile -t chimbuko/ad .
-script: docker run -it chimbuko/ad bash -c "/Downloads/PerformanceAnalysis/test/run_all.sh"
+  - docker build -f docker/Dockerfile.ad -t chimbuko/ad .
+script: docker run -it chimbuko/ad
 addons:
   apt:
     packages:

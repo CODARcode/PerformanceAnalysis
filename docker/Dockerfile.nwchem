@@ -1,13 +1,4 @@
-FROM chimbuko/chimbuko:latest
-
-# ----------------------------------------------------------------------------
-# Install some required packages
-# ----------------------------------------------------------------------------
-RUN apt-get install -y libopenblas-base libopenblas-dev
-
-# ----------------------------------------------------------------------------
-# set environment variables
-# ----------------------------------------------------------------------------
+FROM chimbuko/tau2 AS nwchem-build
 
 ENV PATH=${PATH}:/opt/tau2/x86_64/bin
 ENV PATH=${PATH}:/opt/adios2/bin
@@ -20,12 +11,7 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
-
-# this depends on how tau2 is compiled
-# NOTE: TAU_MAKEFILE depends on how tau2 is compiled. Need to be changed 
-# accordingly. Are there better way like the second example that doesn't work? 
 ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
-#ENV TAU_MAKEFILE="`find /opt/tau2/x86_64/lib -name Makefile.tau*`"
 
 # -----------------------------------------------------------------------------
 # NWCHEM installation
@@ -63,16 +49,14 @@ ENV BLASOPT="-lopenblas `adios2-config -c -f`"
 ENV NWCHEM_MODULES=md
 RUN ./contrib/distro-tools/build_nwchem 2>&1 | tee build_nwchem.log
 
+FROM chimbuko/tau2:latest
+WORKDIR /
+COPY --from=nwchem-build /Codar /Codar
 # create .nwchemrc file using /Codar/nwchem-1/QA/domknwchemrc
 # The script must run in the QA folder!!!!!!!!!!!!!!!!!!
-WORKDIR /Codar/nwchem-1/QA
-RUN ./domknwchemrc
+RUN cd /Codar/nwchem-1/QA && ./domknwchemrc
 
 WORKDIR /Codar/nwchem-1
-RUN cp /Downloads/PerformanceAnalysis/scripts/docker/run_socketio_full.sh run_nwchem_chimbuko.sh
-
-ENTRYPOINT [ "/Codar/nwchem-1/run_nwchem_chimbuko.sh" ]
-CMD [ "SST", "false", "6", "10", "1000", "50000" ]
 # Check point if it doesn't work
 # check environment variable
 # - PATH, LD_LIBRARY_PATH, 

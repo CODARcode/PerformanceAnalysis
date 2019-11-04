@@ -1,4 +1,4 @@
-FROM chimbuko/adios2:latest
+FROM chimbuko/adios2:latest AS tau-build
 ARG JOBS=16
 
 # --------------------------------------------------------
@@ -35,4 +35,9 @@ RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -papi=/opt/papi \
  && make -j$JOBS install
+
+
+FROM chimbuko/adios2:latest 
+
+COPY --from=tau-build /opt /opt
 
