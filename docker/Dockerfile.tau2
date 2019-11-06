@@ -1,3 +1,5 @@
+# chimbuko/adios2:brusselator suports zfp that is required to run Brusselator 
+# Note that chimbuko/adios2:latest doesn't support zfp.
 FROM chimbuko/adios2:latest AS tau-build
 ARG JOBS=16
 
