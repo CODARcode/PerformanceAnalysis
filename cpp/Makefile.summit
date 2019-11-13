@@ -9,7 +9,7 @@ SRC_DIRS ?= src
 LIB_DIR ?= lib
 
 CXX := mpic++
-CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 
+CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 -lstdc++fs
 LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
 
 ADIOS = /ccs/proj/csc299/codar/sw/adios2
@@ -40,7 +40,7 @@ debugvars:
 
 bin/%: build/%.o | $(TARGET_LIB)
 	$(MKDIR_P) $(@D)
-	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -o $@ 
+	$(CXX) $(CXX_FLAGS) $(PS_FLAGS) $< $(LDFLAGS) $(ADIOS_LIBS) $(CURL_FLAGS) -lzmq -lstdc++fs -o $@ 
 
 lib/lib$(LIB_NAME).so: $(OBJS)
 	$(MKDIR_P) $(@D)

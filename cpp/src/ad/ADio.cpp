@@ -162,7 +162,7 @@ public:
 
             curl_easy_setopt(curl, CURLOPT_URL, m_io.getURL().c_str());
             curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 5000L);
+            //curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 5000L);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 

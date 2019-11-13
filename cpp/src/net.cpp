@@ -98,7 +98,7 @@ static void send_stat(
     // Dont bother trying IPv6, which would increase DNS resolution time
     curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
     // Don't wait forever, time out after 10 seconds
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+    //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
     // Follow HTTP redirects if necessary
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     // header
