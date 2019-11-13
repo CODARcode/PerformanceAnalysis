@@ -78,12 +78,20 @@ void Chimbuko::run(int rank,
     unsigned long long& n_comm_events,
     unsigned long& n_outliers,
     unsigned long& frames,
+#ifdef _PERF_METRIC
+    std::string perf_outputpath,
+    int         perf_step,
+#endif
     bool only_one_frame,
     int interval_msec)
 {
     int step = 0; 
     size_t idx_funcData = 0, idx_commData = 0;
     const unsigned long *funcData = nullptr, *commData = nullptr;
+
+#ifdef _PERF_METRIC
+    std::string ad_perf = "ad_perf_" + std::to_string(rank) + ".json";
+#endif
 
     while ( m_parser->getStatus() ) 
     {
@@ -180,6 +188,12 @@ void Chimbuko::run(int rank,
 
         m_io->write(m_event->trimCallList(), step);
 
+#ifdef _PERF_METRIC
+        // dump performance metric event 10 steps
+        if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {
+            m_outlier->dump_perf(perf_outputpath, ad_perf);
+        }
+#endif
         if (only_one_frame)
             break;
 

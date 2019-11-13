@@ -8,6 +8,9 @@
 #else
 #include "chimbuko/net/zmq_net.hpp"
 #endif
+#ifdef _PERF_METRIC
+#include "chimbuko/util/RunMetric.hpp"
+#endif
 
 namespace chimbuko {
 
@@ -23,12 +26,19 @@ public:
     void disconnect_ps();
     virtual unsigned long run(int step=0) = 0;
 
+#ifdef _PERF_METRIC
+    void dump_perf(std::string path, std::string filename="metric.json"){
+        m_perf.dump(path, filename);
+    }
+#endif
+
 protected:
     virtual unsigned long compute_outliers(
         const unsigned long func_id, std::vector<CallListIterator_t>& data,
         long& min_ts, long& max_ts) = 0;
-    virtual void sync_param(ParamInterface* param) = 0;
-    void update_local_statistics(std::string l_stats, int step);
+
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface* param) = 0;
+    std::pair<size_t, size_t> update_local_statistics(std::string l_stats, int step);
 
 protected:
     bool m_use_ps;
@@ -44,6 +54,9 @@ protected:
     const ExecDataMap_t * m_execDataMap;
     ParamInterface * m_param;
 
+#ifdef _PERF_METRIC
+    RunMetric m_perf;
+#endif
     // number of outliers per function: func id -> # outliers
     // std::unordered_map<unsigned long, unsigned long> m_outliers;
     // inclusive runtime statistics per fucntion: func id -> run stats
@@ -64,7 +77,7 @@ protected:
     unsigned long compute_outliers(
         const unsigned long func_id, std::vector<CallListIterator_t>& data,
         long& min_ts, long& max_ts) override;
-    void sync_param(ParamInterface* param) override;
+    std::pair<size_t, size_t> sync_param(ParamInterface* param) override;
 
 private:
     double m_sigma;
