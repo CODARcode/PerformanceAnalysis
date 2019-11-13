@@ -10,7 +10,7 @@ LIB_DIR ?= lib
 
 CXX := mpic++
 CXX_FLAGS := $(INC_FLAGS) -MMD -MP -Wall -Wextra -std=c++17 -O3 -lstdc++fs
-LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR}
+LDFLAGS := `$(CXX) --showme:link` -L$(LIB_DIR) -l$(LIB_NAME) -Wl,-rpath,\$$ORIGIN/../${LIB_DIR},-rpath,\$$ORIGIN/../../${LIB_DIR}
 
 ADIOS = /ccs/proj/csc299/codar/sw/adios2
 ADIOS_FLAGS = -isystem ${ADIOS}/include
@@ -18,18 +18,20 @@ ADIOS_LIBS = `${ADIOS}/bin/adios2-config --cxx-libs`
 
 CURL_FLAGS = `curl-config --libs`
 
+# network layer: _USE_MPINET or _USE_ZMQNET
+# performance metric: _PERF_METRIC
 #PS_FLAGS = -D_USE_MPINET
-PS_FLAGS = -D_USE_ZMQNET
+PS_FLAGS = -D_USE_ZMQNET -D_PERF_METRIC
 
 TARGET_LIB := lib/lib${LIB_NAME}.so
-EXEC_SRCS := $(wildcard *.cpp)
+EXEC_SRCS := $(wildcard app/*.cpp)
 EXEC_TARS := $(patsubst %.cpp,bin/%,$(EXEC_SRCS))
 SRCS = $(shell find $(SRC_DIRS) -name "*.cpp")
 OBJS = $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
 
 all: $(EXEC_TARS) $(TARGET_LIB)
-	cp ws_flask_stat.py bin
+	cp app/ws_flask_stat.py bin
 
 debugvars:
 	@echo $(SRCS)
