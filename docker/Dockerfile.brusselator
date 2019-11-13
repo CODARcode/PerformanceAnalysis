@@ -1,0 +1,35 @@
+FROM chimbuko/tau2:latest AS brusselator-build
+
+ENV PATH=${PATH}:/opt/tau2/x86_64/bin
+ENV PATH=${PATH}:/opt/adios2/bin
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/zfp/lib
+
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+RUN apt-get install -y libfftw3-dev
+
+RUN mkdir -p /Codar
+WORKDIR /Codar
+COPY ./examples/brusselator ./brusselator
+
+WORKDIR /Codar/brusselator/src
+RUN make simulation
+
+FROM chimbuko/tau2:latest
+
+RUN apt-get install -y libfftw3-dev
+COPY --from=brusselator-build /Codar /Codar
+WORKDIR /Codar/brusselator/src
+
+
+# compile, cd /Downloads/adiosvm/Tutorial/brusselator && make
+# need to change engine from SST to BPFile (line 30, SST to BPFile)
+# run, mpirun --allow-run-as-root -np 4 ./simulation/Brusselator bru.bp 32 32 32 100 1

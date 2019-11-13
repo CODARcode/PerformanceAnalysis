@@ -1,0 +1,43 @@
+# chimbuko/adios2:brusselator suports zfp that is required to run Brusselator 
+# Note that chimbuko/adios2:latest doesn't support zfp.
+FROM chimbuko/adios2:brusselator AS tau-build
+ARG JOBS=16
+
+# --------------------------------------------------------
+# TAU
+# --------------------------------------------------------
+
+# PAPI
+WORKDIR /Downloads
+RUN wget http://icl.utk.edu/projects/papi/downloads/papi-5.7.0.tar.gz \
+ && tar -xzf papi-5.7.0.tar.gz
+RUN cd /Downloads/papi-5.7.0/src && ./configure --prefix=/opt/papi \
+ && make -j$JOBS && make install
+
+# TAU 
+WORKDIR /Downloads
+RUN git clone https://github.com/UO-OACISS/tau2.git
+WORKDIR /Downloads/tau2
+RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi \
+    -pthread -bfd=download -dwarf=download \
+    -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -papi=/opt/papi \
+ && make -j$JOBS install
+
+# perfstubs
+WORKDIR /Downloads
+RUN git clone https://github.com/khuck/perfstubs.git
+RUN cd perfstubs && mkdir build && cd build && \
+    cmake \
+        -DCMAKE_C_COMPILER=`which gcc` \
+        -DCMAKE_CXX_COMPILER=`which g++` \
+        -DCMAKE_Fortran_COMPILER=`which gfortran` \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/opt/perfstubs \ 
+        -DPERFSTUBS_USE_STATIC=OFF .. && \
+    make && make test && make install
+
+FROM chimbuko/adios2:brusselator 
+
+COPY --from=tau-build /opt /opt
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/perfstubs/lib/pkgconfig
