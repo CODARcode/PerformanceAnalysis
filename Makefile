@@ -21,8 +21,10 @@ ADIOS_LIBS = `${ADIOS}/bin/adios2-config --cxx-libs`
 
 CURL_FLAGS = `curl-config --libs`
 
+# network layer: _USE_MPINET or _USE_ZMQNET
+# performance metric: _PERF_METRIC
 #PS_FLAGS = -D_USE_MPINET
-PS_FLAGS = -D_USE_ZMQNET
+PS_FLAGS = -D_USE_ZMQNET -D_PERF_METRIC
 
 TARGET_LIB := lib/lib${LIB_NAME}.so
 EXEC_SRCS := $(wildcard app/*.cpp)

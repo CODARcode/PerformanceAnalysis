@@ -83,7 +83,19 @@ TEST_F(ADTest, BpfileTest)
         n_comm_events = 0;
         n_outliers = 0;
 
-        driver.run(world_rank, n_func_events, n_comm_events, n_outliers, frames, true);
+        driver.run(
+            world_rank, 
+            n_func_events, 
+            n_comm_events, 
+            n_outliers, 
+            frames,
+#ifdef _PERF_METRIC
+            "",
+            0,
+#endif
+            true,
+            0
+        );
 
         if (driver.get_step() == -1)
             break;
@@ -131,7 +143,9 @@ TEST_F(ADTest, BpfileWithNetTest)
     std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     std::string engineType = "BPFile";
     std::string execOutput = "./temp";
-
+#ifdef _PERF_METRIC
+    std::string perfOutput = "./perf";
+#endif
     double sigma = 6.0;
 
     Chimbuko driver;
@@ -158,7 +172,19 @@ TEST_F(ADTest, BpfileWithNetTest)
             MPI_Recv(&token, 1, MPI_INT, world_rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
-        driver.run(world_rank, n_func_events, n_comm_events, n_outliers, frames, true);
+        driver.run(
+            world_rank, 
+            n_func_events, 
+            n_comm_events, 
+            n_outliers, 
+            frames,
+#ifdef _PERF_METRIC
+            perfOutput, 
+            1,
+#endif
+            true,
+            0
+        );
         
         MPI_Send(&token, 1, MPI_INT, (world_rank+1)%world_size, 0, MPI_COMM_WORLD);
         if (world_rank == 0) {

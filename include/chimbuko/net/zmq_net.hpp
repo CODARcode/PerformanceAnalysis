@@ -15,7 +15,11 @@ public:
 
     void init(int* argc, char*** argv, int nt) override;
     void finalize() override;
+#ifdef _PERF_METRIC
+    void run(std::string logdir="./") override;
+#else
     void run() override;
+#endif
     void stop() override;
     std::string name() const override { return "ZMQNET"; }
 

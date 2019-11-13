@@ -4,6 +4,13 @@
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
+#ifdef _PERF_METRIC
+#include <chrono>
+typedef std::chrono::high_resolution_clock Clock;
+typedef std::chrono::milliseconds MilliSec;
+typedef std::chrono::microseconds MicroSec;
+#endif
+
 using namespace chimbuko;
 
 /* ---------------------------------------------------------------------------
@@ -126,20 +133,23 @@ ADOutlierSSTD::ADOutlierSSTD() : ADOutlier(), m_sigma(6.0) {
 ADOutlierSSTD::~ADOutlierSSTD() {
 }
 
-void ADOutlierSSTD::sync_param(ParamInterface* param)
+std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface* param)
 {
     SstdParam& g = *(SstdParam*)m_param;
     SstdParam& l = *(SstdParam*)param;
 
     if (!m_use_ps) {
         g.update(l);
+        return std::make_pair(0, 0);
     }
     else {
         Message msg;
         std::string strmsg;
+        size_t sent_sz, recv_sz;
 
         msg.set_info(m_rank, m_srank, MessageType::REQ_ADD, MessageKind::SSTD);
         msg.set_msg(l.serialize(), false);
+        sent_sz = msg.size();
 #ifdef _USE_MPINET
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_ADD, msg.count());
 
@@ -157,20 +167,24 @@ void ADOutlierSSTD::sync_param(ParamInterface* param)
         ZMQNet::recv(m_socket, strmsg);   
 #endif
         msg.set_msg(strmsg , true);
+        recv_sz = msg.size();
         g.assign(msg.buf());
+        return std::make_pair(sent_sz, recv_sz);
     }
 }
 
-void ADOutlier::update_local_statistics(std::string l_stats, int step)
+std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats, int step)
 {
     if (!m_use_ps)
-        return;
+        return std::make_pair(0, 0);
 
     Message msg;
     std::string strmsg;
+    size_t sent_sz, recv_sz;
 
     msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
     msg.set_msg(l_stats);
+    sent_sz = msg.size();
 #ifdef _USE_MPINET
     throw "Not implemented yet.";
 #else
@@ -180,6 +194,9 @@ void ADOutlier::update_local_statistics(std::string l_stats, int step)
     ZMQNet::recv(m_socket, strmsg);
 #endif
     // do post-processing, if necessary
+    recv_sz = strmsg.size();
+
+    return std::make_pair(sent_sz, recv_sz);
 }
 
 unsigned long ADOutlierSSTD::run(int step) {
@@ -200,7 +217,23 @@ unsigned long ADOutlierSSTD::run(int step) {
     }
 
     // update temp runstats (parameter server)
+#ifdef _PERF_METRIC
+    Clock::time_point t0, t1;
+    std::pair<size_t, size_t> msgsz;
+    MicroSec usec;
+
+    t0 = Clock::now();
+    msgsz = sync_param(&param);
+    t1 = Clock::now();
+    
+    usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
+
+    m_perf.add("param_update", (double)usec.count());
+    m_perf.add("param_sent", (double)msgsz.first / 1000000.0); // MB
+    m_perf.add("param_recv", (double)msgsz.second / 1000000.0); // MB
+#else
     sync_param(&param);
+#endif
 
     // run anomaly detection algorithm
     unsigned long n_outliers = 0;
@@ -225,7 +258,19 @@ unsigned long ADOutlierSSTD::run(int step) {
     g_info["anomaly"] = AnomalyData(0, m_rank, step, min_ts, max_ts, n_outliers).get_json();
 
     // update # anomaly
+#ifdef _PERF_METRIC
+    t0 = Clock::now();
+    msgsz = update_local_statistics(g_info.dump(), step);
+    t1 = Clock::now();
+
+    usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
+
+    m_perf.add("stream_update", (double)usec.count());
+    m_perf.add("stream_sent", (double)msgsz.first / 1000000.0); // MB
+    m_perf.add("stream_recv", (double)msgsz.second / 1000000.0); // MB    
+#else
     update_local_statistics(g_info.dump(), step);
+#endif
 
     return n_outliers;
 }

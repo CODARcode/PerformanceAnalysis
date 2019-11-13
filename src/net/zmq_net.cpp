@@ -5,6 +5,13 @@
 #include <iostream>
 #include <string.h>
 
+#ifdef _PERF_METRIC
+#include <chrono>
+#include <fstream>
+typedef std::chrono::high_resolution_clock Clock;
+typedef std::chrono::milliseconds MilliSec;
+#endif
+
 using namespace chimbuko;
 
 ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0)
@@ -110,7 +117,11 @@ void ZMQNet::finalize()
             t.join();
 }
 
+#ifdef _PERF_METRIC
+void ZMQNet::run(std::string logdir)
+#else
 void ZMQNet::run()
+#endif
 {    
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
@@ -125,6 +136,19 @@ void ZMQNet::run()
         { backend , 0, ZMQ_POLLIN, 0 }
     };
 
+#ifdef _PERF_METRIC
+    unsigned int n_requests = 0, n_replies = 0;
+    Clock::time_point t_start, t_end, t_init;
+    MilliSec duration, elapsed;
+    std::ofstream f;
+
+    f.open(logdir + "ps_perf.txt", std::fstream::out | std::fstream::app);
+    if (f.is_open())
+        f << "# PS PERFORMANCE MEASURE" << std::endl;
+    t_init = Clock::now();
+    t_start = Clock::now();  
+#endif
+
     m_n_requests = 0;
     while(true)
     {
@@ -136,16 +160,43 @@ void ZMQNet::run()
                 break;
             }
             m_n_requests++;
+#ifdef _PERF_METRIC
+            n_requests++;
+#endif
         }
 
         if(items[1].revents & ZMQ_POLLIN) {
             recvAndSend(backend, frontend);
             m_n_requests--;
+#ifdef _PERF_METRIC
+            n_replies++;
+#endif
         } 
+
+#ifdef _PERF_METRIC
+        t_end = Clock::now();
+        duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
+        if (duration.count() >= 10000 && f.is_open()) {
+            elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
+            f << elapsed.count() << " " 
+                << n_requests << " " 
+                << n_replies << " " 
+                << duration.count() 
+                << std::endl;
+            t_start = t_end;
+            n_requests = 0;
+            n_replies = 0;
+        }
+#endif
     }
 
     zmq_close(frontend);
     zmq_close(backend);
+
+#ifdef _PERF_METRIC
+    if (f.is_open())
+        f.close();
+#endif
 }
 
 bool ZMQNet::recvAndSend(void* skFrom, void* skTo)

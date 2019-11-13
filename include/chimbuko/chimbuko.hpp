@@ -28,6 +28,10 @@ public:
         unsigned long long& n_comm_events,
         unsigned long& n_outliers,
         unsigned long& frames,
+#ifdef _PERF_METRIC
+        std::string perf_outputpath="",
+        int         perf_step=10,
+#endif
         bool only_one_frame=false,
         int interval_msec=0);
 

@@ -5,6 +5,8 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
+// todo parse argument
+
 int main(int argc, char ** argv)
 {
     MPI_Init(&argc, &argv);
@@ -31,6 +33,10 @@ int main(int argc, char ** argv)
         double      sigma = 6.0;     // anomaly detection algorithm parameter
         int         winsz = 0;       // window size
         int         interval_msec = 0;
+#ifdef _PERF_METRIC
+        std::string perf_output = ""; // performance output path
+        int         perf_step = 10;   // make output every 10 steps
+#endif
 
         if (output.find("http://") == std::string::npos)
             output_dir = output;
@@ -53,6 +59,11 @@ int main(int argc, char ** argv)
         if (argc >= 9)
             interval_msec = atoi(argv[8]);
 
+#ifdef _PERF_METRIC
+        if (argc >= 10)
+            perf_output = std::string(argv[9]);
+#endif
+
         if (world_rank == 0) {
         std::cout << "\n" 
                 << "rank       : " << world_rank << "\n"
@@ -67,6 +78,10 @@ int main(int argc, char ** argv)
                 << "\nsigma      : " << sigma
                 << "\nwindow size: " << winsz
                 << "\nInterval   : " << interval_msec << " msec\n"
+#ifdef _PERF_METRIC
+                << "perf. matric : " << perf_output << "\n"
+                << "perf. step   : " << perf_step << "\n"
+#endif
                 << std::endl;
         }
 
@@ -110,8 +125,19 @@ int main(int argc, char ** argv)
         }
 
         t1 = high_resolution_clock::now();
-        driver.run(world_rank, n_func_events, n_comm_events, n_outliers, 
-            frames, false, interval_msec);
+        driver.run(
+            world_rank, 
+            n_func_events, 
+            n_comm_events, 
+            n_outliers,
+            frames,
+#ifdef _PERF_METRIC
+            perf_output,
+            perf_step,
+#endif 
+            false, 
+            interval_msec
+        );
         t2 = high_resolution_clock::now();
         
         if (world_rank == 0) {

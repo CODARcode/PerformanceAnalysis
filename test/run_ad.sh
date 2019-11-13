@@ -1,17 +1,17 @@
 #!/bin/bash
 
 
-mkdir -p temp
+mkdir -p temp perf
 
 # mpirun --allow-run-as-root -n 1 ../bin/pserver 4 & 
-mpirun --allow-run-as-root -n 1 ../bin/app/pserver 4 &
+mpirun --allow-run-as-root -n 1 ../bin/app/pserver 4 "./perf/" &
 ps_wid=$!
 
 sleep 5
 mpirun --allow-run-as-root -n 4 ./mainAd -n 4
 
 wait $ps_wid
-rm -r temp
+rm -rf temp perf
 
 
 
