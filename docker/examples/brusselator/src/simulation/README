@@ -1,0 +1,9 @@
+The Brusselator source code has been forked from https://github.com/openmichigan/PSNM.
+Its dependency - 2decomp_fft, has been downloaded from http://www.2decomp.org. Current version of 2decomp_fft is 1.5.847.
+
+Run
+---
+
+Example:
+`mpirun -np 4 ./Brusselator output nx ny nz steps plotgap(seconds)`
+
