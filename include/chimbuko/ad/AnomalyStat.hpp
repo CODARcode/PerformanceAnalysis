@@ -8,6 +8,10 @@
 
 namespace chimbuko {
 
+/**
+ * @brief 
+ * 
+ */
 class AnomalyData {
 public:
     AnomalyData();

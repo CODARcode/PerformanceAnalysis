@@ -134,3 +134,8 @@ cpp/extern/*
 
 # cpp 3rd-party
 cpp/3rdparty/nlohmann
+
+# docs
+docs/doxygen_api/xml/
+sphinx/build/
+sphinx/source/_build/
