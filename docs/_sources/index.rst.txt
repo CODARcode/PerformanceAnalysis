@@ -21,8 +21,6 @@ Related Github repositories
    :caption: Introduction
 
    introduction/overview
-   introduction/ad
-   introduction/ps
    introduction/install
 
 
