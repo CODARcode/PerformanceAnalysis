@@ -1,0 +1,27 @@
+FROM chimbuko/ad AS ad-module
+
+FROM chimbuko/viz AS viz-module
+
+FROM chimbuko/nwchem:latest 
+
+# copy chimbuko modules
+RUN mkdir -p /opt/chimbuko
+COPY --from=ad-module /opt/chimbuko /opt/chimbuko
+COPY --from=viz-module /opt/chimbuko /opt/chimbuko
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/pdt/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
+
+WORKDIR /
+COPY run_nwchem_chimbuko.sh /
+COPY sos_filter.txt /
+
+EXPOSE 5000
+
+ENTRYPOINT [ "./run_nwchem_chimbuko.sh" ]
+CMD [ "5", "50000", "SST", "false", "12", "10", "1000", "/test" ]
