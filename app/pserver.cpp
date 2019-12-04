@@ -11,7 +11,7 @@ int main (int argc, char ** argv)
 {
     chimbuko::SstdParam param;
     int nt = -1, n_ad_modules = 0;
-    std::string logdir = "./";
+    std::string logdir = ".";
     std::string ws_addr;
 #ifdef _USE_MPINET
     int provided;
@@ -68,7 +68,7 @@ int main (int argc, char ** argv)
         std::cout << "Shutdown parameter server ..." << std::endl;
         //param.show(std::cout);
         std::ofstream o;
-        o.open(logdir + "parameters.txt");
+        o.open(logdir + "/parameters.txt");
         if (o.is_open())
         {
             param.show(o);

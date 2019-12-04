@@ -142,7 +142,7 @@ void ZMQNet::run()
     MilliSec duration, elapsed;
     std::ofstream f;
 
-    f.open(logdir + "ps_perf.txt", std::fstream::out | std::fstream::app);
+    f.open(logdir + "/ps_perf.txt", std::fstream::out | std::fstream::app);
     if (f.is_open())
         f << "# PS PERFORMANCE MEASURE" << std::endl;
     t_init = Clock::now();

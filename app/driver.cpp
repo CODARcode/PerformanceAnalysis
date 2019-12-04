@@ -60,8 +60,10 @@ int main(int argc, char ** argv)
             interval_msec = atoi(argv[8]);
 
 #ifdef _PERF_METRIC
-        if (argc >= 10)
+        if (argc >= 10) {
             perf_output = std::string(argv[9]);
+	    perf_step = atoi(argv[10]);
+	}
 #endif
 
         if (world_rank == 0) {
