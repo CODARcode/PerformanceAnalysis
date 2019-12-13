@@ -56,7 +56,7 @@ int main (int argc, char ** argv)
 #ifdef _PERF_METRIC
         net.run(logdir);
 #else
-        net.run();
+       // net.run();
 #endif
 
         // at this point, all pseudo AD modules finished sending 
