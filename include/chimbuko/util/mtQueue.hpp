@@ -41,6 +41,23 @@ public:
         m_queue.pop();
         return true;
     }
+   
+    void pop()
+    {
+	std::unique_lock<std::mutex> lock{m_mutex};
+	if (!m_queue.empty())
+		 m_queue.pop();
+    }	
+
+    T front()
+    {
+	std::unique_lock<std::mutex> lock{m_mutex};
+       // if (!m_queue.empty())
+                 return m_queue.front();
+
+
+    }	
+
 
     void push(T value)
     {

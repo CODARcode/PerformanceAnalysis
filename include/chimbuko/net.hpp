@@ -54,7 +54,7 @@ public:
 #ifdef _PERF_METRIC
     virtual void run(std::string logdir="./") = 0;
 #else
-    virtual void run() = 0;
+    virtual void run(std::string addr) = 0;
 #endif
     /**
      * @brief (virtual) stop network server

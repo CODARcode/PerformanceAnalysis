@@ -2,9 +2,12 @@
 #ifdef _USE_ZMQNET
 
 #include "chimbuko/net.hpp"
+#include "chimbuko/util/mtQueue.hpp"
 #include <zmq.h>
 #include <vector>
 #include <thread>
+#include <queue>
+#include <string>
 
 namespace chimbuko {
 
@@ -14,11 +17,12 @@ public:
     ~ZMQNet();
 
     void init(int* argc, char*** argv, int nt) override;
+    void init(int* argc, char*** argv, int nt, mtQueue<std::string> &qu);
     void finalize() override;
 #ifdef _PERF_METRIC
     void run(std::string logdir="./") override;
 #else
-    void run() override;
+    void run(std::string addr) override;
 #endif
     void stop() override;
     std::string name() const override { return "ZMQNET"; }
@@ -28,6 +32,7 @@ public:
 
 protected:
     void init_thread_pool(int nt) override;
+    void init_thread_pool(int nt, mtQueue<std::string> &qu);
 
 private:
     bool recvAndSend(void* skFrom, void* skTo);
