@@ -71,6 +71,11 @@ EventError ADEvent::addFunc(const Event_t& event) {
         return EventError::UnknownEvent;
     }
 
+    if (m_funcMap == nullptr) {
+        std::cerr << "Uninitialized function map\n";
+        return EventError::UnknownEvent;
+    }
+    
     if (m_funcMap->count(event.fid()) == 0) {
         std::cerr << "Unknown function event\n";
         return EventError::UnknownFunc;

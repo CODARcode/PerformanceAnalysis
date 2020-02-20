@@ -7,8 +7,8 @@
 
 namespace chimbuko {
 
-class ADio {
-public:
+  class ADio {
+  public:
     ADio();
     ~ADio();
 
@@ -30,22 +30,25 @@ public:
     std::string getURL() { return m_url; }
 
     size_t getNumIOJobs() const {
-        if (m_dispatcher == nullptr) return 0;
-        return m_dispatcher->size();
+      if (m_dispatcher == nullptr) return 0;
+      return m_dispatcher->size();
     }
     
     IOError write(CallListMap_p_t* m, long long step);
 
-private:
+    void setDestructorThreadWaitTime(const int secs){ destructor_thread_waittime = secs; }
+    
+  private:
     void _open(std::fstream& f, std::string filename, IOOpenMode mode);
 
-private:
+  private:
     unsigned int m_execWindow;
     std::string m_outputPath;
     DispatchQueue * m_dispatcher;
     CURL* m_curl;
     std::string m_url;
     int m_rank;
-};
+    int destructor_thread_waittime; //Choose thread wait time in seconds after threadhandler has completed (default 10s)
+  };
 
 } // end of AD namespace

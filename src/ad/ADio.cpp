@@ -11,18 +11,18 @@ namespace fs = std::experimental::filesystem;
  * Implementation of ADio class
  * --------------------------------------------------------------------------- */
 ADio::ADio() 
-: m_execWindow(0), m_dispatcher(nullptr), m_curl(nullptr) 
+  : m_execWindow(0), m_dispatcher(nullptr), m_curl(nullptr), destructor_thread_waittime(10)
 {
 
 }
 
 ADio::~ADio() {
-    while (m_dispatcher->size())
+    while (m_dispatcher && m_dispatcher->size())
     {
         std::cout << "wait for all jobs done: " << m_dispatcher->size() << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(destructor_thread_waittime));
     // std::cout << "destroy ADio" << std::endl;
     if (m_dispatcher) delete m_dispatcher;
     m_dispatcher = nullptr;
@@ -98,8 +98,9 @@ public:
                     beg = cl.begin();
                     end = cl.end();
                     for (auto it=cl.begin(); it!=cl.end(); it++) {
-                        if (it->get_label() == 1) continue;
+              		if (it->get_label() == 1) continue; //skip normal executions (-1 for abnormal)
 
+			//Create iterators marking the beginning and end of a window around the abnormal execution
                         prev_n = next_n = it;
                         for (unsigned int i = 0; i < winsz && prev_n != beg; i++)
                             prev_n = std::prev(prev_n);
@@ -107,6 +108,7 @@ public:
                         for (unsigned int i = 0; i < winsz + 1 && next_n != end; i++)
                             next_n = std::next(next_n);
 
+			//For events in window not already in "added" set, store all associated communications and executions in output
                         while (prev_n != next_n) {
                             if (added.find(prev_n->get_id()) == added.end()) {
                                 jExec.push_back(prev_n->get_json());
