@@ -63,5 +63,5 @@ AC_CONFIG_HEADERS([config.h])
 AC_SUBST([PS_FLAGS])
 
 AC_CONFIG_SRCDIR([src/chimbuko.cpp])
-AC_CONFIG_FILES([Makefile src/Makefile app/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile])
 AC_OUTPUT

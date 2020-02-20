@@ -1,1 +1,1 @@
-SUBDIRS = src app test
+SUBDIRS = src app test sphinx
