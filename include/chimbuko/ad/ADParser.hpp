@@ -79,13 +79,13 @@ namespace chimbuko {
      */
     void update_attributes();
     /**
-     * @brief fetching function (timer) data
+     * @brief fetching function (timer) data. Results stored internally and extracted using ADParser::getFuncData
      * 
      * @return ParserError error code
      */
     ParserError fetchFuncData();
     /**
-     * @brief fetching communication data
+     * @brief fetching communication data. Results stored internally and extracted using ADParser::getCommData
      * 
      * @return ParserError error code
      */
