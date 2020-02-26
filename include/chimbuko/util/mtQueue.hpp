@@ -49,12 +49,14 @@ public:
         m_cond.notify_one();
     }
 
+    /** @brief Return true if the queue is empty */
     bool empty() const
     {
         std::lock_guard<std::mutex> _{m_mutex};
         return m_queue.empty();
     }
 
+    /** @brief Remove all entries from the queue */
     void clear()
     {
         std::lock_guard<std::mutex> _{m_mutex};
@@ -76,6 +78,7 @@ public:
         return m_valid;
     }
 
+    /** @brief The number of entries in the queue */
     size_t size() const
     {
         std::lock_guard<std::mutex> _{m_mutex};

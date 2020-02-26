@@ -5,7 +5,7 @@
 
 using namespace chimbuko;
 
-ADParser::ADParser(std::string inputFile, std::string engineType)
+ADParser::ADParser(std::string inputFile, std::string engineType, int openTimeoutSeconds)
     : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1)
 {
     m_inputFile = inputFile;
@@ -16,13 +16,14 @@ ADParser::ADParser(std::string inputFile, std::string engineType)
     m_io.SetEngine(m_engineType);
     m_io.SetParameters({
         {"MarshalMethod", "BP"},
-        {"DataTransport", "RDMA"}
+        {"DataTransport", "RDMA"},
+	{"OpenTimeoutSecs", std::to_string(openTimeoutSeconds) }
     });
-    
-    // open file
-    // for sst engine, is the adios2 internally blocked here until *.sst file is found?
-    m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
 
+    // open file
+    // for sst engine, is the adios2 internally blocked here until *.sst file is found?  
+    m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
+    
     m_opened = true;
     m_status = true;
 }

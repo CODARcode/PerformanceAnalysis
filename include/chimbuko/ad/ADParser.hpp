@@ -7,20 +7,21 @@
 
 namespace chimbuko {
 
-/**
- * @brief parsing performance trace data streamed via ADIOS2
- * 
- */
-class ADParser {
+  /**
+   * @brief parsing performance trace data streamed via ADIOS2
+   * 
+   */
+  class ADParser {
 
-public:
+  public:
     /**
      * @brief Construct a new ADParser object
      * 
      * @param inputFile ADIOS2 BP filename
      * @param engineType BPFile or SST
+     * @param openTimeoutSeconds Timeout for opening ADIOS2 stream
      */
-    ADParser(std::string inputFile, std::string engineType="BPFile");
+    ADParser(std::string inputFile, std::string engineType="BPFile", int openTimeoutSeconds = 60);
     /**
      * @brief Destroy the ADParser object
      * 
@@ -33,7 +34,7 @@ public:
      * @return const std::unordered_map<int, std::string>* function hash map 
      */
     const std::unordered_map<int, std::string>* getFuncMap() const {
-        return &m_funcMap;
+      return &m_funcMap;
     }
     /**
      * @brief Get the event type hash map (event type id --> event name)
@@ -41,7 +42,7 @@ public:
      * @return const std::unordered_map<int, std::string>* event type hash map
      */
     const std::unordered_map<int, std::string>* getEventType() const {
-        return &m_eventType;
+      return &m_eventType;
     }
 
     /**
@@ -97,8 +98,8 @@ public:
      * @return const unsigned* getFuncData pointer to a function event array
      */
     const unsigned long* getFuncData(size_t idx) const {
-        if (idx >= m_timer_event_count) return nullptr;
-        return &m_event_timestamps[idx * FUNC_EVENT_DIM];
+      if (idx >= m_timer_event_count) return nullptr;
+      return &m_event_timestamps[idx * FUNC_EVENT_DIM];
     }
     /**
      * @brief Get the number of function events in the current step
@@ -114,8 +115,8 @@ public:
      * @return const unsigned* getCommData pointer to a communication event array
      */
     const unsigned long* getCommData(size_t idx) const {
-        if (idx >= m_comm_count) return nullptr;
-        return &m_comm_timestamps[idx * COMM_EVENT_DIM];
+      if (idx >= m_comm_count) return nullptr;
+      return &m_comm_timestamps[idx * COMM_EVENT_DIM];
     }
     /**
      * @brief Get the number of communication events in the current step
@@ -124,7 +125,7 @@ public:
      */
     size_t getNumCommData() const { return m_comm_count; }
 
-private:
+  private:
     adios2::ADIOS   m_ad;                               /**< adios2 handler */
     adios2::IO      m_io;                               /**< adios2 I/O handler */
     adios2::Engine  m_reader;                           /**< adios2 engine handler */
@@ -136,7 +137,7 @@ private:
     bool m_opened;                                      /**< true if connected to a writer or a BP file */
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
-
+  
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
 
@@ -145,6 +146,6 @@ private:
 
     size_t m_comm_count;                                /**< the number of communication events in current step */
     std::vector<unsigned long> m_comm_timestamps;       /**< array of all communication events in the current step */
-};
+  };
 
 } // end of AD namespace

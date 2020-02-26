@@ -21,6 +21,8 @@ private:
     public:
         IThreadTask() = default;
         virtual ~IThreadTask() = default;
+
+        //Can only be moved, not copied
         IThreadTask(const IThreadTask& rhs) = delete;
         IThreadTask& operator=(const IThreadTask& rhs) = delete;
         IThreadTask(IThreadTask&& other) = default;
@@ -38,6 +40,8 @@ private:
 
         }
         ~ThreadTask() override = default;
+
+        //Can only be moved, not copied
         ThreadTask(const ThreadTask& rhs) = delete;
         ThreadTask& operator=(const ThreadTask& rhs) = delete;
         ThreadTask(ThreadTask&& other) = default;
@@ -53,6 +57,10 @@ private:
     };
 
 public:
+
+    /**
+     * @brief A wrapper class for an std::future instance representing the result of an asynchronous operation
+     */
     template <typename T>
     class TaskFuture
     {
@@ -61,6 +69,9 @@ public:
         {
 
         }
+        /**
+	 * @brief The destructor waits for the asynchronous operation to complete before exiting
+	 */
         ~TaskFuture()
         {
             if (m_future.valid())
@@ -73,6 +84,9 @@ public:
         TaskFuture(TaskFuture&& other) = default;
         TaskFuture& operator=(TaskFuture&& other) = default;
 
+        /**
+	 * @brief Wait until the asynchronous operation has completed and return the value
+	 */
         auto get()
         {
             return m_future.get();
@@ -87,6 +101,10 @@ public:
 
     }
 
+    /**
+     * @brief Instantiate a pool of nt threads
+     * @param nt The number of threads to instantiate
+     */
     explicit threadPool(const std::uint32_t nt) : m_done{false}, m_workQueue{}, m_threads{}
     {
         try
@@ -101,6 +119,9 @@ public:
         }        
     }
 
+    /**
+     * @brief The class is not copyable but can be moved
+     */
     threadPool(const threadPool& rhs) = delete;
     threadPool& operator=(const threadPool& rhs) = delete;
     ~threadPool()
