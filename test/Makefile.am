@@ -14,3 +14,10 @@ mainNet_LDADD = $(LDADD)
 
 mainAd_SOURCES = mainAD.cpp test_ad.cpp
 mainAd_LDADD = $(LDADD)
+
+test_DATA = run_all.sh run_ad.sh run_net.sh
+
+
+install-data-hook:
+	cp -rd $(srcdir)/data $(DESTDIR)$(testdir)/
+	chmod u+x $(DESTDIR)$(testdir)/*.sh

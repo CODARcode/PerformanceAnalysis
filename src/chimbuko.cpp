@@ -93,6 +93,7 @@ void Chimbuko::run(int rank,
     std::string ad_perf = "ad_perf_" + std::to_string(rank) + ".json";
 #endif
 
+    //Loop until we lose connection with the application
     while ( m_parser->getStatus() ) 
     {
         m_parser->beginStep();
@@ -117,6 +118,9 @@ void Chimbuko::run(int rank,
         funcData = nullptr;
         commData = nullptr;
 
+	//During the timestep a number of function and perhaps also comm events occurred
+	//The parser stores these events separately in order of their timestamp
+	//We want to generate a combined list of both function and comm events ordered by their timestamp	
         funcData = m_parser->getFuncData(idx_funcData);
         commData = m_parser->getCommData(idx_commData);
         while (funcData != nullptr || commData != nullptr)

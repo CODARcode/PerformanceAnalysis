@@ -64,4 +64,8 @@ AC_SUBST([PS_FLAGS])
 
 AC_CONFIG_SRCDIR([src/chimbuko.cpp])
 AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile])
+
+AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py])
+AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh ], [chmod u+x $(echo $ac_tag | sed s/.*\://)])
+
 AC_OUTPUT

@@ -1,7 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = ../src/libchimbuko.la -lstdc++fs 
 
-
 bin_PROGRAMS = driver pclient pclient_stats pserver pshutdown sstSinker
 
 driver_SOURCES = driver.cpp
@@ -23,3 +22,5 @@ sstSinker_SOURCES = sstSinker.cpp
 sstSinker_LDADD = $(LDADD)
 
 
+bindata_DATA = ws_flask_stat.py
+bindatadir = $(bindir)

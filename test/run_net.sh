@@ -1,49 +1,41 @@
 #!/bin/bash
-# MPI_ROOT=/opt/openmpi-4.0.1
-# MPIRUN=${MPI_ROOT}/bin/mpirun
-# MPISERVER=${MPI_ROOT}/bin/ompi-server
 
-# MPI_URI_PATH=ompi_uri_path.txt
+appdir=../app
+if [ ! -f "${appdir}/pserver" ]; then
+   appdir="../bin"
+   if [ ! -f "${appdir}/pserver" ]; then
+       echo "Could not find application directory"
+       exit
+   fi
+fi
 
-# # ./testAll
-
-# #echo "run testMpiAll"
-# ${MPIRUN} -n 1 --ompi-server file:${MPI_URI_PATH} mainMpinet -n 1 &
-
-# #echo "run mpiClient"
-# sleep 1
-# ${MPIRUN} -n 1 --ompi-server file:${MPI_URI_PATH} mpiClient 
-
-# #echo "run mpiClient"
-# sleep 1
-# ${MPIRUN} -n 10 --ompi-server file:${MPI_URI_PATH} mpiClient 
-
-# sleep 1
-# ${MPIRUN} -n 10 --ompi-server file:${MPI_URI_PATH} mpiClient 
-
+srcdir=@srcdir@
+if [ ! -d "data" ]; then
+  ln -s $srcdir/data data
+fi
 
 echo "run test ZMQNet"
 echo "First run web-server for NetStatSenderTest"
-python3 ../bin/ws_flask_stat.py &
+python3 ${appdir}/ws_flask_stat.py &
 sleep 1
 
 mpirun --allow-run-as-root -n 1 mainNet -n 1 &
 test_pid=$!
 
 sleep 1
-mpirun --allow-run-as-root -n 1 ../bin/app/pclient "tcp://localhost:5559"
+mpirun --allow-run-as-root -n 1 ${appdir}/pclient "tcp://localhost:5559"
 
 sleep 1
-mpirun --allow-run-as-root -n 10 ../bin/app/pclient "tcp://localhost:5559"
+mpirun --allow-run-as-root -n 10 ${appdir}/pclient "tcp://localhost:5559"
 
 sleep 1
-mpirun --allow-run-as-root -n 10 ../bin/app/pclient "tcp://localhost:5559"
+mpirun --allow-run-as-root -n 10 ${appdir}/pclient "tcp://localhost:5559"
 
 sleep 1
-mpirun --allow-run-as-root -n 10 ../bin/app/pclient_stats "tcp://localhost:5559"
+mpirun --allow-run-as-root -n 10 ${appdir}/pclient_stats "tcp://localhost:5559"
 
 sleep 1
-mpirun --allow-run-as-root -n 10 ../bin/app/pclient_stats "tcp://localhost:5559"
+mpirun --allow-run-as-root -n 10 ${appdir}/pclient_stats "tcp://localhost:5559"
 
 wait $test_pid
 curl -X POST "http://0.0.0.0:5000/shutdown"
