@@ -1,20 +1,22 @@
 FROM chimbuko/adios2:latest AS ad-build
 
-RUN mkdir -p Downloads && cd Downloads && \
-    git clone -b develop https://github.com/bsmind/PerformanceAnalysis.git && \
-    cd PerformanceAnalysis && make && ./run_test.sh && \
-    mkdir -p /opt/chimbuko/ad && \
-    cp -r bin /opt/chimbuko/ad && \
-    cp -r include /opt/chimbuko/ad && \
-    cp -r lib /opt/chimbuko/ad && \
-    cp -r scripts /opt/chimbuko/ad && \
-    cp -r test /opt/chimbuko/ad && \
-    cp run_test.sh /opt/chimbuko/ad
+WORKDIR /Downloads
+
+RUN git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN cd PerformanceAnalysis/ && ./autogen.sh
+
+WORKDIR /build
+
+RUN CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad
+
+RUN make -j 4 install && cd /opt/chimbuko/ad/test && ./run_all.sh
+
+
 
 FROM chimbuko/adios2:latest
 
 RUN mkdir -p /opt/chimbuko/ad
 COPY --from=ad-build /opt/chimbuko/ad /opt/chimbuko/ad
 
-WORKDIR /opt/chimbuko/ad
-ENTRYPOINT [ "./run_test.sh" ]
+WORKDIR /opt/chimbuko/ad/test
+ENTRYPOINT [ "./run_all.sh" ]

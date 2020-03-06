@@ -1,7 +1,8 @@
 FROM chimbuko/base:latest AS adios2-build
 
 RUN mkdir -p /Downloads/adiosvm && \
-    git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm
+    git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm && \
+    cd /Downloads/adiosvm && git checkout -b dev-brussel-fft3d remotes/origin/dev-brussel-fft3d
 
 
 RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.7.0/libfabric-1.7.0.tar.gz && \
@@ -17,7 +18,6 @@ RUN cd /Downloads/adiosvm/adiospackages && \
     cd /Downloads/adiosvm/adiospackages/sz-1.4.13.0 && \
     ./configure --prefix=/opt/SZ --with-pic --disable-shared --disable-fortran --disable-maintainer-mode && \
     make && make install
-
 
 RUN cd /Downloads && git clone https://github.com/Blosc/c-blosc.git && \
     mkdir -p /Downloads/c-blosc/build && cd /Downloads/c-blosc/build && \
@@ -56,7 +56,7 @@ RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
           -DCMAKE_BUILD_TYPE=Release \
           -DMPIEXEC_MAX_NUMPROCS:STRING=16 \
           .. && \
-    make -j 16 && make install
+    make -j 4 && make install
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV PATH=${PATH}:/opt/adios2/bin

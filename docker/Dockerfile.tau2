@@ -30,14 +30,22 @@ RUN ./configure --prefix=/opt/papi \
 # TAU 
 
 WORKDIR /Downloads
-RUN git clone https://github.com/UO-OACISS/tau2.git
-WORKDIR /Downloads/tau2
-RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi \
-    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
-    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
-    -papi=/opt/papi \
- && make -j$JOBS install
 
+# Git version mpi linking it not currently working
+# RUN git clone https://github.com/UO-OACISS/tau2.git
+# WORKDIR /Downloads/tau2
+# RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+#     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+#     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+#     -papi=/opt/papi \
+#  && make -j$JOBS install
+
+
+RUN	wget http://tau.uoregon.edu/tau.tgz && \
+	tar -xvzf tau.tgz && \
+ 	cd tau-2.29 && \
+	./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi -pthread -bfd=download -unwind=download -pdt=/opt/pdt -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 -papi=/opt/papi && \
+ 	make -j$JOBS install
 
 FROM chimbuko/adios2:latest 
 
