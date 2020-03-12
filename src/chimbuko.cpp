@@ -118,6 +118,8 @@ void Chimbuko::run(int rank,
         funcData = nullptr;
         commData = nullptr;
 
+	//Add events to the ADEvent instance
+	
 	//During the timestep a number of function and perhaps also comm events occurred
 	//The parser stores these events separately in order of their timestamp
 	//We want to generate a combined list of both function and comm events ordered by their timestamp	
@@ -190,6 +192,7 @@ void Chimbuko::run(int rank,
         n_outliers += m_outlier->run(step);
         frames++;
 
+	//Pull out all complete events and write to output
         m_io->write(m_event->trimCallList(), step);
 
 #ifdef _PERF_METRIC

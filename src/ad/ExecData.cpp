@@ -228,3 +228,15 @@ nlohmann::json CommData_t::get_json() const
         {"execdata_key", m_execkey}
     };
 }
+
+MetaData_t::MetaData_t(unsigned long rank, unsigned long tid, const std::string &descr, const std::string &value):
+  m_rank(rank), m_tid(tid), m_descr(descr), m_value(value){}
+
+nlohmann::json MetaData_t::get_json() const{
+  return {
+	  {"rid",m_rank},
+	  {"tid",m_tid},
+	  {"descr",m_descr},
+	  {"value",m_value}
+  };
+}

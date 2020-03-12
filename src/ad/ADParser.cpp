@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <regex>
 
 using namespace chimbuko;
 
@@ -81,7 +82,8 @@ void ADParser::update_attributes() {
   if (m_engineType == "BPFile" && m_attr_once) return;
 
   const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes(); //adios2::Params is an alias to std::map<std::string,std::string>
-
+  m_new_metadata.clear(); //clear all previously seen metadata
+  
   for (const auto attributePair: attributes)
     {
       std::string name = attributePair.first;
@@ -89,6 +91,24 @@ void ADParser::update_attributes() {
       bool is_event = name.find("event_type") != std::string::npos;
 
       if (!is_func && !is_event) {
+
+	//Parse new MetaData attributes
+	if(name.find("MetaData") != std::string::npos && !m_metadata_seen.count(name) ){
+	  std::regex r(R"(MetaData:(\d+):(\d+):(.*))");
+	  std::smatch m;
+	  if(std::regex_match(name, m, r)){
+	    unsigned long rank = std::stoul(m[1]);
+	    unsigned long tid = std::stoul(m[2]);
+	    std::string descr = m[3];
+	    const std::string &value = attributePair.second.find("Value")->second;
+	    m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
+
+	    std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
+	    
+	    m_metadata_seen.insert(name);
+	  }
+	}
+	
 	//std::cout << name << ": " << attributePair.second.find("Value")->second << " is not function or event" << std::endl;
 	continue;
       }

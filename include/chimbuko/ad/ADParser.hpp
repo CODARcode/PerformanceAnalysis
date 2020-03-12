@@ -2,7 +2,9 @@
 #include <mpi.h>
 #include <adios2.h>
 #include <unordered_map>
+#include <unordered_set>
 #include "chimbuko/ad/ADDefine.hpp"
+#include "chimbuko/ad/ExecData.hpp"
 #include "ADDefine.hpp"
 
 namespace chimbuko {
@@ -125,6 +127,11 @@ namespace chimbuko {
      */
     size_t getNumCommData() const { return m_comm_count; }
 
+    /**
+     * @brief Get metadata parsed for the first time during the current step
+     */
+    const std::vector<MetaData_t> & getNewMetaData() const{ return m_new_metadata; }
+    
   private:
     adios2::ADIOS   m_ad;                               /**< adios2 handler */
     adios2::IO      m_io;                               /**< adios2 I/O handler */
@@ -137,7 +144,10 @@ namespace chimbuko {
     bool m_opened;                                      /**< true if connected to a writer or a BP file */
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
-  
+
+    std::unordered_set<std::string> m_metadata_seen;    /**< Metadata descriptions that have been seen */
+    std::vector<MetaData_t> m_new_metadata;             /**< New metadata that appeared on this step */
+    
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
 

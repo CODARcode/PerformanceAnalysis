@@ -375,4 +375,52 @@ private:
     std::vector<CommData_t> m_messages;  /**< a vector of all messages */
 };
 
+
+
+/**
+ * @brief wrapper for metadata entries
+ * 
+ */
+class MetaData_t {
+public:
+  /**
+   * @brief Construct an instance will full set of parameters
+   */
+  MetaData_t(unsigned long rank, unsigned long tid,
+	     const std::string &descr, const std::string &value);
+  
+  /**
+   * @brief Get the origin global comm rank
+   */
+  unsigned long get_comm_rank() const{ return m_rank; }
+  /**
+   * @brief Get the origin thread index
+   */  
+  unsigned long get_tid() const{ return m_tid; }
+  
+  /**
+   * @brief Get the metadata description
+   */  
+  const std::string & get_descr() const{ return m_descr; }
+
+  /**
+   * @brief Get the metadata value
+   */  
+  const std::string & get_value() const{ return m_value; }
+  
+  /**
+   * @brief Get the json object of this metadata
+   * 
+   * @return nlohmann::json json object
+   */
+  nlohmann::json get_json() const;
+private:
+  unsigned long m_rank; /**< Global comm rank */
+  unsigned long m_tid; /**< Thread idx */
+  std::string m_descr; /**< Metadata description */
+  std::string m_value; /**< Metadata value */
+};
+
+
+  
 } // end of AD namespace
