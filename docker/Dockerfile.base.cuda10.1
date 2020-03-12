@@ -1,0 +1,60 @@
+FROM nvcr.io/nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+
+RUN mkdir -p /Downloads
+
+RUN apt-get update
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+RUN  apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+                        autoconf gfortran pkg-config \
+                        python-cheetah python-yaml \
+                        python3 python3-dev python3-pip python3-tk \
+                        libzmq5 libzmq3-dev \
+                        bzip2 libbz2-dev zlib1g zlib1g-dev \ 
+                        curl libcurl4-openssl-dev libgtest-dev zip unzip \
+                        libopenblas-base libopenblas-dev
+RUN apt-get install -y libnuma-dev
+    
+
+RUN git clone https://github.com/openucx/ucx.git ucx && \
+    cd ucx && \
+    git checkout v1.6.0 && \
+    ./autogen.sh && \
+    ./configure --with-mlx5-dv --with-cuda=/usr/local/cuda --enable-mt \
+        --disable-cma --with-ugni=no --with-xpmem=no && \
+    make -j$(nproc) && \
+    make install -j$(nproc)
+
+RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz  && \
+    tar -xzf openmpi-4.0.1.tar.gz && \
+    rm openmpi-4.0.1.tar.gz
+
+RUN apt-get install -y emacs vim
+
+WORKDIR /openmpi-4.0.1
+
+
+RUN ./configure --prefix=/usr/local --with-pmi-libdir=/usr/lib/x86_64-linux-gnu --with-cuda=/usr/local/cuda --with-ucx \
+    --with-memkind=no --with-cray-pmi=no --with-alps=no --with-ugni=no --with-xpmem=no --with-cray-xpmem=no && \
+    make -j$(nproc) && \
+    make install -j$(nproc)
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+
+RUN pip3 install numpy mpi4py flask
+
+
+COPY requirements.txt /
+RUN cd / && pip3 install -r requirements.txt 
+
+WORKDIR /Downloads
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.13.4/cmake-3.13.4-Linux-x86_64.tar.gz && \
+    tar xvfz cmake-3.13.4-Linux-x86_64.tar.gz -C /opt
+ENV PATH=${PATH}:/opt/cmake-3.13.4-Linux-x86_64/bin
+
+RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp *.a /usr/lib
+
