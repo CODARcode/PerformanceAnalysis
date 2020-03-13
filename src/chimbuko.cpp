@@ -59,6 +59,13 @@ void Chimbuko::init_outlier(int rank, double sigma, std::string addr)
     }
 }
 
+void Chimbuko::init_counter()
+{
+    m_counter = new ADCounter();
+    m_counter->linkCounterMap(m_parser->getCounterMap());
+}
+
+
 void Chimbuko::finalize()
 {
     m_outlier->disconnect_ps();
@@ -76,7 +83,9 @@ void Chimbuko::finalize()
 //Returns false if beginStep was not successful
 bool Chimbuko::parseInputStep(int &step, 
 			      unsigned long long& n_func_events, 
-			      unsigned long long& n_comm_events){
+			      unsigned long long& n_comm_events,
+			      unsigned long long& n_counter_events
+			      ){
   if (!m_parser->getStatus()) return false;
   m_parser->beginStep();
   if (!m_parser->getStatus()) return false;
@@ -94,6 +103,7 @@ bool Chimbuko::parseInputStep(int &step,
   // count total number of events
   n_func_events += (unsigned long long)m_parser->getNumFuncData();
   n_comm_events += (unsigned long long)m_parser->getNumCommData();
+  n_counter_events += (unsigned long long)m_parser->getNumCounterData();
   return true;
 }
 
@@ -170,12 +180,22 @@ void Chimbuko::extractEvents(int rank, int step){
   }//while loop over func and comm data
 }
   
-
+void Chimbuko::extractCounters(int rank, int step){
+  if(!m_counter) throw "Counter is not initialized";
+  for(size_t c=0;c<m_parser->getNumCounterData();c++){
+    Event_t ev(m_parser->getCounterData(c),
+	       EventDataType::COUNT,
+	       c,
+	       generate_event_id(rank, step, c));    
+    m_counter->addCounter(ev);
+  }
+} 
 
 
 void Chimbuko::run(int rank, 
 		   unsigned long long& n_func_events, 
 		   unsigned long long& n_comm_events,
+		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,
 		   unsigned long& frames,
 #ifdef _PERF_METRIC
@@ -191,7 +211,10 @@ void Chimbuko::run(int rank,
 #endif
 
   //Loop until we lose connection with the application
-  while ( parseInputStep(step, n_func_events, n_comm_events) ) {
+  while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
+    //Extract counters and put into counter manager
+    extractCounters(rank, step);
+
     //Extract parsed events into event manager
     extractEvents(rank, step);
 

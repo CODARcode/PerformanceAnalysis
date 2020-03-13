@@ -14,7 +14,8 @@ namespace chimbuko {
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
     void init_event(bool verbose=false);
     void init_outlier(int rank, double sigma, std::string addr="");
-
+    void init_counter();
+    
     void finalize();
 
     bool use_ps() const { return m_outlier->use_ps(); }
@@ -22,9 +23,23 @@ namespace chimbuko {
     bool get_status() const { return m_parser->getStatus(); }
     int get_step() const { return m_parser->getCurrentStep(); }
 
+    /**
+     * @brief Run the main Chimbuko analysis loop
+     * @param rank MPI rank of main Chimbuko process
+     * @param[out] n_func_events number of function events recorded
+     * @param[out] n_comm_events number of comm events recorded
+     * @param[out] n_counter_events number of counter events recorded
+     * @param[out] n_outlier number of anomalous events recorded
+     * @param[out] frames number of adios2 input steps
+     * @param perf_outputpath Output path for performance data
+     * @param perf_step How frequently the performance data is dumped (in steps) 
+     * @param only_one_frame Force the analysis to occur only for the first input step
+     * @param interval_msec Optionally add a wait between steps
+     */
     void run(int rank, 
 	     unsigned long long& n_func_events, 
 	     unsigned long long& n_comm_events,
+	     unsigned long long& n_counter_events,
 	     unsigned long& n_outliers,
 	     unsigned long& frames,
 #ifdef _PERF_METRIC
@@ -40,11 +55,13 @@ namespace chimbuko {
      * @param[out] step index
      * @param[out] number of func events parsed
      * @param[out] number of comm events parsed
+     * @param[out] number of counter events parsed
      * @return false if unsuccessful, true otherwise
      */
     bool parseInputStep(int &step, 
 			unsigned long long& n_func_events, 
-			unsigned long long& n_comm_events);
+			unsigned long long& n_comm_events,
+			unsigned long long& n_counter_event);
 
 
     /*
@@ -53,17 +70,25 @@ namespace chimbuko {
      * @param step The adios2 stream step index
      */
     void extractEvents(int rank, int step);
-  
+
+    /*
+     * @brief Extract parsed counters and insert into counter manager
+     * @param rank The MPI rank of the process
+     * @param step The adios2 stream step index
+     */
+    void extractCounters(int rank, int step);
+    
     // int m_rank;
     // std::string m_engineType;  // BPFile or SST
     // std::string m_data_dir;    // *.bp location
     // std::string m_inputFile;   
     // std::string m_output_dir;
 
-    ADParser * m_parser;
-    ADEvent * m_event;
-    ADOutlierSSTD * m_outlier;
-    ADio * m_io;
+    ADParser * m_parser;       /**< adios2 input data stream parser */
+    ADEvent * m_event;         /**< func/comm event manager */
+    ADCounter * m_counter;     /**< counter event manager */
+    ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
+    ADio * m_io;               /**< output writer */
 
     // priority queue was used to mitigate a minor problem from TAU plug-in code
     // (e.g. pthread_create in wrong position). Actually, it doesn't casue 

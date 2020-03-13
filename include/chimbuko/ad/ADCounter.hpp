@@ -13,10 +13,10 @@ namespace chimbuko {
   /**
    * @brief A class that stores counter events
    */
-  class ADCounters{
+  class ADCounter{
   public:
-    ADCounters(): m_counterMap(nullptr), m_counters(nullptr){}
-    ~ADCounters(){ if(m_counters) delete m_counters; }
+    ADCounter(): m_counterMap(nullptr), m_counters(nullptr){}
+    ~ADCounter(){ if(m_counters) delete m_counters; }
     
     /**
      * @brief pass in the pointer to the mapping of counter index to counter description

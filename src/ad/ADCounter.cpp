@@ -3,7 +3,7 @@
 
 using namespace chimbuko;
 
-void ADCounters::addCounter(const Event_t& event){
+void ADCounter::addCounter(const Event_t& event){
   if(!m_counterMap) throw "Counter mapping not linked";
 
   //If this is the first counter after a flush, we recreate the list
@@ -15,7 +15,7 @@ void ADCounters::addCounter(const Event_t& event){
   m_counters->push_back( CounterData_t(event, it->second ) );
 }
 
-CounterDataList* ADCounters::flushCounters(){
+CounterDataList* ADCounter::flushCounters(){
   CounterDataList* ret = m_counters;
   m_counters = nullptr;
   return ret;

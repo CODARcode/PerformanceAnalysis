@@ -70,7 +70,7 @@ TEST_F(ADTest, BpfileTest)
     Chimbuko driver;
     int step;
     unsigned long n_outliers = 0, frames = 0;
-    unsigned long long n_func_events = 0, n_comm_events = 0;
+    unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
     driver.init_io(world_rank, IOMode::Both, "", "", 0);
     driver.init_parser(data_dir, inputFile, engineType);
@@ -81,12 +81,14 @@ TEST_F(ADTest, BpfileTest)
     {
         n_func_events = 0;
         n_comm_events = 0;
+	n_counter_events = 0;
         n_outliers = 0;
 
         driver.run(
             world_rank, 
             n_func_events, 
-            n_comm_events, 
+            n_comm_events,
+	    n_counter_events,
             n_outliers, 
             frames,
 #ifdef _PERF_METRIC
@@ -102,6 +104,7 @@ TEST_F(ADTest, BpfileTest)
 
         step = driver.get_step();
 
+	//FIXME: Add an expect for the counter events
         EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
         EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
         EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
@@ -152,7 +155,7 @@ TEST_F(ADTest, BpfileWithNetTest)
 
     int step;
     unsigned long n_outliers = 0, frames = 0;
-    unsigned long long n_func_events = 0, n_comm_events = 0;
+    unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
     driver.init_io(world_rank, IOMode::Both, execOutput, "", 0);
     driver.init_parser(data_dir, inputFile, engineType);
@@ -175,7 +178,8 @@ TEST_F(ADTest, BpfileWithNetTest)
         driver.run(
             world_rank, 
             n_func_events, 
-            n_comm_events, 
+            n_comm_events,
+	    n_counter_events,
             n_outliers, 
             frames,
 #ifdef _PERF_METRIC
@@ -202,6 +206,7 @@ TEST_F(ADTest, BpfileWithNetTest)
             //     << ", # outliers: " <<  n_outliers
             //     << std::endl;
 
+	    //FIXME: Add expect for counter events
             EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
             EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
             EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);

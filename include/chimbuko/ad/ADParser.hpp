@@ -46,6 +46,15 @@ namespace chimbuko {
     const std::unordered_map<int, std::string>* getEventType() const {
       return &m_eventType;
     }
+    /**
+     * @brief Get the counter hash map (counter id --> counter description)
+     * 
+     * @return const std::unordered_map<int, std::string>* event type hash map
+     */
+    const std::unordered_map<int, std::string>* getCounterMap() const {
+      return &m_counterMap;
+    }
+    
 
     /**
      * @brief Get the status of this parser

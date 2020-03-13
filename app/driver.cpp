@@ -99,8 +99,8 @@ int main(int argc, char ** argv)
         unsigned long total_frames = 0, frames = 0;
         unsigned long total_n_outliers = 0, n_outliers = 0;
         unsigned long total_processing_time = 0, processing_time = 0;
-        unsigned long long n_func_events = 0, n_comm_events = 0;
-        unsigned long long total_n_func_events = 0, total_n_comm_events = 0; 
+        unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
+        unsigned long long total_n_func_events = 0, total_n_comm_events = 0, total_n_counter_events = 0; 
         high_resolution_clock::time_point t1, t2;
 
         // -----------------------------------------------------------------------
@@ -113,10 +113,11 @@ int main(int argc, char ** argv)
         // also, process will be blocked at this line until it finds writer (in SST mode)
         driver.init_parser(data_dir, inputFile, engineType);
 
-        // Thrid, init event and outlier objects
+        // Thrid, init event and outlier objects	
         driver.init_event(world_rank == 0);
         driver.init_outlier(world_rank, sigma, ps_addr);
-
+	driver.init_counter();
+	
         // -----------------------------------------------------------------------
         // Start analysis
         // -----------------------------------------------------------------------
@@ -130,7 +131,8 @@ int main(int argc, char ** argv)
         driver.run(
             world_rank, 
             n_func_events, 
-            n_comm_events, 
+            n_comm_events,
+	    n_counter_events,
             n_outliers,
             frames,
 #ifdef _PERF_METRIC
@@ -165,14 +167,15 @@ int main(int argc, char ** argv)
             total_frames = global_measures[2];
         }
         {
-            const unsigned long long local_measures[] = {n_func_events, n_comm_events};
-            unsigned long long global_measures[] = {0, 0};
-            MPI_Reduce(
-                local_measures, global_measures, 2, MPI_UNSIGNED_LONG_LONG,
-                MPI_SUM, 0, MPI_COMM_WORLD
-            );
+	  const unsigned long long local_measures[] = {n_func_events, n_comm_events, n_counter_events};
+	  unsigned long long global_measures[] = {0, 0, 0};
+	  MPI_Reduce(
+		     local_measures, global_measures, 3, MPI_UNSIGNED_LONG_LONG,
+		     MPI_SUM, 0, MPI_COMM_WORLD
+		     );
             total_n_func_events = global_measures[0];
             total_n_comm_events = global_measures[1];
+	    total_n_counter_events = global_measures[2];
         }
 
         
@@ -183,7 +186,8 @@ int main(int argc, char ** argv)
                 << "Total num. outliers  : " << total_n_outliers << "\n"
                 << "Total func events    : " << total_n_func_events << "\n"
                 << "Total comm events    : " << total_n_comm_events << "\n"
-                << "Total events         : " << total_n_func_events + total_n_comm_events
+	        << "Total counter events    : " << total_n_counter_events << "\n"
+                << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
                 << std::endl;
         }
 
