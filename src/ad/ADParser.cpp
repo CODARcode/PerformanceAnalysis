@@ -84,46 +84,69 @@ void ADParser::update_attributes() {
   const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes(); //adios2::Params is an alias to std::map<std::string,std::string>
   m_new_metadata.clear(); //clear all previously seen metadata
   
-  for (const auto attributePair: attributes)
-    {
-      std::string name = attributePair.first;
-      bool is_func = name.find("timer") != std::string::npos;
-      bool is_event = name.find("event_type") != std::string::npos;
+  for (const auto attributePair: attributes){
+    std::string name = attributePair.first;
+    enum AttributeType { Func, Event, Counter, Metadata, Unknown };
 
-      if (!is_func && !is_event) {
+    AttributeType attrib_type = Unknown;
+    if(name.find("timer") != std::string::npos) attrib_type = Func;
+    else if(name.find("event_type") != std::string::npos) attrib_type = Event;
+    else if(name.find("counter") != std::string::npos) attrib_type = Counter;
+    else if(name.find("MetaData") != std::string::npos) attrib_type = Metadata;
 
-	//Parse new MetaData attributes
-	if(name.find("MetaData") != std::string::npos && !m_metadata_seen.count(name) ){
-	  std::regex r(R"(MetaData:(\d+):(\d+):(.*))");
-	  std::smatch m;
-	  if(std::regex_match(name, m, r)){
-	    unsigned long rank = std::stoul(m[1]);
-	    unsigned long tid = std::stoul(m[2]);
-	    std::string descr = m[3];
-	    const std::string &value = attributePair.second.find("Value")->second;
-	    m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
-
-	    std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
+    //Skip attribute if not of known type
+    if(attrib_type == Unknown)
+      continue;
+      
+    //Parse metadata attributes
+    if(attrib_type == Metadata){
+      if(!m_metadata_seen.count(name) ){
+	std::regex r(R"(MetaData:(\d+):(\d+):(.*))");
+	std::smatch m;
+	if(std::regex_match(name, m, r)){
+	  unsigned long rank = std::stoul(m[1]);
+	  unsigned long tid = std::stoul(m[2]);
+	  std::string descr = m[3];
+	  const std::string &value = attributePair.second.find("Value")->second;
+	  m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
 	    
-	    m_metadata_seen.insert(name);
-	  }
+	  std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
+	    
+	  m_metadata_seen.insert(name);
 	}
-	
-	//std::cout << name << ": " << attributePair.second.find("Value")->second << " is not function or event" << std::endl;
-	continue;
       }
-
-      int key = std::stoi(name.substr(name.find(" ")));
-      std::unordered_map<int, std::string>& m = (is_func) ? m_funcMap: m_eventType;
-      if (m.count(key) == 0 && attributePair.second.count("Value"))
-        {
-	  std::string value = attributePair.second.find("Value")->second;
-	  size_t idx = 0;
-	  while ( (idx = value.find("\"")) != std::string::npos )
-	    value.replace(idx, 1, "");
-	  m[key] = value;
-        }
+      continue;
     }
+
+    //Get the key
+    int key = std::stoi(name.substr(name.find(" ")));
+
+    //Get the map
+    std::unordered_map<int, std::string>* m;
+    switch(attrib_type){
+    case Func:
+      m = &m_funcMap; break;
+    case Event:
+      m = &m_eventType; break;
+    case Counter:
+      m = &m_counterMap; break;
+    default:
+      throw "Invalid attribute type";
+    }
+
+    //Append to map
+    if(m->count(key) == 0 && attributePair.second.count("Value")){
+      std::string value = attributePair.second.find("Value")->second;
+
+      //Remove quotation marks
+      size_t idx = 0;
+      while ( (idx = value.find("\"")) != std::string::npos )
+	value.replace(idx, 1, "");
+
+      //Insert into map
+      (*m)[key] = value;
+    }
+  }
   m_attr_once = true;
 }
 

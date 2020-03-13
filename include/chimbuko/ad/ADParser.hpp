@@ -177,7 +177,8 @@ namespace chimbuko {
     
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
-
+    std::unordered_map<int, std::string> m_counterMap;  /**< counter hash map (counter id --> counter name) */
+    
     size_t m_timer_event_count;                         /**< the number of function events in current step */
     std::vector<unsigned long> m_event_timestamps;      /**< array of all function events in the current step */
 
