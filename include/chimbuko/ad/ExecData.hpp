@@ -62,7 +62,7 @@ public:
      */
     unsigned long tid() const { return m_data[IDX_T]; }
     /**
-     * @brief return event id. For COUNT events this refers to the counter index
+     * @brief return event id (FUNC/COMM only)
      */
     unsigned long eid() const;   
     /**

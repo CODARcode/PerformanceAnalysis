@@ -181,22 +181,29 @@ bool chimbuko::operator>(const Event_t& lhs, const Event_t& rhs) {
 
 nlohmann::json Event_t::get_json() const
 {
-    if (!valid())
-        return {};
+  if (!valid())
+    return {};
 
-    nlohmann::json j{
-        {"id", id()}, {"idx", idx()}, {"type", strtype()},
-        {"pid", pid()}, {"rid", rid()}, {"tid", tid()}, {"eid", eid()}, {"ts", ts()}
-    };
-    if (m_t == EventDataType::FUNC) {
-        j["fid"] = fid();
-    }
-    if (m_t == EventDataType::COMM) {
-        j["tag"] = tag();
-        j["partner"] = partner();
-        j["bytes"] = bytes();
-    }
-    return j;
+  nlohmann::json j{
+		   {"id", id()}, {"idx", idx()}, {"type", strtype()},
+		   {"pid", pid()}, {"rid", rid()}, {"tid", tid()}, {"ts", ts()}
+  };
+  if (m_t == EventDataType::FUNC) {
+    j["eid"] = eid();
+    j["fid"] = fid();
+  }
+  if (m_t == EventDataType::COMM) {
+    j["eid"] = eid();
+    j["tag"] = tag();
+    j["partner"] = partner();
+    j["bytes"] = bytes();
+  }
+  if (m_t == EventDataType::COUNT) {
+    j["counter_id"] = counter_id();
+    j["value"] = counter_value();
+  }
+  
+  return j;
 }
 
 /* ---------------------------------------------------------------------------
