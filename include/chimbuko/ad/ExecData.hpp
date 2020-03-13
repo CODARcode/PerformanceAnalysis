@@ -214,6 +214,45 @@ private:
     std::string m_execkey;              /**< execution key (or id) where this communication event occurs */
 };
 
+
+
+/**
+ * @brief wrapper for communication event
+ * 
+ */
+class CounterData_t {
+public:
+    /**
+     * @brief Construct a new CounterData_t object
+     * 
+     */
+    CounterData_t();
+    /**
+     * @brief Construct a new CounterData_t object
+     * 
+     * @param ev constant reference to a Event_t object
+     * @param commType communication type (e.g. SEND/RECV)
+     */
+    CounterData_t(const Event_t& ev, const std::string &counter_name);
+
+    /**
+     * @brief Get the json object of this communication data
+     */
+    nlohmann::json get_json() const;
+
+private:
+    std::string m_countername;             /**< counter name */
+    unsigned long 
+      m_pid,                          /**< program id */
+      m_rid,                          /**< rank id */
+      m_tid,                          /**< thread id */
+      m_value,                        /**< counter value */
+      m_ts;                           /**< counter timestamp */
+};
+
+
+
+  
 /**
  * @brief A pair of function (timer) events, ENTRY and EXIT.
  * 
@@ -438,4 +477,4 @@ private:
 
 
   
-} // end of AD namespace
+}; // end of AD namespace
