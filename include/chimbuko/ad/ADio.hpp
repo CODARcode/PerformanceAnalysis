@@ -1,6 +1,7 @@
 #pragma once
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
+#include "chimbuko/ad/ADCounter.hpp"
 #include "chimbuko/util/DispatchQueue.hpp"
 #include <fstream>
 #include <curl/curl.h>
@@ -35,6 +36,13 @@ namespace chimbuko {
     }
     
     IOError write(CallListMap_p_t* m, long long step);
+
+    /**
+     * @brief Write counter data
+     * @param counterList List of counter events
+     * @param adios2 io step
+     */
+    IOError writeCounters(CounterDataList* counterList, long long step);
 
     void setDestructorThreadWaitTime(const int secs){ destructor_thread_waittime = secs; }
     

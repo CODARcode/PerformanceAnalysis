@@ -66,7 +66,7 @@ void ADio::setDispatcher(std::string name, size_t thread_cnt) {
         m_dispatcher = new DispatchQueue(name, thread_cnt);
 }
 
-class WriteFunctor
+class CallListWriteFunctor
 {
 private:
     static size_t _curl_writefunc(char *, size_t size, size_t nmemb, void *)
@@ -75,7 +75,7 @@ private:
     }
 
 public:
-    WriteFunctor(ADio& io, CallListMap_p_t* callList, long long step) 
+    CallListWriteFunctor(ADio& io, CallListMap_p_t* callList, long long step) 
     : m_io(io), m_callList(callList), m_step(step)
     {
 
@@ -195,10 +195,72 @@ IOError ADio::write(CallListMap_p_t* callListMap, long long step) {
         return IOError::OK;
     }
 
-    WriteFunctor wFunc(*this, callListMap, step);
+    CallListWriteFunctor wFunc(*this, callListMap, step);
     if (m_dispatcher)
         m_dispatcher->dispatch(wFunc);
     else
         wFunc();
     return IOError::OK;
+}
+
+
+
+
+class CounterEventWriteFunctor{
+public:
+  CounterEventWriteFunctor(ADio& io, CounterDataList* counterList, long long step) 
+    : m_io(io), m_counterList(counterList), m_step(step){
+  }
+
+  void operator()(){
+    if(m_io.getOutputPath().length() == 0) return; //only write to disk currently, not to pserver
+      
+    nlohmann::json jCount = nlohmann::json::array();
+    for(auto it = m_counterList->begin(); it != m_counterList->end(); ++it)
+      jCount.push_back(it->get_json());
+      
+    std::string packet = nlohmann::json::object({
+						 {"app", 0},
+						 {"rank", m_io.getRank()},
+						 {"step", m_step},
+						 {"counter", jCount}
+      }).dump();
+      
+
+    //Create output path and write
+    std::string path = m_io.getOutputPath() + "/" + std::to_string(0);
+    makedir(path);
+    path += "/" + std::to_string(m_io.getRank());
+    makedir(path);
+	    
+    path += "/" + std::to_string(m_step) + ".counters.json";
+    std::ofstream f;
+	
+    f.open(path);
+    if (f.is_open())
+      f << packet << std::endl;
+      f.close();
+    
+    delete m_counterList;
+  }
+
+private:
+  ADio& m_io;
+  CounterDataList* m_counterList;
+  long long m_step;
+};
+
+
+IOError ADio::writeCounters(CounterDataList* counterList, long long step) {
+  if (m_outputPath.length() == 0){ //currently write only to disk
+    delete counterList;
+    return IOError::OK;
+  }
+  
+  CounterEventWriteFunctor wFunc(*this, counterList, step);
+  if (m_dispatcher)
+    m_dispatcher->dispatch(wFunc);
+  else
+    wFunc();
+  return IOError::OK;
 }
