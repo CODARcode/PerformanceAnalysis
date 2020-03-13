@@ -180,3 +180,31 @@ ParserError ADParser::fetchCommData() {
     }
   return ParserError::NoCommData;
 }
+
+ParserError ADParser::fetchCounterData() {
+  adios2::Variable<size_t> in_counter_event_count;
+  adios2::Variable<unsigned long> in_counter_values;
+  size_t nelements;
+
+  m_counter_count = 0;
+
+  in_counter_event_count = m_io.InquireVariable<size_t>("counter_event_count");
+  in_counter_values = m_io.InquireVariable<unsigned long>("counter_values");
+
+  if (in_counter_event_count && in_counter_values)
+    {
+      m_reader.Get<size_t>(in_counter_event_count, &m_counter_count, adios2::Mode::Sync);
+
+      nelements = m_counter_count * COUNTER_EVENT_DIM;
+      if (nelements > m_counter_timestamps.size())
+	m_counter_timestamps.resize(nelements);
+
+      in_counter_values.SetSelection({{0, 0}, {m_counter_count, COUNTER_EVENT_DIM}});
+      m_reader.Get<unsigned long>(in_counter_values, m_counter_timestamps.data(), adios2::Mode::Sync);
+
+      std::cout << "Read " << m_counter_count << " counters" << std::endl;
+      
+      return ParserError::OK;
+    }
+  return ParserError::NoCountData;
+}

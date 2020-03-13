@@ -87,7 +87,7 @@ void Chimbuko::run(int rank,
 {
     int step = 0; 
     size_t idx_funcData = 0, idx_commData = 0;
-    const unsigned long *funcData = nullptr, *commData = nullptr;
+    const unsigned long *funcData = nullptr, *commData = nullptr, *counterData = nullptr;
 
 #ifdef _PERF_METRIC
     std::string ad_perf = "ad_perf_" + std::to_string(rank) + ".json";
@@ -104,7 +104,8 @@ void Chimbuko::run(int rank,
         step = m_parser->getCurrentStep();
         m_parser->update_attributes();
         m_parser->fetchFuncData();
-        m_parser->fetchCommData();   
+        m_parser->fetchCommData();
+	m_parser->fetchCounterData();
 
         // early SST buffer release
         m_parser->endStep();
@@ -194,7 +195,7 @@ void Chimbuko::run(int rank,
 
 	//Pull out all complete events and write to output
         m_io->write(m_event->trimCallList(), step);
-
+	
 #ifdef _PERF_METRIC
         // dump performance metric event 10 steps
         if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {

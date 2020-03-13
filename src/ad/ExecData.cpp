@@ -95,11 +95,12 @@ nlohmann::json ExecData_t::get_json(bool with_message) const
  * Implementation of Event_t class
  * --------------------------------------------------------------------------- */
 unsigned long Event_t::ts() const {
-    switch (m_t) {
-        case EventDataType::FUNC: return m_data[FUNC_IDX_TS];
-        case EventDataType::COMM: return m_data[COMM_IDX_TS];
-        default: return UINT64_MAX;
-    }     
+  switch (m_t) {
+  case EventDataType::FUNC: return m_data[FUNC_IDX_TS];
+  case EventDataType::COMM: return m_data[COMM_IDX_TS];
+  case EventDataType::COUNT: return m_data[COUNTER_IDX_TS];
+  default: return UINT64_MAX;
+  }     
 }
 
 std::string Event_t::strtype() const {
@@ -110,6 +111,14 @@ std::string Event_t::strtype() const {
         default: return "Unknown";
     }
 }
+
+unsigned long Event_t::eid() const {
+  if (m_t != EventDataType::FUNC && m_t != EventDataType::COMM) {
+    std::cerr << "\n***** It is NOT func/comm event and tried to get event! *****\n";
+    exit(EXIT_FAILURE);
+  }
+  return m_data[IDX_E];
+}   
 
 // for function event
 unsigned long Event_t::fid() const { 
@@ -142,6 +151,23 @@ unsigned long Event_t::bytes() const {
     } 
     return m_data[COMM_IDX_BYTES]; 
 }
+
+unsigned long Event_t::counter_id() const{
+  if (m_t != EventDataType::COUNT) {
+    std::cerr << "\n***** It is NOT count event and tried to get counter id! *****\n";
+    exit(EXIT_FAILURE);
+  } 
+  return m_data[COUNTER_IDX_ID]; 
+}
+
+unsigned long Event_t::counter_value() const { 
+    if (m_t != EventDataType::COUNT) {
+        std::cerr << "\n***** It is NOT count event and tried to get counter value! *****\n";
+        exit(EXIT_FAILURE);
+    } 
+    return m_data[COUNTER_IDX_VALUE]; 
+}
+
 
 bool chimbuko::operator<(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() < rhs.idx();

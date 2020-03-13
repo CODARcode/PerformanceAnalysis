@@ -1,6 +1,13 @@
 #pragma once
 #include <climits>
 
+/*! \file ADDefine.hpp
+    \brief 
+    
+    Details.
+*/
+
+
 /*!
   \def IDX_P
   index of program id
@@ -76,6 +83,35 @@
 #define COMM_IDX_BYTES   6  // size in bytes
 #define COMM_IDX_TS      7  // timestamp
 
+
+
+/*!
+  \def COUNTER_EVENT_DIM
+  dimension of a counter event vector
+*/
+
+/*!
+  \def COUNTER_IDX_ID
+  index of counter idx
+*/
+
+/*!
+  \def COUNTER_IDX_VALUE
+  index of counter value
+*/
+
+/*!
+  \def COUNTER_IDX_TS
+  index of counter timestamp
+*/
+
+
+#define COUNTER_EVENT_DIM 6 //counter event vector dimension
+#define COUNTER_IDX_ID 3   //counter index (maps to a counter name using metadata collected by parser)
+#define COUNTER_IDX_VALUE 4 //value (integer)
+#define COUNTER_IDX_TS 5    //timestamp
+
+
 /*!
   \def MAX_RUNTIME
   maximum execution time of a function (or a timer)
@@ -97,7 +133,8 @@ enum class ParserError
 {
     OK = 0,          /**< OK (no error) */
     NoFuncData = 1,  /**< Failed to fetch function data */
-    NoCommData = 2   /**< Failed to fetch communication data */
+    NoCommData = 2,  /**< Failed to fetch communication data */
+    NoCountData = 3  /**< Failed to fetch counter data */
 };
 
 /**

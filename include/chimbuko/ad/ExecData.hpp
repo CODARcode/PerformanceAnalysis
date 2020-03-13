@@ -9,7 +9,13 @@ namespace chimbuko {
 
 /**
  * @brief class to provide easy access to raw performance event vector
- * 
+ *
+ * The data are passed in via ADIOS2 and stored internally in a compressed format in the form of an integer array, blocks of which are associated with
+ * particular events. Each block has a certain number of entries associated with it that relate to information such as program, comm and thread index, 
+ * timestamp as well as detailed event information. The mappings are set out in ADDefine.hpp.
+ *
+ * This class wraps the event data blocks allowing for retrieval of event information through explicit function calls.
+ * It works for all event types: function, comm and counter
  */
 class Event_t {
 public:
@@ -56,9 +62,9 @@ public:
      */
     unsigned long tid() const { return m_data[IDX_T]; }
     /**
-     * @brief return event id
+     * @brief return event id. For COUNT events this refers to the counter index
      */
-    unsigned long eid() const { return m_data[IDX_E]; }   
+    unsigned long eid() const;   
     /**
      * @brief return timestamp of this event
      */
@@ -74,23 +80,32 @@ public:
     std::string strtype() const;
 
     /**
-     * @brief return function (timer) id
+     * @brief return function (timer) id   (FUNC event only)
      */
     unsigned long fid() const;
 
     /**
-     * @brief return communication tag id
+     * @brief return communication tag id  (COMM event only)
      */
     unsigned long tag() const;
     /**
-     * @brief return communication partner id
+     * @brief return communication partner id (COMM event only)
      */
     unsigned long partner() const;
     /**
-     * @brief return communication data size (in bytes)
+     * @brief return communication data size (in bytes)  (COMM event only)
      */
     unsigned long bytes() const;
 
+    /**
+     * @brief return counter id   (COUNT event only)
+     */
+    unsigned long counter_id() const;
+    /**
+     * @brief return the value of the counter  (COUNT event only)
+     */
+    unsigned long counter_value() const;
+  
     /**
      * @brief compare two events
      */

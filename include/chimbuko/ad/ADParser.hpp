@@ -94,10 +94,17 @@ namespace chimbuko {
     ParserError fetchCommData();
 
     /**
+     * @brief fetching counter data. Results stored internally and extracted using ADParser::getCounterData
+     * 
+     * @return ParserError error code
+     */
+    ParserError fetchCounterData();
+    
+    /**
      * @brief get pointer to an array of a function event specified by `idx`
      * 
      * @param idx index of a function event
-     * @return const unsigned* getFuncData pointer to a function event array
+     * @return pointer to a function event array
      */
     const unsigned long* getFuncData(size_t idx) const {
       if (idx >= m_timer_event_count) return nullptr;
@@ -114,7 +121,7 @@ namespace chimbuko {
      * @brief get pointer to a communication event array specified by `idx`
      * 
      * @param idx index of a communication event
-     * @return const unsigned* getCommData pointer to a communication event array
+     * @return pointer to a communication event array
      */
     const unsigned long* getCommData(size_t idx) const {
       if (idx >= m_comm_count) return nullptr;
@@ -127,6 +134,26 @@ namespace chimbuko {
      */
     size_t getNumCommData() const { return m_comm_count; }
 
+
+    /**
+     * @brief get pointer to a counter event array specified by `idx`
+     * 
+     * @param idx index of a counter event
+     * @return pointer to a counter event array
+     */
+    const unsigned long* getCounterData(size_t idx) const {
+      if (idx >= m_counter_count) return nullptr;
+      return &m_counter_timestamps[idx * COUNTER_EVENT_DIM];
+    }
+    
+    /**
+     * @brief Get the number of counter events in the current step
+     * 
+     * @return size_t the number of counter events
+     */
+    size_t getNumCounterData() const { return m_counter_count; }
+
+    
     /**
      * @brief Get metadata parsed for the first time during the current step
      */
@@ -156,6 +183,9 @@ namespace chimbuko {
 
     size_t m_comm_count;                                /**< the number of communication events in current step */
     std::vector<unsigned long> m_comm_timestamps;       /**< array of all communication events in the current step */
+
+    size_t m_counter_count;                             /**< the number of counter events in the current step */
+    std::vector<unsigned long> m_counter_timestamps;    /**< array of all counter events in the current step */
   };
 
 } // end of AD namespace
