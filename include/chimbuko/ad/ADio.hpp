@@ -34,7 +34,12 @@ namespace chimbuko {
       if (m_dispatcher == nullptr) return 0;
       return m_dispatcher->size();
     }
-    
+
+    /**
+     * @brief Write anomalous events discovered during timestep
+     * @param m Organized list of anomalous events
+     * @param step adios2 io step
+     */
     IOError write(CallListMap_p_t* m, long long step);
 
     /**
@@ -44,6 +49,17 @@ namespace chimbuko {
      */
     IOError writeCounters(CounterDataList* counterList, long long step);
 
+    /**
+     * @brief Write metadata accumulated during this IO step
+     * @param newMetadata  Vector of MetaData_t instances containing metadata accumulated during this IO step
+     * @param adios2 io step
+     */    
+    IOError writeMetaData(const std::vector<MetaData_t> &newMetadata, long long step);
+    
+    /**
+     * @brief Set the amount of time between completion of thread dispatcher tasks and destruction of the dispatcher in the class destructor
+     * @param secs The time in seconds
+     */
     void setDestructorThreadWaitTime(const int secs){ destructor_thread_waittime = secs; }
     
   private:

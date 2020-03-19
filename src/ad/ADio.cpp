@@ -264,3 +264,68 @@ IOError ADio::writeCounters(CounterDataList* counterList, long long step) {
     wFunc();
   return IOError::OK;
 }
+
+
+
+
+
+
+
+class MetaDataWriteFunctor{
+public:
+  MetaDataWriteFunctor(ADio& io, const std::vector<MetaData_t> &metadata, long long step) 
+    : m_io(io), m_metadata(metadata), m_step(step){
+  }
+
+  void operator()(){
+    if(m_io.getOutputPath().length() == 0) return; //only write to disk currently, not to pserver
+      
+    nlohmann::json jMD = nlohmann::json::array();
+    for(auto it = m_metadata.begin(); it != m_metadata.end(); ++it)
+      jMD.push_back(it->get_json());
+          
+    std::string packet = nlohmann::json::object({
+						 {"app", 0},
+						 {"rank", m_io.getRank()},
+						 {"step", m_step},
+						 {"metadata", jMD}
+      }).dump();
+      
+
+    //Create output path and write
+    std::string path = m_io.getOutputPath() + "/" + std::to_string(0);
+    makedir(path);
+    path += "/" + std::to_string(m_io.getRank());
+    makedir(path);
+	    
+    path += "/" + std::to_string(m_step) + ".metadata.json";
+    std::ofstream f;
+	
+    f.open(path);
+    if (f.is_open())
+      f << packet << std::endl;
+      f.close();
+  }
+
+private:
+  ADio& m_io;
+  const std::vector<MetaData_t> m_metadata;
+  long long m_step;
+};
+
+
+
+
+
+
+IOError ADio::writeMetaData(const std::vector<MetaData_t> &newMetadata, long long step){
+  if (m_outputPath.length() == 0){ //currently write only to disk
+    return IOError::OK;
+  }
+  MetaDataWriteFunctor wFunc(*this, newMetadata, step);
+  if (m_dispatcher)
+    m_dispatcher->dispatch(wFunc);
+  else
+    wFunc();
+  return IOError::OK;
+}

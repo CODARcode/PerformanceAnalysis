@@ -107,7 +107,11 @@ void ADParser::update_attributes() {
 	  unsigned long rank = std::stoul(m[1]);
 	  unsigned long tid = std::stoul(m[2]);
 	  std::string descr = m[3];
-	  const std::string &value = attributePair.second.find("Value")->second;
+	  std::string value = attributePair.second.find("Value")->second;
+	  size_t idx;
+	  while ( (idx = value.find("\"")) != std::string::npos )
+	    value.replace(idx, 1, "");
+	 	  
 	  m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
 	    
 	  std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;

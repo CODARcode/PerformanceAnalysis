@@ -225,6 +225,7 @@ void Chimbuko::run(int rank,
     //Pull out all complete events and write to output
     m_io->write(m_event->trimCallList(), step);
     m_io->writeCounters(m_counter->flushCounters(), step);
+    m_io->writeMetaData(m_parser->getNewMetaData(), step);
 #ifdef _PERF_METRIC
     // dump performance metric event 10 steps
     if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {
