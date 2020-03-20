@@ -1,8 +1,8 @@
-FROM chimbuko/adios2:latest AS ad-build
+FROM chimbuko/adios2:ubuntu18.04 AS ad-build
 
 WORKDIR /Downloads
 
-RUN git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 1" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
@@ -13,7 +13,7 @@ RUN make -j 4 install && cd /opt/chimbuko/ad/test && ./run_all.sh
 
 
 
-FROM chimbuko/adios2:latest
+FROM chimbuko/adios2:ubuntu18.04
 
 RUN mkdir -p /opt/chimbuko/ad
 COPY --from=ad-build /opt/chimbuko/ad /opt/chimbuko/ad

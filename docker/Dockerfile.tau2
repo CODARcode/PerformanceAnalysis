@@ -1,7 +1,7 @@
 # chimbuko/adios2:brusselator suports zfp that is required to run Brusselator 
-# Note that chimbuko/adios2:latest doesn't support zfp.
-FROM chimbuko/adios2:latest AS tau-build
-ARG JOBS=16
+# Note that chimbuko/adios2:ubuntu18.04 doesn't support zfp.
+FROM chimbuko/adios2:ubuntu18.04 AS tau-build
+ARG JOBS=6
 
 # --------------------------------------------------------
 # TAU
@@ -48,7 +48,7 @@ RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
 # 	./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi -pthread -bfd=download -unwind=download -pdt=/opt/pdt -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 -papi=/opt/papi && \
 #  	make -j$JOBS install
 
-FROM chimbuko/adios2:latest 
+FROM chimbuko/adios2:ubuntu18.04 
 
 COPY --from=tau-build /opt /opt
 
