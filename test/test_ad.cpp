@@ -72,11 +72,18 @@ TEST_F(ADTest, BpfileTest)
     unsigned long n_outliers = 0, frames = 0;
     unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
-    driver.init_io(world_rank, IOMode::Both, "", "", 0);
-    driver.init_parser(data_dir, inputFile, engineType);
-    driver.init_event();
-    driver.init_outlier(world_rank, sigma);
+    try{
+      driver.init_io(world_rank, IOMode::Both, "", "", 0);
+      driver.init_parser(data_dir, inputFile, engineType);
+      driver.init_event();
+      driver.init_counter();
+      driver.init_outlier(world_rank, sigma);
+    }catch(const std::exception &e){
+      std::cerr << "Caught exception during driver init: " << e.what() << std::endl;
+      throw e;
+    }
 
+      
     while ( driver.get_status() )
     {
         n_func_events = 0;
@@ -84,21 +91,26 @@ TEST_F(ADTest, BpfileTest)
 	n_counter_events = 0;
         n_outliers = 0;
 
-        driver.run(
-            world_rank, 
-            n_func_events, 
-            n_comm_events,
-	    n_counter_events,
-            n_outliers, 
-            frames,
+	try{
+	  driver.run(
+		     world_rank, 
+		     n_func_events, 
+		     n_comm_events,
+		     n_counter_events,
+		     n_outliers, 
+		     frames,
 #ifdef _PERF_METRIC
-            "",
-            0,
+		     "",
+		     0,
 #endif
-            true,
-            0
-        );
-
+		     true,
+		     0
+		     );
+	}catch(const std::exception &e){
+	  std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
+	  throw e;
+	}
+	  
         if (driver.get_step() == -1)
             break;
 
@@ -160,6 +172,7 @@ TEST_F(ADTest, BpfileWithNetTest)
     driver.init_io(world_rank, IOMode::Both, execOutput, "", 0);
     driver.init_parser(data_dir, inputFile, engineType);
     driver.init_event();
+    driver.init_counter();
     driver.init_outlier(world_rank, sigma, "tcp://localhost:5559");
 
     step = -1;

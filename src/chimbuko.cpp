@@ -181,7 +181,7 @@ void Chimbuko::extractEvents(int rank, int step){
 }
   
 void Chimbuko::extractCounters(int rank, int step){
-  if(!m_counter) throw "Counter is not initialized";
+  if(!m_counter) throw std::runtime_error("Counter is not initialized");
   for(size_t c=0;c<m_parser->getNumCounterData();c++){
     Event_t ev(m_parser->getCounterData(c),
 	       EventDataType::COUNT,

@@ -72,7 +72,10 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
 #else
     m_context = zmq_ctx_new();
     m_socket = zmq_socket(m_context, ZMQ_REQ);
-    zmq_connect(m_socket, sname.c_str());
+    if(zmq_connect(m_socket, sname.c_str()) == -1){
+      std::string err = strerror(errno);      
+      throw std::runtime_error("ZMQ failed to connect, with error: " + err);
+    }
 
     // test connection
     Message msg;
@@ -84,13 +87,13 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
     ZMQNet::send(m_socket, msg.data());
 
     msg.clear();
+
     ZMQNet::recv(m_socket, strmsg);
     msg.set_msg(strmsg, true);
 
     if (msg.buf().compare("\"Hello!I am ZMQNET!\"") != 0)
     {
-        std::cerr << "Connect error to parameter server (ZMQNET)!\n";
-        exit(1);
+      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
     } 
     m_use_ps = true;      
 #endif
@@ -186,7 +189,7 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
     msg.set_msg(l_stats);
     sent_sz = msg.size();
 #ifdef _USE_MPINET
-    throw "Not implemented yet.";
+    throw std::runtime_error("update_local_statictis not implemented yet for MPINET");
 #else
     ZMQNet::send(m_socket, msg.data());
 

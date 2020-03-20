@@ -31,7 +31,7 @@ int main (int argc, char** argv)
     }
 
 #ifdef _USE_MPINET
-    throw "Not implemented yet.";
+    throw std::runtime_error("Not implemented yet.");
 #else
     void* context;
     void* socket;
@@ -68,7 +68,7 @@ int main (int argc, char** argv)
         );
 
 #ifdef _USE_MPINET
-    throw "Not implemented yet."
+	throw std::runtime_error("Not implemented yet.");
 #else
         // send message to parameter server
         ZMQNet::send(socket, msg.data());
@@ -90,7 +90,7 @@ int main (int argc, char** argv)
     // terminate parameter server
     if (rank == 0) {
 #ifdef _USE_MPINET
-        throw "Not implemented yet."
+      throw std::runtime_error("Not implemented yet.");
 #else
         zmq_send(socket, nullptr, 0, 0);
 #endif

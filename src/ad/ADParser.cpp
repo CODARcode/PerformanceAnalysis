@@ -114,7 +114,7 @@ void ADParser::update_attributes() {
 	 	  
 	  m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
 	    
-	  std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
+	  //std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
 	    
 	  m_metadata_seen.insert(name);
 	}
@@ -135,7 +135,7 @@ void ADParser::update_attributes() {
     case Counter:
       m = &m_counterMap; break;
     default:
-      throw "Invalid attribute type";
+      throw std::runtime_error("Invalid attribute type");
     }
 
     //Append to map
@@ -229,7 +229,7 @@ ParserError ADParser::fetchCounterData() {
       in_counter_values.SetSelection({{0, 0}, {m_counter_count, COUNTER_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_counter_values, m_counter_timestamps.data(), adios2::Mode::Sync);
 
-      std::cout << "Read " << m_counter_count << " counters" << std::endl;
+      //std::cout << "Read " << m_counter_count << " counters" << std::endl;
       
       return ParserError::OK;
     }

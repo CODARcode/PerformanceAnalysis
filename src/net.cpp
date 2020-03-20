@@ -91,7 +91,7 @@ static void send_stat(
     curl = curl_easy_init();
     if (curl == nullptr)
     {
-        throw "Failed to initialize curl easy handler";
+      throw std::runtime_error("Failed to initialize curl easy handler");
     }
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -151,7 +151,7 @@ static void send_stat(
                     << "Expected:  " << j_expected["num"].get<double>()
                     << "\nReceived:  " << j_received["num"].get<double>() 
                     << std::endl;
-                throw "test failed!";
+                throw std::runtime_error("test failed!");
             }
         }
 
