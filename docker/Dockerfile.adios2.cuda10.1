@@ -1,4 +1,4 @@
-FROM chimbuko/base.cuda10.1:latest AS adios2-build
+FROM chimbuko/base:ubuntu18.04-cuda10.1 AS adios2-build
 
 RUN mkdir -p /Downloads/adiosvm && \
     git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm && \
@@ -66,7 +66,7 @@ RUN rm -rf /var/lib/apt/lists/* && rm -rf /Downloads
 
 WORKDIR /
 
-FROM chimbuko/base.cuda10.1:latest
+FROM chimbuko/base:ubuntu18.04-cuda10.1
 COPY --from=adios2-build /opt /opt
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
