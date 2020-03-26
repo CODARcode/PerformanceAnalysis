@@ -121,8 +121,10 @@ struct varTensor: public varBase{
     std::vector<int> c(shape.size());
     for(size_t i=0;i<val.size();i++){
       unmap(c, i);
-      if( map(c) != i ){ std::cout << "POOH " << map(c) << " " << i << std::endl; }
+      if( map(c) != i ) assert(0); //check consistency of map and unmap
       os << vecPrint<int>(c) << ":" << val[i] << " ";
+
+      if(shape.size() == 2 && i % shape[1] == shape[1]-1) os << std::endl;  //endline after each row of matrix
     }
     return os.str();
   }
@@ -196,12 +198,45 @@ std::ostream & operator<<(std::ostream &os, const mapPrint &mp){
 }
   
 
+/**
+   @brief Convert string to anything
+*/
+template<typename T>
+inline T strToAny(const std::string &s){
+  std::stringstream ss; ss << s;
+  T out; ss >> out;
+  return out;
+}
+
 
 int main(int argc, char** argv){
+  if(argc < 2){
+    std::cout << "Usage sst_view <bp filename (without .sst extension)> <options>" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "-nsteps_show_variable_values  Set the number of io steps for which the data will be displayed, after which output will be suppressed. Default 2. Use -1 for all steps." << std::endl;
+    exit(0);
+  }
+  std::string filename = argv[1];
+
+  //Options
+  size_t nsteps_show_variable_values = 2; //the number of steps for which the values of updated variables will be dumped to output. Use -1 for all steps
+  int arg = 2;
+  while(arg < argc){
+    std::string sarg = std::string(argv[arg]);
+    if(sarg == "-nsteps_show_variable_values"){
+      nsteps_show_variable_values = strToAny<size_t>(argv[arg+1]);
+      arg+=2;
+    }else{
+      std::cerr << "Unknown argument " << sarg;
+      exit(-1);
+    }
+  }
+
+
+  //Begin main
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
-  std::string filename = argv[1];
-  
+  //Setup ADIOS2 capture
   adios2::ADIOS ad;
   adios2::IO io;
   adios2::Engine eng;
@@ -220,7 +255,9 @@ int main(int argc, char** argv){
   std::map<std::string, std::map<std::string, std::string> > attribs_all;
   std::map<std::string, std::map<std::string, std::string> > vars_all;
   std::map<std::string, int> vars_seen_count;
-  
+
+  //Loop over IO steps and dump information
+  size_t step = 0;
   while(1){
     adios2::StepStatus status = eng.BeginStep();
     
@@ -228,7 +265,8 @@ int main(int argc, char** argv){
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       continue;
     }else if(status == adios2::StepStatus::OK){
-
+      std::cout << "Starting step " << step << std::endl;
+      
       //Get new attributes
       const std::map<std::string, adios2::Params> attributes = io.AvailableAttributes(); 
       for (const auto attributePair: attributes){
@@ -260,9 +298,9 @@ int main(int argc, char** argv){
 	  int &count = vars_seen_count[variablePair.first];
 	  ++count;
 
-	  if(count == 2){
+	  if(nsteps_show_variable_values == -1 || count <= nsteps_show_variable_values){
 	    vars_all[variablePair.first] = variablePair.second;
-	    std::cout << "FOUND FIRST UPDATE FOR VARIABLE VARIABLE: " << variablePair.first << " " << mapPrint(variablePair.second);
+	    std::cout << "FOUND UPDATE " << count << " FOR VARIABLE VARIABLE: " << variablePair.first << " " << mapPrint(variablePair.second);
 	    
 	    varBase* var = parseVariable(variablePair.first, variablePair.second, io, eng);		     
 	    if(var != NULL){
@@ -278,6 +316,7 @@ int main(int argc, char** argv){
 
 
       eng.EndStep();
+      ++step;
     }else{
       std::cout << "Viewer lost contact with writer" << std::endl;
       break;
