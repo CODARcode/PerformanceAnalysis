@@ -161,6 +161,19 @@ void Chimbuko::extractEvents(int rank, int step){
     if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
       std::cout << "\n***** Invalid event *****\n";
       //std::cout << "[" << rank << "] " << ev << std::endl;
+      if(ev.valid()){
+	std::string event_type("UNKNOWN"), func_name("UNKNOWN");
+
+	auto eit = m_parser->getEventType()->find(ev.eid());
+	if(eit != m_parser->getEventType()->end())
+	  event_type = eit->second;
+	
+	auto fit = m_parser->getFuncMap()->find(ev.fid());
+	if(fit != m_parser->getFuncMap()->end())
+	  func_name = fit->second;
+	
+	std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
+      }else std::cerr << "Data pointer is null" << std::endl;
     }else{
       EventError err = m_event->addEvent(ev);
       // if (err == EventError::CallStackViolation)
