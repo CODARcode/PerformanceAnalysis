@@ -2,6 +2,7 @@
 #include "chimbuko/net/zmq_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/verbose.hpp"
 #include <iostream>
 #include <string.h>
 
@@ -49,7 +50,7 @@ void doWork(void* context, ParamInterface* param)
     std::string strmsg;
     ZMQNet::recv(socket, strmsg);
 
-    std::cout << "ZMQ worker received message: " << strmsg << std::endl;
+    VERBOSE(std::cout << "ZMQ worker received message: " << strmsg << std::endl);
     
     // -------------------------------------------------------------------
     // this block could be managed to use for all network interface!!
@@ -95,7 +96,7 @@ void doWork(void* context, ParamInterface* param)
     }
     // -------------------------------------------------------------------
 
-    std::cout << "Worker sending response: " << msg_reply.data() << std::endl;
+    VERBOSE(std::cout << "Worker sending response: " << msg_reply.data() << std::endl);
     
     //Send the reply
     ZMQNet::send(socket, msg_reply.data());
@@ -155,7 +156,7 @@ void ZMQNet::run()
     t_start = Clock::now();  
 #endif
 
-    std::cout << "ZMQnet starting polling" << std::endl;
+    VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
     m_n_requests = 0;
     while(true){
       int err = zmq_poll(items, NR_ITEMS, -1);  //wait (indefinitely) for comms on both sockets
@@ -163,7 +164,7 @@ void ZMQNet::run()
 	std::string error = std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n";
 	throw std::runtime_error(error);
       }
-      std::cout << "ZMQnet received message" << std::endl;
+      VERBOSE(std::cout << "ZMQnet received message" << std::endl);
       
       //If the message was received from the AD, route the message to a worker thread
       if(items[0].revents & ZMQ_POLLIN) { 

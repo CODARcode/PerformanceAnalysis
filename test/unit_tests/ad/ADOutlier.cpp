@@ -142,7 +142,7 @@ TEST(ADOutlierTestConnectPS, ConnectsMock){
 
 
 
-TEST(ADOutlierTestConnectPS, ConnectsZMQnet){
+TEST(ADOutlierTestConnectPS, ConnectsZMQnet){  
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)

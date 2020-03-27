@@ -1,6 +1,7 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
+#include "chimbuko/verbose.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
@@ -84,14 +85,14 @@ void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
     msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
     msg.set_msg("Hello!");
 
-    std::cout << "AD sending hello message" << std::endl;
+    VERBOSE(std::cout << "AD sending hello message" << std::endl);
     ZMQNet::send(m_socket, msg.data());
 
     msg.clear();
 
-    std::cout << "AD waiting for response message" << std::endl;
+    VERBOSE(std::cout << "AD waiting for response message" << std::endl);
     ZMQNet::recv(m_socket, strmsg);
-    std::cout << "AD received response message" << std::endl;
+    VERBOSE(std::cout << "AD received response message" << std::endl);
     
     msg.set_msg(strmsg, true);
 
