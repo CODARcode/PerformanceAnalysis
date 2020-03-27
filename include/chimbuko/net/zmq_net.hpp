@@ -46,9 +46,9 @@ namespace chimbuko {
     bool recvAndSend(void* skFrom, void* skTo);
 
   private:
-    void* m_context; /** ZeroMQ context pointer */
+    void* m_context; /**< ZeroMQ context pointer */
     long long m_n_requests;
-    std::vector<std::thread> m_threads; /** The pool of thread workers */
+    std::vector<std::thread> m_threads; /**< The pool of thread workers */
   };
 
 } // end of chimbuko namespace

@@ -20,13 +20,13 @@ SstdParam::~SstdParam()
 
 }
 
-std::string SstdParam::serialize()  
+std::string SstdParam::serialize()
 {
     std::lock_guard<std::mutex> _{m_mutex};
     return serialize(m_runstats);
 }
 
-std::string SstdParam::serialize(std::unordered_map<unsigned long, RunStats>& runstats) 
+std::string SstdParam::serialize(const std::unordered_map<unsigned long, RunStats>& runstats) 
 {
     nlohmann::json j;
     for (auto& pair: runstats)
@@ -57,7 +57,7 @@ std::string SstdParam::update(const std::string& parameters, bool return_update)
     return (return_update) ? serialize(runstats): "";
 }
 
-void SstdParam::assign(std::unordered_map<unsigned long, RunStats>& runstats)
+void SstdParam::assign(const std::unordered_map<unsigned long, RunStats>& runstats)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     for (auto& pair: runstats) {

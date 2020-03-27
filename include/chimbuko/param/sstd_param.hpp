@@ -7,9 +7,9 @@
 
 namespace chimbuko {
 
-class SstdParam : public ParamInterface
-{
-public:
+  class SstdParam : public ParamInterface
+  {
+  public:
     SstdParam();
     SstdParam(const std::vector<int>& n_ranks);
     ~SstdParam();
@@ -17,25 +17,71 @@ public:
 
     size_t size() const override { return m_runstats.size(); }
 
+    /**
+     * @brief Convert internal run statistics to string format for IO
+     * @return Run statistics in string format
+     */
     std::string serialize() override;
+
+    /**
+     * @brief Update the internal run statistics with those included in the serialized input map
+     * @param runstats The serialized input map
+     */
     std::string update(const std::string& parameters, bool return_update=false) override;
+
+    /**
+     * @brief Set the internal run statistics to match those included in the serialized input map. Overwrite performed only for those keys in input.
+     * @param runstats The serialized input map
+     */
     void assign(const std::string& parameters) override;
+    
     void show(std::ostream& os) const override;
 
-    std::string serialize(std::unordered_map<unsigned long, RunStats>& runstats);
-    void deserialize(
-        const std::string& parameters,
-        std::unordered_map<unsigned long, RunStats>& runstats);
+    /**
+     * @brief Convert a run statistics mapping into a string
+     * @param The run stats mapping
+     * @return Run statistics in string format
+     */
+    static std::string serialize(const std::unordered_map<unsigned long, RunStats>& runstats);
 
+    /**
+     * @brief Convert a run statistics string into a map
+     * @param[in] parameters The parameter string
+     * @param[out] runstats The run stats map
+     */
+    static void deserialize(const std::string& parameters,
+			    std::unordered_map<unsigned long, RunStats>& runstats);
+
+    /**
+     * @brief Update the internal run statistics with those included in the input map. Map is then updated to reflect new state.
+     * @param[in,out] runstats The input/output map
+     */
     void update(std::unordered_map<unsigned long, RunStats>& runstats);
+
+    /**
+     * @brief Update the internal statistics with those included in another SstdParam instance. Other SstdParam is then updated to reflect new state.
+     * @param[in,out] other The other SstdParam instance
+     */
     void update(SstdParam& other) { update(other.m_runstats); }
 
-    void assign(std::unordered_map<unsigned long, RunStats>& runstats);
+    /**
+     * @brief Set the internal run statistics to match those included in the input map. Overwrite performed only for those keys in input.
+     * @param runstats The input map
+     */
+    void assign(const std::unordered_map<unsigned long, RunStats>& runstats);
 
+    /**
+     * @brief Get an element of the internal map
+     */
     RunStats& operator [](unsigned long id) { return m_runstats[id]; }
 
-private:
+    /**
+     * @brief Get the internal map
+     */
+    const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
+    
+  private:
     std::unordered_map<unsigned long, RunStats> m_runstats;
-};
+  };
 
 } // end of chimbuko namespace

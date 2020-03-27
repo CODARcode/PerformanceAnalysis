@@ -1,4 +1,5 @@
 #include<chimbuko/ad/ADOutlier.hpp>
+#include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 
@@ -7,6 +8,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <cstring>
+#include <random>
 
 using namespace chimbuko;
 
@@ -188,5 +190,46 @@ TEST(ADOutlierTestConnectPS, ConnectsZMQnet){
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 
+}
+
+
+
+class ADOutlierSSTDTest: public ADOutlierSSTD{
+public:
+  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
+};
+
+TEST(ADOutlierTestSyncParamWithoutPS, Works){  
+  SstdParam global_params_ps; //parameters held in the parameter server
+  SstdParam local_params_ps; //parameters collected by AD
+
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(500.,100.);
+  int N = 50;
+  
+  std::unordered_map<unsigned long, RunStats> global_params_ps_in;
+  {
+    RunStats &r = global_params_ps_in[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+  global_params_ps.assign(global_params_ps_in);
+
+  std::unordered_map<unsigned long, RunStats> local_params_ps_in;
+  {
+    RunStats &r = local_params_ps_in[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+  local_params_ps.assign(local_params_ps_in);
+
+  std::cout << global_params_ps_in[0].get_json().dump();
+  std::cout << local_params_ps_in[0].get_json().dump();
+    
+  ADOutlierSSTDTest outlier;
+  outlier.sync_param_test(&global_params_ps);
+  
+  //internal copy should be equal to global copy
+  std::string in_state =  SstdParam::serialize( ( (SstdParam const*)outlier.get_global_parameters() )->get_runstats() );
+  
+  EXPECT_EQ(global_params_ps.serialize(), in_state);
 }
 

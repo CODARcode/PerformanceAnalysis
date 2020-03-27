@@ -14,13 +14,13 @@
 
 namespace chimbuko {
 
-/**
- * @brief abstract class for anomaly detection algorithms
- * 
- */
-class ADOutlier {
+  /**
+   * @brief abstract class for anomaly detection algorithms
+   * 
+   */
+  class ADOutlier {
 
-public:
+  public:
     /**
      * @brief Construct a new ADOutlier object
      * 
@@ -70,11 +70,17 @@ public:
 
 #ifdef _PERF_METRIC
     void dump_perf(std::string path, std::string filename="metric.json"){
-        m_perf.dump(path, filename);
+      m_perf.dump(path, filename);
     }
 #endif
 
-protected:
+    /**
+     * @brief Get the local copy of the global parameters
+     * @return Pointer to a ParamInterface object
+     */
+    ParamInterface const* get_global_parameters() const{ return m_param; }
+  
+  protected:
     /**
      * @brief abstract method to compute outliers (or anomalies)
      * 
@@ -85,13 +91,13 @@ protected:
      * @return unsigned long the number of outliers (or anomalies)
      */
     virtual unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        long& min_ts, long& max_ts) = 0;
+					   const unsigned long func_id, std::vector<CallListIterator_t>& data,
+					   long& min_ts, long& max_ts) = 0;
 
     /**
      * @brief abstract method to update local parameters and get global ones
      * 
-     * @param param local parameters
+     * @param[in] param local parameters
      * @return std::pair<size_t, size_t> [sent, recv] message size 
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface* param) = 0;
@@ -104,7 +110,7 @@ protected:
      */
     std::pair<size_t, size_t> update_local_statistics(std::string l_stats, int step);
 
-protected:
+  protected:
     bool m_use_ps;                           /**< true if the parameter server is in use */
     int m_rank;                              /**< this process rank                      */
     int m_srank;                             /**< server process rank                    */
@@ -116,7 +122,7 @@ protected:
 #endif
 
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
-    ParamInterface * m_param;                /**< parameters */
+    ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
 #ifdef _PERF_METRIC
     RunMetric m_perf;
@@ -125,15 +131,15 @@ protected:
     // std::unordered_map<unsigned long, unsigned long> m_outliers;
     // inclusive runtime statistics per fucntion: func id -> run stats
     // exclusive runtime statistics per function: func id -> run stats
-};
+  };
 
-/**
- * @brief statistic analysis based anomaly detection algorithm
- * 
- */
-class ADOutlierSSTD : public ADOutlier {
+  /**
+   * @brief statistic analysis based anomaly detection algorithm
+   * 
+   */
+  class ADOutlierSSTD : public ADOutlier {
 
-public:
+  public:
     /**
      * @brief Construct a new ADOutlierSSTD object
      * 
@@ -160,7 +166,7 @@ public:
      */
     unsigned long run(int step=0) override;
 
-protected:
+  protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
      * 
@@ -171,12 +177,14 @@ protected:
      * @return unsigned long the number of outliers (or anomalies)
      */
     unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        long& min_ts, long& max_ts) override;
-    std::pair<size_t, size_t> sync_param(ParamInterface* param) override;
+				   const unsigned long func_id, std::vector<CallListIterator_t>& data,
+				   long& min_ts, long& max_ts) override;
 
-private:
+
+    std::pair<size_t, size_t> sync_param(ParamInterface* param) override;
+    
+  private:
     double m_sigma; /**< sigma */
-};
+  };
 
 } // end of AD namespace

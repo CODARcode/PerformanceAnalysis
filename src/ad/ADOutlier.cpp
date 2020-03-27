@@ -143,8 +143,8 @@ ADOutlierSSTD::~ADOutlierSSTD() {
 
 std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface* param)
 {
-    SstdParam& g = *(SstdParam*)m_param;
-    SstdParam& l = *(SstdParam*)param;
+  SstdParam& g = *(SstdParam*)m_param; //global parameter set
+  SstdParam& l = *(SstdParam*)param; //local parameter set
 
     if (!m_use_ps) {
         g.update(l);
@@ -169,9 +169,11 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface* param)
         msg.clear();
         strmsg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
 #else
+	//Send local parameters to PS
         ZMQNet::send(m_socket, msg.data());
 
         msg.clear();
+	//Receive global parameters from PS
         ZMQNet::recv(m_socket, strmsg);   
 #endif
         msg.set_msg(strmsg , true);
