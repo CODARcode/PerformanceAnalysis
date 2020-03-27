@@ -19,7 +19,7 @@ public:
 
     virtual size_t size() const = 0;
 
-    virtual std::string serialize() = 0;
+    virtual std::string serialize() const = 0;
     virtual std::string update(const std::string& parameters, bool flag=false) = 0;
     virtual void assign(const std::string& parameters) = 0;
 
@@ -41,7 +41,7 @@ public:
 
 protected:
     // for parameters of an anomaly detection algorithm
-    std::mutex m_mutex; // used to update parameters
+    mutable std::mutex m_mutex; // used to update parameters
 
     // for global anomaly statistics
     std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats;

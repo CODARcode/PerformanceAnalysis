@@ -141,10 +141,10 @@ ADOutlierSSTD::ADOutlierSSTD() : ADOutlier(), m_sigma(6.0) {
 ADOutlierSSTD::~ADOutlierSSTD() {
 }
 
-std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface* param)
+std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
 {
   SstdParam& g = *(SstdParam*)m_param; //global parameter set
-  SstdParam& l = *(SstdParam*)param; //local parameter set
+  const SstdParam & l = *(SstdParam const*)param; //local parameter set
 
     if (!m_use_ps) {
         g.update(l);

@@ -100,7 +100,7 @@ namespace chimbuko {
      * @param[in] param local parameters
      * @return std::pair<size_t, size_t> [sent, recv] message size 
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface* param) = 0;
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
     /**
      * @brief update local anomaly statistics to the connected parameter server
      * 
@@ -181,7 +181,7 @@ namespace chimbuko {
 				   long& min_ts, long& max_ts) override;
 
 
-    std::pair<size_t, size_t> sync_param(ParamInterface* param) override;
+    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
     
   private:
     double m_sigma; /**< sigma */

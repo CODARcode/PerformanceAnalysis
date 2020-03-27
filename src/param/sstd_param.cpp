@@ -20,7 +20,7 @@ SstdParam::~SstdParam()
 
 }
 
-std::string SstdParam::serialize()
+std::string SstdParam::serialize() const
 {
     std::lock_guard<std::mutex> _{m_mutex};
     return serialize(m_runstats);

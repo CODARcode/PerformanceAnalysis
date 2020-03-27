@@ -21,7 +21,7 @@ namespace chimbuko {
      * @brief Convert internal run statistics to string format for IO
      * @return Run statistics in string format
      */
-    std::string serialize() override;
+    std::string serialize() const override;
 
     /**
      * @brief Update the internal run statistics with those included in the serialized input map
