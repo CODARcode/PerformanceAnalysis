@@ -7,12 +7,22 @@
 #include <thread>
 
 namespace chimbuko {
-
-class ZMQNet : public NetInterface {
-public:
+  
+  /**
+     @brief A network interface using ZeroMQ
+  */
+  class ZMQNet : public NetInterface {
+  public:
     ZMQNet();
     ~ZMQNet();
 
+    /**
+     * @brief (virtual) initialize network interface
+     * 
+     * @param argc command line argc 
+     * @param argv command line argv
+     * @param nt the number of threads for a thread pool
+     */
     void init(int* argc, char*** argv, int nt) override;
     void finalize() override;
 #ifdef _PERF_METRIC
@@ -26,17 +36,20 @@ public:
     static int send(void* socket, const std::string& strmsg);
     static int recv(void* socket, std::string& strmsg);
 
-protected:
+  protected:
     void init_thread_pool(int nt) override;
 
-private:
+  private:
+    /**
+       @brief Route a message to/from worker thread pool
+    */
     bool recvAndSend(void* skFrom, void* skTo);
 
-private:
-    void* m_context;
+  private:
+    void* m_context; /** ZeroMQ context pointer */
     long long m_n_requests;
-    std::vector<std::thread> m_threads;
-};
+    std::vector<std::thread> m_threads; /** The pool of thread workers */
+  };
 
 } // end of chimbuko namespace
 #endif // CHIMBUKO_USE_ZMQNET

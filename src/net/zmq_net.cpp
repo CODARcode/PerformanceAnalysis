@@ -30,73 +30,79 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 
 void doWork(void* context, ParamInterface* param) 
 {
-    void* socket = zmq_socket(context, ZMQ_REP); 
-    zmq_connect(socket, "inproc://workers");
+  void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
+  zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
     
-    zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
+  zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
  
-    while(true)
-    {
-        if(zmq_poll(items, 1, -1) < 1) 
-        {
-            break;
-        }
- 
-        std::string strmsg;
-        ZMQNet::recv(socket, strmsg);
+  while(true){
 
-        // -------------------------------------------------------------------
-        // this block could be managed to use for all network interface!!
-        // todo: will move this part somewhere to make the code simple.
-        Message msg, msg_reply;
-        msg.set_msg(strmsg, true);
-
-        msg_reply = msg.createReply();
-
-        // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
-        if (msg.kind() == MessageKind::SSTD)
-        {
-            SstdParam* p = dynamic_cast<SstdParam*>(param);
-            if (msg.type() == MessageType::REQ_ADD) {
-                //std::cout << "REQ_ADD" << std::endl;
-                msg_reply.set_msg(p->update(msg.buf(), true), false);
-            }
-            else if (msg.type() == MessageType::REQ_GET) {
-                //std::cout << "REQ_GET" << std::endl;
-                msg_reply.set_msg(p->serialize(), false);
-            }
-        }
-        else if (msg.kind() == MessageKind::ANOMALY_STATS)
-        {
-            if (msg.type() == MessageType::REQ_ADD) {
-                // std::cout << "N_ANOMALY::REQ_ADD" << std::endl;
-                param->add_anomaly_data(msg.buf());
-                msg_reply.set_msg("", false);
-            }
-            // else if (msg.type() == MessageType::REQ_GET) {
-            //     // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
-            //     //msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
-            // }
-            else 
-            {
-                std::cout << "Unknown Type: " << msg.type() << std::endl;
-            }
-        }
-        else if (msg.kind() == MessageKind::DEFAULT)
-        {
-            if (msg.type() == MessageType::REQ_ECHO) {
-                msg_reply.set_msg(std::string("Hello!I am ZMQNET!"), false);
-            }
-        }
-        else 
-        {
-            std::cout << "Unknow message kind: " << msg.kind_str() << std::endl;
-        }
-        // -------------------------------------------------------------------
-
-        ZMQNet::send(socket, msg_reply.data());
+    //Poll the socket to check for incoming messages. If an error is returned, exit the loop
+    //Errors typically mean the context has been terminated
+    constexpr int nitems = 1; //size of items array
+    constexpr long timeout = -1; //poll forever until error or success
+    if(zmq_poll(items, nitems, timeout) < 1){
+      break;
     }
-    zmq_close(socket);
+
+    //Receive the message into a json-formatted string
+    std::string strmsg;
+    ZMQNet::recv(socket, strmsg);
+
+    std::cout << "ZMQ worker received message: " << strmsg << std::endl;
+    
+    // -------------------------------------------------------------------
+    // this block could be managed to use for all network interface!!
+    // todo: will move this part somewhere to make the code simple.
+
+    //Parse the message and instantiate a reply message with appropriate sender
+    Message msg, msg_reply;
+    msg.set_msg(strmsg, true);
+
+    msg_reply = msg.createReply();
+
+    //Set the reply message    
+    // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
+    if (msg.kind() == MessageKind::SSTD){      
+      SstdParam* p = dynamic_cast<SstdParam*>(param);
+      if (msg.type() == MessageType::REQ_ADD) {
+	//The message is a request to update the statistics      
+	msg_reply.set_msg(p->update(msg.buf(), true), false);
+      }else if (msg.type() == MessageType::REQ_GET) {
+	//The message is a request to return the statistics
+	msg_reply.set_msg(p->serialize(), false);
+      }
+    }else if (msg.kind() == MessageKind::ANOMALY_STATS){
+      if (msg.type() == MessageType::REQ_ADD) {
+	//The message is a request to insert an anomaly into the statistics
+	param->add_anomaly_data(msg.buf());
+	msg_reply.set_msg("", false);
+      }
+      // else if (msg.type() == MessageType::REQ_GET) {
+      //     // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
+      //     //msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
+      // }
+      else{
+	std::cout << "Unknown Type: " << msg.type() << std::endl;
+      }
+    }else if (msg.kind() == MessageKind::DEFAULT){
+      if (msg.type() == MessageType::REQ_ECHO) {
+	//The message is a request for a handshake	
+	msg_reply.set_msg(std::string("Hello!I am ZMQNET!"), false);
+      }
+    }else{
+      std::cout << "Unknown message kind: " << msg.kind_str() << std::endl;
+    }
+    // -------------------------------------------------------------------
+
+    std::cout << "Worker sending response: " << msg_reply.data() << std::endl;
+    
+    //Send the reply
+    ZMQNet::send(socket, msg_reply.data());
+    
+  }//while(<receiving messages>)
+  
+  zmq_close(socket);
 }
 
 void ZMQNet::init_thread_pool(int nt)
@@ -126,8 +132,8 @@ void ZMQNet::run()
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
 
-    zmq_bind(frontend, "tcp://*:5559");
-    zmq_bind(backend, "inproc://workers");
+    zmq_bind(frontend, "tcp://*:5559"); //create a socket for communication with the AD
+    zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
 
     const int NR_ITEMS = 2; 
     zmq_pollitem_t items[NR_ITEMS] = 
@@ -149,47 +155,55 @@ void ZMQNet::run()
     t_start = Clock::now();  
 #endif
 
+    std::cout << "ZMQnet starting polling" << std::endl;
     m_n_requests = 0;
-    while(true)
-    {
-        zmq_poll(items, NR_ITEMS, -1); 
- 
-        if(items[0].revents & ZMQ_POLLIN) { 
-            if (recvAndSend(frontend, backend)) {
-                stop();
-                break;
-            }
-            m_n_requests++;
+    while(true){
+      int err = zmq_poll(items, NR_ITEMS, -1);  //wait (indefinitely) for comms on both sockets
+      if(err == -1){
+	std::string error = std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n";
+	throw std::runtime_error(error);
+      }
+      std::cout << "ZMQnet received message" << std::endl;
+      
+      //If the message was received from the AD, route the message to a worker thread
+      if(items[0].revents & ZMQ_POLLIN) { 
+	if (recvAndSend(frontend, backend)) {
+	  stop();
+	  break;
+	}
+	m_n_requests++;
 #ifdef _PERF_METRIC
-            n_requests++;
+	n_requests++;
 #endif
-        }
+      }
 
-        if(items[1].revents & ZMQ_POLLIN) {
-            recvAndSend(backend, frontend);
-            m_n_requests--;
+      //If the message was received from a worker thread, route to the AD
+      if(items[1].revents & ZMQ_POLLIN) {
+	recvAndSend(backend, frontend);
+	m_n_requests--;
 #ifdef _PERF_METRIC
-            n_replies++;
+	n_replies++;
 #endif
-        } 
+      } 
 
 #ifdef _PERF_METRIC
-        t_end = Clock::now();
-        duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
-        if (duration.count() >= 10000 && f.is_open()) {
-            elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
-            f << elapsed.count() << " " 
-                << n_requests << " " 
-                << n_replies << " " 
-                << duration.count() 
-                << std::endl;
-            t_start = t_end;
-            n_requests = 0;
-            n_replies = 0;
-        }
+      t_end = Clock::now();
+      duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
+      if (duration.count() >= 10000 && f.is_open()) {
+	elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
+	f << elapsed.count() << " " 
+	  << n_requests << " " 
+	  << n_replies << " " 
+	  << duration.count() 
+	  << std::endl;
+	t_start = t_end;
+	n_requests = 0;
+	n_replies = 0;
+      }
 #endif
     }
 
+    //Close the sockets
     zmq_close(frontend);
     zmq_close(backend);
 
