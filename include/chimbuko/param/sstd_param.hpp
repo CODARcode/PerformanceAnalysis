@@ -52,17 +52,30 @@ namespace chimbuko {
     static void deserialize(const std::string& parameters,
 			    std::unordered_map<unsigned long, RunStats>& runstats);
 
+
     /**
-     * @brief Update the internal run statistics with those included in the input map. Map is then updated to reflect new state.
+     * @brief Update the internal run statistics with those included in the input map
+     * @param[in] runstats The input map
+     */
+    void update(const std::unordered_map<unsigned long, RunStats>& runstats);
+
+    /**
+     * @brief Update the internal statistics with those included in another SstdParam instance.
+     * @param[in] other The other SstdParam instance
+     */
+    void update(const SstdParam& other) { update(other.m_runstats); }
+    
+    /**
+     * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
      * @param[in,out] runstats The input/output map
      */
-    void update(std::unordered_map<unsigned long, RunStats>& runstats);
+    void update_and_return(std::unordered_map<unsigned long, RunStats>& runstats);
 
     /**
      * @brief Update the internal statistics with those included in another SstdParam instance. Other SstdParam is then updated to reflect new state.
      * @param[in,out] other The other SstdParam instance
      */
-    void update(SstdParam& other) { update(other.m_runstats); }
+    void update_and_return(SstdParam& other) { update_and_return(other.m_runstats); }
 
     /**
      * @brief Set the internal run statistics to match those included in the input map. Overwrite performed only for those keys in input.

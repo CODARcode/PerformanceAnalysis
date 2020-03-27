@@ -53,7 +53,7 @@ std::string SstdParam::update(const std::string& parameters, bool return_update)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
     deserialize(parameters, runstats);
-    update(runstats);
+    update_and_return(runstats); //update runstats to reflect changes
     return (return_update) ? serialize(runstats): "";
 }
 
@@ -77,7 +77,17 @@ void SstdParam::clear()
     m_runstats.clear();
 }
 
-void SstdParam::update(std::unordered_map<unsigned long, RunStats>& runstats)
+
+void SstdParam::update(const std::unordered_map<unsigned long, RunStats>& runstats)
+{
+    std::lock_guard<std::mutex> _(m_mutex);
+    for (auto& pair: runstats) {
+        m_runstats[pair.first] += pair.second;
+    }    
+}
+
+
+void SstdParam::update_and_return(std::unordered_map<unsigned long, RunStats>& runstats)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     for (auto& pair: runstats) {
