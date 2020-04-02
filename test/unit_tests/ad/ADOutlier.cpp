@@ -200,19 +200,11 @@ public:
 };
 
 TEST(ADOutlierTestSyncParamWithoutPS, Works){  
-  SstdParam global_params_ps; //parameters held in the parameter server
-  SstdParam local_params_ps; //parameters collected by AD
+  SstdParam local_params_ps;
 
   std::default_random_engine gen;
   std::normal_distribution<double> dist(500.,100.);
   int N = 50;
-  
-  std::unordered_map<unsigned long, RunStats> global_params_ps_in;
-  {
-    RunStats &r = global_params_ps_in[0];
-    for(int i=0;i<N;i++) r.push(dist(gen));
-  }
-  global_params_ps.assign(global_params_ps_in);
 
   std::unordered_map<unsigned long, RunStats> local_params_ps_in;
   {
@@ -221,15 +213,95 @@ TEST(ADOutlierTestSyncParamWithoutPS, Works){
   }
   local_params_ps.assign(local_params_ps_in);
 
-  std::cout << global_params_ps_in[0].get_json().dump();
   std::cout << local_params_ps_in[0].get_json().dump();
     
   ADOutlierSSTDTest outlier;
-  outlier.sync_param_test(&global_params_ps);
+  outlier.sync_param_test(&local_params_ps);
   
   //internal copy should be equal to global copy
-  std::string in_state =  SstdParam::serialize( ( (SstdParam const*)outlier.get_global_parameters() )->get_runstats() );
+  std::string in_state = outlier.get_global_parameters()->serialize();
   
-  EXPECT_EQ(global_params_ps.serialize(), in_state);
+  EXPECT_EQ(local_params_ps.serialize(), in_state);
 }
 
+
+
+TEST(ADOutlierTestSyncParamWithPS, Works){  
+  SstdParam global_params_ps; //parameters held in the parameter server
+  SstdParam local_params_ad; //parameters collected by AD
+
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(500.,100.);
+  int N = 50;
+  
+  {
+    RunStats &r = global_params_ps[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+
+  {
+    RunStats &r = local_params_ad[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+
+  std::cout << global_params_ps[0].get_json().dump();
+  std::cout << local_params_ad[0].get_json().dump();
+
+  SstdParam combined_params_ps; //what we expect
+  combined_params_ps.assign(global_params_ps.get_runstats());
+  combined_params_ps.update(local_params_ad.get_runstats());
+
+
+#ifdef _USE_MPINET
+#warning "Testing with MPINET not available"
+#elif defined(_USE_ZMQNET)
+  std::cout << "Using ZMQ net" << std::endl;
+
+  Barrier barrier2(2);
+
+  std::string sinterface = "tcp://*:5559";
+  std::string sname = "tcp://localhost:5559";
+
+  int argc; char** argv = nullptr;
+  std::cout << "Initializing PS thread" << std::endl;
+  std::thread ps_thr([&]{
+  		       ZMQNet ps;
+		       ps.set_parameter(&global_params_ps);
+  		       ps.init(&argc, &argv, 4); //4 workers
+  		       ps.run(".");
+		       std::cout << "PS thread waiting at barrier" << std::endl;
+		       barrier2.wait();
+		       std::cout << "PS thread terminating connection" << std::endl;
+		       ps.finalize();
+  		     });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::string glob_params_comb_ad;
+  std::cout << "Initializing AD thread" << std::endl;
+  std::thread out_thr([&]{
+			try{
+			  ADOutlierSSTDTest outlier;
+			  outlier.connect_ps(0, 0, sname);
+
+			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
+			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+			  
+			  std::cout << "AD thread terminating connection" << std::endl;
+			  outlier.disconnect_ps();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
+			}catch(const std::exception &e){
+			  std::cerr << e.what() << std::endl;
+			}
+			//barrier2.wait();
+		      });
+  
+  ps_thr.join();
+  out_thr.join();
+
+  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+  
+#else
+#error "Requires compiling with MPI or ZMQ net"
+#endif
+}
