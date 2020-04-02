@@ -33,9 +33,8 @@ WORKDIR /Downloads
 
 # Git version mpi linking it not currently working
 # Increment integer below to force redownload
-RUN echo "FORCE DOWNLOAD 1" && git clone https://github.com/UO-OACISS/tau2.git
+RUN echo "FORCE DOWNLOAD 4_2_20_10_29" && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
-
 
 #RUN	wget http://tau.uoregon.edu/tau.tgz && \
 #	tar -xvzf tau.tgz
@@ -44,6 +43,8 @@ WORKDIR /Downloads/tau2
 
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi -pthread -bfd=download -unwind=download -pdt=/opt/pdt -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 -papi=/opt/papi -cuda=/usr/local/cuda && \
 	make -j$JOBS install
+
+RUN git log | head -1 > /opt/tau2/git_version
 
 FROM chimbuko/adios2:ubuntu18.04-cuda10.1
 
