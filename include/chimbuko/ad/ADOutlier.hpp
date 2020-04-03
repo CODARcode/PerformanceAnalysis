@@ -1,4 +1,5 @@
 #pragma once
+#include<array>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
@@ -14,6 +15,19 @@
 
 namespace chimbuko {
 
+  template<typename T, size_t N>
+  struct ArrayHasher {
+    std::size_t operator()(const std::array<T, N>& a) const{
+      std::size_t h = 0;
+      
+      for (auto e : a) {
+	h ^= std::hash<T>{}(e)  + 0x9e3779b9 + (h << 6) + (h >> 2); 
+      }
+      return h;
+    }   
+  };
+
+  
   /**
    * @brief abstract class for anomaly detection algorithms
    * 
@@ -120,7 +134,9 @@ namespace chimbuko {
     void* m_context;                         /**< ZeroMQ context */
     void* m_socket;                          /**< ZeroMQ socket */
 #endif
-
+ 
+    std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
+    
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
