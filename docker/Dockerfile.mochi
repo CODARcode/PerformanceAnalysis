@@ -1,0 +1,32 @@
+FROM chimbuko/base:ubuntu18.04 AS mochi-install
+
+SHELL ["/bin/bash", "-c"]
+
+ENV SPACK_ROOT=/spack/spack
+RUN mkdir /spack && cd /spack && \
+    git clone https://github.com/spack/spack.git
+
+RUN source /spack/spack/share/spack/setup-env.sh && \
+    mkdir /sds && cd /sds && \
+    git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git && \
+    spack repo add sds-repo
+
+RUN source /spack/spack/share/spack/setup-env.sh && \
+	spack install mercury +bmi +mpi && \
+	spack install thallium && \
+	spack install abt-io && \
+	spack install sdskeyval+bdb+leveldb
+
+RUN apt-get update
+RUN apt-get install -y vim emacs
+
+RUN source /spack/spack/share/spack/setup-env.sh && \
+	spack install mochi-sonata
+
+#RUN apt-get install -y gdb
+
+WORKDIR /
+
+ENTRYPOINT [ "source /spack/spack/share/spack/setup-env.sh && /bin/bash" ]
+
+
