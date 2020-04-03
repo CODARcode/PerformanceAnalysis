@@ -212,6 +212,14 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
 unsigned long ADOutlierSSTD::run(int step) {
   if (m_execDataMap == nullptr) return 0;
 
+  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
+  //This is worked around by ignoring the first time a function is encountered (per device)
+  //Set this environment variable to disable the workaround
+  bool cuda_jit_workaround = true;
+  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
+    cuda_jit_workaround = false;
+  }     
+  
   //Generate the statistics based on this IO step
   SstdParam param;
   std::unordered_map<unsigned long, std::string> l_func; //map of function index to function name
@@ -229,7 +237,7 @@ unsigned long ADOutlierSSTD::run(int step) {
       else
 	encounter_it->second++;
 
-      if(encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
+      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
 	param[func_id].push(static_cast<double>(itt->get_runtime()));
 	l_func[func_id] = itt->get_funcname();
 	l_inclusive[func_id].push(static_cast<double>(itt->get_inclusive()));

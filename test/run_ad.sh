@@ -16,6 +16,8 @@ fi
 
 mkdir -p temp perf
 
+export CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND=1
+
 mpirun --allow-run-as-root -n 1 ${appdir}/pserver 4 "./perf/" &
 ps_wid=$!
 
