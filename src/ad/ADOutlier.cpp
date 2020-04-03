@@ -210,23 +210,37 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
 }
 
 unsigned long ADOutlierSSTD::run(int step) {
-    if (m_execDataMap == nullptr) return 0;
+  if (m_execDataMap == nullptr) return 0;
 
-    SstdParam param;
-    std::unordered_map<unsigned long, std::string> l_func;
-    std::unordered_map<unsigned long, RunStats> l_inclusive;
-    std::unordered_map<unsigned long, RunStats> l_exclusive;
+  //Generate the statistics based on this IO step
+  SstdParam param;
+  std::unordered_map<unsigned long, std::string> l_func; //map of function index to function name
+  std::unordered_map<unsigned long, RunStats> l_inclusive; //including child calls
+  std::unordered_map<unsigned long, RunStats> l_exclusive; //excluding child calls
 
-    for (auto it : *m_execDataMap) {        
-        for (auto itt : it.second) {
-            param[it.first].push(static_cast<double>(itt->get_runtime()));
-            l_func[it.first] = itt->get_funcname();
-            l_inclusive[it.first].push(static_cast<double>(itt->get_inclusive()));
-            l_exclusive[it.first].push(static_cast<double>(itt->get_exclusive()));
-        }
+  for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+    unsigned long func_id = it.first;
+    for (auto itt : it.second) { //loop over events for that function
+      //Update local counts of number of times encountered
+      std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+      auto encounter_it = m_local_func_exec_count.find(fkey);
+      if(encounter_it == m_local_func_exec_count.end())
+	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+      else
+	encounter_it->second++;
+
+      if(encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
+	param[func_id].push(static_cast<double>(itt->get_runtime()));
+	l_func[func_id] = itt->get_funcname();
+	l_inclusive[func_id].push(static_cast<double>(itt->get_inclusive()));
+	l_exclusive[func_id].push(static_cast<double>(itt->get_exclusive()));
+      }
+
+      
     }
+  }
 
-    // update temp runstats (parameter server)
+    //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
 #ifdef _PERF_METRIC
     Clock::time_point t0, t1;
     std::pair<size_t, size_t> msgsz;
@@ -309,9 +323,14 @@ unsigned long ADOutlierSSTD::compute_outliers(
 
         int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
         if (label == -1) {
-            n_outliers += 1;
-            itt->set_label(label);
-        }
+	  VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		  << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
+	  n_outliers += 1;
+	  itt->set_label(label);
+        }else{
+	  VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		  << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
+	}
     }
 
     return n_outliers;

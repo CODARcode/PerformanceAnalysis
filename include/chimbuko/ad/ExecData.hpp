@@ -375,11 +375,11 @@ public:
     /**
      * @brief update exclusive running time
      * 
-     * @param t running time of a childrent function
+     * @param t running time of a child function
      */
     void update_exclusive(long t) { m_exclusive -= t; }
     /**
-     * @brief increase the number of childrent function by 1
+     * @brief increase the number of child function by 1
      * 
      */
     void inc_n_children() { m_n_children++; }
@@ -420,8 +420,8 @@ private:
     long 
         m_entry,                         /**< entry time */
         m_exit,                          /**< exit time */
-        m_runtime,                       /**< inclusive running time */
-        m_exclusive;                     /**< exclusive running time */
+        m_runtime,                       /**< inclusive running time (i.e. including time of child calls) */
+        m_exclusive;                     /**< exclusive running time (i.e. excluding time of child calls) */
     int m_label;                         /**< 1 for normal, -1 for abnormal execution */
     std::string m_parent;                /**< parent execution */
     unsigned long m_n_children;          /**< the number of childrent executions */
