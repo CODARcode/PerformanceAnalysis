@@ -13,8 +13,15 @@ namespace chimbuko {
     SstdParam();
     SstdParam(const std::vector<int>& n_ranks);
     ~SstdParam();
+
+    /**
+     * @brief Clear all statistics
+     */
     void clear() override;
 
+    /**
+     * @brief Get the number of functions for which statistics are being collected*/
+    */
     size_t size() const override { return m_runstats.size(); }
 
     /**
@@ -25,7 +32,9 @@ namespace chimbuko {
 
     /**
      * @brief Update the internal run statistics with those included in the serialized input map
-     * @param runstats The serialized input map
+     * @param parameters The parameters in serialized format
+     * @param return_update Controls return format
+     * @return An empty string if return_update==False, otherwise the serialized updated parameters
      */
     std::string update(const std::string& parameters, bool return_update=false) override;
 

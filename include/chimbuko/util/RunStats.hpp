@@ -25,13 +25,13 @@ namespace chimbuko {
      * 
      */
     typedef struct State {
-      double count;
-      double eta;
+      double count; /**< count of instances */
+      double eta; /**< mean */
       double rho;
       double tau;
       double phi;
-      double min;
-      double max;
+      double min; /**< minimum */
+      double max; /**< maximum */
       double acc;
       State()
       {

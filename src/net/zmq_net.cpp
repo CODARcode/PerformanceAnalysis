@@ -75,7 +75,7 @@ void doWork(void* context, ParamInterface* param)
       }
     }else if (msg.kind() == MessageKind::ANOMALY_STATS){
       if (msg.type() == MessageType::REQ_ADD) {
-	//The message is a request to anomaly data from the AD into the statistics
+	//The message is a request to add anomaly data from the AD into the statistics
 	param->add_anomaly_data(msg.buf());
 	msg_reply.set_msg("", false);
       }

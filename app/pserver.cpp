@@ -1,3 +1,4 @@
+//The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
 #else
