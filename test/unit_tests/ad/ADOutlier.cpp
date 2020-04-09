@@ -327,6 +327,42 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
 }
 
 
+TEST(ADOutlierTestRunWithoutPS, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+
+  ADOutlierSSTDTest outlier;
+  
+  //Generate some events with an outlier
+  
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    //std::cout << call_list.back().get_json().dump() << std::endl;
+  }
+  long ts_end = 1000*N + 800;
+  
+  //typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
+  ExecDataMap_t data_map;
+  std::vector<CallListIterator_t> &call_list_its = data_map[func_id];
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    call_list_its.push_back(it);
+
+  //run method generates statistics from input data map and merges with stored stats
+  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
+  outlier.linkExecDataMap(&data_map);
+  unsigned long nout = outlier.run(0);
+
+  std::cout << "# outliers detected: " << nout << std::endl;
+
+  EXPECT_EQ(nout, 1);
+}
+
+
 
 
 
