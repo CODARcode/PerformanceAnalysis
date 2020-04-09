@@ -84,7 +84,7 @@ namespace chimbuko {
     void assign(const std::unordered_map<unsigned long, RunStats>& runstats);
 
     /**
-     * @brief Get an element of the internal map
+     * @brief Get an element of the internal map. id is the function index
      */
     RunStats& operator [](unsigned long id) { return m_runstats[id]; }
 
@@ -94,7 +94,7 @@ namespace chimbuko {
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
     
   private:
-    std::unordered_map<unsigned long, RunStats> m_runstats;
+    std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of function index to statistics*/
   };
 
 } // end of chimbuko namespace

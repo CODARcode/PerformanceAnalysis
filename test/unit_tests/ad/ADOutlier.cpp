@@ -68,6 +68,14 @@ struct MockParameterServer{
 
 };
 
+//Derived class to allow access to protected member functions
+class ADOutlierSSTDTest: public ADOutlierSSTD{
+public:
+  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
+
+  unsigned long compute_outliers_test(const unsigned long func_id, std::vector<CallListIterator_t>& data,
+				      long& min_ts, long& max_ts){ return this->compute_outliers(func_id, data, min_ts, max_ts); }
+};
 
 
 TEST(ADOutlierTestConnectPS, ConnectsMock){
@@ -165,10 +173,7 @@ TEST(ADOutlierTestConnectPS, ConnectsZMQnet){
 
 
 
-class ADOutlierSSTDTest: public ADOutlierSSTD{
-public:
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
-};
+
 
 TEST(ADOutlierTestSyncParamWithoutPS, Works){  
   SstdParam local_params_ps;
@@ -276,3 +281,64 @@ TEST(ADOutlierTestSyncParamWithPS, Works){
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
+
+
+TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+  SstdParam stats;
+  RunStats &stats_r = stats[func_id];
+  for(int i=0;i<N;i++) stats_r.push(dist(gen));
+
+  ADOutlierSSTDTest outlier;
+  outlier.sync_param_test(&stats);
+  
+  std::string stats_state = outlier.get_global_parameters()->serialize();
+
+  std::cout << "Stats: " << stats_state << std::endl;
+  
+  //Generate some events with an outlier
+  
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    //std::cout << call_list.back().get_json().dump() << std::endl;
+  }
+  long ts_end = 1000*N + 800;
+  
+  
+  std::vector<CallListIterator_t> call_list_its;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    call_list_its.push_back(it);
+
+  long min_ts, max_ts;
+  unsigned long nout = outlier.compute_outliers_test(func_id, call_list_its, min_ts, max_ts);
+
+  std::cout << "# outliers detected: " << nout << std::endl;
+  std::cout << "min_ts " << min_ts << " max_ts " << max_ts << std::endl;
+
+  EXPECT_EQ(nout, 1);
+  EXPECT_EQ(min_ts, 1000);
+  EXPECT_EQ(max_ts, ts_end);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -308,38 +308,45 @@ unsigned long ADOutlierSSTD::run(int step) {
 }
 
 unsigned long ADOutlierSSTD::compute_outliers(
-    const unsigned long func_id, 
-    std::vector<CallListIterator_t>& data,
-    long& min_ts, long& max_ts) 
-{
-    SstdParam& param = *(SstdParam*)m_param;
-    if (param[func_id].count() < 2) return 0;
-    unsigned long n_outliers = 0;
+					      const unsigned long func_id, 
+					      std::vector<CallListIterator_t>& data,
+					      long& min_ts, long& max_ts){
+  
+  VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
+  
+  SstdParam& param = *(SstdParam*)m_param;
+  if (param[func_id].count() < 2){
+    VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
+    return 0;
+  }
+  unsigned long n_outliers = 0;
+  max_ts = 0;
+  min_ts = 0;
 
-    const double mean = param[func_id].mean();
-    const double std = param[func_id].stddev();
+  const double mean = param[func_id].mean();
+  const double std = param[func_id].stddev();
 
-    const double thr_hi = mean + m_sigma * std;
-    const double thr_lo = mean - m_sigma * std;
+  const double thr_hi = mean + m_sigma * std;
+  const double thr_lo = mean - m_sigma * std;
 
-    for (auto itt : data) {
-        const double runtime = static_cast<double>(itt->get_runtime());
-        if (min_ts == 0 || min_ts > itt->get_entry())
-            min_ts = itt->get_entry();
-        if (max_ts == 0 || max_ts < itt->get_exit())
-            max_ts = itt->get_exit();
+  for (auto itt : data) {
+    const double runtime = static_cast<double>(itt->get_runtime());
+    if (min_ts == 0 || min_ts > itt->get_entry())
+      min_ts = itt->get_entry();
+    if (max_ts == 0 || max_ts < itt->get_exit())
+      max_ts = itt->get_exit();
 
-        int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
-        if (label == -1) {
-	  VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-		  << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
-	  n_outliers += 1;
-	  itt->set_label(label);
-        }else{
-	  VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-		  << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
-	}
+    int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
+    if (label == -1) {
+      VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
+      n_outliers += 1;
+      itt->set_label(label);
+    }else{
+      VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
     }
+  }
 
-    return n_outliers;
+  return n_outliers;
 }
