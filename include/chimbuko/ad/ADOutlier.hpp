@@ -116,7 +116,7 @@ namespace chimbuko {
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
     /**
-     * @brief update (send) local anomaly statistics to the connected parameter server
+     * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
      * 
      * @param l_stats local statistics
      * @param step step (or frame) number
