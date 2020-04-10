@@ -4,6 +4,7 @@
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
+#include "chimbuko/util/hash.hpp"
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
 #else
@@ -13,21 +14,7 @@
 #include "chimbuko/util/RunMetric.hpp"
 #endif
 
-namespace chimbuko {
-
-  template<typename T, size_t N>
-  struct ArrayHasher {
-    std::size_t operator()(const std::array<T, N>& a) const{
-      std::size_t h = 0;
-      
-      for (auto e : a) {
-	h ^= std::hash<T>{}(e)  + 0x9e3779b9 + (h << 6) + (h >> 2); 
-      }
-      return h;
-    }   
-  };
-
-  
+namespace chimbuko {  
   /**
    * @brief abstract class for anomaly detection algorithms
    * 
