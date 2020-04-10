@@ -117,7 +117,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     return EventError::OK;
   }else if (eventType.compare("EXIT") == 0){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
-    if (cs.size() == 0) {
+    if (cs.size() == 0) { //Expect to have at least one entry; that created when the ENTRY was encountered
       std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
       std::cerr << event.get_json().dump() << std::endl
 		<< m_eventType->find(event.eid())->second << ": "
@@ -125,6 +125,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
       return EventError::EmptyCallStack;
     }
 
+    //Get the function call object at the top of the stack and add the exit event
     CallListIterator_t& it = cs.top();
     if (!it->update_exit(event)) {
       std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
@@ -138,11 +139,14 @@ EventError ADEvent::addFunc(const Event_t& event) {
       // }            
       return EventError::CallStackViolation;
     }
+    //Remove the object from the stack (it still lives in the CallList)
     cs.pop();
+    //Tell the former parent function to subtract the child runtime from its exclusive runtime 
     if (!cs.empty()) {
       cs.top()->update_exclusive(it->get_runtime());
     }
 
+    //Associate all comms events on the stack with the call object
     CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
     while (!comm.empty()) {
       if (!it->add_message(comm.top()))
@@ -150,6 +154,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
       comm.pop();
     }
 
+    //Add the now complete event to the map
     m_execDataMap[event.fid()].push_back(it);
 
     return EventError::OK;
@@ -194,6 +199,7 @@ static unsigned long nested_map_size(const T& m) {
 }
 
 CallListMap_p_t* ADEvent::trimCallList() {
+  //Remove completed entries from the call list
   CallListMap_p_t* cpListMap = new CallListMap_p_t;
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {

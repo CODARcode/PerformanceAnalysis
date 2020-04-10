@@ -242,12 +242,12 @@ private:
     const std::unordered_map<int, std::string> *m_eventType;
 
     /**
-     * @brief communication stack
+     * @brief communication event stack. Once a function call has exited, all comms events are associated with that call and the stack is cleared
      * 
      */
     CommStackMap_p_t  m_commStack;
     /**
-     * @brief function call stack
+     * @brief map of process,rank,thread to the current function call stack. As functions exit they are popped from the stack
      * 
      */
     CallStackMap_p_t  m_callStack;
@@ -257,7 +257,7 @@ private:
      */
     CallListMap_p_t   m_callList;
     /**
-     * @brief execution data map
+     * @brief map of function index to an array of complete calls to this function
      * 
      */
     ExecDataMap_t     m_execDataMap;

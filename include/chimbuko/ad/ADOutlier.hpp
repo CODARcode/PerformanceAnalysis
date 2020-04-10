@@ -77,10 +77,11 @@ namespace chimbuko {
     /**
      * @brief abstract method to run the implemented anomaly detection algorithm
      * 
+     * @param[out] outliers Array of function calls that were tagged as outliers
      * @param step step (or frame) number
-     * @return unsigned long the number of detected anomalies
+     * @return unsigned long the number of detected outliers
      */
-    virtual unsigned long run(int step=0) = 0;
+    virtual unsigned long run(std::vector<CallListIterator_t> &outliers, int step=0) = 0;
 
 #ifdef _PERF_METRIC
     void dump_perf(std::string path, std::string filename="metric.json"){
@@ -98,13 +99,14 @@ namespace chimbuko {
     /**
      * @brief abstract method to compute outliers (or anomalies)
      * 
+     * @param[out] outliers Array of function calls that were tagged as outliers
      * @param func_id function id
-     * @param data a list of function calls to inspect
+     * @param[in,out] data a list of function calls to inspect. Entries will be tagged as outliers
      * @param min_ts the minimum timestamp of the list of function calls
      * @param max_ts the maximum timestamp of the list of function calls
      * @return unsigned long the number of outliers (or anomalies)
      */
-    virtual unsigned long compute_outliers(
+    virtual unsigned long compute_outliers(std::vector<CallListIterator_t> &outliers,
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data,
 					   long& min_ts, long& max_ts) = 0;
 
@@ -177,22 +179,24 @@ namespace chimbuko {
     /**
      * @brief run this anomaly detection algorithm
      * 
+     * @param[out] outliers Array of function calls that were tagged as outliers
      * @param step step (or frame) number
      * @return unsigned long the number of anomalies
      */
-    unsigned long run(int step=0) override;
+    unsigned long run(std::vector<CallListIterator_t> &outliers, int step=0) override;
 
   protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
      * 
+     * @param[out] outliers Array of function calls that were tagged as outliers
      * @param func_id function id
-     * @param data a list of function calls to inspect
+     * @param data[in,out] a list of function calls to inspect
      * @param min_ts the minimum timestamp of the list of function calls
      * @param max_ts the maximum timestamp of the list of function calls
      * @return unsigned long the number of outliers (or anomalies)
      */
-    unsigned long compute_outliers(
+    unsigned long compute_outliers(std::vector<CallListIterator_t> &outliers,
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data,
 				   long& min_ts, long& max_ts) override;
 

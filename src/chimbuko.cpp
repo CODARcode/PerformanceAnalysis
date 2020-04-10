@@ -1,4 +1,5 @@
 #include "chimbuko/chimbuko.hpp"
+#include "chimbuko/verbose.hpp"
 
 using namespace chimbuko;
 
@@ -48,7 +49,7 @@ void Chimbuko::init_event(bool verbose)
 void Chimbuko::init_outlier(int rank, double sigma, std::string addr)
 {
     m_outlier = new ADOutlierSSTD();
-    m_outlier->linkExecDataMap(m_event->getExecDataMap());
+    m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
     m_outlier->set_sigma(sigma);
     if (addr.length() > 0) {
 #ifdef _USE_MPINET
@@ -232,9 +233,18 @@ void Chimbuko::run(int rank,
     extractEvents(rank, step);
 
     //Run the outlier detection algorithm on the events
-    n_outliers += m_outlier->run(step);
+    std::vector<CallListIterator_t> anomalies;
+    n_outliers += m_outlier->run(anomalies,step);
     frames++;
 
+    if(Verbose::on()){
+      std::cout << "Anomalies:" << std::endl;
+      for(auto anom_it : anomalies){
+	const auto &anom = *anom_it;
+	std::cout << anom.get_json().dump() << std::endl;
+      }
+    }
+    
     //Pull out all complete events and write to output
     m_io->write(m_event->trimCallList(), step);
     m_io->writeCounters(m_counter->flushCounters(), step);

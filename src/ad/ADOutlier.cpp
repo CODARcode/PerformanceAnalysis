@@ -209,7 +209,7 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
     return std::make_pair(sent_sz, recv_sz);
 }
 
-unsigned long ADOutlierSSTD::run(int step) {
+unsigned long ADOutlierSSTD::run(std::vector<CallListIterator_t> &outliers, int step) {
   if (m_execDataMap == nullptr) return 0;
 
   //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
@@ -274,9 +274,9 @@ unsigned long ADOutlierSSTD::run(int step) {
     // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
     nlohmann::json g_info;
     g_info["func"] = nlohmann::json::array();
-    for (auto it : *m_execDataMap) {
+    for (auto it : *m_execDataMap) { //loop over function index
         const unsigned long func_id = it.first;
-        const unsigned long n = compute_outliers(func_id, it.second, min_ts, max_ts);
+        const unsigned long n = compute_outliers(outliers,func_id, it.second, min_ts, max_ts);
         n_outliers += n;
 
         nlohmann::json obj;
@@ -307,7 +307,7 @@ unsigned long ADOutlierSSTD::run(int step) {
     return n_outliers;
 }
 
-unsigned long ADOutlierSSTD::compute_outliers(
+unsigned long ADOutlierSSTD::compute_outliers(std::vector<CallListIterator_t> &outliers,
 					      const unsigned long func_id, 
 					      std::vector<CallListIterator_t>& data,
 					      long& min_ts, long& max_ts){
@@ -342,6 +342,7 @@ unsigned long ADOutlierSSTD::compute_outliers(
 	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
       n_outliers += 1;
       itt->set_label(label);
+      outliers.push_back(itt); //append to list of outliers detected
     }else{
       VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);

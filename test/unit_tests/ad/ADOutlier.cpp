@@ -117,8 +117,12 @@ class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
 
-  unsigned long compute_outliers_test(const unsigned long func_id, std::vector<CallListIterator_t>& data,
-				      long& min_ts, long& max_ts){ return this->compute_outliers(func_id, data, min_ts, max_ts); }
+  unsigned long compute_outliers_test(std::vector<CallListIterator_t> &anomalies,
+				      const unsigned long func_id, std::vector<CallListIterator_t>& data,
+				      long& min_ts, long& max_ts){
+    ;
+    return this->compute_outliers(anomalies,func_id, data, min_ts, max_ts);
+  }
 
   std::pair<size_t, size_t> update_local_statistics_test(std::string l_stats, int step){ return this->update_local_statistics(l_stats, step); }
 };
@@ -362,12 +366,14 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
     call_list_its.push_back(it);
 
   long min_ts, max_ts;
-  unsigned long nout = outlier.compute_outliers_test(func_id, call_list_its, min_ts, max_ts);
+  std::vector<CallListIterator_t> outliers;
+  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its, min_ts, max_ts);
 
   std::cout << "# outliers detected: " << nout << std::endl;
   std::cout << "min_ts " << min_ts << " max_ts " << max_ts << std::endl;
 
   EXPECT_EQ(nout, 1);
+  EXPECT_EQ( (unsigned long)outliers.size(), nout);
   EXPECT_EQ(min_ts, 1000);
   EXPECT_EQ(max_ts, ts_end);
 }
@@ -401,11 +407,13 @@ TEST(ADOutlierTestRunWithoutPS, Works){
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
   outlier.linkExecDataMap(&data_map);
-  unsigned long nout = outlier.run(0);
+  std::vector<CallListIterator_t> anomalies;
+  unsigned long nout = outlier.run(anomalies,0);
 
   std::cout << "# outliers detected: " << nout << std::endl;
 
   EXPECT_EQ(nout, 1);
+  EXPECT_EQ( (unsigned long)anomalies.size(), nout);
 }
 
 TEST(ADOutlierTestUpdateLocalStatisticsWithPS, Works){
