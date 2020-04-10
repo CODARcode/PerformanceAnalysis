@@ -8,99 +8,67 @@
 #include <unordered_map>
 
 namespace chimbuko {  
-/**
- * @brief a stack of CommData_t
- * 
- */
-typedef std::stack<CommData_t> CommStack_t;
 
-/**
- * @brief hash map of CommStack_t in thread level
- * 
- */
-typedef std::unordered_map<unsigned long, CommStack_t>      CommStackMap_t_t;
+#define DEF_MAP3UL(NAME, BASE) \
+  typedef std::unordered_map<unsigned long, BASE> NAME##_t_t;	\
+  typedef std::unordered_map<unsigned long, NAME##_t_t> NAME##_r_t;	\
+  typedef std::unordered_map<unsigned long, NAME##_r_t> NAME##_p_t
+  
+  /**
+   * @brief a stack of CommData_t
+   * 
+   */
+  typedef std::stack<CommData_t> CommStack_t;
 
-/**
- * @brief hash map of CommStackMap_t_t in rank level
- * 
- */
-typedef std::unordered_map<unsigned long, CommStackMap_t_t> CommStackMap_r_t;
+  /**
+   * @brief map of process, rank, thread -> Commstack_t
+   */
+  DEF_MAP3UL(CommStackMap, CommStack_t); 
+  
+  /**
+   * @brief list of function calls (ExecData_t) in entry time order
+   * 
+   */
+  typedef std::list<ExecData_t> CallList_t;
 
-/**
- * @brief hash map of CommStackMap_r_t in application level
- * 
- */
-typedef std::unordered_map<unsigned long, CommStackMap_r_t> CommStackMap_p_t;
+  /**
+   * @brief iterator of CallList_t
+   * 
+   */
+  typedef CallList_t::iterator  CallListIterator_t;
 
-/**
- * @brief list of function calls (ExecData_t) in entry time order
- * 
- */
-typedef std::list<ExecData_t> CallList_t;
+  /**
+   * @brief map of process, rank, thread -> CallList_t
+   */
+  DEF_MAP3UL(CallListMap, CallList_t);
+  
 
-/**
- * @brief iterator of CallList_t
- * 
- */
-typedef CallList_t::iterator  CallListIterator_t;
+  /**
+   * @brief function call stack
+   */
+  typedef std::stack<CallListIterator_t> CallStack_t;
 
-/**
- * @brief hash map of CallList_t in thread level
- * 
- */
-typedef std::unordered_map<unsigned long, CallList_t>      CallListMap_t_t;
+  /**
+   * @bried map of process, rank, thread -> CallListIterator_t
+   */
+  DEF_MAP3UL(CallStackMap, CallStack_t);
 
-/**
- * @brief hash map of CallListMap_t_t in rank level
- * 
- */
-typedef std::unordered_map<unsigned long, CallListMap_t_t> CallListMap_r_t;
 
-/**
- * @brief hash map of CallListMap_r_t in application level
- * 
- */
-typedef std::unordered_map<unsigned long, CallListMap_r_t> CallListMap_p_t;
+  /**
+   * @brief hash map of a collection of ExecData_t per function
+   * 
+   * key is function id and value is a vector of CallListIterator_t (i.e. ExecData_t)
+   * 
+   */
+  typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
 
-/**
- * @brief function call stack
- * 
- */
-typedef std::stack<CallListIterator_t> CallStack_t;
+  /**
+   * @brief Event manager
+   * 
+   */
+  class ADEvent {
 
-/**
- * @brief hash map of CallStack_t in thread level
- * 
- */
-typedef std::unordered_map<unsigned long, CallStack_t>      CallStackMap_t_t;
-
-/**
- * @brief hash map of CallStackMap_t_t in rank level
- * 
- */
-typedef std::unordered_map<unsigned long, CallStackMap_t_t> CallStackMap_r_t;
-
-/**
- * @brief hash map of CallStackMap_r_t in application level
- * 
- */
-typedef std::unordered_map<unsigned long, CallStackMap_r_t> CallStackMap_p_t;
-
-/**
- * @brief hash map of a collection of ExecData_t per function
- * 
- * key is function id and value is a vector of CallListIterator_t (i.e. ExecData_t)
- * 
- */
-typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
-
-/**
- * @brief Event manager
- * 
- */
-class ADEvent {
-
-public:
+  public:
     /**
      * @brief Construct a new ADEvent object
      * 
@@ -202,7 +170,7 @@ public:
      */
     void show_status(bool verbose=false) const;
 
-private:
+  private:
     /**
      * @brief pointer to map of function index to function name
      * 
@@ -240,6 +208,6 @@ private:
      * 
      */
     bool m_verbose;
-};
+  };
 
 } // end of AD namespace
