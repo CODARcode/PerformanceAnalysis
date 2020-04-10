@@ -25,7 +25,7 @@ namespace chimbuko {
     virtual void clear() = 0;
 
     /**
-     * @brief Get the number of functions for which statistics are being collected*/
+     * @brief Get the number of functions for which statistics are being collected
     */
     virtual size_t size() const = 0;
 
@@ -103,7 +103,7 @@ namespace chimbuko {
     std::unordered_map<unsigned long, std::string> m_func; /**< Map of index to function name */
     std::unordered_map<unsigned long, RunStats> m_func_anomaly; /**< Map of index to statistics on number of anomalies */
     std::unordered_map<unsigned long, RunStats> m_inclusive; /**< Map of index to statistics on function timings inclusive of children */
-    std::unordered_map<unsigned long, RunStats> m_exclusive; /**< Map of index to statistics on function timings exclusive of children
+    std::unordered_map<unsigned long, RunStats> m_exclusive; /**< Map of index to statistics on function timings exclusive of children */
   };
 
 } // end of chimbuko namespace

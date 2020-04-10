@@ -231,12 +231,12 @@ private:
 
 private:
     /**
-     * @brief pointer to function map
+     * @brief pointer to map of function index to function name
      * 
      */
     const std::unordered_map<int, std::string> *m_funcMap;
     /**
-     * @brief pointer to event type
+     * @brief pointer to map of event index to event type string
      * 
      */
     const std::unordered_map<int, std::string> *m_eventType;
@@ -252,7 +252,7 @@ private:
      */
     CallStackMap_p_t  m_callStack;
     /**
-     * @brief function call list
+     * @brief  map of process,rank,thread to a list of ExecData_t objects which contain entry/exit timestamps for function calls
      * 
      */
     CallListMap_p_t   m_callList;

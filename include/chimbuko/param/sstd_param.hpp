@@ -20,7 +20,7 @@ namespace chimbuko {
     void clear() override;
 
     /**
-     * @brief Get the number of functions for which statistics are being collected*/
+     * @brief Get the number of functions for which statistics are being collected
     */
     size_t size() const override { return m_runstats.size(); }
 
