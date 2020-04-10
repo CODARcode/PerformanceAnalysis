@@ -7,8 +7,7 @@
 #include <stack>
 #include <unordered_map>
 
-namespace chimbuko {
-
+namespace chimbuko {  
 /**
  * @brief a stack of CommData_t
  * 
@@ -202,32 +201,6 @@ public:
      * @param verbose true to see all details
      */
     void show_status(bool verbose=false) const;
-
-private:
-    /**
-     * @brief Create a communication stack for the given pid, rid, tid
-     * 
-     * @param pid application index
-     * @param rid rank index
-     * @param tid thread index
-     */
-    void createCommStack(unsigned long pid, unsigned long rid, unsigned long tid);
-    /**
-     * @brief Create a Call stack for the given pid, rid, tid
-     * 
-     * @param pid application index
-     * @param rid rank index
-     * @param tid thread index
-     */
-    void createCallStack(unsigned long pid, unsigned long rid, unsigned long tid);
-    /**
-     * @brief Create a Call List for the given pid, rid, tid
-     * 
-     * @param pid application index
-     * @param rid rank index
-     * @param tid thread index
-     */
-    void createCallList(unsigned long pid, unsigned long rid, unsigned long tid);
 
 private:
     /**

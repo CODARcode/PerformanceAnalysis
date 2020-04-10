@@ -16,39 +16,6 @@ ADEvent::~ADEvent() {
 void ADEvent::clear() {
 }
 
-void ADEvent::createCommStack(unsigned long pid, unsigned long rid, unsigned long tid) {
-  if (m_commStack.count(pid) == 0)
-    m_commStack[pid] = CommStackMap_r_t();
-
-  if (m_commStack[pid].count(rid) == 0)
-    m_commStack[pid][rid] = CommStackMap_t_t();
-
-  if (m_commStack[pid][rid].count(tid) == 0)
-    m_commStack[pid][rid][tid] = CommStack_t();
-}
-
-void ADEvent::createCallStack(unsigned long pid, unsigned long rid, unsigned long tid) {
-  if (m_callStack.count(pid) == 0)
-    m_callStack[pid] = CallStackMap_r_t();
-
-  if (m_callStack[pid].count(rid) == 0)
-    m_callStack[pid][rid] = CallStackMap_t_t();
-
-  if (m_callStack[pid][rid].count(tid) == 0)
-    m_callStack[pid][rid][tid] = CallStack_t();
-}
-
-void ADEvent::createCallList(unsigned long pid, unsigned long rid, unsigned long tid) {
-  if (m_callList.count(pid) == 0)
-    m_callList[pid] = CallListMap_r_t();
-    
-  if (m_callList[pid].count(rid) == 0)
-    m_callList[pid][rid] = CallListMap_t_t();
-
-  if (m_callList[pid][rid].count(tid) == 0)
-    m_callList[pid][rid][tid] = CallList_t();
-}
-
 EventError ADEvent::addEvent(const Event_t& event) {
   switch (event.type())
     {
@@ -85,10 +52,6 @@ EventError ADEvent::addFunc(const Event_t& event) {
   // //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
   //     return EventError::OK;
   // }
-
-  this->createCallStack(event.pid(), event.rid(), event.tid());
-  this->createCallList(event.pid(), event.rid(), event.tid());
-  this->createCommStack(event.pid(), event.rid(), event.tid());
 
   eventType = m_eventType->find(eid)->second;
 
@@ -174,7 +137,6 @@ EventError ADEvent::addComm(const Event_t& event) {
   std::string eventType = m_eventType->find(eid)->second;
 
   if (eventType.compare("SEND") == 0 || eventType.compare("RECV") == 0) {
-    this->createCommStack(event.pid(), event.rid(), event.tid());
     CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
     cs.push(CommData_t(event, eventType));
   }
