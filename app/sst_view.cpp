@@ -9,6 +9,7 @@
 #include <sstream>
 #include <regex>
 #include <iostream>
+#include <cstring>
 
 template<typename T>
 struct vecPrint{
@@ -112,7 +113,9 @@ struct varTensor: public varBase{
       std::cout << "Variable " << this->name << " does not seem to exist?!" << std::endl;
     }else{
       size_t sz = 1; for(int i=0;i<shape.size();i++) sz *= shape[i];
-      val.resize(sz);      
+      val.resize(sz);
+      memset((void*)val.data(), 0, sz*sizeof(T));
+      
       eng.Get<T>(var, val.data(), adios2::Mode::Sync);
     }
   }
@@ -214,11 +217,13 @@ int main(int argc, char** argv){
     std::cout << "Usage sst_view <bp filename (without .sst extension)> <options>" << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "-nsteps_show_variable_values  Set the number of io steps for which the data will be displayed, after which output will be suppressed. Default 2. Use -1 for all steps." << std::endl;
+    std::cout << "-offline Rather than connecting online via SST, read the BP file offline (use TAU_ADIOS2_ENGINE=BPFile when running main program)" << std::endl;
     exit(0);
   }
   std::string filename = argv[1];
 
   //Options
+  bool offline = false; //if TAU_ADIOS2_ENGINE=BPFile the main program will store a BP file for offline analysis. Use this option to read the BP file
   size_t nsteps_show_variable_values = 2; //the number of steps for which the values of updated variables will be dumped to output. Use -1 for all steps
   int arg = 2;
   while(arg < argc){
@@ -226,12 +231,14 @@ int main(int argc, char** argv){
     if(sarg == "-nsteps_show_variable_values"){
       nsteps_show_variable_values = strToAny<size_t>(argv[arg+1]);
       arg+=2;
+    }else if(sarg == "-offline"){
+      offline = true;
+      arg++;
     }else{
       std::cerr << "Unknown argument " << sarg;
       exit(-1);
     }
   }
-
 
   //Begin main
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
@@ -243,7 +250,7 @@ int main(int argc, char** argv){
 
   ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
   io = ad.DeclareIO("tau-metrics");
-  io.SetEngine("SST");
+  if(!offline) io.SetEngine("SST");
   io.SetParameters({
 		       {"MarshalMethod", "BP"},{"DataTransport", "RDMA"}
     });
