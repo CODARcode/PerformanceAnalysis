@@ -101,6 +101,12 @@ namespace chimbuko {
      * @brief Get the internal map
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
+
+    /**
+     * @brief Get the statistical distribution associated with a given function
+     */
+    const RunStats & get_function_stats(const unsigned long func_id) const override;
+
     
   private:
     std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of function index to statistics*/

@@ -237,18 +237,18 @@ void Chimbuko::run(int rank,
     n_outliers += m_outlier->run(anomalies,step);
     frames++;
 
-    if(Verbose::on()){
-      std::cout << "Anomalies:" << std::endl;
-      for(auto anom_it : anomalies){
-	const auto &anom = *anom_it;
-	std::cout << anom.get_json().dump() << std::endl;
-      }
+    //Gather provenance data on anomalies
+    std::vector<ADAnomalyProvenance> anomaly_prov;
+    for(auto anom_it : anomalies){
+      const auto &anom = *anom_it;
+      anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters());
     }
-    
-    //Pull out all complete events and write to output
+
+    //Dump data accumulated during IO step
     m_io->write(m_event->trimCallList(), step);
     m_io->writeCounters(m_counter->flushCounters(), step);
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
+
 #ifdef _PERF_METRIC
     // dump performance metric event 10 steps
     if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {

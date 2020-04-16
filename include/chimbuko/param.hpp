@@ -51,8 +51,15 @@ namespace chimbuko {
 
     virtual void show(std::ostream& os) const = 0;
 
-    // anomaly statistics related ...
-
+    /**
+     * @brief Get the statistics associated with a given function
+     */
+    virtual const RunStats & get_function_stats(const unsigned long func_id) const = 0;
+        
+    
+    // anomaly statistics related ... These objects are maintained on the parameter server and unused on the AD
+    
+    
     /**
      * @brief Clear all collected anomaly statistics and revert to initial state
      * @param n_ranks A vector of integers where each entry i gives the number of ranks for program index i
@@ -85,7 +92,7 @@ namespace chimbuko {
      * @brief Collect function statistics into JSON object
      */
     nlohmann::json collect_func_data();
-
+    
     /**
      * @brief Collect anomaly statistics and function statistics
      * @return JSON-formated string containing anomaly and function data
@@ -97,9 +104,9 @@ namespace chimbuko {
     mutable std::mutex m_mutex; // used to update parameters
 
     // for global anomaly statistics
-    std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats; /**< Global anomaly statistics */
+    std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
     // for global function statistics
-    std::mutex m_mutex_func;
+    mutable std::mutex m_mutex_func;
     std::unordered_map<unsigned long, std::string> m_func; /**< Map of index to function name */
     std::unordered_map<unsigned long, RunStats> m_func_anomaly; /**< Map of index to statistics on number of anomalies */
     std::unordered_map<unsigned long, RunStats> m_inclusive; /**< Map of index to statistics on function timings inclusive of children */

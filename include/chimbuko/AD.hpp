@@ -5,6 +5,7 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/ad/ADio.hpp"
 #include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/ad/ADAnomalyProvenance.hpp"
 #include <queue>
 
 typedef std::priority_queue<chimbuko::Event_t, std::vector<chimbuko::Event_t>, std::greater<std::vector<chimbuko::Event_t>::value_type>> PQUEUE;
