@@ -77,6 +77,9 @@ EventError ADEvent::addFunc(const Event_t& event) {
     it->set_funcname(m_funcMap->find(event.fid())->second);
     cs.push(it);
 
+    //Add the new call to the map of call index string
+    m_callIDMap[it->get_id()] = it;
+    
     return EventError::OK;
   }else if (eventType.compare("EXIT") == 0){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
@@ -173,7 +176,11 @@ CallListMap_p_t* ADEvent::trimCallList() {
 	while (it != cl.end()) {
 	  // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
 	  if (it->get_runtime()) {
+	    //Add copy of completed event to output
 	    cpList.push_back(*it);
+	    //Remove completed event from map of event index string to call list
+	    m_callIDMap.erase(it->get_id());	    
+	    //Remove completed event from call list
 	    it = cl.erase(it);
 	  }
 	  else {
@@ -181,13 +188,21 @@ CallListMap_p_t* ADEvent::trimCallList() {
 	  }                    
 	}
 	if (cpList.size())
-	  (*cpListMap)[it_p.first][it_r.first][it_t.first] = cpList;
+	  (*cpListMap)[it_p.first][it_r.first][it_t.first] = std::move(cpList); //save a copy
       }
     }
   }    
   m_execDataMap.clear();
   return cpListMap;
 }
+
+
+CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{
+  auto it = m_callIDMap.find(event_id);
+  if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id + " not present in map");
+  else return it->second;
+}
+
 
 void ADEvent::show_status(bool verbose) const {
   size_t n_comm_remained = nested_map_size<CommStackMap_p_t>(m_commStack);

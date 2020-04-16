@@ -9,6 +9,9 @@
 
 namespace chimbuko {  
 
+  /**
+   * @brief Macro to generate a 3-level map of unsigned long to objects of type BASE. The naming convention for the map levels are ${NAME}_p_t, ${NAME}_r_t, ${NAME}_t_t
+   */
 #define DEF_MAP3UL(NAME, BASE) \
   typedef std::unordered_map<unsigned long, BASE> NAME##_t_t;	\
   typedef std::unordered_map<unsigned long, NAME##_t_t> NAME##_r_t;	\
@@ -130,6 +133,11 @@ namespace chimbuko {
     CallListMap_p_t& getCallListMap() { return m_callList; }
 
     /**
+     * @brief Get an iterator to an ExecData_t instance with given event index string
+     */
+    CallListIterator_t getCallData(const std::string &event_id) const;     
+    
+    /**
      * @brief clear 
      * 
      */
@@ -163,6 +171,8 @@ namespace chimbuko {
      * @return CallListMap_p_t* trimed function calls
      */
     CallListMap_p_t* trimCallList();
+
+
     /**
      * @brief show current call stack tree status
      * 
@@ -195,14 +205,24 @@ namespace chimbuko {
     /**
      * @brief  map of process,rank,thread to a list of ExecData_t objects which contain entry/exit timestamps for function calls
      * 
+     * In practise the call list is purged of completed events each IO step through calls to trimCallList
      */
     CallListMap_p_t   m_callList;
     /**
-     * @brief map of function index to an array of complete calls to this function
+     * @brief map of function index to an array of complete calls to this function during this IO step
      * 
+     * In practise this map is cleared every IO step by calls to trimCallList
      */
     ExecDataMap_t     m_execDataMap;
 
+
+    /**
+     * @brief map of call event index string to the event
+     *
+     * Completed calls are removed from this list every IO step by calls to trimCallList
+     */
+    std::unordered_map<std::string, CallListIterator_t> m_callIDMap;
+    
     /**
      * @brief verbose
      * 
