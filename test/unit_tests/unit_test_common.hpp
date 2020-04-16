@@ -90,3 +90,31 @@ chimbuko::ExecData_t createFuncExecData_t(unsigned long pid,
   return exec;
 }
 
+
+
+/**
+ * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+ */
+chimbuko::Event_t createCounterEvent_t(unsigned long pid,
+				       unsigned long rid,
+				       unsigned long tid,
+				       unsigned long counter_id,
+				       unsigned long value,
+				       unsigned long ts){
+  using namespace chimbuko;
+  static size_t event_idx = -1;
+  event_idx++;
+  std::stringstream ss; ss << "counter_event" << event_idx;
+  
+  static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
+  std::array<unsigned long, COUNTER_EVENT_DIM> ev;
+  ev[IDX_P] = pid;
+  ev[IDX_R] = rid;
+  ev[IDX_T] = tid;
+  ev[COUNTER_IDX_ID] = counter_id;
+  ev[COUNTER_IDX_VALUE] = value;
+  ev[COUNTER_IDX_TS] = ts;
+  todelete.push_back(ev);
+
+  return Event_t(todelete.back().data(), EventDataType::COUNT, event_idx, ss.str());
+}

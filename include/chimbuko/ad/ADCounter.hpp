@@ -8,8 +8,21 @@
 #include <unordered_map>
 
 namespace chimbuko {
-  typedef std::list<CounterData_t> CounterDataList;
+  typedef std::list<CounterData_t> CounterDataList_t;
+  typedef typename CounterDataList_t::iterator CounterDataListIterator_t;
+  typedef std::map<unsigned long, std::list<CounterDataListIterator_t> > CounterTimeStamps_t;
+  
+  /**
+   * @brief map of process, rank, thread -> CounterDataList_t
+   */
+  DEF_MAP3UL(CounterDataListMap, CounterDataList_t); 
 
+  /**
+   * @brief map of process, rank, thread -> CounterTimeStamps_t
+   */
+  DEF_MAP3UL(CounterTimeStampMap, CounterTimeStamps_t); 
+
+  
   /**
    * @brief A class that stores counter events
    */
@@ -35,12 +48,18 @@ namespace chimbuko {
      * @brief Return all counters and clear internal state
      * @return A pointer to a list of counters (should be deleted externally)
      */
-    CounterDataList* flushCounters();
-    
+    CounterDataListMap_p_t* flushCounters();
 
-  private:
-    CounterDataList* m_counters;
-    const std::unordered_map<int, std::string> *m_counterMap;
+    /**
+     * @brief Get counters for a particular process/rank/thread that were recorded in the window (t_start, t_end) [inclusive]
+     */
+    std::list<CounterDataListIterator_t> getCountersInWindow(const unsigned long pid, const unsigned long rid, const unsigned long tid,
+							     const unsigned long t_start, const unsigned long t_end) const;
+
     
+  private:
+    CounterDataListMap_p_t* m_counters;
+    const std::unordered_map<int, std::string> *m_counterMap;
+    CounterTimeStampMap_p_t m_timestampCounterMap; /** < process/rank/thread -> *Ordered* map of timestamp to counter list iterator (flushed with flushCounters) */
   };
 };

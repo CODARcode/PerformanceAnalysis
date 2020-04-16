@@ -208,7 +208,7 @@ IOError ADio::write(CallListMap_p_t* callListMap, long long step) {
 
 class CounterEventWriteFunctor{
 public:
-  CounterEventWriteFunctor(ADio& io, CounterDataList* counterList, long long step) 
+  CounterEventWriteFunctor(ADio& io, CounterDataListMap_p_t* counterList, long long step) 
     : m_io(io), m_counterList(counterList), m_step(step){
   }
 
@@ -216,8 +216,11 @@ public:
     if(m_io.getOutputPath().length() == 0) return; //only write to disk currently, not to pserver
       
     nlohmann::json jCount = nlohmann::json::array();
-    for(auto it = m_counterList->begin(); it != m_counterList->end(); ++it)
-      jCount.push_back(it->get_json());
+    for(auto &pit : *m_counterList)
+      for(auto &rit : pit.second)
+	for(auto &tit : rit.second)
+	  for(auto &eit : tit.second)	    
+	    jCount.push_back(eit.get_json());
       
     std::string packet = nlohmann::json::object({
 						 {"app", 0},
@@ -246,12 +249,12 @@ public:
 
 private:
   ADio& m_io;
-  CounterDataList* m_counterList;
+  CounterDataListMap_p_t* m_counterList;
   long long m_step;
 };
 
 
-IOError ADio::writeCounters(CounterDataList* counterList, long long step) {
+IOError ADio::writeCounters(CounterDataListMap_p_t* counterList, long long step) {
   if (m_outputPath.length() == 0){ //currently write only to disk
     delete counterList;
     return IOError::OK;

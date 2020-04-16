@@ -47,7 +47,7 @@ namespace chimbuko {
      * @param counterList List of counter events
      * @param adios2 io step
      */
-    IOError writeCounters(CounterDataList* counterList, long long step);
+    IOError writeCounters(CounterDataListMap_p_t* counterList, long long step);
 
     /**
      * @brief Write metadata accumulated during this IO step

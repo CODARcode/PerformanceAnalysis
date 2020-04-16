@@ -7,16 +7,71 @@ void ADCounter::addCounter(const Event_t& event){
   if(!m_counterMap) throw std::runtime_error("Counter mapping not linked");
 
   //If this is the first counter after a flush, we recreate the list
-  if(!m_counters) m_counters = new CounterDataList;
+  if(!m_counters) m_counters = new CounterDataListMap_p_t;
 
+  //Get the counter name
   auto it = m_counterMap->find(event.counter_id());
   if(it == m_counterMap->end()) throw std::runtime_error("Counter index could not be found in map");
 
-  m_counters->push_back( CounterData_t(event, it->second ) );
+  //Append the counter to the list, and add the iterator to the timestamp map
+  auto &count_list_prt = (*m_counters)[event.pid()][event.rid()][event.tid()];
+  
+  CounterDataListIterator_t cit = count_list_prt.emplace(count_list_prt.end(), event, it->second);
+  m_timestampCounterMap[event.pid()][event.rid()][event.tid()][event.ts()].push_back(cit);
 }
 
-CounterDataList* ADCounter::flushCounters(){
-  CounterDataList* ret = m_counters;
+CounterDataListMap_p_t* ADCounter::flushCounters(){
+  CounterDataListMap_p_t* ret = m_counters;
   m_counters = nullptr;
+  m_timestampCounterMap.clear();
   return ret;
+}
+
+std::list<CounterDataListIterator_t> ADCounter::getCountersInWindow(const unsigned long pid, const unsigned long rid, const unsigned long tid,
+								    const unsigned long t_start, const unsigned long t_end) const{
+  std::list<CounterDataListIterator_t> out;
+
+  //Find the counter timestamp map for process/rank/thread. Return empty list if no map entries
+  auto pit = m_timestampCounterMap.find(pid);
+  if(pit == m_timestampCounterMap.end()){
+    std::cout << "pooh1" << std::endl;
+    return out;
+  }
+
+  auto rit = pit->second.find(rid);
+  if(rit == pit->second.end()){
+    std::cout << "pooh2" << std::endl;	
+    return out;
+  }
+
+  auto tit = rit->second.find(tid);
+  if(tit == rit->second.end()){
+    std::cout << "pooh3" << std::endl;
+    return out;
+  }
+    
+  const auto & the_map = tit->second;
+
+  //Get iterators to start and end of window (this is only log(n) complexity which is why std::map is cool)
+  auto start = the_map.lower_bound(t_start);
+  auto end = the_map.upper_bound(t_end);
+
+  //Return empty list if nothing in window
+  if(start == the_map.end()){
+    std::cout << "pooh5" << std::endl;   
+    return out;
+  }
+
+  std::cout << "start " << start->second.front()->get_json().dump() << std::endl;
+  if(end != the_map.end())
+    std::cout << "end " << end->second.front()->get_json().dump() << std::endl;
+  else
+    std::cout << "end: end of map" << std::endl;
+  
+  //Populate list
+  for(auto it = start; it != end; ++it){ //const_iterator to std::list<CounterDataListIterator_t>, we want all elements
+    for(const auto &e : it->second)
+      out.push_back(e);
+  }
+  return out;
 }
