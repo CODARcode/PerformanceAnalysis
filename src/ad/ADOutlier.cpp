@@ -86,8 +86,9 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
     return std::make_pair(sent_sz, recv_sz);
 }
 
-unsigned long ADOutlierSSTD::run(std::vector<CallListIterator_t> &outliers, int step) {
-  if (m_execDataMap == nullptr) return 0;
+Anomalies ADOutlierSSTD::run(int step) {
+  Anomalies outliers;
+  if (m_execDataMap == nullptr) return outliers;
 
   //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
   //This is worked around by ignoring the first time a function is encountered (per device)
@@ -181,10 +182,10 @@ unsigned long ADOutlierSSTD::run(std::vector<CallListIterator_t> &outliers, int 
     update_local_statistics(g_info.dump(), step);
 #endif
 
-    return n_outliers;
+    return outliers;
 }
 
-unsigned long ADOutlierSSTD::compute_outliers(std::vector<CallListIterator_t> &outliers,
+unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id, 
 					      std::vector<CallListIterator_t>& data,
 					      long& min_ts, long& max_ts){
@@ -219,7 +220,7 @@ unsigned long ADOutlierSSTD::compute_outliers(std::vector<CallListIterator_t> &o
 	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
       n_outliers += 1;
       itt->set_label(label);
-      outliers.push_back(itt); //append to list of outliers detected
+      outliers.insert(itt); //insert into data structure containing captured anomalies
     }else{
       VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);

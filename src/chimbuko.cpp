@@ -246,13 +246,13 @@ void Chimbuko::run(int rank,
     extractEvents(rank, step);
 
     //Run the outlier detection algorithm on the events
-    std::vector<CallListIterator_t> anomalies;
-    n_outliers += m_outlier->run(anomalies,step);
+    Anomalies anomalies = m_outlier->run(step);
+    n_outliers += anomalies.nOutliers();
     frames++;
 
     //Gather provenance data on anomalies
     std::vector<ADAnomalyProvenance> anomaly_prov;
-    for(auto anom_it : anomalies){
+    for(auto anom_it : anomalies.allOutliers()){
       const auto &anom = *anom_it;
       anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters(), *m_counter);
     }
