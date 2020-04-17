@@ -23,7 +23,7 @@ NetInterface& DefaultNetInterface::get()
 }
 
 NetInterface::NetInterface() 
-: m_nt(0), m_param(nullptr), m_stat_sender(nullptr), m_stop_sender(false)
+  : m_nt(0), m_param(nullptr), m_stat_sender(nullptr), m_stop_sender(false), m_global_anom_stats(nullptr)
 {
 }
 
@@ -75,7 +75,7 @@ static std::string test_packet(double& test_num)
 static void send_stat(
     std::string url, 
     std::atomic_bool& bStop, 
-    ParamInterface*& param, 
+    GlobalAnomalyStats*& global_anom_stats, 
     bool bTest)
 {
     curl_global_init(CURL_GLOBAL_ALL);
@@ -117,7 +117,7 @@ static void send_stat(
         }
         else 
         {
-            packet = param->collect();
+            packet = global_anom_stats->collect();
         }
 
         if (packet.length() == 0)
@@ -172,7 +172,7 @@ void NetInterface::run_stat_sender(std::string url, bool bTest)
         m_stat_sender = new std::thread(
             &send_stat, url, 
             std::ref(m_stop_sender), 
-            std::ref(m_param), 
+            std::ref(m_global_anom_stats), 
             bTest
         );
     }

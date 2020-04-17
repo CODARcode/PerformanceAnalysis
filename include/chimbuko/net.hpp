@@ -1,25 +1,26 @@
 #pragma once
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/param.hpp"
+#include "chimbuko/global_anomaly_stats.hpp"
 #include <string>
 #include <thread>
 
 namespace chimbuko {
 
-/**
- * @brief enum network thread level (for MPI)
- * 
- */
-enum class NetThreadLevel {
+  /**
+   * @brief enum network thread level (for MPI)
+   * 
+   */
+  enum class NetThreadLevel {
     THREAD_MULTIPLE = 3
-};
+  };
 
-/**
- * @brief Network interface class
- * 
- */
-class NetInterface {
-public:
+  /**
+   * @brief Network interface class
+   * 
+   */
+  class NetInterface {
+  public:
     /**
      * @brief Construct a new Net Interface object
      * 
@@ -79,10 +80,24 @@ public:
 
     ParamInterface* get_parameter() { return m_param; } 
 
+    /**
+     * @brief Link the global anomaly stats object
+     */
+    void set_global_anomaly_stats(GlobalAnomalyStats * stats){  m_global_anom_stats = stats;  }
+
+    GlobalAnomalyStats * get_global_anomaly_stats(){ return m_global_anom_stats; }
+
+    /**
+     * @brief Start sending global anomaly stats to the visualization module (curl)
+     */
     void run_stat_sender(std::string url, bool bTest=false);
+
+    /**
+     * @brief Stop sending global anomaly stats to the visualization module (curl)
+     */
     void stop_stat_sender(int wait_msec=0);
 
-protected:
+  protected:
     /**
      * @brief initialize thread pool 
      * 
@@ -90,24 +105,25 @@ protected:
      */
     virtual void init_thread_pool(int nt) = 0;
 
-protected:
-    int              m_nt;    // the number of threads in the pool
-    ParamInterface * m_param; // pointer to parameter (storage)
+  protected:
+    int              m_nt;    /**< The number of threads in the pool */
+    ParamInterface * m_param; /**< Pointer to parameter data used to identify anomalies (storage) */
+    GlobalAnomalyStats * m_global_anom_stats; /**< Pointer to global anomaly statistics */
 
     // thread workder to periodically send anomaly statistics to web server
     // , if it is available.
     std::thread     * m_stat_sender; 
     std::atomic_bool  m_stop_sender;
-};
+  };
 
-namespace DefaultNetInterface
-{
+  namespace DefaultNetInterface
+  {
     /**
      * @brief get default network interface for easy usages
      * 
      * @return NetInterface& default network 
      */
     NetInterface& get();
-}
+  }
 
 } // end of chimbuko namespace

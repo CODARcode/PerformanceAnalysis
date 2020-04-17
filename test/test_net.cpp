@@ -5,6 +5,7 @@
 #endif
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyStat.hpp"
+#include "chimbuko/global_anomaly_stats.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
@@ -149,9 +150,11 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 #endif
     const int N_MPI_PROCESSORS = 10;
 
-    chimbuko::SstdParam param({N_MPI_PROCESSORS});
-
+    chimbuko::SstdParam param;
+    chimbuko::GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    
     net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    net.set_global_anomaly_stats(&glob_stats);
     net.init(nullptr, nullptr, 10);
     net.run();
 
@@ -173,11 +176,11 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
         std::string stat_id = "0:" + std::to_string(rank);
         // std::cout << stat_id << std::endl;
 
-        std::string strstats = param.get_anomaly_stat(stat_id);
+        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
         // std::cout << strstats << std::endl;
         ASSERT_GT(strstats.size(), 0);
         
-        size_t n = param.get_n_anomaly_data(stat_id);
+        size_t n = glob_stats.get_n_anomaly_data(stat_id);
         // std::cout << n << std::endl;
         EXPECT_EQ(MAX_STEPS, (int)n);
 
@@ -204,10 +207,12 @@ TEST_F(NetTest, NetStatSenderTest)
 #endif
     const int N_MPI_PROCESSORS = 10;
 
-    SstdParam param({N_MPI_PROCESSORS});
+    SstdParam param;
+    chimbuko::GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
     nlohmann::json resp;
 
     net.set_parameter(dynamic_cast<ParamInterface*>(&param));
+    net.set_global_anomaly_stats(&glob_stats);
     net.init(nullptr, nullptr, 10);
     net.run_stat_sender("http://0.0.0.0:5000/post", false);
     net.run();
@@ -229,18 +234,18 @@ TEST_F(NetTest, NetStatSenderTest)
     };
     // const int MAX_STEPS = 1000;    
 
-    EXPECT_EQ(0, param.collect_stat_data().size());
+    EXPECT_EQ(0, glob_stats.collect_stat_data().size());
 
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {
         std::string stat_id = "0:" + std::to_string(rank);
 
-        std::string strstats = param.get_anomaly_stat(stat_id);
+        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
         ASSERT_GT(strstats.size(), 0);
         
         // As we send all anomaly data to the web server, 
         // it should be zero!
-        size_t n = param.get_n_anomaly_data(stat_id);
+        size_t n = glob_stats.get_n_anomaly_data(stat_id);
         EXPECT_EQ(0, (int)n);
 
         nlohmann::json j = nlohmann::json::parse(strstats);

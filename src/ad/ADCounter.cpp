@@ -33,22 +33,17 @@ std::list<CounterDataListIterator_t> ADCounter::getCountersInWindow(const unsign
 
   //Find the counter timestamp map for process/rank/thread. Return empty list if no map entries
   auto pit = m_timestampCounterMap.find(pid);
-  if(pit == m_timestampCounterMap.end()){
-    std::cout << "pooh1" << std::endl;
+  if(pit == m_timestampCounterMap.end())
     return out;
-  }
 
   auto rit = pit->second.find(rid);
-  if(rit == pit->second.end()){
-    std::cout << "pooh2" << std::endl;	
+  if(rit == pit->second.end())
     return out;
-  }
 
   auto tit = rit->second.find(tid);
-  if(tit == rit->second.end()){
-    std::cout << "pooh3" << std::endl;
+  if(tit == rit->second.end()) 
     return out;
-  }
+
     
   const auto & the_map = tit->second;
 
@@ -57,16 +52,7 @@ std::list<CounterDataListIterator_t> ADCounter::getCountersInWindow(const unsign
   auto end = the_map.upper_bound(t_end);
 
   //Return empty list if nothing in window
-  if(start == the_map.end()){
-    std::cout << "pooh5" << std::endl;   
-    return out;
-  }
-
-  std::cout << "start " << start->second.front()->get_json().dump() << std::endl;
-  if(end != the_map.end())
-    std::cout << "end " << end->second.front()->get_json().dump() << std::endl;
-  else
-    std::cout << "end: end of map" << std::endl;
+  if(start == the_map.end()) return out;
   
   //Populate list
   for(auto it = start; it != end; ++it){ //const_iterator to std::list<CounterDataListIterator_t>, we want all elements

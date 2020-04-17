@@ -7,11 +7,13 @@
 
 namespace chimbuko {
 
+  /**
+   * @@brief Implementation of ParamInterface for anomaly detection based on function time distribution (mean, std. dev., etc)
+   */
   class SstdParam : public ParamInterface
   {
   public:
     SstdParam();
-    SstdParam(const std::vector<int>& n_ranks);
     ~SstdParam();
 
     /**

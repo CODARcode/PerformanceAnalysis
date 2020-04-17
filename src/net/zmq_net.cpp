@@ -29,7 +29,7 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
     init_thread_pool(nt);
 }
 
-void doWork(void* context, ParamInterface* param) 
+void doWork(void* context, ParamInterface* param, GlobalAnomalyStats *glob_stats) 
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
@@ -64,7 +64,8 @@ void doWork(void* context, ParamInterface* param)
 
     //Set the reply message    
     // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
-    if (msg.kind() == MessageKind::SSTD){      
+    if (msg.kind() == MessageKind::SSTD){
+      if(param == nullptr) throw std::runtime_error("Cannot update function parameters as param object has not been linked");
       SstdParam* p = dynamic_cast<SstdParam*>(param);
       if (msg.type() == MessageType::REQ_ADD) {
 	//The message is a request to update the statistics      
@@ -76,7 +77,8 @@ void doWork(void* context, ParamInterface* param)
     }else if (msg.kind() == MessageKind::ANOMALY_STATS){
       if (msg.type() == MessageType::REQ_ADD) {
 	//The message is a request to add anomaly data from the AD into the statistics
-	param->add_anomaly_data(msg.buf());
+	if(glob_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
+	glob_stats->add_anomaly_data(msg.buf());
 	msg_reply.set_msg("", false);
       }
       // else if (msg.type() == MessageType::REQ_GET) {
@@ -110,7 +112,7 @@ void ZMQNet::init_thread_pool(int nt)
 {
     for (int i = 0; i < nt; i++) {
         m_threads.push_back(
-            std::thread(&doWork, std::ref(m_context), std::ref(m_param))    
+	std::thread(&doWork, std::ref(m_context), std::ref(m_param), std::ref(m_global_anom_stats))    
         );
     }
 }

@@ -1,4 +1,5 @@
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/global_anomaly_stats.hpp"
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
@@ -148,13 +149,13 @@ TEST_F(ParamTest, SstdMessageTest)
     }
 }
 
-TEST_F(ParamTest, AnomalyStatTest1)
+TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
     using namespace chimbuko;
 
     const std::vector<int> N_RANKS = {2, 1};
 
-    SstdParam param(N_RANKS);
+    GlobalAnomalyStats param(N_RANKS);
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
@@ -272,13 +273,13 @@ TEST_F(ParamTest, AnomalyStatTest1)
     }
 }
 
-TEST_F(ParamTest, AnomalyStatTest2)
+TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 {
     using namespace chimbuko;
 
     const std::vector<int> N_RANKS = {2};
 
-    SstdParam param(N_RANKS);
+    GlobalAnomalyStats param(N_RANKS);
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());

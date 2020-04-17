@@ -32,14 +32,16 @@ RUN ./configure --prefix=/opt/papi \
 WORKDIR /Downloads
 
 #Download and install tau from git
-#Increment the integer below to force docker build not to use cache
-RUN echo "FORCE REDOWNLOAD 1" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
+#Change the tag below to force docker build not to use cache
+RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -papi=/opt/papi \
  && make -j$JOBS install
+
+RUN git log | head -1 > /opt/tau2/git_version
 
 # Use tarball version instead
 # RUN	wget http://tau.uoregon.edu/tau.tgz && \

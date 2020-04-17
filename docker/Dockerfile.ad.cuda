@@ -2,7 +2,7 @@ FROM chimbuko/adios2:ubuntu18.04-cuda10.1 AS ad-build
 
 WORKDIR /Downloads
 
-RUN echo "FORCE DOWNLOAD 1" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE DOWNLOAD 4_10_20_14_11" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
@@ -14,7 +14,7 @@ RUN make -j 4 install && cd /opt/chimbuko/ad/test
 ENV LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
 
 WORKDIR /opt/chimbuko/ad/test
-RUN cat run_net.sh | sed 's/-n 10/--oversubscribe -n 10/' > tmp && mv tmp run_net.sh && chmod u+x run_net.sh && ./run_all.sh
+RUN ./run_all.sh
 
 FROM chimbuko/adios2:ubuntu18.04-cuda10.1
 
