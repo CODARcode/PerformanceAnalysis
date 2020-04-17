@@ -64,15 +64,14 @@ void doWork(void* context, ParamInterface* param, GlobalAnomalyStats *glob_stats
 
     //Set the reply message    
     // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
-    if (msg.kind() == MessageKind::SSTD){
+    if (msg.kind() == MessageKind::PARAMETERS){
       if(param == nullptr) throw std::runtime_error("Cannot update function parameters as param object has not been linked");
-      SstdParam* p = dynamic_cast<SstdParam*>(param);
       if (msg.type() == MessageType::REQ_ADD) {
 	//The message is a request to update the statistics      
-	msg_reply.set_msg(p->update(msg.buf(), true), false);
+	msg_reply.set_msg(param->update(msg.buf(), true), false);
       }else if (msg.type() == MessageType::REQ_GET) {
 	//The message is a request to return the statistics
-	msg_reply.set_msg(p->serialize(), false);
+	msg_reply.set_msg(param->serialize(), false);
       }
     }else if (msg.kind() == MessageKind::ANOMALY_STATS){
       if (msg.type() == MessageType::REQ_ADD) {

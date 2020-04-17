@@ -155,7 +155,7 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
         std::string strmsg;
         size_t sent_sz, recv_sz;
 
-        msg.set_info(m_rank, m_srank, MessageType::REQ_ADD, MessageKind::SSTD);
+        msg.set_info(m_rank, m_srank, MessageType::REQ_ADD, MessageKind::PARAMETERS);
         msg.set_msg(l.serialize(), false);
         sent_sz = msg.size();
 #ifdef _USE_MPINET

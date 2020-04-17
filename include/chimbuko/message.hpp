@@ -21,7 +21,7 @@ enum MessageType {
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
-    SSTD    = 2,
+    PARAMETERS    = 2,
     ANOMALY_STATS = 3
 };
 
@@ -150,7 +150,7 @@ public:
         {
             case 0: return "DEFAULT";
             case 1: return "CMD";
-            case 2: return "SSTD";
+            case 2: return "PARAMETERS";
             case 3: return "ANOMALY_STATS";
             default: return "UNKNOWN";
         }

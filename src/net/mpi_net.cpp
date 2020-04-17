@@ -103,9 +103,9 @@ void MPINet::run()
             }
 
             _msg_reply = _msg.createReply();
-            if (_msg.kind() == MessageKind::SSTD) 
+            if (_msg.kind() == MessageKind::PARAMETERS) 
             {
-                SstdParam* param = (SstdParam*)this->get_parameter();
+                ParamInterface* param = this->get_parameter();
                 if (_msg.type() == MessageType::REQ_ADD) {
                     _msg_reply.set_msg(param->update(_msg.data_buffer(), true), false);
                 }

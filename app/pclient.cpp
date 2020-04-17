@@ -37,7 +37,7 @@ int main (int argc, char** argv)
      * - on client side: only the first call will actually attempt to get connection
      *                   and the other calls will copy the existing connection.
      * - on server side: there will be only one execution of MPI_Comm_accept().
-     */
+s     */
     //MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, MPI_COMM_SELF, &server);
     MPI_Comm_connect(port_name, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &server);
     MPI_Barrier(MPI_COMM_WORLD);
@@ -74,7 +74,7 @@ int main (int argc, char** argv)
         }
         // set message
         msg.clear();
-        msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::SSTD, iFrame);
+        msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS, iFrame);
         msg.set_msg(l_param.serialize(), false);
 
 #ifdef _USE_MPINET
