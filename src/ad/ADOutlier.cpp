@@ -18,12 +18,8 @@ using namespace chimbuko;
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
 ADOutlier::ADOutlier() 
-: m_use_ps(false), m_execDataMap(nullptr), m_param(nullptr)
+  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false)
 {
-#ifdef _USE_ZMQNET
-    m_context = nullptr;
-    m_socket = nullptr;
-#endif
 }
 
 ADOutlier::~ADOutlier() {
@@ -32,104 +28,12 @@ ADOutlier::~ADOutlier() {
     }
 }
 
-void ADOutlier::connect_ps(int rank, int srank, std::string sname) {
-    m_rank = rank;
-    m_srank = srank;
-
-#ifdef _USE_MPINET
-    int rs;
-    char port[MPI_MAX_PORT_NAME];
-
-    rs = MPI_Lookup_name(sname.c_str(), MPI_INFO_NULL, port);
-    if (rs != MPI_SUCCESS) return;
-
-    rs = MPI_Comm_connect(port, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &m_comm);
-    if (rs != MPI_SUCCESS) return;
-
-    // test connection
-    Message msg;
-    msg.set_info(m_rank, m_srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
-    msg.set_msg("Hello!");
-
-    MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_ECHO, msg.count());
-
-    MPI_Status status;
-    int count;
-    MPI_Probe(m_srank, MessageType::REP_ECHO, m_comm, &status);
-    MPI_Get_count(&status, MPI_BYTE, &count);
-
-    msg.clear();
-    msg.set_msg(
-        MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count), true
-    );
-
-    if (msg.data_buffer().compare("Hello!>I am MPINET!") != 0)
-    {
-        std::cerr << "Connect error to parameter server (MPINET)!\n";
-        exit(1);
-    }
-    m_use_ps = true;
-    //std::cout << "rank: " << m_rank << ", " << msg.data_buffer() << std::endl;
-#else
-    m_context = zmq_ctx_new();
-    m_socket = zmq_socket(m_context, ZMQ_REQ);
-    if(zmq_connect(m_socket, sname.c_str()) == -1){
-      std::string err = strerror(errno);      
-      throw std::runtime_error("ZMQ failed to connect, with error: " + err);
-    }
-
-    // test connection
-    Message msg;
-    std::string strmsg;
-
-    msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
-    msg.set_msg("Hello!");
-
-    VERBOSE(std::cout << "AD sending hello message" << std::endl);
-    ZMQNet::send(m_socket, msg.data());
-
-    msg.clear();
-
-    VERBOSE(std::cout << "AD waiting for response message" << std::endl);
-    ZMQNet::recv(m_socket, strmsg);
-    VERBOSE(std::cout << "AD received response message" << std::endl);
-    
-    msg.set_msg(strmsg, true);
-
-    if (msg.buf().compare("\"Hello!I am ZMQNET!\"") != 0)
-    {
-      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
-    } 
-    m_use_ps = true;      
-#endif
-    //MPI_Barrier(MPI_COMM_WORLD);
+void ADOutlier::linkNetworkClient(ADNetClient *client){
+  m_net_client = client;
+  m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }
 
-void ADOutlier::disconnect_ps() {
-    if (!m_use_ps) return;
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (m_rank == 0)
-    {
-#ifdef _USE_MPINET
-        Message msg;
-        msg.set_info(m_rank, m_srank, MessageType::REQ_QUIT, MessageKind::CMD);
-        msg.set_msg(MessageCmd::QUIT);
-        MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_QUIT, msg.count());
-#else
-        zmq_send(m_socket, nullptr, 0, 0);
-#endif
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
-#ifdef _USE_MPINET
-    MPI_Comm_disconnect(&m_comm);
-#else
-    zmq_close(m_socket);
-    zmq_ctx_term(m_context);
-#endif
-    m_use_ps = false;
-}
 
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
@@ -152,32 +56,15 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
     }
     else {
         Message msg;
-        std::string strmsg;
-        size_t sent_sz, recv_sz;
-
-        msg.set_info(m_rank, m_srank, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
         msg.set_msg(l.serialize(), false);
-        sent_sz = msg.size();
-#ifdef _USE_MPINET
-        MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_ADD, msg.count());
+        size_t sent_sz = msg.size();
 
-        MPI_Status status;
-        int count;
-        MPI_Probe(m_srank, MessageType::REP_ADD, m_comm, &status);
-        MPI_Get_count(&status, MPI_BYTE, &count);
+	std::string strmsg = m_net_client->send_and_receive(msg);
 
-        msg.clear();
-        strmsg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
-#else
-	//Send local parameters to PS
-        ZMQNet::send(m_socket, msg.data());
-
-        msg.clear();
-	//Receive global parameters from PS
-        ZMQNet::recv(m_socket, strmsg);   
-#endif
+	msg.clear();
         msg.set_msg(strmsg , true);
-        recv_sz = msg.size();
+        size_t recv_sz = msg.size();
         g.assign(msg.buf());
         return std::make_pair(sent_sz, recv_sz);
     }
@@ -189,22 +76,12 @@ std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats
         return std::make_pair(0, 0);
 
     Message msg;
-    std::string strmsg;
-    size_t sent_sz, recv_sz;
-
-    msg.set_info(m_rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
+    msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
     msg.set_msg(l_stats);
-    sent_sz = msg.size();
-#ifdef _USE_MPINET
-    throw std::runtime_error("update_local_statictis not implemented yet for MPINET");
-#else
-    ZMQNet::send(m_socket, msg.data());
 
-    msg.clear();
-    ZMQNet::recv(m_socket, strmsg);
-#endif
-    // do post-processing, if necessary
-    recv_sz = strmsg.size();
+    size_t sent_sz = msg.size();
+    std::string strmsg = m_net_client->send_and_receive(msg);
+    size_t recv_sz = strmsg.size();
 
     return std::make_pair(sent_sz, recv_sz);
 }

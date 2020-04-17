@@ -9,6 +9,7 @@ Chimbuko::Chimbuko()
     m_event = nullptr;
     m_outlier = nullptr;
     m_io = nullptr;
+    m_net_client = nullptr;
 }
 
 Chimbuko::~Chimbuko()
@@ -39,46 +40,58 @@ void Chimbuko::init_parser(std::string data_dir, std::string inputFile, std::str
     m_parser = new ADParser(data_dir + "/" + inputFile, engineType);
 }
 
-void Chimbuko::init_event(bool verbose)
-{
-    m_event = new ADEvent(verbose);
-    m_event->linkFuncMap(m_parser->getFuncMap());
-    m_event->linkEventType(m_parser->getEventType());
+void Chimbuko::init_event(bool verbose){
+  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_event");
+  m_event = new ADEvent(verbose);
+  m_event->linkFuncMap(m_parser->getFuncMap());
+  m_event->linkEventType(m_parser->getEventType());
 }
 
-void Chimbuko::init_outlier(int rank, double sigma, std::string addr)
-{
-    m_outlier = new ADOutlierSSTD();
-    m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
-    m_outlier->set_sigma(sigma);
-    if (addr.length() > 0) {
+void Chimbuko::init_net_client(int rank, const std::string &pserver_addr){
+  if(pserver_addr.length() > 0){
+    m_net_client = new ADNetClient;
 #ifdef _USE_MPINET
-        m_outlier->connect_ps(rank);
+    m_net_client->connect_ps(rank);
 #else
-        m_outlier->connect_ps(rank, 0, addr);
+    m_net_client->connect_ps(rank, 0, pserver_addr);
 #endif
-    }
+  }
+}
+
+
+void Chimbuko::init_outlier(double sigma){
+  if(!m_event) throw std::runtime_error("Event managed must be initialized before calling init_outlier");
+  
+  m_outlier = new ADOutlierSSTD();
+  m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
+  m_outlier->set_sigma(sigma);
+  if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
 }
 
 void Chimbuko::init_counter()
 {
-    m_counter = new ADCounter();
-    m_counter->linkCounterMap(m_parser->getCounterMap());
+  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_counter");  
+  m_counter = new ADCounter();
+  m_counter->linkCounterMap(m_parser->getCounterMap());
 }
 
 
 void Chimbuko::finalize()
 {
-    m_outlier->disconnect_ps();
-    if (m_parser) delete m_parser;
-    if (m_event) delete m_event;
-    if (m_outlier) delete m_outlier;
-    if (m_io) delete m_io;
+  if(m_net_client){
+    m_net_client->disconnect_ps();
+    delete m_net_client;
+  }
+  if (m_parser) delete m_parser;
+  if (m_event) delete m_event;
+  if (m_outlier) delete m_outlier;
+  if (m_io) delete m_io;
 
-    m_parser = nullptr;
-    m_event = nullptr;
-    m_outlier = nullptr;
-    m_io = nullptr;
+  m_parser = nullptr;
+  m_event = nullptr;
+  m_outlier = nullptr;
+  m_io = nullptr;
+  m_net_client = nullptr;
 }
 
 //Returns false if beginStep was not successful

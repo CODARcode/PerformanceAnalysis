@@ -128,7 +128,7 @@ public:
 };
 
 
-TEST(ADOutlierTestConnectPS, ConnectsMock){
+TEST(ADNetClientTestConnectPS, ConnectsMock){
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)
@@ -151,10 +151,10 @@ TEST(ADOutlierTestConnectPS, ConnectsMock){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADOutlierSSTD outlier;
-			  outlier.connect_ps(0, 0, sname);
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
-			  outlier.disconnect_ps();
+			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
 			  barrier2.wait();			  
 			}catch(const std::exception &e){
@@ -173,7 +173,7 @@ TEST(ADOutlierTestConnectPS, ConnectsMock){
 
 
 
-TEST(ADOutlierTestConnectPS, ConnectsZMQnet){  
+TEST(ADNetClientTestConnectPS, ConnectsZMQnet){  
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)
@@ -200,10 +200,10 @@ TEST(ADOutlierTestConnectPS, ConnectsZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADOutlierSSTD outlier;
-			  outlier.connect_ps(0, 0, sname);
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
-			  outlier.disconnect_ps();
+			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
 			  barrier2.wait();
 			}catch(const std::exception &e){
@@ -306,14 +306,15 @@ TEST(ADOutlierTestSyncParamWithPS, Works){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierSSTDTest outlier;
-			  outlier.connect_ps(0, 0, sname);
-
+			  outlier.linkNetworkClient(&net_client);
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
 			  
 			  std::cout << "AD thread terminating connection" << std::endl;
-			  outlier.disconnect_ps();
+			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
 			  barrier2.wait();
 			}catch(const std::exception &e){
@@ -446,16 +447,17 @@ TEST(ADOutlierTestUpdateLocalStatisticsWithPS, Works){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierSSTDTest outlier;
-			  outlier.connect_ps(0, 0, sname);
-			  
+			  outlier.linkNetworkClient(&net_client);			  
 			  barrier2.wait();
 			  std::cout << "AD thread updating local stats" << std::endl;
 			  outlier.update_local_statistics_test("test",0);
 			  barrier2.wait();
 			  
 			  std::cout << "AD thread terminating connection" << std::endl;
-			  outlier.disconnect_ps();
+			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
 			  barrier2.wait();			  
 			}catch(const std::exception &e){

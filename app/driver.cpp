@@ -125,7 +125,8 @@ int main(int argc, char ** argv)
 
       // Thrid, init event and outlier objects	
       driver.init_event(world_rank == 0);
-      driver.init_outlier(world_rank, sigma, ps_addr);
+      driver.init_net_client(world_rank, ps_addr);
+      driver.init_outlier(sigma);
       driver.init_counter();
 	
       // -----------------------------------------------------------------------

@@ -13,8 +13,14 @@ namespace chimbuko {
 		 std::string addr, unsigned int winSize=0);
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
     void init_event(bool verbose=false);
-    void init_outlier(int rank, double sigma, std::string addr="");
+
+    /**
+     * @brief Initialize connection to the parameter server
+     */
+    void init_net_client(int rank, const std::string &pserver_addr = "");
+    void init_outlier(double sigma);
     void init_counter();
+
     
     void finalize();
 
@@ -89,7 +95,8 @@ namespace chimbuko {
     ADCounter * m_counter;     /**< counter event manager */
     ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
-
+    ADNetClient * m_net_client; /** <client for comms with parameter server */
+    
     // priority queue was used to mitigate a minor problem from TAU plug-in code
     // (e.g. pthread_create in wrong position). Actually, it doesn't casue 
     // call stack violation and the priority queue approach is not the ultimate

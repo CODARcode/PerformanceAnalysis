@@ -77,7 +77,8 @@ TEST_F(ADTest, BpfileTest)
       driver.init_parser(data_dir, inputFile, engineType);
       driver.init_event();
       driver.init_counter();
-      driver.init_outlier(world_rank, sigma);
+      driver.init_net_client(world_rank);
+      driver.init_outlier(sigma);
     }catch(const std::exception &e){
       std::cerr << "Caught exception during driver init: " << e.what() << std::endl;
       throw e;
@@ -173,7 +174,8 @@ TEST_F(ADTest, BpfileWithNetTest)
     driver.init_parser(data_dir, inputFile, engineType);
     driver.init_event();
     driver.init_counter();
-    driver.init_outlier(world_rank, sigma, "tcp://localhost:5559");
+    driver.init_net_client(world_rank, "tcp://localhost:5559");
+    driver.init_outlier(sigma);
 
     step = -1;
     while ( driver.get_status() )

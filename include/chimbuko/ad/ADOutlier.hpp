@@ -5,11 +5,7 @@
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
 #include "chimbuko/util/hash.hpp"
-#ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
-#else
-#include "chimbuko/net/zmq_net.hpp"
-#endif
+#include "chimbuko/ad/ADNetClient.hpp"
 #ifdef _PERF_METRIC
 #include "chimbuko/util/RunMetric.hpp"
 #endif
@@ -34,6 +30,14 @@ namespace chimbuko {
     virtual ~ADOutlier();
 
     /**
+     * @brief check if the parameter server is in use
+     * 
+     * @return true if the parameter server is in use
+     * @return false if the parameter server is not in use
+     */
+    bool use_ps() const { return m_use_ps; }
+    
+    /**
      * @brief copy a pointer to execution data map 
      * 
      * @param m 
@@ -42,25 +46,10 @@ namespace chimbuko {
     void linkExecDataMap(const ExecDataMap_t* m) { m_execDataMap = m; }
 
     /**
-     * @brief check if the parameter server is in use
-     * 
-     * @return true if the parameter server is in use
-     * @return false if the parameter server is not in use
+     * @brief Link the interface for communicating with the parameter server
      */
-    bool use_ps() const { return m_use_ps; }
-    /**
-     * @brief connect to the parameter server
-     * 
-     * @param rank this process rank
-     * @param srank server process rank
-     * @param sname server name
-     */
-    void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
-    /**
-     * @brief disconnect from the connected parameter server
-     * 
-     */
-    void disconnect_ps();
+    void linkNetworkClient(ADNetClient *client);
+    
     /**
      * @brief abstract method to run the implemented anomaly detection algorithm
      * 
@@ -114,16 +103,10 @@ namespace chimbuko {
     std::pair<size_t, size_t> update_local_statistics(std::string l_stats, int step);
 
   protected:
-    bool m_use_ps;                           /**< true if the parameter server is in use */
     int m_rank;                              /**< this process rank                      */
-    int m_srank;                             /**< server process rank                    */
-#ifdef _USE_MPINET
-    MPI_Comm m_comm;
-#else
-    void* m_context;                         /**< ZeroMQ context */
-    void* m_socket;                          /**< ZeroMQ socket */
-#endif
- 
+    bool m_use_ps;                           /**< true if the parameter server is in use */
+    ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
+    
     std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
     
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
