@@ -241,7 +241,7 @@ void Chimbuko::run(int rank,
     std::vector<ADAnomalyProvenance> anomaly_prov;
     for(auto anom_it : anomalies){
       const auto &anom = *anom_it;
-      anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters());
+      anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters(), *m_counter);
     }
 
     //Dump data accumulated during IO step
