@@ -235,6 +235,8 @@ void Chimbuko::run(int rank,
 
 #ifdef _PERF_METRIC
   std::string ad_perf = "ad_perf_" + std::to_string(rank) + ".json";
+  RunMetric perf;
+  m_outlier->linkPerf(&perf);
 #endif
 
   //Loop until we lose connection with the application
@@ -263,9 +265,9 @@ void Chimbuko::run(int rank,
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
 
 #ifdef _PERF_METRIC
-    // dump performance metric event 10 steps
+    // dump performance metric event perf_step steps
     if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {
-      m_outlier->dump_perf(perf_outputpath, ad_perf);
+      perf.dump(perf_outputpath, ad_perf);
     }
 #endif
     if (only_one_frame)

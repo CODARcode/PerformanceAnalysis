@@ -18,7 +18,7 @@ using namespace chimbuko;
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
 ADOutlier::ADOutlier() 
-  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false)
+  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false), m_perf(nullptr)
 {
 }
 
@@ -137,10 +137,11 @@ Anomalies ADOutlierSSTD::run(int step) {
     t1 = Clock::now();
     
     usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
-
-    m_perf.add("param_update", (double)usec.count());
-    m_perf.add("param_sent", (double)msgsz.first / 1000000.0); // MB
-    m_perf.add("param_recv", (double)msgsz.second / 1000000.0); // MB
+    if(m_perf != nullptr){
+      m_perf->add("param_update", (double)usec.count());
+      m_perf->add("param_sent", (double)msgsz.first / 1000000.0); // MB
+      m_perf->add("param_recv", (double)msgsz.second / 1000000.0); // MB
+    }
 #else
     sync_param(&param);
 #endif
@@ -175,9 +176,11 @@ Anomalies ADOutlierSSTD::run(int step) {
 
     usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
 
-    m_perf.add("stream_update", (double)usec.count());
-    m_perf.add("stream_sent", (double)msgsz.first / 1000000.0); // MB
-    m_perf.add("stream_recv", (double)msgsz.second / 1000000.0); // MB    
+    if(m_perf != nullptr){
+      m_perf->add("stream_update", (double)usec.count());
+      m_perf->add("stream_sent", (double)msgsz.first / 1000000.0); // MB
+      m_perf->add("stream_recv", (double)msgsz.second / 1000000.0); // MB
+    }
 #else
     update_local_statistics(g_info.dump(), step);
 #endif

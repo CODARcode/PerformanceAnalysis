@@ -60,9 +60,7 @@ namespace chimbuko {
     virtual Anomalies run(int step=0) = 0;
 
 #ifdef _PERF_METRIC
-    void dump_perf(std::string path, std::string filename="metric.json"){
-      m_perf.dump(path, filename);
-    }
+    void linkPerf(RunMetric* perf){ m_perf = perf; }
 #endif
 
     /**
@@ -113,7 +111,7 @@ namespace chimbuko {
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
 #ifdef _PERF_METRIC
-    RunMetric m_perf;
+    RunMetric *m_perf;
 #endif
     // number of outliers per function: func id -> # outliers
     // std::unordered_map<unsigned long, unsigned long> m_outliers;
