@@ -60,6 +60,9 @@ namespace chimbuko {
     virtual Anomalies run(int step=0) = 0;
 
 #ifdef _PERF_METRIC
+    /**
+     * @brief If linked, performance information on the sync_param routine will be gathered
+     */
     void linkPerf(RunMetric* perf){ m_perf = perf; }
 #endif
 
@@ -76,13 +79,10 @@ namespace chimbuko {
      * @param[out] outliers data structure containing captured anomalies
      * @param func_id function id
      * @param[in,out] data a list of function calls to inspect. Entries will be tagged as outliers
-     * @param min_ts the minimum timestamp of the list of function calls
-     * @param max_ts the maximum timestamp of the list of function calls
      * @return unsigned long the number of outliers (or anomalies)
      */
     virtual unsigned long compute_outliers(Anomalies &outliers,
-					   const unsigned long func_id, std::vector<CallListIterator_t>& data,
-					   long& min_ts, long& max_ts) = 0;
+					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
      * @brief abstract method to update local parameters and get global ones
@@ -91,14 +91,6 @@ namespace chimbuko {
      * @return std::pair<size_t, size_t> [sent, recv] message size 
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
-    /**
-     * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
-     * 
-     * @param l_stats local statistics
-     * @param step step (or frame) number
-     * @return std::pair<size_t, size_t> [sent, recv] message size
-     */
-    std::pair<size_t, size_t> update_local_statistics(std::string l_stats, int step);
 
   protected:
     int m_rank;                              /**< this process rank                      */
@@ -113,10 +105,6 @@ namespace chimbuko {
 #ifdef _PERF_METRIC
     RunMetric *m_perf;
 #endif
-    // number of outliers per function: func id -> # outliers
-    // std::unordered_map<unsigned long, unsigned long> m_outliers;
-    // inclusive runtime statistics per fucntion: func id -> run stats
-    // exclusive runtime statistics per function: func id -> run stats
   };
 
   /**
@@ -159,13 +147,10 @@ namespace chimbuko {
      * @param[out] outliers Array of function calls that were tagged as outliers
      * @param func_id function id
      * @param data[in,out] a list of function calls to inspect
-     * @param min_ts the minimum timestamp of the list of function calls
-     * @param max_ts the maximum timestamp of the list of function calls
      * @return unsigned long the number of outliers (or anomalies)
      */
     unsigned long compute_outliers(Anomalies &outliers,
-				   const unsigned long func_id, std::vector<CallListIterator_t>& data,
-				   long& min_ts, long& max_ts) override;
+				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
 
     std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;

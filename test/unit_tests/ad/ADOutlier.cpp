@@ -13,217 +13,16 @@
 
 using namespace chimbuko;
 
-//A mock class that acts as the parameter server
-struct MockParameterServer{
-  void* context;
-  void* socket;
-
-  //Handshake with the AD
-  void start(Barrier &barrier2, const std::string &sinterface){
-    context = zmq_ctx_new();
-    socket = zmq_socket(context, ZMQ_REP);
-    assert(zmq_bind(socket, sinterface.c_str()) == 0);
-    barrier2.wait(); //wait until AD has been initialized
-
-    zmq_pollitem_t items[1] = 
-    {
-        { socket, 0, ZMQ_POLLIN, 0 }
-    };
-    std::cout << "Mock PS start polling" << std::endl;
-    zmq_poll(items, 1, -1); 
-    std::cout << "Mock PS has a message" << std::endl;
-    
-    //Receive the hello string from the AD
-    std::string strmsg;
-    {
-      zmq_msg_t msg;
-      int ret;
-      zmq_msg_init(&msg);
-      ret = zmq_msg_recv(&msg, socket, 0);
-      strmsg.assign((char*)zmq_msg_data(&msg), ret);
-      zmq_msg_close(&msg);
-    }
-    EXPECT_EQ(strmsg, R"({"Buffer":"Hello!","Header":{"dst":0,"frame":0,"kind":0,"size":6,"src":0,"type":5}})");
-
-    std::cout << "Mock PS sending response" << std::endl;
-    //Send a response back to the AD
-    {
-      Message msg_t;
-      msg_t.set_msg(std::string("Hello!I am ZMQNET!"), false);
-      strmsg = msg_t.data();
-			 
-      zmq_msg_t msg;
-      int ret;
-      zmq_msg_init_size(&msg, strmsg.size());
-      memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
-      ret = zmq_msg_send(&msg, socket, 0);
-      zmq_msg_close(&msg);
-    }
-  }
-
-
-  //Act as a receiver for function stats sent by ADOutlier::update_local_statistics
-  void receive_statistics(Barrier &barrier2, const std::string test_msg){
-    zmq_pollitem_t items[1] = 
-    {
-        { socket, 0, ZMQ_POLLIN, 0 }
-    };
-    std::cout << "Mock PS start polling" << std::endl;
-    zmq_poll(items, 1, -1); 
-    std::cout << "Mock PS has a message" << std::endl;
-    
-    //Receive the update string from the AD
-    std::string strmsg;
-    {
-      zmq_msg_t msg;
-      int ret;
-      zmq_msg_init(&msg);
-      ret = zmq_msg_recv(&msg, socket, 0);
-      strmsg.assign((char*)zmq_msg_data(&msg), ret);
-      zmq_msg_close(&msg);
-    }
-    std::cout << "Mock PS received string: " << strmsg << std::endl;
-
-    std::stringstream ss;
-    ss << "{\"Buffer\":\"" << test_msg << "\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":3,\"size\":" << test_msg.size() << ",\"src\":0,\"type\":1}}";
-    EXPECT_EQ(strmsg, ss.str());
-    
-    std::cout << "Mock PS sending response" << std::endl;
-    //Send a response back to the AD
-    {
-      Message msg_t;
-      msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
-      strmsg = msg_t.data();
-			 
-      zmq_msg_t msg;
-      int ret;
-      zmq_msg_init_size(&msg, strmsg.size());
-      memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
-      ret = zmq_msg_send(&msg, socket, 0);
-      zmq_msg_close(&msg);
-    }
-  }
-  
-  void end(){
-    zmq_close(socket);
-    zmq_ctx_term(context);
-  }
-
-
-};
-
 //Derived class to allow access to protected member functions
 class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data,
-				      long& min_ts, long& max_ts){
-    ;
-    return this->compute_outliers(anomalies,func_id, data, min_ts, max_ts);
+				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
+    return this->compute_outliers(anomalies,func_id, data);
   }
-
-  std::pair<size_t, size_t> update_local_statistics_test(std::string l_stats, int step){ return this->update_local_statistics(l_stats, step); }
 };
-
-
-TEST(ADNetClientTestConnectPS, ConnectsMock){
-#ifdef _USE_MPINET
-#warning "Testing with MPINET not available"
-#elif defined(_USE_ZMQNET)
-  std::cout << "Using ZMQ net" << std::endl;
-
-  Barrier barrier2(2);
-
-  std::string sinterface = "tcp://*:5559";
-  std::string sname = "tcp://localhost:5559";
-
-  std::thread ps_thr([&]{
-		       MockParameterServer ps;
-		       ps.start(barrier2, sinterface);
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       barrier2.wait();
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.end();
-		     });
-		       
-  std::thread out_thr([&]{
-			barrier2.wait();
-			try{
-			  ADNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();			  
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
-		      });
-  
-  ps_thr.join();
-  out_thr.join();
-		         
-#else
-#error "Requires compiling with MPI or ZMQ net"
-#endif
-
-}
-
-
-
-TEST(ADNetClientTestConnectPS, ConnectsZMQnet){  
-#ifdef _USE_MPINET
-#warning "Testing with MPINET not available"
-#elif defined(_USE_ZMQNET)
-  std::cout << "Using ZMQ net" << std::endl;
-
-  Barrier barrier2(2);
-
-  std::string sinterface = "tcp://*:5559";
-  std::string sname = "tcp://localhost:5559";
-
-  int argc; char** argv = nullptr;
-  std::cout << "Initializing PS thread" << std::endl;
-  std::thread ps_thr([&]{
-  		       ZMQNet ps;
-  		       ps.init(&argc, &argv, 4); //4 workers
-  		       ps.run(".");
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       barrier2.wait();
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.finalize();
-  		     });
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-  std::cout << "Initializing AD thread" << std::endl;
-  std::thread out_thr([&]{
-			try{
-			  ADNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
-			//barrier2.wait();
-		      });
-  
-  ps_thr.join();
-  out_thr.join();
-		         
-#else
-#error "Requires compiling with MPI or ZMQ net"
-#endif
-
-}
-
-
-
-
 
 TEST(ADOutlierTestSyncParamWithoutPS, Works){  
   SstdParam local_params_ps;
@@ -366,17 +165,13 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
-  long min_ts, max_ts;
   Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its, min_ts, max_ts);
+  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
 
   std::cout << "# outliers detected: " << nout << std::endl;
-  std::cout << "min_ts " << min_ts << " max_ts " << max_ts << std::endl;
 
   EXPECT_EQ(nout, 1);
   EXPECT_EQ( (unsigned long)outliers.nOutliers(), nout);
-  EXPECT_EQ(min_ts, 1000);
-  EXPECT_EQ(max_ts, ts_end);
 }
 
 
@@ -414,63 +209,6 @@ TEST(ADOutlierTestRunWithoutPS, Works){
   std::cout << "# outliers detected: " << nout << std::endl;
 
   EXPECT_EQ(nout, 1);
-}
-
-TEST(ADOutlierTestUpdateLocalStatisticsWithPS, Works){
-#ifdef _USE_MPINET
-#warning "Testing with MPINET not available"
-#elif defined(_USE_ZMQNET)
-  std::cout << "Using ZMQ net" << std::endl;
-
-  Barrier barrier2(2);
-
-  std::string sinterface = "tcp://*:5559";
-  std::string sname = "tcp://localhost:5559";
-
-  std::thread ps_thr([&]{
-		       MockParameterServer ps;
-		       ps.start(barrier2, sinterface);
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       
-		       barrier2.wait();
-		       std::cout << "PS thread waiting for stat update" << std::endl;
-		       ps.receive_statistics(barrier2,"test");
-		       barrier2.wait();
-		       
-
-		       barrier2.wait();		       
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.end();
-		     });
-		       
-  std::thread out_thr([&]{
-			barrier2.wait();
-			try{
-			  ADNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  ADOutlierSSTDTest outlier;
-			  outlier.linkNetworkClient(&net_client);			  
-			  barrier2.wait();
-			  std::cout << "AD thread updating local stats" << std::endl;
-			  outlier.update_local_statistics_test("test",0);
-			  barrier2.wait();
-			  
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();			  
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
-		      });
-
-  
-  ps_thr.join();
-  out_thr.join();
-  
-#else
-#error "Requires compiling with MPI or ZMQ net"
-#endif
 }
 
 

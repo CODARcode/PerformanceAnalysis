@@ -33,7 +33,7 @@ WORKDIR /Downloads
 
 # Git version mpi linking it not currently working
 # Increment integer below to force redownload
-RUN echo "FORCE DOWNLOAD 4_16_20_09_48" && git clone https://github.com/UO-OACISS/tau2.git
+RUN echo "FORCE DOWNLOAD 4_28_20_12_22" && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
 #RUN	wget http://tau.uoregon.edu/tau.tgz && \

@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs 
 
 testdir = $(prefix)/test/unit_tests/ad
-test_PROGRAMS = ADEvent ADio ADParser ADOutlier
+test_PROGRAMS = ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics
 
 ADEvent_SOURCES = ADEvent.cpp ../unit_test_main.cpp
 ADEvent_LDADD = $(LDADD)
@@ -15,3 +15,9 @@ ADParser_LDADD = $(LDADD)
 
 ADOutlier_SOURCES = ADOutlier.cpp ../unit_test_main_mpi.cpp
 ADOutlier_LDADD = $(LDADD)
+
+ADNetClient_SOURCES = ADNetClient.cpp ../unit_test_main_mpi.cpp
+ADNetClient_LDADD = $(LDADD)
+
+ADLocalFuncStatistics_SOURCES = ADLocalFuncStatistics.cpp ../unit_test_main_mpi.cpp
+ADLocalFuncStatistics_LDADD = $(LDADD)

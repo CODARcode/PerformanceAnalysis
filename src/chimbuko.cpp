@@ -259,6 +259,18 @@ void Chimbuko::run(int rank,
       anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters(), *m_counter);
     }
 
+    //Gather function profile and anomaly statistics and send to the pserver
+    if(m_net_client && m_net_client->use_ps()){
+      ADLocalFuncStatistics prof_stats(step
+#ifdef _PERF_METRIC
+				       , &perf
+#endif
+				       );
+      prof_stats.gatherStatistics(m_event->getExecDataMap());
+      prof_stats.gatherAnomalies(anomalies);
+      prof_stats.updateGlobalStatistics(*m_net_client);
+    }
+      
     //Dump data accumulated during IO step
     m_io->write(m_event->trimCallList(), step);
     m_io->writeCounters(m_counter->flushCounters(), step);

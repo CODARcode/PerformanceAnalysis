@@ -70,22 +70,6 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
     }
 }
 
-std::pair<size_t, size_t> ADOutlier::update_local_statistics(std::string l_stats, int step)
-{
-    if (!m_use_ps)
-        return std::make_pair(0, 0);
-
-    Message msg;
-    msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
-    msg.set_msg(l_stats);
-
-    size_t sent_sz = msg.size();
-    std::string strmsg = m_net_client->send_and_receive(msg);
-    size_t recv_sz = strmsg.size();
-
-    return std::make_pair(sent_sz, recv_sz);
-}
-
 Anomalies ADOutlierSSTD::run(int step) {
   Anomalies outliers;
   if (m_execDataMap == nullptr) return outliers;
@@ -100,10 +84,6 @@ Anomalies ADOutlierSSTD::run(int step) {
   
   //Generate the statistics based on this IO step
   SstdParam param;
-  std::unordered_map<unsigned long, std::string> l_func; //map of function index to function name
-  std::unordered_map<unsigned long, RunStats> l_inclusive; //including child calls
-  std::unordered_map<unsigned long, RunStats> l_exclusive; //excluding child calls
-
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     for (auto itt : it.second) { //loop over events for that function
@@ -117,81 +97,37 @@ Anomalies ADOutlierSSTD::run(int step) {
 
       if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
 	param[func_id].push(static_cast<double>(itt->get_runtime()));
-	l_func[func_id] = itt->get_funcname();
-	l_inclusive[func_id].push(static_cast<double>(itt->get_inclusive()));
-	l_exclusive[func_id].push(static_cast<double>(itt->get_exclusive()));
       }
-
-      
     }
   }
 
-    //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
+  //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
 #ifdef _PERF_METRIC
-    Clock::time_point t0, t1;
-    std::pair<size_t, size_t> msgsz;
-    MicroSec usec;
-
-    t0 = Clock::now();
-    msgsz = sync_param(&param);
-    t1 = Clock::now();
+  Clock::time_point t0 = Clock::now();
+  std::pair<size_t, size_t> msgsz = sync_param(&param);
+  Clock::time_point t1 = Clock::now();
     
-    usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
-    if(m_perf != nullptr){
-      m_perf->add("param_update", (double)usec.count());
-      m_perf->add("param_sent", (double)msgsz.first / 1000000.0); // MB
-      m_perf->add("param_recv", (double)msgsz.second / 1000000.0); // MB
-    }
+  MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
+  if(m_perf != nullptr){
+    m_perf->add("param_update", (double)usec.count());
+    m_perf->add("param_sent", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("param_recv", (double)msgsz.second / 1000000.0); // MB
+  }
 #else
-    sync_param(&param);
+  sync_param(&param);
 #endif
 
-    // run anomaly detection algorithm
-    unsigned long n_outliers = 0;
-    long min_ts = 0, max_ts = 0;
-
-    // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-    nlohmann::json g_info;
-    g_info["func"] = nlohmann::json::array();
-    for (auto it : *m_execDataMap) { //loop over function index
-        const unsigned long func_id = it.first;
-        const unsigned long n = compute_outliers(outliers,func_id, it.second, min_ts, max_ts);
-        n_outliers += n;
-
-        nlohmann::json obj;
-        obj["id"] = func_id;
-        obj["name"] = l_func[func_id];
-        obj["n_anomaly"] = n;
-        obj["inclusive"] = l_inclusive[func_id].get_json_state();
-        obj["exclusive"] = l_exclusive[func_id].get_json_state();
-        g_info["func"].push_back(obj);
-    }
-    g_info["anomaly"] = AnomalyData(0, m_rank, step, min_ts, max_ts, n_outliers).get_json();
-
-    // update # anomaly
-#ifdef _PERF_METRIC
-    t0 = Clock::now();
-    msgsz = update_local_statistics(g_info.dump(), step);
-    t1 = Clock::now();
-
-    usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
-
-    if(m_perf != nullptr){
-      m_perf->add("stream_update", (double)usec.count());
-      m_perf->add("stream_sent", (double)msgsz.first / 1000000.0); // MB
-      m_perf->add("stream_recv", (double)msgsz.second / 1000000.0); // MB
-    }
-#else
-    update_local_statistics(g_info.dump(), step);
-#endif
-
-    return outliers;
+  //Run anomaly detection algorithm
+  for (auto it : *m_execDataMap) { //loop over function index
+    const unsigned long func_id = it.first;
+    const unsigned long n = compute_outliers(outliers,func_id, it.second);
+  }
+  return outliers;
 }
 
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id, 
-					      std::vector<CallListIterator_t>& data,
-					      long& min_ts, long& max_ts){
+					      std::vector<CallListIterator_t>& data){
   
   VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
   
@@ -201,8 +137,6 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
     return 0;
   }
   unsigned long n_outliers = 0;
-  max_ts = 0;
-  min_ts = 0;
 
   const double mean = param[func_id].mean();
   const double std = param[func_id].stddev();
@@ -212,11 +146,6 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 
   for (auto itt : data) {
     const double runtime = static_cast<double>(itt->get_runtime());
-    if (min_ts == 0 || min_ts > itt->get_entry())
-      min_ts = itt->get_entry();
-    if (max_ts == 0 || max_ts < itt->get_exit())
-      max_ts = itt->get_exit();
-
     int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
     if (label == -1) {
       VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
