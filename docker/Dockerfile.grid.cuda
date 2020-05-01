@@ -1,0 +1,46 @@
+FROM chimbuko/adios2:ubuntu18.04-cuda10.1 AS base
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gdb libssl-dev libfftw3-dev libfftw3-double3 libfftw3-single3 libhdf5-dev libgmp-dev libmpfr-dev libgsl-dev libz-dev libxml2-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM chimbuko/tau2:ubuntu18.04-cuda10.1 AS tau2
+
+FROM base AS build
+
+COPY --from=tau2 /opt /opt
+
+ENV PATH=/opt/tau2/x86_64/bin/:${PATH}
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+WORKDIR /Downloads
+
+RUN wget http://usqcd-software.github.io/downloads/c-lime/lime-1.3.2.tar.gz && tar -xvzf lime-1.3.2.tar.gz
+
+WORKDIR /build/LIME
+RUN /Downloads/lime-1.3.2/configure --prefix=/opt/LIME && make -j 6 install
+
+WORKDIR /Downloads
+RUN git clone --single-branch --branch bugfix/nvcc-config https://github.com/paboyle/Grid.git && \	
+    cd Grid && ./bootstrap.sh
+
+WORKDIR /build/Grid
+
+#Note host option is to force autoconf not to test for runnable executables that will fail because we compile without nvidia runtime
+RUN CC="nvcc -ccbin tau_cxx.sh" CXX="nvcc -ccbin tau_cxx.sh" /Downloads/Grid/configure --enable-comms=mpi --enable-simd=GPU --prefix=/opt/Grid --with-lime=/opt/LIME --with-openssl -with-fftw --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial --host=$(/Downloads/Grid/config.guess)
+
+RUN touch Grid/Version.h && make -j 6 install
+
+FROM base
+
+COPY --from=build /opt /opt
+
+ENV PATH=/opt/tau2/x86_64/bin/:${PATH}
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+
+#RUN  useradd admin && echo "admin:admin" | chpasswd && adduser admin sudo
+#USER admin
+
+ENTRYPOINT [ "/bin/bash" ]

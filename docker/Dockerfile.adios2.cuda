@@ -29,8 +29,19 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
 # ----------------------------------------------------------------------------
 # ADIOS2 Installation
 # ----------------------------------------------------------------------------
+#RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
+#    cd /Downloads/ADIOS2 && mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
+
+#Revert to 2.5.0 as the latest git version has changed the API substantially
+#Edit, nope, that causes my unit tests to break
+#RUN cd /Downloads && wget https://github.com/ornladios/ADIOS2/archive/v2.5.0.tar.gz && \
+#    tar -xvzf v2.5.0.tar.gz && mv ADIOS2-2.5.0 ADIOS2 && rm v2.5.0.tar.gz && \
+#    mkdir ADIOS2/build && cd ADIOS2/build && \
+
+#OK let's choose a specific git commit from a time when I know it worked!
 RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
-    cd /Downloads/ADIOS2 && mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
+    cd /Downloads/ADIOS2 && git checkout f23e72c051dca30a6b1c23b0755da6c343d3592c && \
+    mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
           -DADIOS2_USE_MPI:BOOL=ON \
           -DADIOS2_USE_HDF5:BOOL=OFF \
