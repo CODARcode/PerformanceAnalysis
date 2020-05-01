@@ -1,8 +1,8 @@
-FROM chimbuko/ad AS ad-module
+FROM chimbuko/ad:ubuntu18.04 AS ad-module
 
-FROM chimbuko/viz AS viz-module
+FROM chimbuko/viz:ubuntu18.04 AS viz-module
 
-FROM chimbuko/nwchem:latest 
+FROM chimbuko/nwchem:ubuntu18.04
 
 # copy chimbuko modules
 RUN mkdir -p /opt/chimbuko
@@ -18,6 +18,8 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
 
 WORKDIR /
+
+RUN echo "INVALIDATE_1" > /dev/null
 COPY run_nwchem_chimbuko.sh /
 COPY sos_filter.txt /
 

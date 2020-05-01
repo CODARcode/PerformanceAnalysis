@@ -1,4 +1,4 @@
-FROM chimbuko/base AS viz-build
+FROM chimbuko/base:ubuntu18.04 AS viz-build
 
 RUN mkdir -p /Downloads && cd /Downloads && \
     git clone https://github.com/bsmind/ChimbukoVisualizationII.git && \

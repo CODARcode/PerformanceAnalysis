@@ -133,7 +133,7 @@ echo "Launch Chimbuko parameter server"
 echo "=========================================="
 cd $WORK_DIR/ad
 echo "run parameter server ..."
-bin/app/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS "http://0.0.0.0:5000/api/anomalydata" &
+bin/pserver 2 "${WORK_DIR}/logs/parameters.log" $NMPIS "http://0.0.0.0:5000/api/anomalydata" &
 ps_pid=$!
 sleep 5
 
@@ -141,7 +141,7 @@ if [ "$ADIOS_MODE" == "SST" ]
 then
     echo "Launch Application with anomaly detectors"
     cd $WORK_DIR/ad
-    mpirun --allow-run-as-root -n $NMPIS bin/app/driver $ADIOS_MODE \
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE \
         $WORK_DIR/BP $BP_PREFIX "${WORK_DIR}/executions" "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} 0 &
     sleep 5
 
@@ -157,7 +157,7 @@ else
     fi
     echo "Run anomaly detectors"
     cd $WORK_DIR/ad
-    mpirun --allow-run-as-root -n $NMPIS bin/app/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
+    mpirun --allow-run-as-root -n $NMPIS bin/driver $ADIOS_MODE $WORK_DIR/BP $BP_PREFIX \
         "${WORK_DIR}/executions" "tcp://0.0.0.0:5559" ${AD_SIGMA} ${AD_WINSZ} ${AD_INTERVAL}
 fi
 

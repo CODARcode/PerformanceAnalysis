@@ -10,7 +10,8 @@ FROM base AS build
 COPY --from=tau2 /opt /opt
 
 ENV PATH=/opt/tau2/x86_64/bin/:${PATH}
-ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+#ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-ompt-v5-mpi-pthread-cupti-pdt-openmp-adios2
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 
 WORKDIR /Downloads
@@ -36,7 +37,8 @@ FROM base
 COPY --from=build /opt /opt
 
 ENV PATH=/opt/tau2/x86_64/bin/:${PATH}
-ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+#ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-ompt-v5-mpi-pthread-cupti-pdt-openmp-adios2
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 
 

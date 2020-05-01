@@ -18,7 +18,7 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
 	spack install sdskeyval+bdb+leveldb
 
 RUN apt-get update
-RUN apt-get install -y vim emacs
+RUN apt-get install -y vim emacs-nox
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
 	spack install mochi-sonata

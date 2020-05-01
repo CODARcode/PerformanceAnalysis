@@ -30,7 +30,8 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
 # ADIOS2 Installation
 # ----------------------------------------------------------------------------
 RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
-    cd /Downloads/ADIOS2 && mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
+    cd /Downloads/ADIOS2 && git checkout f23e72c051dca30a6b1c23b0755da6c343d3592c && \
+    mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
           -DADIOS2_USE_MPI:BOOL=ON \
           -DADIOS2_USE_HDF5:BOOL=OFF \

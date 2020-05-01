@@ -1,4 +1,4 @@
-FROM chimbuko/tau2 AS nwchem-build
+FROM chimbuko/tau2:ubuntu18.04 AS nwchem-build
 
 ENV PATH=${PATH}:/opt/tau2/x86_64/bin
 ENV PATH=${PATH}:/opt/adios2/bin
@@ -49,7 +49,7 @@ ENV BLASOPT="-lopenblas `adios2-config -c -f`"
 ENV NWCHEM_MODULES=md
 RUN ./contrib/distro-tools/build_nwchem 2>&1 | tee build_nwchem.log
 
-FROM chimbuko/tau2:latest
+FROM chimbuko/tau2:ubuntu18.04
 WORKDIR /
 COPY --from=nwchem-build /Codar /Codar
 # create .nwchemrc file using /Codar/nwchem-1/QA/domknwchemrc
