@@ -9,6 +9,14 @@ namespace chimbuko {
     Chimbuko();
     ~Chimbuko();
 
+    /**
+     * @brief Initialize the IO engine for communicating data to parameter server and/or disk
+     * @param rank The current MPI rank
+     * @param mode Set to IOMode::Online to send to pserver, IOMode::Offline to dump to disk, or IOMode::Both for both
+     * @param outputPath If writing to disk, write to this directory
+     * @param addr If sending to the pserver, this is the web address (expected http://....)
+     * @param winSize When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent
+     */
     void init_io(int rank, IOMode mode, std::string outputPath, 
 		 std::string addr, unsigned int winSize=0);
     void init_parser(std::string data_dir, std::string inputFile, std::string engineType);

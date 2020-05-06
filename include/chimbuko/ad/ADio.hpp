@@ -8,6 +8,9 @@
 
 namespace chimbuko {
 
+  /**
+   * @brief A class that manages communication of JSON-formatted data to the parameter server via CURL and/or to disk
+   */
   class ADio {
   public:
     ADio();
