@@ -43,18 +43,26 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 
     nlohmann::json obj;
     obj["hello"] = "world";
+    std::cout << "Sending " << obj.dump() << std::endl;
     uint64_t rid = client.sendAnomalyData(obj);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
     EXPECT_EQ( client.retrieveAnomalyData(check, rid), true );
     
-    EXPECT_EQ(obj, check);
+    std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+    //NB, retrieval adds extra __id field, so objects not identical
+    bool same = check["hello"] == "world";
+    std::cout << "JSON objects are the same? " << same << std::endl;
+
+    EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
     fail = true;
   }
   EXPECT_EQ(fail, false);
 }
+
 
 TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
@@ -66,13 +74,20 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
     nlohmann::json obj;
     obj["hello"] = "world";
+    std::cout << "Sending " << obj.dump() << std::endl;
     uint64_t rid = client.sendMetadata(obj);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
     EXPECT_EQ( client.retrieveMetadata(check, rid), true );
     
-    EXPECT_EQ(obj, check);
+    std::cout << "Testing retrieved metadata:" << check.dump() << std::endl;
+
+    //NB, retrieval adds extra __id field, so objects not identical
+    bool same = check["hello"] == "world";
+    std::cout << "JSON objects are the same? " << same << std::endl;
+
+    EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
     fail = true;
   }

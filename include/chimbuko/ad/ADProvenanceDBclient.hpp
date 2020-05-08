@@ -13,15 +13,14 @@ namespace chimbuko{
    */
   class ADProvenanceDBclient{
   private:
-    thallium::engine m_engine; /**< Thallium engine */
+    static thallium::engine m_engine; /**< Thallium engine */
     sonata::Client m_client; /**< Sonata client */
     sonata::Database m_database; /**< Sonata database */
     sonata::Collection m_coll_anomalies; /**< The anomalies collection */
     sonata::Collection m_coll_metadata; /**< The metadata collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
   public:
-    ADProvenanceDBclient(): m_engine("na+sm", THALLIUM_CLIENT_MODE),
-			    m_client(m_engine), m_is_connected(false){}
+    ADProvenanceDBclient(): m_client(m_engine), m_is_connected(false){}
     
     /**
      * @brief Connect the client to the provenance database server

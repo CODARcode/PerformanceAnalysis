@@ -2,6 +2,8 @@
 
 using namespace chimbuko;
 
+thallium::engine ADProvenanceDBclient::m_engine("na+sm", THALLIUM_CLIENT_MODE);
+
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
     std::cout << "DB client connecting to " << addr << std::endl;
@@ -24,7 +26,7 @@ ADProvenanceDBclient::~ADProvenanceDBclient(){
     // m_coll_metadata.~Collection();
     // m_database.~Database();
 	
-    m_engine.finalize(); //necessary to prevent hangs on reconnection but currently causes some Margo errors that seem benign
+    //m_engine.finalize(); //necessary to prevent hangs on reconnection but currently causes some Margo errors that seem benign
   }
 }
 
