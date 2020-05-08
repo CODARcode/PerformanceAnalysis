@@ -13,6 +13,13 @@ echo "Wait for next tests for 5 seconds ..."
 sleep 5
 ./run_net.sh
 
+if [ -f "../bin/provdb_admin" ]; then
+    echo "Provenance DB test"
+    echo "Wait for next tests for 5 seconds ..."
+    sleep 5
+    ./run_provdb_client_test.sh
+fi
+
 echo "AD module test"
 echo "Wait for next tests for 5 seconds ..."
 sleep 5

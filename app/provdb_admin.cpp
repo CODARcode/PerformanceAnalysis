@@ -9,32 +9,38 @@
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include <sonata/Client.hpp>
-#include <nlohmann/json.hpp>
 #include <unistd.h>
 #include <fstream>
 
 #include <iostream>
 #include <csignal>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
-#include <chimbuko/util/barrier.hpp>
+#include <cassert>
 
 namespace tl = thallium;
-namespace json = nlohmann;
 
-bool terminate = false;
+bool stop_wait_loop = false;
+bool engine_is_finalized = false;
 
 void termSignalHandler( int signum ) {
-  terminate = true;
+  stop_wait_loop = true;
 }
 
 
 int main(int argc, char** argv) {
+  assert(argc <= 2);
+
+  //argv[1] optionall specify the ip address and port (the only way to fix the port that I'm aware of)
+  //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
+  std::string eng_opt = "ofi+tcp";
+  if(argc == 2){
+    eng_opt += std::string("://") + argv[1];
+  }
+
   //Initialize provider engine
-  tl::engine engine("na+sm", THALLIUM_SERVER_MODE);
+  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
   engine.enable_remote_shutdown();
+
+  engine.push_finalize_callback([]() { engine_is_finalized = true; stop_wait_loop = true; });
 
   //Write address to file
   std::string addr = (std::string)engine.self();    
@@ -48,46 +54,36 @@ int main(int argc, char** argv) {
 
   std::cout << "Provider is running on " << addr << std::endl;
 
-  //Create a thread to act as admin
-  std::thread admin_thr([&](){
-      //tl::engine adengine("na+sm", THALLIUM_CLIENT_MODE);
-      std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
+  {
+    std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
 
-      sonata::Admin admin(engine);
-      std::cout << "Admin creating database" << std::endl;
-      admin.createDatabase(addr, 0, "provdb", "unqlite", config);
-      
-      //Create the collections
-      {
-	sonata::Client client(engine);
-	sonata::Database db = client.open(addr, 0, "provdb");
-	db.create("anomalies");
-	db.create("metadata");
-	std::cout << "Admin initialized collections" << std::endl;
-      }
-      
-      signal(SIGTERM, termSignalHandler);  
-      
-      //Spin quietly until SIGTERM sent
-      std::cout << "Admin waiting for SIGTERM" << std::endl;
-      while(!terminate){
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-      }
-      
-      std::cout << "Admin detaching database" << std::endl;
-      admin.detachDatabase(addr, 0, "provdb");
+    sonata::Admin admin(engine);
+    std::cout << "Admin creating database" << std::endl;
+    admin.createDatabase(addr, 0, "provdb", "unqlite", config);
 
-      std::cout << "Admin shutting down server" << std::endl;
+    //Create the collections
+    {
+      sonata::Client client(engine);
+      sonata::Database db = client.open(addr, 0, "provdb");
+      db.create("anomalies");
+      db.create("metadata");
+      std::cout << "Admin initialized collections" << std::endl;
+    }
+
+    //Spin quietly until SIGTERM sent
+    signal(SIGTERM, termSignalHandler);  
+    std::cout << "Admin waiting for SIGTERM" << std::endl;
+    while(!stop_wait_loop) {
+      tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+    }
+
+    std::cout << "Admin detaching database" << std::endl;
+    admin.detachDatabase(addr, 0, "provdb");
+
+    std::cout << "Admin shutting down server" << std::endl;
+    if(!engine_is_finalized)
       engine.finalize();
-      std::cout << "Admin thread finished" << std::endl;
-    });
-
-  //Meanwhile the main thread sits acting as provider
-  std::cout << "Provider thread waiting for finalize" << std::endl;
-  engine.wait_for_finalize();
-  
-  std::cout << "Provider thread cleaning up" << std::endl;
-  admin_thr.join();
-
+    std::cout << "Admin thread finished" << std::endl;
+  }
   return 0;
 }

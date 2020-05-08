@@ -1,11 +1,18 @@
 #!/bin/bash
 
-rm provdb.unqlite  provider.address
+if [ -f "../bin/provdb_admin" ]; then
+    rm provdb.unqlite  provider.address
 
-../bin/provdb_admin &
-admin=$!
-sleep 1
+    ip=$(hostname -i)
+    port=1234
 
-./mainProvDBclient $(cat provider.address)
+    ../bin/provdb_admin ${ip}:${port} &
+    admin=$!
+    sleep 1
 
-kill $admin
+    ./mainProvDBclient $(cat provider.address)
+
+    kill $admin
+else 
+    echo "Provenance DB was not built"
+fi

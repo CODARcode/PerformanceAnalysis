@@ -2,7 +2,7 @@
 
 using namespace chimbuko;
 
-thallium::engine ADProvenanceDBclient::m_engine("na+sm", THALLIUM_CLIENT_MODE);
+thallium::engine ADProvenanceDBclient::m_engine("ofi+tcp", THALLIUM_CLIENT_MODE);
 
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
