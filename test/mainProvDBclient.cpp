@@ -96,6 +96,43 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
 
 
+TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
+
+  bool fail = false;
+  ADProvenanceDBclient client;
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connect(addr);
+
+    nlohmann::json obj;
+    obj["hello"] = "world";
+    std::cout << "Sending " << obj.dump() << " asynchronously" << std::endl;
+
+    OutstandingRequest req(1);
+
+    client.sendDataAsync(obj, ProvenanceDataType::AnomalyData, &req);
+
+    req.req.wait(); //wait for completion
+    int rid = req.ids[0];
+    
+    nlohmann::json check;
+    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::AnomalyData), true );
+    
+    std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+    //NB, retrieval adds extra __id field, so objects not identical
+    bool same = check["hello"] == "world";
+    std::cout << "JSON objects are the same? " << same << std::endl;
+
+    EXPECT_EQ(same, true);
+  }catch(const std::exception &ex){
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+
 
 int main(int argc, char** argv) 
 {

@@ -3,6 +3,8 @@
 using namespace chimbuko;
 
 thallium::engine ADProvenanceDBclient::m_engine("ofi+tcp", THALLIUM_CLIENT_MODE);
+AnomalousSendManager ADProvenanceDBclient::anom_send_man;
+
 
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
@@ -19,18 +21,6 @@ void ADProvenanceDBclient::connect(const std::string &addr){
   }
 }
 
-ADProvenanceDBclient::~ADProvenanceDBclient(){
-  using namespace sonata;
-  if(m_is_connected){
-    // m_coll_anomalies.~Collection();
-    // m_coll_metadata.~Collection();
-    // m_database.~Database();
-	
-    //m_engine.finalize(); //necessary to prevent hangs on reconnection but currently causes some Margo errors that seem benign
-  }
-}
-
-
 uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{
   if(m_is_connected){
     return getCollection(type).store(entry.dump());
@@ -38,6 +28,14 @@ uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const Prove
   return -1;
 }
 
+void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req) const{
+  if(!m_is_connected) return;
+
+  if(req == nullptr)
+    req = &anom_send_man.getNewRequest(1);
+  
+  getCollection(type).store(entry.dump(), req->ids.data(), &req->req);
+}
 
 
 bool ADProvenanceDBclient::retrieveData(nlohmann::json &entry, uint64_t index, const ProvenanceDataType type) const{

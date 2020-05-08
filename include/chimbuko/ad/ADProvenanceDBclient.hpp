@@ -11,6 +11,50 @@ namespace chimbuko{
   enum class ProvenanceDataType { AnomalyData, Metadata };
 
   /**
+   * @brief A container for an outstanding request and the ids of the DB entries
+   */
+  struct OutstandingRequest{
+    sonata::AsyncRequest req; /**< The request instance */
+    std::vector<uint64_t> ids; /**< The ids of the inserted data, *populated only once request is complete* */
+    
+    OutstandingRequest(const size_t ndata): ids(ndata,-1){}
+  };
+
+
+  /**
+   * @brief Manager class for containing outstanding anomalous requests
+   *
+   * Sonata requires an instance of OutstandingRequest live for long enough that the request completes
+   * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
+   */
+  class AnomalousSendManager{
+    static const int MAX_OUTSTANDING = 100;
+    std::list<OutstandingRequest> outstanding;
+
+    /**
+     * @brief Remove completed requests if size > MAX_OUTSTANDING
+     */
+    void purge(){
+      if(outstanding.size() > MAX_OUTSTANDING){
+	auto it = outstanding.begin();
+	while(it != outstanding.end()){
+	  if(it->req.completed()){
+	    it = outstanding.erase(it);
+	  }else{
+	    ++it;
+	  }
+	}
+      }
+    }
+  public:
+    OutstandingRequest & getNewRequest(const size_t ndata){
+      purge();
+      return outstanding.emplace_back(ndata);
+    }
+  };
+
+
+  /**
    * @Client for interacting with provevance database
    */
   class ADProvenanceDBclient{
@@ -21,6 +65,8 @@ namespace chimbuko{
     sonata::Collection m_coll_anomalies; /**< The anomalies collection */
     sonata::Collection m_coll_metadata; /**< The metadata collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
+    
+    static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
   public:
     ADProvenanceDBclient(): m_client(m_engine), m_is_connected(false){}
     
@@ -35,9 +81,6 @@ namespace chimbuko{
      */
     bool isConnected() const{ return m_is_connected; }
     
-
-    ~ADProvenanceDBclient();
-
     /**
      * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
      */
@@ -45,15 +88,24 @@ namespace chimbuko{
     inline const sonata::Collection & getCollection(const ProvenanceDataType type) const{ return type == ProvenanceDataType::AnomalyData ? m_coll_anomalies : m_coll_metadata; }
 		
     /**
-     * @brief Send data JSON objects to the database
+     * @brief Send data JSON objects synchronously to the database (blocking)
      * @param JSON data
      * @param type The data type
      * @return Entry index
      */
     uint64_t sendData(const nlohmann::json &entry, const ProvenanceDataType type) const;
 
+
     /**
-     * @brief Retrieve an inserted JSON object from the database by index (primarily for testing)
+     * @brief Send data JSON objects asynchronously to the database (non-blocking)
+     * @param JSON data
+     * @param type The data type
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anoynmous (fire-and-forget)
+     */
+    void sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+
+    /**
+     * @brief Retrieve an inserted JSON object synchronously from the database by index (blocking) (primarily for testing)
      * @param[out] entry The JSON object (if valid)
      * @param[in] index The entry index
      * @param[in] type The data type
