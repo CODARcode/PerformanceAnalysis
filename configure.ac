@@ -41,6 +41,7 @@ if test "x$HAVE_LIBadios2" = "xno"; then
    AC_MSG_FAILURE(["ADIOS2 is required"])
 fi
 
+#Choose network
 PS_FLAGS=
 AC_ARG_WITH([network], AS_HELP_STRING([--with-network], [Specify network layer: MPI or ZMQ]),[],[with_network=no])
 if test "x$with_network" = "xMPI"; then
@@ -49,15 +50,42 @@ if test "x$with_network" = "xMPI"; then
 elif test "x$with_network" = "xZMQ"; then
    #AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
    PS_FLAGS+=" -D_USE_ZMQNET"
+   AC_CHECK_LIB([zmq], [zmq_close], [],
+           [AC_MSG_FAILURE([Could not link to 0MQ])])
 else
    AC_MSG_FAILURE(["Must set a network layer using --with-network"])
 fi
 
+#Choose to build provenance database client/provider
+#Require Mochi/Sonata to be installed and useable
+AC_ARG_ENABLE([provenancedb],
+  [AS_HELP_STRING([--enable-provenancedb], [Enable build of the provenance DB client/providers @<:@check@:>@])],
+  [:],
+  [enable_provenancedb=check])
+
+#Build provenance DB unless explicitly disabled or cannot link to MOCHI libraries
+if test "$enable_provenancedb" != "no"; then
+   AC_CHECK_LIB([sonata-client], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([sonata-server], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([sonata-admin], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([thallium], [_init], [],  [AC_MSG_WARN([Could not link to Thallium: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([mercury], [_init], [],  [AC_MSG_WARN([Could not link to Mercury: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([margo], [_init], [],  [AC_MSG_WARN([Could not link to Margo: Provenance DB will not be built]); enable_provenancedb=no]  )
+fi
+
+AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")
+
+if test "$enable_provenancedb" != "no"; then
+   AC_MSG_NOTICE([Provenance DB will be built])
+   AC_DEFINE([ENABLE_PROVDB], [1], [Enable the provenance database])
+fi
+
+
+#Enable performance metrics dump
 #AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[PS_FLAGS+=" -D_PERF_METRIC"],[])
 
-AC_CHECK_LIB([zmq], [zmq_close], [],
-             [AC_MSG_FAILURE([Could not link to 0MQ])])
+
 
 AC_CONFIG_HEADERS([config.h])
 AC_SUBST([PS_FLAGS])
@@ -66,6 +94,6 @@ AC_CONFIG_SRCDIR([src/chimbuko.cpp])
 AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py])
-AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh ], [chmod u+x $(echo $ac_tag | sed s/.*\://)])
+AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh ], [chmod u+x $(echo $ac_tag | sed s/.*\://)])
 
 AC_OUTPUT

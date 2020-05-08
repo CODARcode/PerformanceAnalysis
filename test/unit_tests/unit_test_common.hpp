@@ -1,52 +1,17 @@
 #pragma once
 
-#include<thread>
+#include <thread>
 #include <condition_variable>
 #include <mutex>
 #include <chimbuko/ad/ADDefine.hpp>
 #include <chimbuko/ad/ExecData.hpp>
 #include <sstream>
 #include <list>
-#include<chimbuko/message.hpp>
+#include <chimbuko/message.hpp>
 #include <zmq.h>
+#include <chimbuko/util/barrier.hpp>
 
 namespace chimbuko{
-
-  /**
-   * @brief Thread barrier
-   */
-  class Barrier {
-  public:
-    /**
-     * @brief Constructor
-     * @param iCount The number of threads in the barrier
-     */
-    explicit Barrier(std::size_t iCount) : 
-      mThreshold(iCount), 
-      mCount(iCount), 
-      mGeneration(0) {
-    }
-
-    void wait() {
-      std::unique_lock<std::mutex> lLock{mMutex};
-      auto lGen = mGeneration;
-      if (!--mCount) {
-	mGeneration++;
-	mCount = mThreshold;
-	mCond.notify_all();
-      } else {
-	mCond.wait(lLock, [this, lGen] { return lGen != mGeneration; }); //stay here until lGen != mGeneration which will happen when one thread has incremented the generation counter
-      }
-    }
-
-  private:
-    std::mutex mMutex;
-    std::condition_variable mCond;
-    std::size_t mThreshold;
-    std::size_t mCount;
-    std::size_t mGeneration;
-  };
-
   /**
    * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
    */

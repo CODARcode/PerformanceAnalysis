@@ -24,6 +24,14 @@ sstSinker_LDADD = $(LDADD)
 sst_view_SOURCES = sst_view.cpp
 sst_view_LDADD = $(LDADD)
 
+if ENABLE_PROVDB
+bin_PROGRAMS += provdb_admin
+provdb_admin_SOURCES = provdb_admin.cpp
+provdb_admin_LDADD = $(LDADD)
+else
+	echo "Provenance DB not being built"
+endif
+
 
 bindata_DATA = ws_flask_stat.py
 bindatadir = $(bindir)

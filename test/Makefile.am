@@ -17,6 +17,12 @@ mainAd_LDADD = $(LDADD)
 
 test_DATA = run_all.sh run_ad.sh run_net.sh
 
+if ENABLE_PROVDB
+test_PROGRAMS += mainProvDBclient
+mainProvDBclient_SOURCES = mainProvDBclient.cpp
+mainProvDBclient_LDADD = $(LDADD)
+test_DATA += run_provdb_client_test.sh
+endif
 
 install-data-hook:
 	cp -rd $(srcdir)/data $(DESTDIR)$(testdir)/
