@@ -31,42 +31,20 @@ ADProvenanceDBclient::~ADProvenanceDBclient(){
 }
 
 
-uint64_t ADProvenanceDBclient::sendAnomalyData(const nlohmann::json &entry) const{
+uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{
   if(m_is_connected){
-    return m_coll_anomalies.store(entry.dump());
+    return getCollection(type).store(entry.dump());
   }
   return -1;
 }
 
 
 
-bool ADProvenanceDBclient::retrieveAnomalyData(nlohmann::json &entry, uint64_t index) const{
+bool ADProvenanceDBclient::retrieveData(nlohmann::json &entry, uint64_t index, const ProvenanceDataType type) const{
   if(m_is_connected){
     std::string data;
     try{
-      m_coll_anomalies.fetch(index, &data);
-    }catch(const sonata::Exception &e){
-      return false;
-    }
-    entry = nlohmann::json::parse(data);
-    return true;
-  }
-  return false;
-}
-
-
-uint64_t ADProvenanceDBclient::sendMetadata(const nlohmann::json &entry) const{
-  if(m_is_connected){
-    return m_coll_metadata.store(entry.dump());
-  }
-  return -1;
-}
-
-bool ADProvenanceDBclient::retrieveMetadata(nlohmann::json &entry, uint64_t index) const{
-  if(m_is_connected){
-    std::string data;
-    try{
-      m_coll_metadata.fetch(index, &data);
+      getCollection(type).fetch(index, &data);
     }catch(const sonata::Exception &e){
       return false;
     }

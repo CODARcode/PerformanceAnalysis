@@ -8,6 +8,8 @@
 
 namespace chimbuko{
 
+  enum class ProvenanceDataType { AnomalyData, Metadata };
+
   /**
    * @Client for interacting with provevance database
    */
@@ -35,36 +37,29 @@ namespace chimbuko{
     
 
     ~ADProvenanceDBclient();
+
+    /**
+     * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
+     */
+    inline sonata::Collection & getCollection(const ProvenanceDataType type){ return type == ProvenanceDataType::AnomalyData ? m_coll_anomalies : m_coll_metadata; }
+    inline const sonata::Collection & getCollection(const ProvenanceDataType type) const{ return type == ProvenanceDataType::AnomalyData ? m_coll_anomalies : m_coll_metadata; }
 		
     /**
-     * @brief Send anomaly data JSON objects to the database
+     * @brief Send data JSON objects to the database
+     * @param JSON data
+     * @param type The data type
      * @return Entry index
      */
-    uint64_t sendAnomalyData(const nlohmann::json &entry) const;
+    uint64_t sendData(const nlohmann::json &entry, const ProvenanceDataType type) const;
 
     /**
      * @brief Retrieve an inserted JSON object from the database by index (primarily for testing)
      * @param[out] entry The JSON object (if valid)
      * @param[in] index The entry index
+     * @param[in] type The data type
      * @return True if the client was able to retrieve the object
      */
-    bool retrieveAnomalyData(nlohmann::json &entry, uint64_t index) const;
-
-
-    /**
-     * @brief Send metadata JSON objects to the database
-     * @return Entry index
-     */
-    uint64_t sendMetadata(const nlohmann::json &entry) const;
-
-
-    /**
-     * @brief Retrieve an inserted JSON object from the database by index (primarily for testing)
-     * @param[out] entry The JSON object (if valid)
-     * @param[in] index The entry index
-     * @return True if the client was able to retrieve the object
-     */
-    bool retrieveMetadata(nlohmann::json &entry, uint64_t index) const;
+    bool retrieveData(nlohmann::json &entry, uint64_t index, const ProvenanceDataType type) const;
   };
 
 };

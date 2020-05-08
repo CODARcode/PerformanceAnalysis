@@ -44,11 +44,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
     nlohmann::json obj;
     obj["hello"] = "world";
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendAnomalyData(obj);
+    uint64_t rid = client.sendData(obj, ProvenanceDataType::AnomalyData);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveAnomalyData(check, rid), true );
+    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::AnomalyData), true );
     
     std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
@@ -75,11 +75,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
     nlohmann::json obj;
     obj["hello"] = "world";
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendMetadata(obj);
+    uint64_t rid = client.sendData(obj, ProvenanceDataType::Metadata);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveMetadata(check, rid), true );
+    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::Metadata), true );
     
     std::cout << "Testing retrieved metadata:" << check.dump() << std::endl;
 
