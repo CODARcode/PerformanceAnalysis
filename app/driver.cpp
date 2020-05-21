@@ -8,7 +8,71 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
-// todo parse argument
+ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
+  // -----------------------------------------------------------------------
+  // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
+  // -----------------------------------------------------------------------
+  ChimbukoParams params;
+  params.verbose = world_rank == 0; //head node produces verbose output
+  params.rank = world_rank;
+      
+  //Parameters for the connection to the instrumented binary trace output
+  params.trace_engineType = argv[1]; // BPFile or SST
+  params.trace_data_dir = argv[2]; // *.bp location
+  std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
+  params.trace_inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
+
+  //Choose how the data intended for the vizualization module is handled
+  // if string starts with "http", use online mode (connect to viz module); otherwise offline mode (dump to disk)
+  std::string output = argv[4]; 
+  params.viz_iomode = IOMode::Both;
+  params.viz_datadump_outputPath = "";      //output directory
+  params.viz_addr = "";
+  if (output.find("http://") == std::string::npos)
+    params.viz_datadump_outputPath = output;
+  else
+    params.viz_addr = output;
+      
+      
+  //Provide the address of the parameter server. If string is empty the pserver will not be used
+#ifdef _USE_ZMQNET
+  params.pserver_addr = "";
+  if (argc >= 6)
+    params.pserver_addr = std::string(argv[5]); 
+#else
+#error "Driver network type has not been implemented"
+#endif
+
+  //Choose the parameters of the anomaly detection module
+  params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
+  if (argc >= 7)
+    params.outlier_sigma = atof(argv[6]);
+
+  //Choose the window size for events captured around anomalies and set to the viz module
+  params.viz_anom_winSize = 0;       // window size
+  if (argc >= 8)
+    params.viz_anom_winSize= atoi(argv[7]);
+
+  //Choose a pause at the end of each io step
+  params.interval_msec = 0;
+  if (argc >= 9)
+    params.interval_msec = atoi(argv[8]);
+
+  //Setup output frequency and path for AD module performance data
+#ifdef _PERF_METRIC
+  params.perf_outputpath = ""; // performance output path
+  params.perf_step = 10;   // make output every 10 steps
+  if (argc >= 10) {
+    params.perf_outputpath = std::string(argv[9]);
+    params.perf_step = atoi(argv[10]);
+  }
+#endif
+      
+  return params;
+}
+
+
+
 
 int main(int argc, char ** argv)
 {
@@ -23,85 +87,16 @@ int main(int argc, char ** argv)
 
       //Parse environment variables
       if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-	std::cout << "Enabling verbose output" << std::endl;
+	std::cout << "Enabling verbose debug output" << std::endl;
 	Verbose::set_verbose(true);
       }       
-      
-      // -----------------------------------------------------------------------
-      // parser command line arguments
-      // -----------------------------------------------------------------------
-      std::string engineType = argv[1]; // BPFile or SST
-      std::string data_dir = argv[2]; // *.bp location
-      std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
-      std::string inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
-      std::string output = argv[4]; 
-      // if string starts with "http", use online mode; otherwise offline mode
 
-      std::string output_dir;      //output directory
-      std::string ps_addr;         // parameter server (e.g. "tcp://hostname:5559")
-      std::string vis_addr;        // visualization server
-      double      sigma = 6.0;     // anomaly detection algorithm parameter
-      int         winsz = 0;       // window size
-      int         interval_msec = 0;
-#ifdef _PERF_METRIC
-      std::string perf_output = ""; // performance output path
-      int         perf_step = 10;   // make output every 10 steps
-#endif
+      //Parse Chimbuko parameters
+      ChimbukoParams params = getParamsFromCommandLine(argc, argv, world_rank);
+      if(world_rank == 0) params.print();
 
-      if (output.find("http://") == std::string::npos)
-	output_dir = output;
-      else
-	vis_addr = output;
-
-      // if (output_dir.length())
-      //     output_dir = output_dir  + "." + std::to_string(world_rank);
-
-#ifdef _USE_ZMQNET
-      if (argc >= 6)
-	ps_addr = std::string(argv[5]); 
-#endif
-      if (argc >= 7)
-	sigma = atof(argv[6]);
-
-      if (argc >= 8)
-	winsz = atoi(argv[7]);
-
-      if (argc >= 9)
-	interval_msec = atoi(argv[8]);
-
-#ifdef _PERF_METRIC
-      if (argc >= 10) {
-	perf_output = std::string(argv[9]);
-	perf_step = atoi(argv[10]);
-      }
-#endif
-
-      if (world_rank == 0) {
-        std::cout << "\n" 
-		  << "rank       : " << world_rank << "\n"
-		  << "Engine     : " << engineType << "\n"
-		  << "BP in dir  : " << data_dir << "\n"
-		  << "BP file    : " << inputFile << "\n"
-		  << "BP out dir : " << output_dir 
-#ifdef _USE_ZMQNET
-		  << "\nPS Addr    : " << ps_addr
-#endif
-		  << "\nVIS Addr   : " << vis_addr
-		  << "\nsigma      : " << sigma
-		  << "\nwindow size: " << winsz
-		  << "\nInterval   : " << interval_msec << " msec\n"
-#ifdef _PERF_METRIC
-		  << "perf. matric : " << perf_output << "\n"
-		  << "perf. step   : " << perf_step << "\n"
-#endif
-		  << std::endl;
-      }
-
-
-      // -----------------------------------------------------------------------
-      // AD module variables
-      // -----------------------------------------------------------------------
-      Chimbuko driver;
+      //Instantiate Chimbuko
+      Chimbuko driver(params);
 
       // -----------------------------------------------------------------------
       // Measurement variables
@@ -114,22 +109,6 @@ int main(int argc, char ** argv)
       high_resolution_clock::time_point t1, t2;
 
       // -----------------------------------------------------------------------
-      // Init. AD module
-      // -----------------------------------------------------------------------
-      // First, init io to make sure file (or connection) handler
-      driver.init_io(world_rank, IOMode::Both, output_dir, vis_addr, winsz);
-
-      // Second, init parser because it will hold shared memory with event and outlier object
-      // also, process will be blocked at this line until it finds writer (in SST mode)
-      driver.init_parser(data_dir, inputFile, engineType);
-
-      // Thrid, init event and outlier objects	
-      driver.init_event(world_rank == 0);
-      driver.init_net_client(world_rank, ps_addr);
-      driver.init_outlier(sigma);
-      driver.init_counter();
-	
-      // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
       if (world_rank == 0) {
@@ -139,20 +118,11 @@ int main(int argc, char ** argv)
       }
 
       t1 = high_resolution_clock::now();
-      driver.run(
-		 world_rank, 
-		 n_func_events, 
+      driver.run(n_func_events, 
 		 n_comm_events,
 		 n_counter_events,
 		 n_outliers,
-		 frames,
-#ifdef _PERF_METRIC
-		 perf_output,
-		 perf_step,
-#endif 
-		 false, 
-		 interval_msec
-		 );
+		 frames);
       t2 = high_resolution_clock::now();
         
       if (world_rank == 0) {
@@ -201,11 +171,6 @@ int main(int argc, char ** argv)
 		  << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
 		  << std::endl;
       }
-
-      // -----------------------------------------------------------------------
-      // Finalize
-      // -----------------------------------------------------------------------
-      driver.finalize();
     }
   catch (std::invalid_argument &e)
     {

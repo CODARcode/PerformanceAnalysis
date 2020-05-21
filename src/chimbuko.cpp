@@ -3,73 +3,104 @@
 
 using namespace chimbuko;
 
-Chimbuko::Chimbuko()
-{
-    m_parser = nullptr;
-    m_event = nullptr;
-    m_outlier = nullptr;
-    m_io = nullptr;
-    m_net_client = nullptr;
+void ChimbukoParams::print() const{
+  std::cout << "\n" 
+	    << "rank       : " << rank << "\n"
+	    << "Engine     : " << trace_engineType << "\n"
+	    << "BP in dir  : " << trace_data_dir << "\n"
+	    << "BP file    : " << trace_inputFile << "\n"
+#ifdef _USE_ZMQNET
+	    << "\nPS Addr    : " << pserver_addr
+#endif
+	    << "\nVIS Addr   : " << viz_addr
+	    << "\nsigma      : " << outlier_sigma
+	    << "\nwindow size: " << viz_anom_winSize
+	  
+	    << "\nInterval   : " << interval_msec << " msec\n"
+#ifdef _PERF_METRIC
+	    << "perf. matric : " << perf_outputpath << "\n"
+	    << "perf. step   : " << perf_step << "\n"
+#endif
+	    << std::endl;
 }
 
-Chimbuko::~Chimbuko()
-{
 
+Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
+		      m_is_initialized(false){}
+
+Chimbuko::~Chimbuko(){
+  finalize();
 }
 
-void Chimbuko::init_io(int rank, IOMode mode, std::string outputPath, 
-    std::string addr, unsigned int winSize)
-{
+void Chimbuko::initialize(const ChimbukoParams &params){
+  if(m_is_initialized) finalize();
+  m_params = params;
+  if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
+
+  // First, init io to make sure file (or connection) handler
+  init_io();
+
+  // Second, init parser because it will hold shared memory with event and outlier object
+  // also, process will be blocked at this line until it finds writer (in SST mode)
+  init_parser();
+
+  // Thrid, init event and outlier objects	
+  init_event();
+  init_net_client();
+  init_outlier();
+  init_counter();
+  
+  m_is_initialized = true;
+}
+
+
+void Chimbuko::init_io(){
     m_io = new ADio();
-    m_io->setRank(rank);
+    m_io->setRank(m_params.rank);
     m_io->setDispatcher();
-    m_io->setWinSize(winSize);
-    if ((mode == IOMode::Online || mode == IOMode::Both) && addr.size())
-    {
-        m_io->open_curl(addr);
+    m_io->setWinSize(m_params.viz_anom_winSize);
+    if ((m_params.viz_iomode == IOMode::Online || m_params.viz_iomode == IOMode::Both) && m_params.viz_addr.size()){
+      m_io->open_curl(m_params.viz_addr);
     }
 
-    if ((mode == IOMode::Offline || mode == IOMode::Both) && outputPath.size())
-    {
-        m_io->setOutputPath(outputPath);
+    if ((m_params.viz_iomode == IOMode::Offline || m_params.viz_iomode == IOMode::Both) && m_params.viz_datadump_outputPath.size()){
+      m_io->setOutputPath(m_params.viz_datadump_outputPath);
     }
 }
 
-void Chimbuko::init_parser(std::string data_dir, std::string inputFile, std::string engineType)
-{
-    m_parser = new ADParser(data_dir + "/" + inputFile, engineType);
+void Chimbuko::init_parser(){
+    m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.trace_engineType);
 }
 
-void Chimbuko::init_event(bool verbose){
+void Chimbuko::init_event(){
   if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_event");
-  m_event = new ADEvent(verbose);
+  m_event = new ADEvent(m_params.verbose);
   m_event->linkFuncMap(m_parser->getFuncMap());
   m_event->linkEventType(m_parser->getEventType());
 }
 
-void Chimbuko::init_net_client(int rank, const std::string &pserver_addr){
-  if(pserver_addr.length() > 0){
+void Chimbuko::init_net_client(){
+  if(m_params.pserver_addr.length() > 0){
     m_net_client = new ADNetClient;
 #ifdef _USE_MPINET
-    m_net_client->connect_ps(rank);
+    m_net_client->connect_ps(m_params.rank);
 #else
-    m_net_client->connect_ps(rank, 0, pserver_addr);
+    m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
   }
 }
 
 
-void Chimbuko::init_outlier(double sigma){
+void Chimbuko::init_outlier(){
   if(!m_event) throw std::runtime_error("Event managed must be initialized before calling init_outlier");
   
   m_outlier = new ADOutlierSSTD();
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
-  m_outlier->set_sigma(sigma);
+  m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
 }
 
-void Chimbuko::init_counter()
-{
+void Chimbuko::init_counter(){
   if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_counter");  
   m_counter = new ADCounter();
   m_counter->linkCounterMap(m_parser->getCounterMap());
@@ -78,6 +109,8 @@ void Chimbuko::init_counter()
 
 void Chimbuko::finalize()
 {
+  if(!m_is_initialized) return;
+
   if(m_net_client){
     m_net_client->disconnect_ps();
     delete m_net_client;
@@ -86,12 +119,15 @@ void Chimbuko::finalize()
   if (m_event) delete m_event;
   if (m_outlier) delete m_outlier;
   if (m_io) delete m_io;
+  if (m_counter) delete m_counter;
 
   m_parser = nullptr;
   m_event = nullptr;
   m_outlier = nullptr;
   m_io = nullptr;
   m_net_client = nullptr;
+  m_counter = nullptr;
+  m_is_initialized = false;
 }
 
 //Returns false if beginStep was not successful
@@ -219,22 +255,17 @@ void Chimbuko::extractCounters(int rank, int step){
 } 
 
 
-void Chimbuko::run(int rank, 
-		   unsigned long long& n_func_events, 
+void Chimbuko::run(unsigned long long& n_func_events, 
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,
-		   unsigned long& frames,
-#ifdef _PERF_METRIC
-		   std::string perf_outputpath,
-		   int         perf_step,
-#endif
-		   bool only_one_frame,
-		   int interval_msec){
+		   unsigned long& frames){
+  if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
+
   int step = 0; 
 
 #ifdef _PERF_METRIC
-  std::string ad_perf = "ad_perf_" + std::to_string(rank) + ".json";
+  std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
   RunMetric perf;
   m_outlier->linkPerf(&perf);
 #endif
@@ -242,17 +273,17 @@ void Chimbuko::run(int rank,
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
     //Extract counters and put into counter manager
-    extractCounters(rank, step);
+    extractCounters(m_params.rank, step);
 
     //Extract parsed events into event manager
-    extractEvents(rank, step);
+    extractEvents(m_params.rank, step);
 
     //Run the outlier detection algorithm on the events
     Anomalies anomalies = m_outlier->run(step);
     n_outliers += anomalies.nOutliers();
     frames++;
 
-    //Gather provenance data on anomalies
+    //Gather provenance data on anomalies and send to provenance database
     std::vector<ADAnomalyProvenance> anomaly_prov;
     for(auto anom_it : anomalies.allOutliers()){
       const auto &anom = *anom_it;
@@ -278,14 +309,14 @@ void Chimbuko::run(int rank,
 
 #ifdef _PERF_METRIC
     // dump performance metric event perf_step steps
-    if ( perf_outputpath.length() && perf_step > 0 && (step+1)%perf_step == 0 ) {
-      perf.dump(perf_outputpath, ad_perf);
+    if ( m_params.perf_outputpath.length() && m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0 ) {
+      perf.dump(m_params.perf_outputpath, ad_perf);
     }
 #endif
-    if (only_one_frame)
+    if (m_params.only_one_frame)
       break;
 
-    if (interval_msec)
-      std::this_thread::sleep_for(std::chrono::microseconds(interval_msec));
+    if (m_params.interval_msec)
+      std::this_thread::sleep_for(std::chrono::microseconds(m_params.interval_msec));
   } // end of parser while loop
 }

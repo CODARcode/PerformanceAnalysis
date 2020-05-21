@@ -59,26 +59,27 @@ TEST_F(ADTest, BpfileTest)
         {106, 58, 79, 49, 54, 66, 48}
     };
 
+    ChimbukoParams params;
+    params.rank = world_rank;
 
-    std::string data_dir = "./data";
-    std::string output_dir = "./data";
-    std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-    std::string engineType = "BPFile";
+    params.trace_data_dir = "./data";
+    params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
+    params.trace_engineType = "BPFile";
 
-    double sigma = 6.0;
+    params.viz_iomode = IOMode::Both;
+    params.viz_addr = "";
+    params.viz_datadump_outputPath = "";
 
+    params.outlier_sigma = 6.0;
+    params.only_one_frame = true; //just analyze first IO frame
+    
     Chimbuko driver;
     int step;
     unsigned long n_outliers = 0, frames = 0;
     unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
     try{
-      driver.init_io(world_rank, IOMode::Both, "", "", 0);
-      driver.init_parser(data_dir, inputFile, engineType);
-      driver.init_event();
-      driver.init_counter();
-      driver.init_net_client(world_rank);
-      driver.init_outlier(sigma);
+      driver.initialize(params);
     }catch(const std::exception &e){
       std::cerr << "Caught exception during driver init: " << e.what() << std::endl;
       throw e;
@@ -93,20 +94,11 @@ TEST_F(ADTest, BpfileTest)
         n_outliers = 0;
 
 	try{
-	  driver.run(
-		     world_rank, 
-		     n_func_events, 
+	  driver.run(n_func_events, 
 		     n_comm_events,
 		     n_counter_events,
 		     n_outliers, 
-		     frames,
-#ifdef _PERF_METRIC
-		     "",
-		     0,
-#endif
-		     true,
-		     0
-		     );
+		     frames);
 	}catch(const std::exception &e){
 	  std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
 	  throw e;
@@ -125,7 +117,6 @@ TEST_F(ADTest, BpfileTest)
     EXPECT_EQ(N_STEPS[world_rank], step);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    driver.finalize();
 }
 
 TEST_F(ADTest, BpfileWithNetTest)
@@ -153,16 +144,28 @@ TEST_F(ADTest, BpfileWithNetTest)
         { 76, 32, 47, 26, 26, 32, 27}
     };
 
+    ChimbukoParams params;
+    params.rank = world_rank;
+    params.verbose = world_rank == 0;
+    
+    params.trace_data_dir = "./data";
+    params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
+    params.trace_engineType = "BPFile";
 
-    std::string data_dir = "./data";
-    std::string output_dir = "./data";
-    std::string inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
-    std::string engineType = "BPFile";
-    std::string execOutput = "./temp";
+    params.viz_iomode = IOMode::Both;
+    params.viz_datadump_outputPath = "./temp";
+    params.viz_addr = "";
+
+    params.pserver_addr = "tcp://localhost:5559"; //connect to the pserver
+
 #ifdef _PERF_METRIC
-    std::string perfOutput = "./perf";
+    params.perf_outputpath =  "./perf";
+    params.perf_step = 1;
 #endif
-    double sigma = 6.0;
+
+    params.only_one_frame = true;
+    params.outlier_sigma = 6.0;
+
 
     Chimbuko driver;
 
@@ -170,12 +173,12 @@ TEST_F(ADTest, BpfileWithNetTest)
     unsigned long n_outliers = 0, frames = 0;
     unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
-    driver.init_io(world_rank, IOMode::Both, execOutput, "", 0);
-    driver.init_parser(data_dir, inputFile, engineType);
-    driver.init_event();
-    driver.init_counter();
-    driver.init_net_client(world_rank, "tcp://localhost:5559");
-    driver.init_outlier(sigma);
+    try{
+      driver.initialize(params);
+    }catch(const std::exception &e){
+      std::cerr << "Caught exception during driver init: " << e.what() << std::endl;
+      throw e;
+    }
 
     step = -1;
     while ( driver.get_status() )
@@ -190,20 +193,16 @@ TEST_F(ADTest, BpfileWithNetTest)
             MPI_Recv(&token, 1, MPI_INT, world_rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
-        driver.run(
-            world_rank, 
-            n_func_events, 
-            n_comm_events,
-	    n_counter_events,
-            n_outliers, 
-            frames,
-#ifdef _PERF_METRIC
-            perfOutput, 
-            1,
-#endif
-            true,
-            0
-        );
+	try{
+	  driver.run(n_func_events, 
+		     n_comm_events,
+		     n_counter_events,
+		     n_outliers, 
+		     frames);
+	}catch(const std::exception &e){
+	  std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
+	  throw e;
+	}
         
         MPI_Send(&token, 1, MPI_INT, (world_rank+1)%world_size, 0, MPI_COMM_WORLD);
         if (world_rank == 0) {
@@ -214,26 +213,15 @@ TEST_F(ADTest, BpfileWithNetTest)
         {
             step = driver.get_step();
 
-            // std::cout << "Rank: " << world_rank 
-            //     << ", Step: " << step 
-            //     << ", # func: " << n_func_events
-            //     << ", # comm: " << n_comm_events
-            //     << ", # outliers: " <<  n_outliers
-            //     << std::endl;
-
 	    //FIXME: Add expect for counter events
             EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
             EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
             EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
         }
     }
-    // std::cout << "Final, Rank: " << world_rank 
-    //     << ", Step: " << step 
-    //     << std::endl;
     EXPECT_EQ(N_STEPS[world_rank], step);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    driver.finalize();
 }
 
 TEST_F(ADTest, ReadExecDataTest)

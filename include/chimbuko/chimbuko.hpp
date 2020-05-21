@@ -4,66 +4,129 @@
 
 namespace chimbuko {
 
+  /**
+   * @brief Parameters for setting up the AD
+   */
+  struct ChimbukoParams{
+    //Parameters associated with obtaining trace data from the instrumented binary
+    std::string trace_engineType; /**< The ADIOS2 communications mode. If "SST" it will receive trace data in real-time, if "BPfile" it will parse an existing trace dump*/ 
+    std::string trace_data_dir; /**< Directory containing input file.*/
+    std::string trace_inputFile; /**< The input file. Assuming the environment variable TAU_FILENAME is set, the binary name is BINARY_NAME and the MPI rank is WORLD_RANK, the file format is
+			      < inputFile = "${TAU_FILENAME}-${BINARY_NAME}-${WORLD_RANK}.bp"
+			      < Do not include the .sst file extensions for SST mode*/
+
+    //Parameters associated with the outlier detection algorithm
+    double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
+
+
+    //Parameters associated with communicating with the parameter server*/
+    std::string pserver_addr; /**< The address of the parameter server. 
+				 < If no parameter server is in use, this string should be empty (length zero)
+				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}" 
+			      */
+
+
+    //Parameters associated with communicating with the visualization (viz) module
+    IOMode viz_iomode; /**< Set to IOMode::Online to send to viz module, IOMode::Offline to dump to disk, or IOMode::Both for both */
+    std::string viz_datadump_outputPath; /**< If writing to disk, write to this directory */
+    std::string viz_addr; /**< If sending to the viz module, this is the web address (expected http://....) */
+    unsigned int viz_anom_winSize; /**< When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent */
+
+#ifdef _PERF_METRIC
+    //Parameters associated with performance analysis of AD module
+    std::string perf_outputpath; /**< Output path for AD performance monitoring data. If an empty string no output is written.*/
+    int perf_step; /**<How frequently (in IO steps) the performance data is dumped*/
+#endif
+
+    //General parameters for Chimbuko
+    int rank; /**< MPI rank of AD process */
+    bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
+    bool only_one_frame; /**< Force the AD to stop after a single IO frame */
+    int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
+
+    ChimbukoParams(): rank(-1234),  //not set!
+		      verbose(true),
+		      outlier_sigma(6.),
+		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
+		      pserver_addr(""),
+		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), viz_anom_winSize(0),
+#ifdef _PERF_METRIC
+		      perf_outputpath(""), perf_step(10),
+#endif
+		      only_one_frame(false), interval_msec(0)		      
+    {}
+
+    void print() const;
+  };
+
+
   class Chimbuko{
+  private:
   public:
     Chimbuko();
     ~Chimbuko();
 
     /**
-     * @brief Initialize the IO engine for communicating data to parameter server and/or disk
-     * @param rank The current MPI rank
-     * @param mode Set to IOMode::Online to send to pserver, IOMode::Offline to dump to disk, or IOMode::Both for both
-     * @param outputPath If writing to disk, write to this directory
-     * @param addr If sending to the pserver, this is the web address (expected http://....)
-     * @param winSize When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent
+     * @brief Construct and initialize the AD with the parameters provided
      */
-    void init_io(int rank, IOMode mode, std::string outputPath, 
-		 std::string addr, unsigned int winSize=0);
-    void init_parser(std::string data_dir, std::string inputFile, std::string engineType);
-    void init_event(bool verbose=false);
+    Chimbuko(const ChimbukoParams &params): Chimbuko(){ initialize(params); }
 
     /**
-     * @brief Initialize connection to the parameter server
+     * @brief Initialize the AD with the parameters provided (must be performed prior to running)
      */
-    void init_net_client(int rank, const std::string &pserver_addr = "");
-    void init_outlier(double sigma);
-    void init_counter();
+    void initialize(const ChimbukoParams &params);
 
-    
+
+    /**
+     * @brief Free memory associated with AD components (called automatically by destructor)
+     */
     void finalize();
 
+    /**
+     * @brief Whether the parameter server is in use
+     */
     bool use_ps() const { return m_outlier->use_ps(); }
+
+    /**
+     * @brief Request that the event manager print its status
+     */
     void show_status(bool verbose=false ) const { m_event->show_status(verbose); }
+
+    /**
+     * @brief Whether the AD is connected through ADIOS2 to the trace input
+     */
     bool get_status() const { return m_parser->getStatus(); }
+    
+    /**
+     * @brief Get the current IO step
+     */
     int get_step() const { return m_parser->getCurrentStep(); }
 
     /**
      * @brief Run the main Chimbuko analysis loop
-     * @param rank MPI rank of main Chimbuko process
      * @param[out] n_func_events number of function events recorded
      * @param[out] n_comm_events number of comm events recorded
      * @param[out] n_counter_events number of counter events recorded
      * @param[out] n_outlier number of anomalous events recorded
      * @param[out] frames number of adios2 input steps
-     * @param perf_outputpath Output path for performance data
-     * @param perf_step How frequently the performance data is dumped (in steps) 
-     * @param only_one_frame Force the analysis to occur only for the first input step
-     * @param interval_msec Optionally add a wait between steps
      */
-    void run(int rank, 
-	     unsigned long long& n_func_events, 
+    void run(unsigned long long& n_func_events, 
 	     unsigned long long& n_comm_events,
 	     unsigned long long& n_counter_events,
 	     unsigned long& n_outliers,
-	     unsigned long& frames,
-#ifdef _PERF_METRIC
-	     std::string perf_outputpath="",
-	     int         perf_step=10,
-#endif
-	     bool only_one_frame=false,
-	     int interval_msec=0);
+	     unsigned long& frames);
 
   private:
+    //Initialize various components; called by initialize method
+    void init_io();
+    void init_parser();
+    void init_event();
+
+    void init_net_client();
+    void init_outlier();
+    void init_counter();
+
+
     /**
      * @brief Signal the parser to parse the adios2 timestep
      * @param[out] step index
@@ -91,25 +154,18 @@ namespace chimbuko {
      * @param step The adios2 stream step index
      */
     void extractCounters(int rank, int step);
-    
-    // int m_rank;
-    // std::string m_engineType;  // BPFile or SST
-    // std::string m_data_dir;    // *.bp location
-    // std::string m_inputFile;   
-    // std::string m_output_dir;
 
+    
+    //Components and parameters
     ADParser * m_parser;       /**< adios2 input data stream parser */
     ADEvent * m_event;         /**< func/comm event manager */
     ADCounter * m_counter;     /**< counter event manager */
     ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
     ADNetClient * m_net_client; /** <client for comms with parameter server */
-    
-    // priority queue was used to mitigate a minor problem from TAU plug-in code
-    // (e.g. pthread_create in wrong position). Actually, it doesn't casue 
-    // call stack violation and the priority queue approach is not the ultimate
-    // solution. So, it is deprecated and hope the problem is solved in TAU side.
-    // PQUEUE pq;
+
+    ChimbukoParams m_params; /**< Parameters to setup the AD*/
+    bool m_is_initialized; /**< Whether the AD has been initialized*/
   };
 
 }
