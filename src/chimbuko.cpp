@@ -26,6 +26,9 @@ void ChimbukoParams::print() const{
 
 
 Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
+#ifdef ENABLE_PROVDB
+		      m_provdb_client(nullptr),
+#endif
 		      m_is_initialized(false){}
 
 Chimbuko::~Chimbuko(){
@@ -49,6 +52,10 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   init_net_client();
   init_outlier();
   init_counter();
+
+#ifdef ENABLE_PROVDB
+  init_provdb();
+#endif
   
   m_is_initialized = true;
 }
@@ -106,6 +113,14 @@ void Chimbuko::init_counter(){
   m_counter->linkCounterMap(m_parser->getCounterMap());
 }
 
+#ifdef ENABLE_PROVDB
+void Chimbuko::init_provdb(){
+  m_provdb_client = new ADProvenanceDBclient;
+  if(m_params.provdb_addr.length() > 0)
+    m_provdb_client->connect(m_params.provdb_addr);
+}
+#endif
+
 
 void Chimbuko::finalize()
 {
@@ -121,12 +136,19 @@ void Chimbuko::finalize()
   if (m_io) delete m_io;
   if (m_counter) delete m_counter;
 
+#ifdef ENABLE_PROVDB
+  if (m_provdb_client) delete m_provdb_client;
+#endif
+
   m_parser = nullptr;
   m_event = nullptr;
   m_outlier = nullptr;
   m_io = nullptr;
   m_net_client = nullptr;
   m_counter = nullptr;
+#ifdef ENABLE_PROVDB
+  m_provdb_client = nullptr;
+#endif
   m_is_initialized = false;
 }
 
@@ -255,6 +277,28 @@ void Chimbuko::extractCounters(int rank, int step){
 } 
 
 
+#ifdef ENABLE_PROVDB
+
+void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
+  //Gather provenance data on anomalies and send to provenance database
+  if(m_provdb_client->isConnected()){
+    std::vector<nlohmann::json> anomaly_prov(anomalies.nOutliers());
+    size_t i=0;
+    for(auto anom_it : anomalies.allOutliers()){
+      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter);
+      anomaly_prov[i++] = extract_prov.get_json();
+    }
+    m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
+  }
+}
+
+
+#endif
+
+
+
+
+
 void Chimbuko::run(unsigned long long& n_func_events, 
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
@@ -283,12 +327,9 @@ void Chimbuko::run(unsigned long long& n_func_events,
     n_outliers += anomalies.nOutliers();
     frames++;
 
-    //Gather provenance data on anomalies and send to provenance database
-    std::vector<ADAnomalyProvenance> anomaly_prov;
-    for(auto anom_it : anomalies.allOutliers()){
-      const auto &anom = *anom_it;
-      anomaly_prov.emplace_back(anom, *m_event, *m_outlier->get_global_parameters(), *m_counter);
-    }
+#ifdef ENABLE_PROVDB
+    extractAndSendProvenance(anomalies);
+#endif	
 
     //Gather function profile and anomaly statistics and send to the pserver
     if(m_net_client && m_net_client->use_ps()){

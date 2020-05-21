@@ -18,11 +18,15 @@ sonata::AsyncRequest & AnomalousSendManager::getNewRequest(){
   return outstanding.back();
 }
 
-AnomalousSendManager::~AnomalousSendManager(){
+void AnomalousSendManager::waitAll(){
   while(!outstanding.empty()){ //flush the queue
     outstanding.front().wait();
     outstanding.pop();
   }
+}  
+
+AnomalousSendManager::~AnomalousSendManager(){
+  waitAll();
 }
 
 
@@ -179,3 +183,18 @@ bool ADProvenanceDBclient::retrieveData(nlohmann::json &entry, uint64_t index, c
   }
   return false;
 }
+
+void ADProvenanceDBclient::waitForSendComplete(){
+  if(m_is_connected)
+    anom_send_man.waitAll();
+}
+
+std::vector<std::string> ADProvenanceDBclient::retrieveAllData(const ProvenanceDataType type){
+  std::vector<std::string> out;
+  if(m_is_connected)
+    getCollection(type).all(&out);
+  return out;
+}
+    
+  
+

@@ -10,10 +10,9 @@ if [ -f "../bin/provdb_admin" ]; then
     admin=$!
     sleep 1
 
-    ./mainProvDBclient $(cat provider.address)
+    mpirun --allow-run-as-root -n 4 ./mainADwithProvDB $(cat provider.address)
 
     kill $admin
 else 
     echo "Provenance DB was not built"
 fi
-

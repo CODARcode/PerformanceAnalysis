@@ -32,6 +32,12 @@ namespace chimbuko {
     std::string viz_addr; /**< If sending to the viz module, this is the web address (expected http://....) */
     unsigned int viz_anom_winSize; /**< When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent */
 
+#ifdef ENABLE_PROVDB
+    //Parameters associated with the provenance database
+    std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
+				< Has format "ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}". Should also accept "tcp://${IP_ADDR}:${PORT}" */
+#endif
+
 #ifdef _PERF_METRIC
     //Parameters associated with performance analysis of AD module
     std::string perf_outputpath; /**< Output path for AD performance monitoring data. If an empty string no output is written.*/
@@ -50,6 +56,9 @@ namespace chimbuko {
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 		      pserver_addr(""),
 		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), viz_anom_winSize(0),
+#ifdef ENABLE_PROVDB
+		      provdb_addr(""),
+#endif
 #ifdef _PERF_METRIC
 		      perf_outputpath(""), perf_step(10),
 #endif
@@ -86,6 +95,19 @@ namespace chimbuko {
      * @brief Whether the parameter server is in use
      */
     bool use_ps() const { return m_outlier->use_ps(); }
+
+#ifdef ENABLE_PROVDB
+    /**
+     * @brief Whether the provenance database is in use
+     */
+    bool use_provdb() const{ return m_provdb_client->isConnected(); }
+
+    /**
+     * @brief Return the provenance DB client
+     */
+    ADProvenanceDBclient & getProvenanceDBclient(){ return *m_provdb_client; }    
+
+#endif
 
     /**
      * @brief Request that the event manager print its status
@@ -126,6 +148,10 @@ namespace chimbuko {
     void init_outlier();
     void init_counter();
 
+#ifdef ENABLE_PROVDB
+    void init_provdb();
+#endif
+
 
     /**
      * @brief Signal the parser to parse the adios2 timestep
@@ -155,6 +181,13 @@ namespace chimbuko {
      */
     void extractCounters(int rank, int step);
 
+
+#ifdef ENABLE_PROVDB
+    /*
+     * @brief Extract provenance information about anomalies and communicate to provenance DB
+     */
+    void extractAndSendProvenance(const Anomalies &anomalies) const;
+#endif
     
     //Components and parameters
     ADParser * m_parser;       /**< adios2 input data stream parser */
@@ -162,7 +195,10 @@ namespace chimbuko {
     ADCounter * m_counter;     /**< counter event manager */
     ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
-    ADNetClient * m_net_client; /** <client for comms with parameter server */
+    ADNetClient * m_net_client; /**< client for comms with parameter server */
+#ifdef ENABLE_PROVDB
+    ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
+#endif
 
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/

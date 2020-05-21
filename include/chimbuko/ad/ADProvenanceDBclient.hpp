@@ -52,6 +52,11 @@ namespace chimbuko{
      */
     sonata::AsyncRequest & getNewRequest();
 
+    /**
+     * @brief Block (wait) until all outstanding requests have completed
+     */
+    void waitAll();
+
     ~AnomalousSendManager();
   };
 
@@ -150,6 +155,17 @@ namespace chimbuko{
      * @return True if the client was able to retrieve the object
      */
     bool retrieveData(nlohmann::json &entry, uint64_t index, const ProvenanceDataType type) const;
+
+    /**
+     * @brief Block (wait) until all outstanding anomalous sends have completed
+     */
+    void waitForSendComplete();
+
+    /**
+     * @brief Retrieve all records from the database
+     */
+    std::vector<std::string> retrieveAllData(const ProvenanceDataType type);
+
   };
 
 };

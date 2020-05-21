@@ -18,10 +18,15 @@ mainAd_LDADD = $(LDADD)
 test_DATA = run_all.sh run_ad.sh run_net.sh
 
 if ENABLE_PROVDB
-test_PROGRAMS += mainProvDBclient
+test_PROGRAMS += mainProvDBclient mainADwithProvDB
+
 mainProvDBclient_SOURCES = mainProvDBclient.cpp
 mainProvDBclient_LDADD = $(LDADD)
-test_DATA += run_provdb_client_test.sh
+
+mainADwithProvDB_SOURCES = mainADwithProvDB.cpp
+mainADwithProvDB_LDADD = $(LDADD)
+
+test_DATA += run_provdb_client_test.sh run_ad_with_provdb.sh
 endif
 
 install-data-hook:
