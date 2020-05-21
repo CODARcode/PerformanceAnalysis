@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#In the docker images we must load the MOCHI libraries using spack
+if [[ $# == 1 && $1 == "DOCKER_SETUP_MOCHI" ]]; then
+    source /spack/spack/share/spack/setup-env.sh
+    spack load mochi-sonata
+fi
+
 echo "Unit tests"
 cd unit_tests
 ./run_all.sh
