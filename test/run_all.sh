@@ -26,3 +26,10 @@ sleep 5
 ./run_ad.sh
 
 
+if [ -f "../bin/provdb_admin" ]; then
+    echo "AD module with provDB test"
+    echo "Wait for next tests for 5 seconds ..."
+    sleep 5
+    ./run_ad_with_provdb.sh
+fi
+

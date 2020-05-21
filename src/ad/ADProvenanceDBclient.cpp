@@ -1,5 +1,7 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 
+#ifdef ENABLE_PROVDB
+
 using namespace chimbuko;
 
 
@@ -196,5 +198,6 @@ std::vector<std::string> ADProvenanceDBclient::retrieveAllData(const ProvenanceD
   return out;
 }
     
+#endif
   
 
