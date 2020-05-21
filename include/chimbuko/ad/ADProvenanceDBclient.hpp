@@ -5,6 +5,7 @@
 
 #include <sonata/Client.hpp>
 #include <nlohmann/json.hpp>
+#include <queue>
 
 namespace chimbuko{
 
@@ -24,33 +25,24 @@ namespace chimbuko{
   /**
    * @brief Manager class for containing outstanding anomalous requests
    *
-   * Sonata requires an instance of OutstandingRequest live for long enough that the request completes
+   * Sonata requires an instance of AsyncRequest live for long enough that the request completes
    * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
    */
   class AnomalousSendManager{
     static const int MAX_OUTSTANDING = 100;
-    std::list<OutstandingRequest> outstanding;
+    std::queue<sonata::AsyncRequest> outstanding;
 
     /**
      * @brief Remove completed requests if size > MAX_OUTSTANDING
      */
-    void purge(){
-      if(outstanding.size() > MAX_OUTSTANDING){
-	auto it = outstanding.begin();
-	while(it != outstanding.end()){
-	  if(it->req.completed()){
-	    it = outstanding.erase(it);
-	  }else{
-	    ++it;
-	  }
-	}
-      }
-    }
+    void purge();
   public:
-    OutstandingRequest & getNewRequest(const size_t ndata){
-      purge();
-      return outstanding.emplace_back(ndata);
-    }
+    /**
+     * @brief Get a new AsyncRequest instance reference pointing to an object in the FIFO
+     */
+    sonata::AsyncRequest & getNewRequest();
+
+    ~AnomalousSendManager();
   };
 
 

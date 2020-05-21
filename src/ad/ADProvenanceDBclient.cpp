@@ -2,6 +2,30 @@
 
 using namespace chimbuko;
 
+
+void AnomalousSendManager::purge(){
+  if(outstanding.size() > MAX_OUTSTANDING){
+    while(!outstanding.empty() && outstanding.front().completed()){ //requests completing in-order so we can stop when we encounter the first non-complete
+      outstanding.front().wait(); //simply cleans up resources, non-blocking because already complete
+      outstanding.pop();
+    }
+  }
+}
+
+sonata::AsyncRequest & AnomalousSendManager::getNewRequest(){
+  purge();
+  outstanding.emplace();
+  return outstanding.back();
+}
+
+AnomalousSendManager::~AnomalousSendManager(){
+  while(!outstanding.empty()){ //flush the queue
+    outstanding.front().wait();
+    outstanding.pop();
+  }
+}
+
+
 thallium::engine ADProvenanceDBclient::m_engine("ofi+tcp", THALLIUM_CLIENT_MODE);
 AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
@@ -31,10 +55,18 @@ uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const Prove
 void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req) const{
   if(!m_is_connected) return;
 
-  if(req == nullptr)
-    req = &anom_send_man.getNewRequest(1);
+  uint64_t* ids;
+  sonata::AsyncRequest *sreq;
+
+  if(req == nullptr){
+    ids = nullptr; //utilize sonata mechanism for anomalous request
+    sreq = &anom_send_man.getNewRequest();
+  }else{
+    ids = req->ids.data();
+    sreq = &req->req;
+  }
   
-  getCollection(type).store(entry.dump(), req->ids.data(), &req->req);
+  getCollection(type).store(entry.dump(), ids, sreq);
 }
 
 
