@@ -94,7 +94,71 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
   EXPECT_EQ(fail, false);
 }
 
+TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
 
+  bool fail = false;
+  ADProvenanceDBclient client;
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connect(addr);
+
+    std::vector<nlohmann::json> objs(2);
+    objs[0]["hello"] = "world";
+    objs[1]["hello"] = "again";
+
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    EXPECT_EQ(rid.size(), 2);
+
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world" : "again");
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+  }catch(const std::exception &ex){
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
+
+  bool fail = false;
+  ADProvenanceDBclient client;
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connect(addr);
+
+    nlohmann::json objs = nlohmann::json::array();
+    objs[0] = nlohmann::json::object({ {"hello","myfriend"} });
+    objs[1] = nlohmann::json::object({ {"hello","what?"} });
+
+    std::cout << "Sending " << std::endl << objs.dump() << std::endl;
+    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    EXPECT_EQ(rid.size(), 2);
+
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << " with index " << rid[i] << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "myfriend" : "what?");
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+  }catch(const std::exception &ex){
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
 
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 

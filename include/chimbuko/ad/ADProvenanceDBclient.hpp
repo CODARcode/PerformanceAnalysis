@@ -81,16 +81,33 @@ namespace chimbuko{
 		
     /**
      * @brief Send data JSON objects synchronously to the database (blocking)
-     * @param JSON data
+     * @param entry JSON data
      * @param type The data type
      * @return Entry index
      */
     uint64_t sendData(const nlohmann::json &entry, const ProvenanceDataType type) const;
 
+    /**
+     * @brief Send *JSON array* of JSON objects synchronously to the database (blocking). This is intended for sending many independent data entries at once.
+     * @param entries JSON array of data
+     * @param type The data type
+     * @return Vector of entry indices. Array will have zero size if database not connected.
+     */
+    std::vector<uint64_t> sendMultipleData(const nlohmann::json &entries, const ProvenanceDataType type) const;
+
+
+    /**
+     * @brief Send std::vector of JSON objects synchronously to the database (blocking). This is intended for sending many independent data entries at once.
+     * @param entries std::vector of data
+     * @param type The data type
+     * @return Vector of entry indices. Array will have zero size if database not connected.
+     */
+    std::vector<uint64_t> sendMultipleData(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type) const;
+
 
     /**
      * @brief Send data JSON objects asynchronously to the database (non-blocking)
-     * @param JSON data
+     * @param entry JSON data
      * @param type The data type
      * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anoynmous (fire-and-forget)
      */

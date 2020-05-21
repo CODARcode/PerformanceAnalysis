@@ -46,13 +46,51 @@ void ADProvenanceDBclient::connect(const std::string &addr){
 }
 
 uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{
+  if(!entry.is_object()) throw std::runtime_error("JSON entry must be an object");
   if(m_is_connected){
     return getCollection(type).store(entry.dump());
   }
   return -1;
 }
 
+
+std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type) const{
+  if(entries.size() == 0 || !m_is_connected) 
+    return std::vector<uint64_t>();
+
+  size_t size = entries.size();
+  std::vector<uint64_t> ids(size);
+  std::vector<std::string> dump(size);
+  for(int i=0;i<size;i++){
+    if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
+    dump[i] = entries[i].dump();    
+  }
+
+  getCollection(type).store_multi(dump, ids.data()); 
+  return ids;
+}
+
+std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const nlohmann::json &entries, const ProvenanceDataType type) const{
+  if(!entries.is_array()) throw std::runtime_error("JSON object must be an array");
+  size_t size = entries.size();
+  
+  if(size == 0 || !m_is_connected) 
+    return std::vector<uint64_t>();
+
+  std::vector<uint64_t> ids(size,-1);
+  std::vector<std::string> dump(size);
+  for(int i=0;i<size;i++){
+    if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
+    dump[i] = entries[i].dump();
+  }
+
+  getCollection(type).store_multi(dump, ids.data()); 
+  return ids;
+}  
+  
+
 void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req) const{
+  if(!entry.is_object()) throw std::runtime_error("JSON entry must be an object");
   if(!m_is_connected) return;
 
   uint64_t* ids;
