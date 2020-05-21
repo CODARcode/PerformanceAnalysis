@@ -172,11 +172,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
     obj["hello"] = "world";
     std::cout << "Sending " << obj.dump() << " asynchronously" << std::endl;
 
-    OutstandingRequest req(1);
+    OutstandingRequest req;
 
     client.sendDataAsync(obj, ProvenanceDataType::AnomalyData, &req);
 
-    req.req.wait(); //wait for completion
+    req.wait(); //wait for completion
     int rid = req.ids[0];
     
     nlohmann::json check;
@@ -195,6 +195,81 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
   EXPECT_EQ(fail, false);
 }
 
+
+TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
+
+  bool fail = false;
+  ADProvenanceDBclient client;
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connect(addr);
+
+    std::vector<nlohmann::json> objs(2);
+    objs[0]["hello"] = "world";
+    objs[1]["hello"] = "again";
+
+    OutstandingRequest req;
+    
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData,&req);
+    EXPECT_EQ(req.ids.size(), 2);
+
+    req.wait(); //wait for completion
+    
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world" : "again");
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+  }catch(const std::exception &ex){
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
+
+  bool fail = false;
+  ADProvenanceDBclient client;
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connect(addr);
+
+    nlohmann::json objs = nlohmann::json::array();
+    objs[0] = nlohmann::json::object({ {"hello","myfriend"} });
+    objs[1] = nlohmann::json::object({ {"hello","what?"} });
+
+    OutstandingRequest req;
+
+    std::cout << "Sending " << std::endl << objs.dump() << std::endl;
+    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData, &req);
+    EXPECT_EQ(req.ids.size(), 2);
+
+    req.wait(); //wait for completion
+
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << " with index " << req.ids[i] << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "myfriend" : "what?");
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+  }catch(const std::exception &ex){
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
 
 
 

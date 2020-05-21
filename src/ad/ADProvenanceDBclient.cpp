@@ -100,12 +100,70 @@ void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const Prov
     ids = nullptr; //utilize sonata mechanism for anomalous request
     sreq = &anom_send_man.getNewRequest();
   }else{
+    req->ids.resize(1);
     ids = req->ids.data();
     sreq = &req->req;
   }
   
   getCollection(type).store(entry.dump(), ids, sreq);
 }
+
+void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
+  if(entries.size() == 0 || !m_is_connected) return;
+
+  size_t size = entries.size();
+  std::vector<std::string> dump(size);
+  for(int i=0;i<size;i++){
+    if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
+    dump[i] = entries[i].dump();    
+  }
+
+  uint64_t* ids;
+  sonata::AsyncRequest *sreq;
+
+  if(req == nullptr){
+    ids = nullptr; //utilize sonata mechanism for anomalous request
+    sreq = &anom_send_man.getNewRequest();
+  }else{
+    req->ids.resize(size);
+    ids = req->ids.data();
+    sreq = &req->req;
+  }
+
+  getCollection(type).store_multi(dump, ids, sreq); 
+}
+
+void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
+  if(!entries.is_array()) throw std::runtime_error("JSON object must be an array");
+  size_t size = entries.size();
+  
+  if(size == 0 || !m_is_connected) 
+    return;
+
+  std::vector<std::string> dump(size);
+  for(int i=0;i<size;i++){
+    if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
+    dump[i] = entries[i].dump();
+  }
+
+  uint64_t* ids;
+  sonata::AsyncRequest *sreq;
+
+  if(req == nullptr){
+    ids = nullptr; //utilize sonata mechanism for anomalous request
+    sreq = &anom_send_man.getNewRequest();
+  }else{
+    req->ids.resize(size);
+    ids = req->ids.data();
+    sreq = &req->req;
+  }
+
+  getCollection(type).store_multi(dump, ids, sreq); 
+}  
+
+
+
+
 
 
 bool ADProvenanceDBclient::retrieveData(nlohmann::json &entry, uint64_t index, const ProvenanceDataType type) const{

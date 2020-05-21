@@ -18,7 +18,17 @@ namespace chimbuko{
     sonata::AsyncRequest req; /**< The request instance */
     std::vector<uint64_t> ids; /**< The ids of the inserted data, *populated only once request is complete* */
     
-    OutstandingRequest(const size_t ndata): ids(ndata,-1){}
+    /**
+     * @brief Default constructor. For async sends it is safe to use this as the ids array is resized by the send functions
+     */
+    OutstandingRequest(){}
+
+    /**
+     * @brief Block until the request is complete
+     */
+    inline void wait() const{
+      req.wait();
+    }
   };
 
 
@@ -109,9 +119,28 @@ namespace chimbuko{
      * @brief Send data JSON objects asynchronously to the database (non-blocking)
      * @param entry JSON data
      * @param type The data type
-     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anoynmous (fire-and-forget)
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
      */
     void sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+
+
+    /**
+     * @brief Send std::vector of JSON objects asynchronously to the database (non-blocking). This is intended for sending many independent data entries at once.
+     * @param entries std::vector of data
+     * @param type The data type
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
+     */
+    void sendMultipleDataAsync(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+
+
+    /**
+     * @brief Send *JSON array* of JSON objects asynchronously to the database (non-blocking). This is intended for sending many independent data entries at once.
+     * @param entries JSON array of data
+     * @param type The data type
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
+     */
+    void sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+
 
     /**
      * @brief Retrieve an inserted JSON object synchronously from the database by index (blocking) (primarily for testing)
