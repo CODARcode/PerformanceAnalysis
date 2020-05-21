@@ -12,21 +12,21 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
     spack repo add sds-repo
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
-	spack install mercury +bmi +mpi && \
-	spack install thallium && \
-	spack install abt-io && \
-	spack install sdskeyval+bdb+leveldb
+	spack install mercury && \
+	spack install mochi-abt-io && \
+	spack install mochi-sdskv+bdb+leveldb && \
+	spack install mochi-sonata ^libfabric fabrics=tcp,rxm && \
+	spack gc -y
 
-RUN apt-get update
-RUN apt-get install -y vim emacs-nox
+FROM chimbuko/base:ubuntu18.04
 
-RUN source /spack/spack/share/spack/setup-env.sh && \
-	spack install mochi-sonata
-
-#RUN apt-get install -y gdb
+SHELL ["/bin/bash", "-c"]
+COPY --from=mochi-install /spack /spack
+COPY --from=mochi-install /root/.spack /root/.spack
+COPY --from=mochi-install /sds /sds
 
 WORKDIR /
 
-ENTRYPOINT [ "source /spack/spack/share/spack/setup-env.sh && /bin/bash" ]
-
+ENTRYPOINT [ "/bin/bash" ]
+#To setup spack you need to run "source /spack/spack/share/spack/setup-env.sh" inside your image
 
