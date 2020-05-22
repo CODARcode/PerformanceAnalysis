@@ -6,6 +6,7 @@
 #include <sonata/Client.hpp>
 #include <nlohmann/json.hpp>
 #include <queue>
+#include <chimbuko/ad/ADProvenanceDBengine.hpp>
 
 namespace chimbuko{
 
@@ -66,7 +67,6 @@ namespace chimbuko{
    */
   class ADProvenanceDBclient{
   private:
-    static thallium::engine m_engine; /**< Thallium engine */
     sonata::Client m_client; /**< Sonata client */
     sonata::Database m_database; /**< Sonata database */
     sonata::Collection m_coll_anomalies; /**< The anomalies collection */
@@ -75,7 +75,7 @@ namespace chimbuko{
     
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
   public:
-    ADProvenanceDBclient(): m_client(m_engine), m_is_connected(false){}
+    ADProvenanceDBclient(): m_client(ADProvenanceDBengine::getEngine()), m_is_connected(false){}
     
     /**
      * @brief Connect the client to the provenance database server
@@ -164,7 +164,22 @@ namespace chimbuko{
     /**
      * @brief Retrieve all records from the database
      */
-    std::vector<std::string> retrieveAllData(const ProvenanceDataType type);
+    std::vector<std::string> retrieveAllData(const ProvenanceDataType type) const;
+
+    /**
+     * @brief Apply a jx9 filter to the database and retrieve all records that match
+     */
+    std::vector<std::string> filterData(const ProvenanceDataType type, const std::string &query) const;
+
+    /**
+     * @brief Execute arbitrary jx9 code on the database
+     * 
+     * Note that this acts on the *database* and not the individual collections. The code should access the appropriate collection ("anomalies" or "metadata")
+     * @param code Jx9 code to execute
+     * @param vars A set of variables that are assigned by the code
+     * @return A map between the variables and their values
+     */
+    std::unordered_map<std::string,std::string> execute(const std::string &code, const std::unordered_set<std::string>& vars) const;
 
   };
 

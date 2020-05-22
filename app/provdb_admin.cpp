@@ -29,7 +29,7 @@ void termSignalHandler( int signum ) {
 int main(int argc, char** argv) {
   assert(argc <= 2);
 
-  //argv[1] optionall specify the ip address and port (the only way to fix the port that I'm aware of)
+  //argv[1] optionally specify the ip address and port (the only way to fix the port that I'm aware of)
   //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
   std::string eng_opt = "ofi+tcp";
   if(argc == 2){

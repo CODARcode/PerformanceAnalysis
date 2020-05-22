@@ -1,4 +1,5 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
+#include<chimbuko/verbose.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -32,20 +33,19 @@ AnomalousSendManager::~AnomalousSendManager(){
 }
 
 
-thallium::engine ADProvenanceDBclient::m_engine("ofi+tcp", THALLIUM_CLIENT_MODE);
 AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
 
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
-    std::cout << "DB client connecting to " << addr << std::endl;
+    VERBOSE(std::cout << "DB client connecting to " << addr << std::endl);
     m_database = m_client.open(addr, 0, "provdb");
-    std::cout << "DB client opening anomaly collection" << std::endl;
+    VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
     m_coll_anomalies = m_database.open("anomalies");
-    std::cout << "DB client opening metadata collection" << std::endl;
+    VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
     m_coll_metadata = m_database.open("metadata");
     m_is_connected = true;
-    std::cout << "DB client connected successfully" << std::endl;
+    VERBOSE(std::cout << "DB client connected successfully" << std::endl);
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());
   }
@@ -191,12 +191,27 @@ void ADProvenanceDBclient::waitForSendComplete(){
     anom_send_man.waitAll();
 }
 
-std::vector<std::string> ADProvenanceDBclient::retrieveAllData(const ProvenanceDataType type){
+std::vector<std::string> ADProvenanceDBclient::retrieveAllData(const ProvenanceDataType type) const{
   std::vector<std::string> out;
   if(m_is_connected)
     getCollection(type).all(&out);
   return out;
 }
+
+std::vector<std::string> ADProvenanceDBclient::filterData(const ProvenanceDataType type, const std::string &query) const{
+  std::vector<std::string> out;
+  if(m_is_connected)
+    getCollection(type).filter(query, &out);
+  return out;
+}
+
+std::unordered_map<std::string,std::string> ADProvenanceDBclient::execute(const std::string &code, const std::unordered_set<std::string>& vars) const{
+  std::unordered_map<std::string,std::string> out;
+  if(m_is_connected)
+    m_database.execute(code, vars, &out);
+  return out;
+}
+
     
 #endif
   
