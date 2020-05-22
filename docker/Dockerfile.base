@@ -2,14 +2,12 @@ FROM ubuntu:18.04
 
 RUN mkdir -p /Downloads
 
-RUN apt-get update
-
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get install -y tzdata && \
+RUN apt-get update && \
+    apt-get install -y tzdata && \
     ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
-
-RUN  apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y build-essential wget git-core libtool libtool-bin \ 
                         autoconf gfortran pkg-config \
                         openmpi-common openmpi-bin libopenmpi-dev \
                         python-cheetah python-yaml \
@@ -18,6 +16,7 @@ RUN  apt-get install -y build-essential wget git-core libtool libtool-bin \
                         bzip2 libbz2-dev zlib1g zlib1g-dev \ 
                         curl libcurl4-openssl-dev libgtest-dev zip unzip \
                         libopenblas-base libopenblas-dev && \
+    rm -rf /var/lib/apt/lists/* && \
     pip3 install numpy mpi4py flask
 
 COPY requirements.txt /
