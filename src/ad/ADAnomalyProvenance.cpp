@@ -39,13 +39,14 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
     {"pid", m_call.get_pid()},
       {"rid", m_call.get_rid()},
 	{"tid", m_call.get_tid()},
-	  {"func", m_call.get_id()},
-	    {"entry", m_call.get_entry()},
-	      {"exit", m_call.get_exit()},
-		{"runtime_total", m_call.get_runtime()},
-		  {"runtime_exclusive", m_call.get_exclusive()},
-		    {"call_stack", m_callstack},
-		      {"func_stats", m_func_stats},
-			{"counter_events", m_counters}
-	};
+	  {"fid", m_call.get_id()},
+	    {"func", m_call.get_funcname()},
+	      {"entry", m_call.get_entry()},
+		{"exit", m_call.get_exit()},
+		  {"runtime_total", m_call.get_runtime()},
+		    {"runtime_exclusive", m_call.get_exclusive()},
+		      {"call_stack", m_callstack},
+			{"func_stats", m_func_stats},
+			  {"counter_events", m_counters}
+  };
 }
