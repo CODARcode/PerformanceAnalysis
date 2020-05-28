@@ -8,6 +8,17 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
+template<typename T>
+T strToAny(const std::string &s){
+  T out;
+  std::stringstream ss; ss << s; ss >> out;
+  if(ss.fail()) throw std::runtime_error("Failed to parse \"" + s + "\"");
+  return out;
+}
+template<>
+inline std::string strToAny<std::string>(const std::string &s){ return s; }
+
+
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
   // -----------------------------------------------------------------------
   // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
@@ -32,42 +43,37 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
     params.viz_datadump_outputPath = output;
   else
     params.viz_addr = output;
-      
-      
-  //Provide the address of the parameter server. If string is empty the pserver will not be used
-#ifdef _USE_ZMQNET
-  params.pserver_addr = "";
-  if (argc >= 6)
-    params.pserver_addr = std::string(argv[5]); 
-#else
-#error "Driver network type has not been implemented"
-#endif
 
-  //Choose the parameters of the anomaly detection module
+  //The remainder are optional arguments. Enable using the appropriate command line switch
+
+  params.pserver_addr = "";  //address of parameter server
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
-  if (argc >= 7)
-    params.outlier_sigma = atof(argv[6]);
-
-  //Choose the window size for events captured around anomalies and set to the viz module
-  params.viz_anom_winSize = 0;       // window size
-  if (argc >= 8)
-    params.viz_anom_winSize= atoi(argv[7]);
-
-  //Choose a pause at the end of each io step
-  params.interval_msec = 0;
-  if (argc >= 9)
-    params.interval_msec = atoi(argv[8]);
-
-  //Setup output frequency and path for AD module performance data
-#ifdef _PERF_METRIC
+  params.viz_anom_winSize = 0; // size of window of events captured around anomaly
+  params.interval_msec = 0; //pause at end of each io step
   params.perf_outputpath = ""; // performance output path
   params.perf_step = 10;   // make output every 10 steps
-  if (argc >= 10) {
-    params.perf_outputpath = std::string(argv[9]);
-    params.perf_step = atoi(argv[10]);
-  }
+
+
+#define PARSE(TYPE, ARG) if(sarg == "-"#ARG){ params. ARG = strToAny<TYPE>(argv[arg+1]); arg+=2; } 
+
+  int arg = 5;
+  while(arg < argc){
+    std::string sarg = argv[arg];
+
+    PARSE(double, outlier_sigma)
+    else PARSE(std::string, pserver_addr)
+      else PARSE(int, viz_anom_winSize)
+	else PARSE(int, interval_msec)
+#ifdef ENABLE_PROVDB
+	  else PARSE(std::string, provdb_addr)
 #endif
-      
+#ifdef _PERF_METRIC
+	  else PARSE(std::string, perf_outputpath)
+	    else PARSE(int, perf_step)
+#endif
+	      else throw std::runtime_error("Unrecognized argument: " + sarg);
+  }
+
   return params;
 }
 
