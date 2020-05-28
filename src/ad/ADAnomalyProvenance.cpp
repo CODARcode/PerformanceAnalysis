@@ -7,11 +7,11 @@ using namespace chimbuko;
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
 					 const ADCounter &counters): m_call(call){
   //Get stack information
-  m_callstack.push_back(call.get_funcname());
+  m_callstack.push_back({ {"fid",call.get_fid()}, {"func",call.get_funcname()} });
   std::string parent = call.get_parent();
   while(parent != "root"){
     auto call_it = event_man.getCallData(parent);
-    m_callstack.push_back(call_it->get_funcname());
+    m_callstack.push_back({ {"fid",call_it->get_fid()}, {"func",call_it->get_funcname()} });
     parent = call_it->get_parent();
   }
 

@@ -23,10 +23,10 @@ namespace chimbuko{
     nlohmann::json get_json() const;
     
   private:
-    ExecData_t m_call;
-    std::vector<std::string> m_callstack;
-    nlohmann::json m_func_stats;
-    std::vector<nlohmann::json> m_counters;
+    ExecData_t m_call; /**< The anomalous event*/
+    std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
+    nlohmann::json m_func_stats; /**< JSON object containing run statistics of the anomalous function */
+    std::vector<nlohmann::json> m_counters; /**< A list of counter events that occurred during the execution of the anomalous function*/
   };
 
 
