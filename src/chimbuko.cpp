@@ -295,6 +295,17 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
   }
 }
 
+void Chimbuko::sendNewMetadataToProvDB() const{
+  if(m_provdb_client->isConnected()){
+    std::vector<MetaData_t> const & new_metadata = m_parser->getNewMetaData();
+    std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
+    for(size_t i=0;i<new_metadata.size();i++)
+      new_metadata_j[i] = new_metadata[i].get_json();
+    m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
+  }
+}
+
+
 
 #endif
 
@@ -332,6 +343,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
 #ifdef ENABLE_PROVDB
     extractAndSendProvenance(anomalies);
+    sendNewMetadataToProvDB();
 #endif	
 
     //Gather function profile and anomaly statistics and send to the pserver

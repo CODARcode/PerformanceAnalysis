@@ -106,7 +106,6 @@ namespace chimbuko {
      * @brief Return the provenance DB client
      */
     ADProvenanceDBclient & getProvenanceDBclient(){ return *m_provdb_client; }    
-
 #endif
 
     /**
@@ -167,14 +166,14 @@ namespace chimbuko {
 			unsigned long long& n_counter_event);
 
 
-    /*
+    /**
      * @brief Extract parsed events and insert into the event manager
      * @param rank The MPI rank of the process
      * @param step The adios2 stream step index
      */
     void extractEvents(int rank, int step);
 
-    /*
+    /**
      * @brief Extract parsed counters and insert into counter manager
      * @param rank The MPI rank of the process
      * @param step The adios2 stream step index
@@ -183,10 +182,16 @@ namespace chimbuko {
 
 
 #ifdef ENABLE_PROVDB
-    /*
+    /**
      * @brief Extract provenance information about anomalies and communicate to provenance DB
      */
     void extractAndSendProvenance(const Anomalies &anomalies) const;
+
+    
+    /**
+     * @brief Send new metadata entries collected during current fram to provenance DB
+     */
+    void sendNewMetadataToProvDB() const;
 #endif
     
     //Components and parameters
