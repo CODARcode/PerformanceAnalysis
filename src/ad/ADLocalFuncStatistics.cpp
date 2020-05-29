@@ -1,4 +1,5 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/ad/AnomalyStat.hpp>
 
 #ifdef _PERF_METRIC
 #include <chrono>

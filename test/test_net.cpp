@@ -6,6 +6,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyStat.hpp"
 #include "chimbuko/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
@@ -200,6 +201,7 @@ TEST_F(NetTest, NetStatSenderTest)
 {
     using namespace chimbuko;
 
+    PSstatSender stat_sender;
 #ifdef _USE_MPINET
     MPINet net;
 #else
@@ -208,20 +210,22 @@ TEST_F(NetTest, NetStatSenderTest)
     const int N_MPI_PROCESSORS = 10;
 
     SstdParam param;
-    chimbuko::GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
     nlohmann::json resp;
+
+    stat_sender.set_global_anomaly_stats(&glob_stats);
+    stat_sender.run_stat_sender("http://0.0.0.0:5000/post", false);
 
     net.set_parameter(dynamic_cast<ParamInterface*>(&param));
     net.set_global_anomaly_stats(&glob_stats);
     net.init(nullptr, nullptr, 10);
-    net.run_stat_sender("http://0.0.0.0:5000/post", false);
     net.run();
 
     // at this point, all pseudo AD modules finished sending 
     // anomaly statistics data.
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    net.stop_stat_sender(1000);
+    stat_sender.stop_stat_sender(1000);
     
     // check results (see pclient_stats.cpp)
     const std::vector<double> means = {

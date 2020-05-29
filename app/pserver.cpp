@@ -1,28 +1,33 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
+#include <chimbuko/pserver/PSstatSender.hpp>
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include <chimbuko/net/mpi_net.hpp>
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include <chimbuko/net/zmq_net.hpp>
 #endif
 #include <mpi.h>
-#include "chimbuko/param/sstd_param.hpp"
+#include <chimbuko/param/sstd_param.hpp>
 #include <fstream>
 
+using namespace chimbuko;
+
 int main (int argc, char ** argv){
-  chimbuko::SstdParam param; //global collection of parameters used to identify anomalies
-  chimbuko::GlobalAnomalyStats global_stats; //global anomaly statistics
+  SstdParam param; //global collection of parameters used to identify anomalies
+  GlobalAnomalyStats global_stats; //global anomaly statistics
     
   int nt = -1, n_ad_modules = 0;
   std::string logdir = ".";
   std::string ws_addr;
 #ifdef _USE_MPINET
   int provided;
-  chimbuko::MPINet net;
+  MPINet net;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 #else
-  chimbuko::ZMQNet net;
+  ZMQNet net;
   MPI_Init(&argc, &argv);
 #endif
+
+  PSstatSender stat_sender;
 
   try {
     if (argc > 1) {
@@ -51,12 +56,13 @@ int main (int argc, char ** argv){
     }
 
     // Note: for some reasons, internal MPI initialization cause segmentation error!! 
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
     net.set_global_anomaly_stats(&global_stats);
     net.init(nullptr, nullptr, nt);
 
     //Start sending anomaly statistics to viz
-    net.run_stat_sender(ws_addr, false);
+    stat_sender.set_global_anomaly_stats(&global_stats);
+    stat_sender.run_stat_sender(ws_addr, false);
 
     //Start communicating with the AD instances
 #ifdef _PERF_METRIC
@@ -68,7 +74,7 @@ int main (int argc, char ** argv){
     // at this point, all pseudo AD modules finished sending 
     // anomaly statistics data
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    net.stop_stat_sender(1000);
+    stat_sender.stop_stat_sender(1000);
 
     // could be output to a file
     std::cout << "Shutdown parameter server ..." << std::endl;

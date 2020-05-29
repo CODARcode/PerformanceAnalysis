@@ -1,7 +1,7 @@
 #pragma once
+#include "chimbuko/global_anomaly_stats.hpp"
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/param.hpp"
-#include "chimbuko/global_anomaly_stats.hpp"
 #include <string>
 #include <thread>
 
@@ -87,16 +87,6 @@ namespace chimbuko {
 
     GlobalAnomalyStats * get_global_anomaly_stats(){ return m_global_anom_stats; }
 
-    /**
-     * @brief Start sending global anomaly stats to the visualization module (curl)
-     */
-    void run_stat_sender(std::string url, bool bTest=false);
-
-    /**
-     * @brief Stop sending global anomaly stats to the visualization module (curl)
-     */
-    void stop_stat_sender(int wait_msec=0);
-
   protected:
     /**
      * @brief initialize thread pool 
@@ -109,11 +99,6 @@ namespace chimbuko {
     int              m_nt;    /**< The number of threads in the pool */
     ParamInterface * m_param; /**< Pointer to parameter data used to identify anomalies (storage) */
     GlobalAnomalyStats * m_global_anom_stats; /**< Pointer to global anomaly statistics */
-
-    // thread workder to periodically send anomaly statistics to web server
-    // , if it is available.
-    std::thread     * m_stat_sender; 
-    std::atomic_bool  m_stop_sender;
   };
 
   namespace DefaultNetInterface
