@@ -1,3 +1,5 @@
+#A test application that acts to mock the receiving of data by the visualization module
+
 from flask import Flask, request, jsonify
 import time
 import pprint

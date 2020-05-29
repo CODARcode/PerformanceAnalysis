@@ -1,3 +1,5 @@
+//A test application that mocks part of the anomaly detection modules, acting as a client for the parameter server and sending it anomaly information
+
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
 
