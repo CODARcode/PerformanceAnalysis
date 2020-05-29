@@ -1,6 +1,7 @@
 // #include "chimbuko/AD.hpp"
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/string.hpp"
 #include <chrono>
 #include <cstdlib>
 
@@ -8,15 +9,6 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
-template<typename T>
-T strToAny(const std::string &s){
-  T out;
-  std::stringstream ss; ss << s; ss >> out;
-  if(ss.fail()) throw std::runtime_error("Failed to parse \"" + s + "\"");
-  return out;
-}
-template<>
-inline std::string strToAny<std::string>(const std::string &s){ return s; }
 
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){

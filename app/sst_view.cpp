@@ -10,6 +10,9 @@
 #include <regex>
 #include <iostream>
 #include <cstring>
+#include <chimbuko/util/string.hpp>
+
+using namespace chimbuko;
 
 template<typename T>
 struct vecPrint{
@@ -200,17 +203,6 @@ std::ostream & operator<<(std::ostream &os, const mapPrint &mp){
   return os;
 }
   
-
-/**
-   @brief Convert string to anything
-*/
-template<typename T>
-inline T strToAny(const std::string &s){
-  std::stringstream ss; ss << s;
-  T out; ss >> out;
-  return out;
-}
-
 
 int main(int argc, char** argv){
   if(argc < 2){

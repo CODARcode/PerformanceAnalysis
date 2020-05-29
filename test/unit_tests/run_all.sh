@@ -6,4 +6,5 @@
 ./ad/ADNetClient
 ./ad/ADOutlier
 ./ad/ADLocalFuncStatistics
+./ad/ADMetadataParser
 ./util/DispatchQueue
