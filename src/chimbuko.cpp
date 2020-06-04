@@ -32,6 +32,7 @@ Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m
 #ifdef ENABLE_PROVDB
 		      m_provdb_client(nullptr),
 #endif
+		      m_metadata_parser(nullptr),
 		      m_is_initialized(false){}
 
 Chimbuko::~Chimbuko(){
@@ -59,6 +60,8 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 #ifdef ENABLE_PROVDB
   init_provdb();
 #endif
+  
+  init_metadata_parser();
   
   m_is_initialized = true;
 }
@@ -124,6 +127,9 @@ void Chimbuko::init_provdb(){
 }
 #endif
 
+void Chimbuko::init_metadata_parser(){
+  m_metadata_parser = new ADMetadataParser;
+}
 
 void Chimbuko::finalize()
 {
@@ -143,6 +149,8 @@ void Chimbuko::finalize()
   if (m_provdb_client) delete m_provdb_client;
 #endif
 
+  if(m_metadata_parser) delete m_metadata_parser;
+
   m_parser = nullptr;
   m_event = nullptr;
   m_outlier = nullptr;
@@ -152,6 +160,8 @@ void Chimbuko::finalize()
 #ifdef ENABLE_PROVDB
   m_provdb_client = nullptr;
 #endif
+  m_metadata_parser = nullptr;
+
   m_is_initialized = false;
 }
 
@@ -179,6 +189,10 @@ bool Chimbuko::parseInputStep(int &step,
   n_func_events += (unsigned long long)m_parser->getNumFuncData();
   n_comm_events += (unsigned long long)m_parser->getNumCommData();
   n_counter_events += (unsigned long long)m_parser->getNumCounterData();
+
+  //Parse the new metadata for any attributes we want to maintain
+  m_metadata_parser->addData(m_parser->getNewMetaData());
+
   return true;
 }
 

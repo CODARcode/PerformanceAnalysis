@@ -16,6 +16,11 @@ namespace chimbuko{
     int stream; /**<Stream index if multiple streams are in use. Defaults to 0 if only one stream*/
 
     GPUvirtualThreadInfo(unsigned long _thread, int _device, int _context, int _stream = 0): thread(_thread), device(_device), context(_context), stream(_stream){}
+    
+    /**
+     * @brief Get the data as a JSON object
+     */
+    nlohmann::json get_json() const{ return { {"thread", thread}, {"device", device}, {"context", context}, {"stream", stream } }; };
   };
 
   /**

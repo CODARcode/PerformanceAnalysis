@@ -151,6 +151,8 @@ namespace chimbuko {
     void init_provdb();
 #endif
 
+    void init_metadata_parser();
+
 
     /**
      * @brief Signal the parser to parse the adios2 timestep
@@ -201,6 +203,7 @@ namespace chimbuko {
     ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
     ADNetClient * m_net_client; /**< client for comms with parameter server */
+    ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif

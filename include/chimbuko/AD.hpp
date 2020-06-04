@@ -9,6 +9,7 @@
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include "chimbuko/ad/ADProvenanceDBclient.hpp"
+#include "chimbuko/ad/ADMetadataParser.hpp"
 #include <queue>
 
 typedef std::priority_queue<chimbuko::Event_t, std::vector<chimbuko::Event_t>, std::greater<std::vector<chimbuko::Event_t>::value_type>> PQUEUE;

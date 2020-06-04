@@ -11,6 +11,9 @@ export TAU_ADIOS2_ENGINE=SST
 export TAU_ADIOS2_FILENAME=tau-metrics
 export TAU_VERBOSE=1
 
+#Chimbuko debug output
+#export CHIMBUKO_VERBOSE=1
+
 #Very important: we want streams to appear as different threads
 export TAU_THREAD_PER_GPU_STREAM=1 
 
