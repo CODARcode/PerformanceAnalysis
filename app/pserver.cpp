@@ -61,8 +61,8 @@ int main (int argc, char ** argv){
     net.init(nullptr, nullptr, nt);
 
     //Start sending anomaly statistics to viz
-    stat_sender.set_global_anomaly_stats(&global_stats);
-    stat_sender.run_stat_sender(ws_addr, false);
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_stats));
+    stat_sender.run_stat_sender(ws_addr);
 
     //Start communicating with the AD instances
 #ifdef _PERF_METRIC

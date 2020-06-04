@@ -41,6 +41,15 @@ def new_message_from_ps():
         return "OK"
     return "Wrong content-type"
 
+#A path that returns a copy of a JSON message
+@app.route("/bouncejson", methods=['POST'])
+def bouncejson():
+    if request.headers['Content-Type'] == 'application/json':
+        return jsonify(request.get_json())
+    return "Wrong content-type"
+
+
+
 @app.route("/")
 def hello():
     return "Hello World!"

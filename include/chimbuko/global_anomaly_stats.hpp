@@ -60,9 +60,9 @@ namespace chimbuko{
     
     /**
      * @brief Collect anomaly statistics and function statistics
-     * @return JSON-formated string containing anomaly and function data
+     * @return JSON object containing anomaly and function data
      */
-    std::string collect();
+    nlohmann::json collect();
 
   protected:
     // for global anomaly statistics

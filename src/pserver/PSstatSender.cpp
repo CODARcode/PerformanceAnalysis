@@ -5,13 +5,14 @@ using namespace chimbuko;
 
 
 PSstatSender::PSstatSender() 
-  : m_stat_sender(nullptr), m_stop_sender(false), m_global_anom_stats(nullptr)
+  : m_stat_sender(nullptr), m_stop_sender(false), m_bad(false)
 {
 }
 
 PSstatSender::~PSstatSender()
 {
     stop_stat_sender();
+    for(auto &payload : m_payloads) delete payload;
 }
 
 
@@ -37,45 +38,25 @@ static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
     return size * nmemb;
 }
 
-static std::string test_packet(double& test_num)
-{
-    static double num = 0;
-
-    if (num >= 10.0)
-        return "";
-
-    nlohmann::json j = {{"num", num}};
-    test_num = num;
-    num += 1.0;
-    return j.dump();
-}
-
-static void send_stat(
-    std::string url, 
-    std::atomic_bool& bStop, 
-    GlobalAnomalyStats*& global_anom_stats, 
-    bool bTest)
-{
+static void send_stat(std::string url, 
+		      std::atomic_bool& bStop, 
+		      const std::vector<PSstatSenderPayloadBase*> &payloads,
+		      std::atomic_bool &bad){
+  try{
     curl_global_init(CURL_GLOBAL_ALL);
     
     CURL* curl = nullptr;
     struct curl_slist * headers = nullptr;
     CURLcode res;
-    std::string packet;
-    struct curl_fetch_str fetch(bTest);
-    double test_num = 0; // only used for test
     long httpCode(0);
 
     curl = curl_easy_init();
-    if (curl == nullptr)
-    {
-      throw std::runtime_error("Failed to initialize curl easy handler");
-    }
+    if (curl == nullptr) throw std::runtime_error("Failed to initialize curl easy handler");
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     // Dont bother trying IPv6, which would increase DNS resolution time
     curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-    // Don't wait forever, time out after 10 seconds
+    // Don't wait forever, time out after 10 seconds 
     //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
     // Follow HTTP redirects if necessary
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -83,76 +64,60 @@ static void send_stat(
     headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    while (!bStop || packet.length())
-    {
-        // collect data
-        packet.clear();        
-        fetch.m_payload.clear();
-
-        if (bTest)
-        {
-            packet = test_packet(test_num);
-        }
-        else 
-        {
-            packet = global_anom_stats->collect();
-        }
-
-        if (packet.length() == 0)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            continue;
-        }
-
-        // send data
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&fetch);
-
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
-        {
-            std::cerr << "curl_easy_perform() failed: "
-                << curl_easy_strerror(res) << std::endl;
-        }
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-
-        if (bTest)
-        {
-            nlohmann::json j_received = nlohmann::json::parse(fetch.m_payload);
-            nlohmann::json j_expected = nlohmann::json::parse(packet);
-            if (std::abs(j_received["num"].get<double>() - j_expected["num"].get<double>()) > 1e-6)
-            {
-                std::cout 
-                    << "Expected:  " << j_expected["num"].get<double>()
-                    << "\nReceived:  " << j_received["num"].get<double>() 
-                    << std::endl;
-                throw std::runtime_error("test failed!");
-            }
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    while (!bStop){
+      nlohmann::json json_packet;
+      bool do_fetch = false;
+      //Collect data
+      for(auto payload : payloads){
+	payload->add_json(json_packet);
+	do_fetch = do_fetch || payload->do_fetch();
+      }
+      //Send if object has content
+      if(json_packet.size() != 0){
+	std::string packet = json_packet.dump();
+            
+	// send data
+	curl_fetch_str fetch(do_fetch); //request callback if 
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&fetch);
+      
+	res = curl_easy_perform(curl);
+	if (res != CURLE_OK){
+	  std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+	}
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+      
+	if(do_fetch){
+	  for(auto payload : payloads){
+	    if(payload->do_fetch()) payload->process_callback(packet, fetch.m_payload);
+	  }
+	}
+      }//json object has content
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
+  
 
-    if (curl)
-    {
-        if (headers) curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        curl_global_cleanup();
+    if (curl){
+      if (headers) curl_slist_free_all(headers);
+      curl_easy_cleanup(curl);
+      curl_global_cleanup();
     }
+  }catch(const std::exception &exc){
+    std::cerr << "PSstatSender caught exception:" << exc.what() << std::endl;
+    bad = true;
+  }
 }
 
-void PSstatSender::run_stat_sender(std::string url, bool bTest)
+void PSstatSender::run_stat_sender(std::string url)
 {
     if (url.size()) {
-        m_stat_sender = new std::thread(
-            &send_stat, url, 
-            std::ref(m_stop_sender), 
-            std::ref(m_global_anom_stats), 
-            bTest
-        );
+        m_stat_sender = new std::thread(send_stat, url, 
+					std::ref(m_stop_sender), 
+					std::ref(m_payloads),
+					std::ref(m_bad));
     }
 }
 

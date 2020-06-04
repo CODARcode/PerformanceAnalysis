@@ -12,6 +12,76 @@
 #include <thread>
 #include <chrono>
 
+
+namespace chimbuko{
+/**
+ * @brief A payload used to test the data sent by CURL is correctly formatted
+ */
+struct PSstatSenderTestCallbackPayload: public PSstatSenderPayloadBase{
+  bool m_force_nonmatch; //test the test by forcing a non-match
+  PSstatSenderTestCallbackPayload(bool force_nonmatch = false): m_force_nonmatch(force_nonmatch){}
+
+  void add_json(nlohmann::json &into) const override{ 
+    static double num = 0;
+    nlohmann::json j = {{"num", num}};
+    num += 1.0;      
+    into["test_packet"] = j;
+  }
+  bool do_fetch() const override{ return true; }
+  void process_callback(const std::string &packet, const std::string &returned) const override{
+    std::cout << "CALLBACK PROCESS" << std::endl;
+    std::cout << "PACKET:" << packet << std::endl;
+    std::cout << "RETURNED:" << returned << std::endl;
+
+    nlohmann::json j_received = nlohmann::json::parse(returned);
+    nlohmann::json j_expected = nlohmann::json::parse(packet);
+    double drec = j_received["test_packet"]["num"].get<double>();
+    double erec = j_expected["test_packet"]["num"].get<double>();
+    if(std::abs(drec-erec) > 1e-6 || m_force_nonmatch){
+      std::cout << "Expected:  " << erec << "\nReceived:  " << drec << std::endl;
+      throw std::runtime_error("test failed!");
+    }
+  }
+};
+
+}
+
+//Check that it properly catches and handles errors
+TEST(PSstatSenderTest, StatSenderPseudoTestForceFalse)
+{
+  using namespace chimbuko;
+
+  std::string url = "http://0.0.0.0:5000/bouncejson";
+
+  PSstatSender stat_sender;
+  stat_sender.add_payload(new PSstatSenderTestCallbackPayload(true));
+  
+  stat_sender.run_stat_sender(url);
+  std::this_thread::sleep_for(std::chrono::seconds(5));    
+  stat_sender.stop_stat_sender();  
+  EXPECT_EQ(stat_sender.bad(), true);
+}
+
+TEST(PSstatSenderTest, StatSenderPseudoTestBounce)
+{
+  using namespace chimbuko;
+
+  std::string url = "http://0.0.0.0:5000/bouncejson";
+
+  PSstatSender stat_sender;
+  stat_sender.add_payload(new PSstatSenderTestCallbackPayload(false));
+  
+  stat_sender.run_stat_sender(url);
+  std::this_thread::sleep_for(std::chrono::seconds(5));    
+  stat_sender.stop_stat_sender();  
+  EXPECT_EQ(stat_sender.bad(), false);
+}
+
+
+
+
+
+
 class NetTest : public ::testing::Test
 {
 protected:
@@ -213,8 +283,8 @@ TEST_F(NetTest, NetStatSenderTest)
     GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
     nlohmann::json resp;
 
-    stat_sender.set_global_anomaly_stats(&glob_stats);
-    stat_sender.run_stat_sender("http://0.0.0.0:5000/post", false);
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));
+    stat_sender.run_stat_sender("http://0.0.0.0:5000/post");
 
     net.set_parameter(dynamic_cast<ParamInterface*>(&param));
     net.set_global_anomaly_stats(&glob_stats);
@@ -261,34 +331,3 @@ TEST_F(NetTest, NetStatSenderTest)
     net.finalize();
 #endif
 }
-
-// todo: function stat
-
-// TEST_F(NetTest, NetStatSenderPseudoTest)
-// {
-//     using namespace chimbuko;
-// #ifdef _USE_MPINET
-//     MPINet net;
-// #else
-//     ZMQNet net;
-// #endif
-
-//     std::string url = "http://0.0.0.0:5000/post";
-
-//     try
-//     {
-//         net.run_stat_sender(url, true);
-//         std::this_thread::sleep_for(std::chrono::seconds(10));    
-//         net.stop_stat_sender();
-//     }
-//     catch(const std::exception& e)
-//     {
-//         std::cerr << e.what() << '\n';
-//     }
-    
-//     SUCCEED();
-
-// #ifdef _USE_ZMQNET
-//     net.finalize();
-// #endif
-// }

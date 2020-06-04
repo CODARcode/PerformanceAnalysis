@@ -124,16 +124,16 @@ nlohmann::json GlobalAnomalyStats::collect_func_data()
     return jsonObjects;
 }
 
-std::string GlobalAnomalyStats::collect()
+nlohmann::json GlobalAnomalyStats::collect()
 {
     nlohmann::json object;
     object["anomaly"] = collect_stat_data();
     if (object["anomaly"].size() == 0)
-        return "";
+      return nlohmann::json(); //return empty objectOB
     object["func"] = collect_func_data();
     object["created_at"] = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch() ).count();
-    return object.dump();
+    return object;
 }
 
 
