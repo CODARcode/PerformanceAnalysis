@@ -38,5 +38,8 @@ else
 endif
 
 
-bindata_DATA = ws_flask_stat.py
+bindata_DATA = ws_flask_stat.py sst_view_parse.pl
 bindatadir = $(bindir)
+
+install-data-hook:
+	chmod u+x $(DESTDIR)$(bindatadir)/sst_view_parse.pl
