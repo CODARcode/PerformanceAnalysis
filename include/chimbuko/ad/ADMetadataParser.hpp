@@ -43,6 +43,12 @@ namespace chimbuko{
 
     const std::unordered_map<unsigned long, GPUvirtualThreadInfo> &getGPUthreadMap() const{ return m_gpu_thread_map; }
     bool isGPUthread(const unsigned long thr) const{ return m_gpu_thread_map.count(thr) != 0; }
+    
+    /**
+     * @brief Return the thread info struct for this thread. Throws an error if an invalid thread
+     */
+    const GPUvirtualThreadInfo & getGPUthreadInfo(const unsigned long thread) const;
+
 
     const std::unordered_map<int, std::unordered_map<std::string, std::string> > & getGPUproperties() const{ return m_gpu_properties; }
   };

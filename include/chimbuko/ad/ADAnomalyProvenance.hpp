@@ -3,6 +3,7 @@
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/param.hpp>
 #include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/ad/ADMetadataParser.hpp"
 
 namespace chimbuko{
 
@@ -14,7 +15,8 @@ namespace chimbuko{
     ADAnomalyProvenance(const ExecData_t &call,
 			const ADEvent &event_man, //for stack trace
 			const ParamInterface &func_stats, //for func stats
-			const ADCounter &counters //for counters
+			const ADCounter &counters, //for counters
+			const ADMetadataParser &metadata //for env information including GPU context/device/stream
 			);
 
     /**
@@ -27,6 +29,8 @@ namespace chimbuko{
     std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
     nlohmann::json m_func_stats; /**< JSON object containing run statistics of the anomalous function */
     std::vector<nlohmann::json> m_counters; /**< A list of counter events that occurred during the execution of the anomalous function*/
+    bool m_is_gpu_event; /**< Is this an anomaly that occurred on a GPU? */
+    nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
   };
 
 

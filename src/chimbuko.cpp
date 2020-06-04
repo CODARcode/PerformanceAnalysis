@@ -302,7 +302,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
     std::vector<nlohmann::json> anomaly_prov(anomalies.nOutliers());
     size_t i=0;
     for(auto anom_it : anomalies.allOutliers()){
-      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter);
+      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
       anomaly_prov[i++] = extract_prov.get_json();
     }
     m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send

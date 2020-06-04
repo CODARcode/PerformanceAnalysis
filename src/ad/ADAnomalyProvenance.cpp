@@ -5,7 +5,7 @@ using namespace chimbuko;
 
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
-					 const ADCounter &counters): m_call(call){
+					 const ADCounter &counters, const ADMetadataParser &metadata): m_call(call), m_is_gpu_event(false){
   //Get stack information
   m_callstack.push_back({ {"fid",call.get_fid()}, {"func",call.get_funcname()} });
   std::string parent = call.get_parent();
@@ -27,6 +27,10 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
     m_counters[i++] = e->get_json();
   }
   
+  //Determine if it is a GPU event, and if so get the context
+  m_is_gpu_event = metadata.isGPUthread(call.get_tid());
+  if(m_is_gpu_event) m_gpu_location = metadata.getGPUthreadInfo(call.get_tid()).get_json();
+
   //Verbose output
   if(Verbose::on()){
     std::cout << "Anomaly:" << this->get_json() << std::endl;
@@ -36,18 +40,20 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
 
 nlohmann::json ADAnomalyProvenance::get_json() const{
   return {
-    {"pid", m_call.get_pid()},
-      {"rid", m_call.get_rid()},
-	{"tid", m_call.get_tid()},
-	  {"event_id", m_call.get_id()},
-	    {"fid", m_call.get_fid()},
-	      {"func", m_call.get_funcname()},
-		{"entry", m_call.get_entry()},
-		  {"exit", m_call.get_exit()},
-		    {"runtime_total", m_call.get_runtime()},
-		      {"runtime_exclusive", m_call.get_exclusive()},
-			{"call_stack", m_callstack},
-			  {"func_stats", m_func_stats},
-			    {"counter_events", m_counters}
+      {"pid", m_call.get_pid()},
+	{"rid", m_call.get_rid()},
+	  {"tid", m_call.get_tid()},
+	    {"event_id", m_call.get_id()},
+	      {"fid", m_call.get_fid()},
+		{"func", m_call.get_funcname()},
+		  {"entry", m_call.get_entry()},
+		    {"exit", m_call.get_exit()},
+		      {"runtime_total", m_call.get_runtime()},
+			{"runtime_exclusive", m_call.get_exclusive()},
+			  {"call_stack", m_callstack},
+			    {"func_stats", m_func_stats},
+			      {"counter_events", m_counters},
+				{"is_gpu_event", m_is_gpu_event},
+				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() }
   };
 }
