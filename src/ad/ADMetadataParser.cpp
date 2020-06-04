@@ -4,18 +4,23 @@
 
 using namespace chimbuko;
 
+GPUvirtualThreadInfo & getGPUthreadInfo(const unsigned long virtual_thread, std::unordered_map<unsigned long, GPUvirtualThreadInfo> &map){
+  auto it = map.find(virtual_thread);
+  if(it == map.end()) 
+    it = map.emplace(virtual_thread, GPUvirtualThreadInfo(virtual_thread,-1,-1,0) ).first;
+  return it->second;
+}
+
+
 void ADMetadataParser::parseMetadata(const MetaData_t &m){
   std::smatch match;
   if(m.get_descr() == "CUDA Context"){
     unsigned long virtual_thread = m.get_tid();
-    auto it = m_gpu_thread_map.find(virtual_thread);
-    if(it == m_gpu_thread_map.end()) it = m_gpu_thread_map.emplace(virtual_thread, std::pair<int,int>({-1,-1})).first;
-    it->second.second = strToAny<int>(m.get_value());
+    getGPUthreadInfo(m.get_tid(), m_gpu_thread_map).context = strToAny<int>(m.get_value());
+  }else if(m.get_descr() == "CUDA Stream"){
+    getGPUthreadInfo(m.get_tid(), m_gpu_thread_map).stream = strToAny<int>(m.get_value());
   }else if(m.get_descr() == "CUDA Device"){
-    unsigned long virtual_thread = m.get_tid();
-    auto it = m_gpu_thread_map.find(virtual_thread);
-    if(it == m_gpu_thread_map.end()) it = m_gpu_thread_map.emplace(virtual_thread, std::pair<int,int>({-1,-1})).first;
-    it->second.first = strToAny<int>(m.get_value());
+    getGPUthreadInfo(m.get_tid(), m_gpu_thread_map).device = strToAny<int>(m.get_value());
   }else if(std::regex_match(m.get_descr(), match, std::regex(R"(GPU\[(\d+)\]\s(.*))")) ){
     int device = strToAny<int>(match[1]);
     std::string key = match[2];
