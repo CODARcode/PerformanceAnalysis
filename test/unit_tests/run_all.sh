@@ -8,3 +8,4 @@
 ./ad/ADLocalFuncStatistics
 ./ad/ADMetadataParser
 ./util/DispatchQueue
+./util/commandLineParser
