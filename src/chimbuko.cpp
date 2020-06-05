@@ -17,11 +17,11 @@ void ChimbukoParams::print() const{
 	    << "\nwindow size: " << viz_anom_winSize
 	  
 	    << "\nInterval   : " << interval_msec << " msec\n"
-#ifdef USE_PROVDB
-	    << "\nProvDB addr: " << provd_addr << "\n"
+#ifdef ENABLE_PROVDB
+	    << "\nProvDB addr: " << provdb_addr << "\n"
 #endif
 #ifdef _PERF_METRIC
-	    << "perf. matric : " << perf_outputpath << "\n"
+	    << "perf. metric outpath : " << perf_outputpath << "\n"
 	    << "perf. step   : " << perf_step << "\n"
 #endif
 	    << std::endl;

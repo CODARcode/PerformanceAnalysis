@@ -2,6 +2,7 @@
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/string.hpp"
+#include "chimbuko/util/commandLineParser.hpp"
 #include <chrono>
 #include <cstdlib>
 
@@ -9,7 +10,39 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
+typedef commandLineParser<ChimbukoParams> optionalArgsParser;
 
+optionalArgsParser & getOptionalArgsParser(){
+  static bool initialized = false;
+  static optionalArgsParser p;
+  if(!initialized){
+    addCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
+    addCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
+    addCommandLineArg(p, viz_anom_winSize, "When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent (default 0)");
+    addCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
+#ifdef ENABLE_PROVDB
+    addCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+#endif    
+#ifdef _PERF_METRIC
+    addCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
+    addCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
+#endif
+    initialized = true;
+  }
+  return p;
+};
+
+void printHelp(){
+  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Output location> <Options>\n" 
+	    << "Where <Trace engine type> : BPFile or SST\n"
+	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
+	    << "      <Trace file prefix> : The prefix of the file eg \"tau-metrics-[mybinary]\"\n"
+	    << "      <Output location>   : Where the data intended for the visualization module is sent.\n"
+	    << "                            If a url (starts with http) it is sent to the url,\n"
+	    << "                            otherwise if a non-empty string it is output to disk at that location\n"
+	    << "Options:\n";
+  getOptionalArgsParser().help(std::cout);
+}
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
   // -----------------------------------------------------------------------
@@ -45,35 +78,20 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   params.perf_outputpath = ""; // performance output path
   params.perf_step = 10;   // make output every 10 steps
 
-
-#define PARSE(TYPE, ARG) if(sarg == "-"#ARG){ params. ARG = strToAny<TYPE>(argv[arg+1]); arg+=2; } 
-
-  int arg = 5;
-  while(arg < argc){
-    std::string sarg = argv[arg];
-
-    PARSE(double, outlier_sigma)
-    else PARSE(std::string, pserver_addr)
-      else PARSE(int, viz_anom_winSize)
-	else PARSE(int, interval_msec)
-#ifdef ENABLE_PROVDB
-	  else PARSE(std::string, provdb_addr)
-#endif
-#ifdef _PERF_METRIC
-	  else PARSE(std::string, perf_outputpath)
-	    else PARSE(int, perf_step)
-#endif
-	      else throw std::runtime_error("Unrecognized argument: " + sarg);
-  }
+  getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 
   return params;
 }
+  
+ 
 
 
-
-
-int main(int argc, char ** argv)
-{
+int main(int argc, char ** argv){
+  if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help") ){
+    printHelp();
+    return 0;
+  }
+      
   MPI_Init(&argc, &argv);
 
   int world_rank, world_size;
