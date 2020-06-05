@@ -45,6 +45,11 @@ namespace chimbuko {
     void addCounter(const Event_t& event);
 
     /**
+     * @brief Return all counters collected in the timestep
+     */
+    CounterDataListMap_p_t const* getCounters() const{ return m_counters; }
+
+    /**
      * @brief Return all counters and clear internal state
      * @return A pointer to a list of counters (should be deleted externally)
      */
@@ -58,8 +63,8 @@ namespace chimbuko {
 
     
   private:
-    CounterDataListMap_p_t* m_counters;
-    const std::unordered_map<int, std::string> *m_counterMap;
+    CounterDataListMap_p_t* m_counters; /**< process/rank/thread -> List of counters */
+    const std::unordered_map<int, std::string> *m_counterMap; /**< counter index -> counter name map */
     CounterTimeStampMap_p_t m_timestampCounterMap; /** < process/rank/thread -> *Ordered* map of timestamp to counter list iterator (flushed with flushCounters) */
   };
 };

@@ -24,13 +24,28 @@ namespace chimbuko{
 					 , m_perf(perf)
 #endif
     {}
-    
+
+    /**
+     * @brief Add function executions to internal statistics
+     */
     void gatherStatistics(const ExecDataMap_t* exec_data);
+
+    /**
+     * @brief Add anomalies to internal statistics
+     */
     void gatherAnomalies(const Anomalies &anom);
 
+    /**
+     * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
+     * @param net_client The network client object
+     * @return std::pair<size_t, size_t> [sent, recv] message size
+     */
     std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client) const;
 
 #ifdef _PERF_METRIC
+    /**
+     * @brief Attach a RunMetric object into which performance metrics are accumulated
+     */
     void linkPerf(RunMetric* perf){ m_perf = perf; }
 #endif
 
@@ -39,6 +54,7 @@ namespace chimbuko{
     /**
      * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
      * 
+     * @param net_client The network client object
      * @param l_stats local statistics
      * @param step step (or frame) number
      * @return std::pair<size_t, size_t> [sent, recv] message size
