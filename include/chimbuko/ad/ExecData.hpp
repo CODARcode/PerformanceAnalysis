@@ -217,11 +217,11 @@ private:
 
 
 /**
- * @brief wrapper for communication event
+ * @brief wrapper for counter event
  * 
  */
-class CounterData_t {
-public:
+  class CounterData_t {
+  public:
     /**
      * @brief Construct a new CounterData_t object
      * 
@@ -240,15 +240,49 @@ public:
      */
     nlohmann::json get_json() const;
 
-private:
+    /**
+     * @brief return program id
+     */
+    unsigned long get_pid() const { return m_pid; }
+    /**
+     * @brief return rank id
+     */
+    unsigned long get_rid() const { return m_rid; }
+    /**
+     * @brief return thread id
+     */
+    unsigned long get_tid() const { return m_tid; }
+
+    /**
+     * @brief Return the name of the counter
+     */
+    const std::string & get_countername() const{ return m_countername; }
+
+    /**
+     * @brief Return the value of the counter
+     */
+    unsigned long get_value() const { return m_value; }
+
+    /**
+     * @brief Return the counter timestamp
+     */
+    unsigned long get_ts() const { return m_ts; }
+
+    /**
+     * @brief Return the index of the counter
+     */
+    unsigned long get_counterid() const{ return m_cid; }
+
+    private:
     std::string m_countername;             /**< counter name */
     unsigned long 
-      m_pid,                          /**< program id */
+    m_pid,                          /**< program id */
       m_rid,                          /**< rank id */
       m_tid,                          /**< thread id */
+      m_cid,                          /**< counted id */
       m_value,                        /**< counter value */
       m_ts;                           /**< counter timestamp */
-};
+  };
 
 
 

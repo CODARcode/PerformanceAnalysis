@@ -280,6 +280,7 @@ CounterData_t::CounterData_t():
   m_pid(0),
   m_rid(0),
   m_tid(0),
+  m_cid(-1),
   m_value(-1),
   m_ts(-1){}
 
@@ -288,6 +289,7 @@ CounterData_t::CounterData_t(const Event_t& ev, const std::string &counter_name)
   m_pid(ev.pid()),
   m_rid(ev.rid()),
   m_tid(ev.tid()),
+  m_cid(ev.counter_id()),
   m_value(ev.counter_value()),
   m_ts(ev.ts()){}
   
@@ -297,6 +299,7 @@ nlohmann::json CounterData_t::get_json() const{
 	  {"rid",m_rid},
 	  {"tid",m_tid},
 	  {"ts",m_ts},
+	  {"counter_idx", m_cid },
 	  {"counter_name",m_countername},
 	  {"counter_value",m_value}
   };

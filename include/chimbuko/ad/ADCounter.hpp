@@ -11,7 +11,8 @@ namespace chimbuko {
   typedef std::list<CounterData_t> CounterDataList_t;
   typedef typename CounterDataList_t::iterator CounterDataListIterator_t;
   typedef std::map<unsigned long, std::list<CounterDataListIterator_t> > CounterTimeStamps_t;
-  
+  typedef std::map<unsigned long, std::list<CounterDataListIterator_t> > CountersByIndex_t;
+
   /**
    * @brief map of process, rank, thread -> CounterDataList_t
    */
@@ -62,9 +63,15 @@ namespace chimbuko {
 							     const unsigned long t_start, const unsigned long t_end) const;
 
     
+    /**
+     * @brief Get the map of counters by index
+     */
+    const CountersByIndex_t & getCountersByIndex() const{ return m_countersByIdx; }
+
   private:
     CounterDataListMap_p_t* m_counters; /**< process/rank/thread -> List of counters */
     const std::unordered_map<int, std::string> *m_counterMap; /**< counter index -> counter name map */
-    CounterTimeStampMap_p_t m_timestampCounterMap; /** < process/rank/thread -> *Ordered* map of timestamp to counter list iterator (flushed with flushCounters) */
+    CounterTimeStampMap_p_t m_timestampCounterMap; /**< process/rank/thread -> *Ordered* map of timestamp to counter list iterator (flushed with flushCounters) */
+    CountersByIndex_t m_countersByIdx; /**< Counter index -> all instances of this counter in the timestep (flished with flushCounters) */
   };
 };

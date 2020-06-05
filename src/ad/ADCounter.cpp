@@ -13,17 +13,19 @@ void ADCounter::addCounter(const Event_t& event){
   auto it = m_counterMap->find(event.counter_id());
   if(it == m_counterMap->end()) throw std::runtime_error("Counter index could not be found in map");
 
-  //Append the counter to the list, and add the iterator to the timestamp map
+  //Append the counter to the list, and add the iterator to the maps
   auto &count_list_prt = (*m_counters)[event.pid()][event.rid()][event.tid()];
   
   CounterDataListIterator_t cit = count_list_prt.emplace(count_list_prt.end(), event, it->second);
   m_timestampCounterMap[event.pid()][event.rid()][event.tid()][event.ts()].push_back(cit);
+  m_countersByIdx[event.counter_id()].push_back(cit);
 }
 
 CounterDataListMap_p_t* ADCounter::flushCounters(){
   CounterDataListMap_p_t* ret = m_counters;
   m_counters = nullptr;
   m_timestampCounterMap.clear();
+  m_countersByIdx.clear();
   return ret;
 }
 

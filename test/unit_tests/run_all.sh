@@ -7,5 +7,6 @@
 ./ad/ADOutlier
 ./ad/ADLocalFuncStatistics
 ./ad/ADMetadataParser
+./ad/ADCounter
 ./util/DispatchQueue
 ./util/commandLineParser
