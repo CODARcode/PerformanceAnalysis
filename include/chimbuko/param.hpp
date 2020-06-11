@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include <chimbuko/util/RunStats.hpp>
+#include <chimbuko/net.hpp>
 
 namespace chimbuko {
 
@@ -58,5 +59,37 @@ namespace chimbuko {
   protected:
     mutable std::mutex m_mutex; // used to update parameters
   };
+
+
+  /** 
+   * @brief Net payload for pserver updating params from AD
+   */
+  class NetPayloadUpdateParams: public NetPayloadBase{
+    ParamInterface * m_param;
+  public:
+    NetPayloadUpdateParams(ParamInterface *param): m_param(param){}
+    MessageKind kind() const{ return MessageKind::PARAMETERS; }
+    MessageType type() const{ return MessageType::REQ_ADD; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      response.set_msg(m_param->update(message.buf(), true), false);
+    }	
+  };
+  /** 
+   * @brief Net payload for AD updating params from pserver
+   */
+  class NetPayloadGetParams: public NetPayloadBase{
+    ParamInterface const* m_param;
+  public:
+    NetPayloadGetParams(ParamInterface const* param): m_param(param){}
+    MessageKind kind() const{ return MessageKind::PARAMETERS; }
+    MessageType type() const{ return MessageType::REQ_GET; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      response.set_msg(m_param->serialize(), false);
+    }	
+  };
+
+
 
 } // end of chimbuko namespace

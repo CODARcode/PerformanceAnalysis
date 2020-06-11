@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include "chimbuko/ad/AnomalyStat.hpp"
-
+#include <chimbuko/net.hpp>
 
 namespace chimbuko{
 
@@ -89,5 +89,24 @@ namespace chimbuko{
     std::unordered_map<unsigned long, RunStats> m_inclusive; /**< Map of index to statistics on function timings inclusive of children */
     std::unordered_map<unsigned long, RunStats> m_exclusive; /**< Map of index to statistics on function timings exclusive of children */
   };
+
+  /**
+   * @brief Net payload for communicating anomaly stats AD->pserver
+   */
+  class NetPayloadUpdateAnomalyStats: public NetPayloadBase{
+    GlobalAnomalyStats * m_global_anom_stats;
+  public:
+    NetPayloadUpdateAnomalyStats(GlobalAnomalyStats * global_anom_stats): m_global_anom_stats(global_anom_stats){}
+    MessageKind kind() const{ return MessageKind::ANOMALY_STATS; }
+    MessageType type() const{ return MessageType::REQ_ADD; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
+      m_global_anom_stats->add_anomaly_data(message.buf());
+      response.set_msg("", false);
+    }
+  };
+
+
 
 };

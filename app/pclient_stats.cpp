@@ -2,6 +2,7 @@
 
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
+#include "chimbuko/ad/AnomalyStat.hpp"
 
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
