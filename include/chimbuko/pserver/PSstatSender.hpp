@@ -1,6 +1,6 @@
 #pragma once
 
-#include "chimbuko/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/global_anomaly_stats.hpp"
 #include <thread>
 #include <atomic>
 
