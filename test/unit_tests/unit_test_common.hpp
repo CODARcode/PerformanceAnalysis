@@ -138,7 +138,7 @@ namespace chimbuko{
       //Send a response back to the AD
       {
 	Message msg_t;
-	msg_t.set_msg(std::string("Hello!I am ZMQNET!"), false);
+	msg_t.set_msg(std::string("Hello!I am NET!"), false);
 	strmsg = msg_t.data();
 			 
 	zmq_msg_t msg;

@@ -29,7 +29,10 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
     init_thread_pool(nt);
 }
 
-void doWork(void* context, ParamInterface* param, GlobalAnomalyStats *glob_stats) 
+void doWork(void* context,     
+	    std::unordered_map<MessageKind,
+	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
+	    > &payloads)
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
@@ -52,51 +55,19 @@ void doWork(void* context, ParamInterface* param, GlobalAnomalyStats *glob_stats
 
     VERBOSE(std::cout << "ZMQ worker received message: " << strmsg << std::endl);
     
-    // -------------------------------------------------------------------
-    // this block could be managed to use for all network interface!!
-    // todo: will move this part somewhere to make the code simple.
-
     //Parse the message and instantiate a reply message with appropriate sender
     Message msg, msg_reply;
     msg.set_msg(strmsg, true);
 
     msg_reply = msg.createReply();
 
-    //Set the reply message    
-    // std::cout << "ps receive " << msg.kind_str() << " message!" << std::endl;
-    if (msg.kind() == MessageKind::PARAMETERS){
-      if(param == nullptr) throw std::runtime_error("Cannot update function parameters as param object has not been linked");
-      if (msg.type() == MessageType::REQ_ADD) {
-	//The message is a request to update the statistics      
-	msg_reply.set_msg(param->update(msg.buf(), true), false);
-      }else if (msg.type() == MessageType::REQ_GET) {
-	//The message is a request to return the statistics
-	msg_reply.set_msg(param->serialize(), false);
-      }
-    }else if (msg.kind() == MessageKind::ANOMALY_STATS){
-      if (msg.type() == MessageType::REQ_ADD) {
-	//The message is a request to add anomaly data from the AD into the statistics
-	if(glob_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-	glob_stats->add_anomaly_data(msg.buf());
-	msg_reply.set_msg("", false);
-      }
-      // else if (msg.type() == MessageType::REQ_GET) {
-      //     // std::cout << "N_ANOMALY::REQ_GET" << std::endl;
-      //     //msg_reply.set_msg(param->get_anomaly_stat(msg.data_buffer()), false);
-      // }
-      else{
-	std::cout << "Unknown Type: " << msg.type() << std::endl;
-      }
-    }else if (msg.kind() == MessageKind::DEFAULT){
-      if (msg.type() == MessageType::REQ_ECHO) {
-	//The message is a request for a handshake	
-	msg_reply.set_msg(std::string("Hello!I am ZMQNET!"), false);
-      }
-    }else{
-      std::cout << "Unknown message kind: " << msg.kind_str() << std::endl;
-    }
-    // -------------------------------------------------------------------
+    auto kit = payloads.find((MessageKind)msg.kind());
+    if(kit == payloads.end()) throw std::runtime_error("No payload associated with the message kind provided");
+    auto pit = kit->second.find((MessageType)msg.type());
+    if(pit == kit->second.end()) throw std::runtime_error("No payload associated with the message type provided");
 
+    //Apply the payload
+    pit->second->action(msg_reply, msg);
     VERBOSE(std::cout << "Worker sending response: " << msg_reply.data() << std::endl);
     
     //Send the reply
@@ -111,8 +82,8 @@ void ZMQNet::init_thread_pool(int nt)
 {
     for (int i = 0; i < nt; i++) {
         m_threads.push_back(
-	std::thread(&doWork, std::ref(m_context), std::ref(m_param), std::ref(m_global_anom_stats))    
-        );
+			    std::thread(&doWork, std::ref(m_context), std::ref(m_payloads) )
+			    );
     }
 }
 

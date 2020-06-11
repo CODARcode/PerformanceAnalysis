@@ -44,7 +44,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
         MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count), true
     );
 
-    if (msg.data_buffer().compare("Hello!>I am MPINET!") != 0)
+    if (msg.data_buffer().compare("Hello!I am NET!") != 0)
     {
         std::cerr << "Connect error to parameter server (MPINET)!\n";
         exit(1);
@@ -77,7 +77,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     
     msg.set_msg(strmsg, true);
 
-    if (msg.buf().compare("\"Hello!I am ZMQNET!\"") != 0)
+    if (msg.buf().compare("\"Hello!I am NET!\"") != 0)
     {
       throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
     } 

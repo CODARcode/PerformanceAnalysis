@@ -93,7 +93,7 @@ void MPINet::run()
         }
 
         // submit job
-        m_tpool->sumit([&client, this](int _source, int _tag, int _count){
+        m_tpool->sumit([&client, &m_payloads, this](int _source, int _tag, int _count){
             Message _msg, _msg_reply;
             std::string _recv_buffer; 
             
@@ -103,24 +103,14 @@ void MPINet::run()
             }
 
             _msg_reply = _msg.createReply();
-            if (_msg.kind() == MessageKind::PARAMETERS) 
-            {
-                ParamInterface* param = this->get_parameter();
-                if (_msg.type() == MessageType::REQ_ADD) {
-                    _msg_reply.set_msg(param->update(_msg.data_buffer(), true), false);
-                }
-                else if (_msg.type() == MessageType::REQ_GET) {
-                    _msg_reply.set_msg(param->serialize(), false);
-                }
-            }
-            else if (_msg.kind() == MessageKind::DEFAULT)
-            {
-                if (_msg.type() == MessageType::REQ_ECHO) {
-                    _msg_reply.set_msg(
-                        _msg.data_buffer() + ">I am MPINET!", false
-                    );
-                }
-            }
+	    
+	    auto kit = m_payloads.find(_msg.kind());
+	    if(kit == m_payloads.end()) throw std::runtime_error("No payload associated with the message kind provided");
+	    auto pit = kit->second.find(_msg.type());
+	    if(pit == kit->second.end()) throw std::runtime_error("No payload associated with the message type provided");
+	    
+	    //Apply the payload
+	    pit->second->action(_msg_reply, _msg);
             
 	        //std::cout << "reply request\n";
             this->send(client, 

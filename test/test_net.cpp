@@ -46,11 +46,12 @@ struct PSstatSenderTestCallbackPayload: public PSstatSenderPayloadBase{
 
 }
 
+using namespace chimbuko;
+
+
 //Check that it properly catches and handles errors
 TEST(PSstatSenderTest, StatSenderPseudoTestForceFalse)
 {
-  using namespace chimbuko;
-
   std::string url = "http://0.0.0.0:5000/bouncejson";
 
   PSstatSender stat_sender;
@@ -64,8 +65,6 @@ TEST(PSstatSenderTest, StatSenderPseudoTestForceFalse)
 
 TEST(PSstatSenderTest, StatSenderPseudoTestBounce)
 {
-  using namespace chimbuko;
-
   std::string url = "http://0.0.0.0:5000/bouncejson";
 
   PSstatSender stat_sender;
@@ -98,11 +97,11 @@ protected:
 TEST_F(NetTest, NetEnvTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
     ASSERT_EQ(MPI_THREAD_MULTIPLE, net.thread_level());
     ASSERT_EQ(1, net.size());
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
     SUCCEED();
 #endif
 }
@@ -110,14 +109,16 @@ TEST_F(NetTest, NetEnvTest)
 TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
 
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    //net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
 
     net.init(nullptr, nullptr, 10);
     net.run();
@@ -145,14 +146,14 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
-
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
     net.init(nullptr, nullptr, 10);
     net.run();
 
@@ -179,14 +180,14 @@ TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
-
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
     net.init(nullptr, nullptr, 1);
     net.run();
 
@@ -212,20 +213,18 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 
 TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 {
-    using namespace chimbuko;
-
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
     const int N_MPI_PROCESSORS = 10;
 
-    chimbuko::SstdParam param;
-    chimbuko::GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
-    
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
-    net.set_global_anomaly_stats(&glob_stats);
+    SstdParam param;
+    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
     net.init(nullptr, nullptr, 10);
     net.run();
 
@@ -269,8 +268,6 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 
 TEST_F(NetTest, NetStatSenderTest)
 {
-    using namespace chimbuko;
-
     PSstatSender stat_sender;
 #ifdef _USE_MPINET
     MPINet net;
@@ -286,8 +283,9 @@ TEST_F(NetTest, NetStatSenderTest)
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));
     stat_sender.run_stat_sender("http://0.0.0.0:5000/post");
 
-    net.set_parameter(dynamic_cast<ParamInterface*>(&param));
-    net.set_global_anomaly_stats(&glob_stats);
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
     net.init(nullptr, nullptr, 10);
     net.run();
 

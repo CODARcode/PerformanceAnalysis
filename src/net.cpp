@@ -22,16 +22,16 @@ NetInterface& DefaultNetInterface::get()
 }
 
 NetInterface::NetInterface() 
-  : m_nt(0), m_param(nullptr)
+  : m_nt(0)
 {
+  add_payload(new NetPayloadHandShake());
 }
 
 NetInterface::~NetInterface()
 {
 }
 
-void NetInterface::set_parameter(ParamInterface* param)
-{
-    m_param = param;
+void NetInterface::add_payload(NetPayloadBase* payload){
+  m_payloads[payload->kind()][payload->type()].reset(payload);
 }
 

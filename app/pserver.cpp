@@ -55,9 +55,9 @@ int main (int argc, char ** argv){
       global_stats.reset_anomaly_stat({n_ad_modules});
     }
 
-    // Note: for some reasons, internal MPI initialization cause segmentation error!! 
-    net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
-    net.set_global_anomaly_stats(&global_stats);
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&global_stats));
     net.init(nullptr, nullptr, nt);
 
     //Start sending anomaly statistics to viz

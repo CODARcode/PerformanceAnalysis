@@ -90,15 +90,16 @@ TEST(ADOutlierTestSyncParamWithPS, Works){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-  		       ZMQNet ps;
-		       ps.set_parameter(&global_params_ps);
-  		       ps.init(&argc, &argv, 4); //4 workers
-  		       ps.run(".");
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       barrier2.wait();
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.finalize();
-  		     });
+      ZMQNet ps;
+      ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
+      ps.add_payload(new NetPayloadGetParams(&global_params_ps));
+      ps.init(&argc, &argv, 4); //4 workers
+      ps.run(".");
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      barrier2.wait();
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   std::string glob_params_comb_ad;
