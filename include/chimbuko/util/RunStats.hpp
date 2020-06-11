@@ -72,6 +72,13 @@ namespace chimbuko {
       return from_state(get_state());
     }
 
+    void set_json_state(const nlohmann::json& s);
+    static RunStats from_json_state(const nlohmann::json& s) {
+      RunStats stats;
+      stats.set_json_state(s);
+      return stats;
+    }
+
     std::string get_strstate();
     void set_strstate(const std::string& s);
     static RunStats from_strstate(const std::string& s) {

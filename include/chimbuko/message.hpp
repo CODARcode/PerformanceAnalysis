@@ -22,7 +22,8 @@ enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
     PARAMETERS    = 2,
-    ANOMALY_STATS = 3
+    ANOMALY_STATS = 3,
+    COUNTER_STATS = 4
 };
 
 enum MessageCmd {
@@ -152,6 +153,7 @@ public:
             case 1: return "CMD";
             case 2: return "PARAMETERS";
             case 3: return "ANOMALY_STATS";
+            case 4: return "COUNTER_STATS";;
             default: return "UNKNOWN";
         }
     }

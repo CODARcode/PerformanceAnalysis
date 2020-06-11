@@ -58,21 +58,21 @@ void GlobalAnomalyStats::add_anomaly_data(const std::string& data)
     }
 }
 
-std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id)
+std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
 {
-    if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
-        return "";
-
-    RunStats stat = m_anomaly_stats[stat_id]->get_stats();
-    return stat.get_json().dump();
+  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+    return "";
+  
+  RunStats stat = m_anomaly_stats.find(stat_id)->second->get_stats();
+  return stat.get_json().dump();
 }
 
-size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id)
+size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
 {
     if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
         return 0;
 
-    return m_anomaly_stats[stat_id]->get_n_data();
+    return m_anomaly_stats.find(stat_id)->second->get_n_data();
 }
 
 nlohmann::json GlobalAnomalyStats::collect_stat_data()

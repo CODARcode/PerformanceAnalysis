@@ -50,6 +50,8 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetCli
     obj["exclusive"] = m_exclusive.find(func_id)->second.get_json_state();
     g_info["func"].push_back(obj);
   }
+
+  //NOTE: Application index is fixed to 0 here : fixme!
   g_info["anomaly"] = AnomalyData(0, net_client.get_client_rank(), m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
 #ifndef _PERF_METRIC
   return updateGlobalStatistics(net_client, g_info.dump(), m_step);

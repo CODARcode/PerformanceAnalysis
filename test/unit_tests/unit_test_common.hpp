@@ -86,6 +86,22 @@ namespace chimbuko{
   }
 
 
+  /**
+   * @brief Create an CounterData_t object from the inputs provided. Index will be internally assigned, as will name
+   */
+  CounterData_t createCounterData_t(unsigned long pid,
+				    unsigned long rid,
+				    unsigned long tid,
+				    unsigned long counter_id,
+				    unsigned long value,
+				    unsigned long ts,
+				    const std::string &counter_name){
+    return CounterData_t( createCounterEvent_t(pid,rid,tid,counter_id,value,ts), counter_name);
+  }
+    
+
+
+
   //A mock class that acts as the parameter server
   struct MockParameterServer{
     void* context;
@@ -176,7 +192,50 @@ namespace chimbuko{
 	zmq_msg_close(&msg);
       }
     }
-  
+
+
+    //Act as a receiver for function stats sent by ADOutlier::update_local_statistics
+    void receive_counter_statistics(Barrier &barrier2, const std::string test_msg){
+      zmq_pollitem_t items[1] = 
+	{
+	  { socket, 0, ZMQ_POLLIN, 0 }
+	};
+      std::cout << "Mock PS start polling" << std::endl;
+      zmq_poll(items, 1, -1); 
+      std::cout << "Mock PS has a message" << std::endl;
+    
+      //Receive the update string from the AD
+      std::string strmsg;
+      {
+	zmq_msg_t msg;
+	int ret;
+	zmq_msg_init(&msg);
+	ret = zmq_msg_recv(&msg, socket, 0);
+	strmsg.assign((char*)zmq_msg_data(&msg), ret);
+	zmq_msg_close(&msg);
+      }
+      std::cout << "Mock PS received string: " << strmsg << std::endl;
+
+      std::stringstream ss;
+      ss << "{\"Buffer\":\"" << test_msg << "\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":4,\"size\":" << test_msg.size() << ",\"src\":0,\"type\":1}}";
+      EXPECT_EQ(strmsg, ss.str());
+    
+      std::cout << "Mock PS sending response" << std::endl;
+      //Send a response back to the AD
+      {
+	Message msg_t;
+	msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
+	strmsg = msg_t.data();
+			 
+	zmq_msg_t msg;
+	int ret;
+	zmq_msg_init_size(&msg, strmsg.size());
+	memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
+	ret = zmq_msg_send(&msg, socket, 0);
+	zmq_msg_close(&msg);
+      }
+    }
+
     void end(){
       zmq_close(socket);
       zmq_ctx_term(context);

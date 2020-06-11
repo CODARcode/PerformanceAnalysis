@@ -46,17 +46,22 @@ std::string RunStats::get_strstate()
     return s.dump();
 }
 
-void RunStats::set_strstate(const std::string& s)
-{
-    nlohmann::json state = nlohmann::json::parse(s);
-    m_state.count = state["count"];
-    m_state.eta = state["eta"];
-    m_state.rho = state["rho"];
-    m_state.tau = state["tau"];
-    m_state.phi = state["phi"];
-    m_state.min = state["min"];
-    m_state.max = state["max"];
-    m_state.acc = state["acc"];
+
+void RunStats::set_json_state(const nlohmann::json& state){
+  m_state.count = state["count"];
+  m_state.eta = state["eta"];
+  m_state.rho = state["rho"];
+  m_state.tau = state["tau"];
+  m_state.phi = state["phi"];
+  m_state.min = state["min"];
+  m_state.max = state["max"];
+  m_state.acc = state["acc"];
+}
+
+
+void RunStats::set_strstate(const std::string& s){
+  nlohmann::json state = nlohmann::json::parse(s);
+  set_json_state(state);
 }
 
 void RunStats::push(double x)
