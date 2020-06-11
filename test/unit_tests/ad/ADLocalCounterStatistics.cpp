@@ -85,7 +85,7 @@ struct ADLocalCounterStatisticsWrapper: public ADLocalCounterStatistics{
   }
 };
 
-TEST(ADLocalCounterStatisticsTestUpdateGlobalStatisticsWithPS, Works){
+TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)
@@ -136,4 +136,77 @@ TEST(ADLocalCounterStatisticsTestUpdateGlobalStatisticsWithPS, Works){
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
+
+
+TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){  
+#ifdef _USE_MPINET
+#warning "Testing with MPINET not available"
+#elif defined(_USE_ZMQNET)
+  std::cout << "Using ZMQ net" << std::endl;
+
+  std::string nm = "MyCounter1";
+  std::unordered_set<std::string> which_counters = {nm};
+  ADLocalCounterStatistics cs(0, &which_counters);
+
+  RunStats a,b, sum;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); }
+  sum = a+b;
+
+  GlobalCounterStats glob;
+
+  Barrier barrier2(2);
+
+  std::string sinterface = "tcp://*:5559";
+  std::string sname = "tcp://localhost:5559";
+
+  int argc; char** argv = nullptr;
+  std::cout << "Initializing PS thread" << std::endl;
+  std::thread ps_thr([&]{
+  		       ZMQNet ps;
+		       ps.add_payload(new NetPayloadUpdateCounterStats(&glob));
+  		       ps.init(&argc, &argv, 4); //4 workers
+  		       ps.run(".");
+		       std::cout << "PS thread waiting at barrier" << std::endl;
+		       barrier2.wait();
+		       std::cout << "PS thread terminating connection" << std::endl;
+		       ps.finalize();
+  		     });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::cout << "Initializing AD thread" << std::endl;
+  std::thread out_thr([&]{
+			try{
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
+
+			  cs.setStats(nm, a);
+			  cs.updateGlobalStatistics(net_client);
+			  cs.setStats(nm, b);
+			  cs.updateGlobalStatistics(net_client);
+
+			  std::cout << "AD thread terminating connection" << std::endl;
+			  net_client.disconnect_ps();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
+			}catch(const std::exception &e){
+			  std::cerr << e.what() << std::endl;
+			}
+			//barrier2.wait();
+		      });
+  
+  ps_thr.join();
+  out_thr.join();
+  
+  auto stats = glob.get_stats();
+  EXPECT_EQ( stats.count(nm), 1 );
+  EXPECT_EQ( stats[nm], sum );
+
+		         
+#else
+#error "Requires compiling with MPI or ZMQ net"
+#endif
+}
+
+
+
 
