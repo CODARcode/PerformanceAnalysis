@@ -65,17 +65,17 @@ namespace chimbuko{
 			  const RunStats& exclusive);
 
     /**
-     * @brief Collect anomaly statistics into JSON object
+     * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
      */
     nlohmann::json collect_stat_data();
 
     /**
      * @brief Collect function statistics into JSON object
      */
-    nlohmann::json collect_func_data();
+    nlohmann::json collect_func_data() const;
     
     /**
-     * @brief Collect anomaly statistics and function statistics
+     * @brief Collect anomaly statistics and function statistics. Flushes the m_anomaly_stats statistics
      * @return JSON object containing anomaly and function data
      */
     nlohmann::json collect();

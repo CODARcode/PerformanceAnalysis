@@ -34,7 +34,7 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
   m_n_anomalies += anom.nOutliers();
 }
 
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
+nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();
@@ -52,7 +52,14 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetCli
   }
 
   //NOTE: Application index is fixed to 0 here : fixme!
-  g_info["anomaly"] = AnomalyData(0, net_client.get_client_rank(), m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
+  g_info["anomaly"] = AnomalyData(0, rank, m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
+  return g_info;
+}
+
+
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
+  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
+  nlohmann::json g_info = get_json_state(net_client.get_client_rank());
 #ifndef _PERF_METRIC
   return updateGlobalStatistics(net_client, g_info.dump(), m_step);
 #else

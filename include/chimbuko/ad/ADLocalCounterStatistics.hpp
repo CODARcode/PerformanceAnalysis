@@ -41,6 +41,8 @@ namespace chimbuko{
      * @brief update (send) counter statistics gathered during this io step to the connected parameter server
      * @param net_client The network client object
      * @return std::pair<size_t, size_t> [sent, recv] message size
+     *
+     * The message string is the output of get_json_state() in string format
      */
     std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client) const;
 
@@ -58,6 +60,8 @@ namespace chimbuko{
     
     /**
      * @brief Get the JSON object that is sent to the parameter server
+     *
+     * The string form of this object is sent to the pserver using updateGlobalStatistics
      */
     nlohmann::json get_json_state() const;
 

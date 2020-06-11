@@ -39,8 +39,20 @@ namespace chimbuko{
      * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
      * @param net_client The network client object
      * @return std::pair<size_t, size_t> [sent, recv] message size
+     *
+     * The message communicated is the string dump of the output of get_json_state()
      */
     std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client) const;
+
+    
+    /**
+     * @brief Get the current state as a JSON object
+     * @param rank The rank of this AD instance
+     *
+     * The string dump of this object is the serialized form sent to the parameter server
+     */
+    nlohmann::json get_json_state(const int rank) const;
+
 
 #ifdef _PERF_METRIC
     /**

@@ -1,10 +1,14 @@
 #include "chimbuko/pserver/global_anomaly_stats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
+#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
 #include <chrono>
+#include "unit_tests/unit_test_common.hpp"
+#include <chimbuko/verbose.hpp>
 
+using namespace chimbuko;
 
 namespace chimbuko{
 /**
@@ -39,8 +43,6 @@ struct PSstatSenderTestCallbackPayload: public PSstatSenderPayloadBase{
 
 }
 
-using namespace chimbuko;
-
 
 //Check that it properly catches and handles errors
 TEST(PSstatSenderTest, StatSenderPseudoTestForceFalse)
@@ -70,6 +72,68 @@ TEST(PSstatSenderTest, StatSenderPseudoTestBounce)
 }
 
 
+namespace chimbuko{
+/**
+ * @brief A payload used to test the data sent by CURL is correctly formatted
+ */
+struct PSstatSenderGlobalAnomalyStatsCallbackPayload: public PSstatSenderGlobalAnomalyStatsPayload{
+  int *calls;
+  PSstatSenderGlobalAnomalyStatsCallbackPayload(GlobalAnomalyStats *stats, int *_calls): PSstatSenderGlobalAnomalyStatsPayload(stats), calls(_calls){}
+
+  bool do_fetch() const override{ return true; }
+  void process_callback(const std::string &packet, const std::string &returned) const override{
+    ++(*calls);
+    std::cout << "CALLBACK PROCESS" << std::endl;
+    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+    nlohmann::json p = nlohmann::json::parse(packet);
+    nlohmann::json r = nlohmann::json::parse(returned);
+
+    if(p != r) throw std::runtime_error("test failed");
+  }
+};
+
+}
+
+TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
+{
+  std::string url = "http://0.0.0.0:5000/bouncejson";
+
+  unsigned long pid=0, rid=1, tid=2, func_id=3;
+  std::string func_name = "my_func";
+
+  CallList_t call_list;
+  auto it1 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 100, 200) );
+  auto it2 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 300, 400) );
+  Anomalies anom;
+  anom.insert(it1);
+  anom.insert(it2);
+
+  ExecDataMap_t dmap;
+  dmap[func_id].push_back(it1);
+  dmap[func_id].push_back(it2);
+
+  ADLocalFuncStatistics loc(0);
+  loc.gatherStatistics(&dmap);
+  loc.gatherAnomalies(anom);
+
+  GlobalAnomalyStats glob(std::vector<int>(1,2)); //so rid=1 makes sense
+  glob.add_anomaly_data(loc.get_json_state(rid).dump());
+
+  PSstatSender stat_sender;
+  int calls = 0;
+  stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsCallbackPayload(&glob, &calls));
+  
+  stat_sender.run_stat_sender(url);
+  std::this_thread::sleep_for(std::chrono::seconds(5));    
+  stat_sender.stop_stat_sender();  
+  EXPECT_EQ(stat_sender.bad(), false);
+  EXPECT_EQ(calls,1); //after the first call the internal data are deleted, so no more data should be sent despite multiple further sends
+}
+
+
+
+
 
 
 int main(int argc, char** argv)
@@ -77,6 +141,8 @@ int main(int argc, char** argv)
     int result = 0;
     int provided;
     ::testing::InitGoogleTest(&argc, argv);
+
+    Verbose::set_verbose(true);
 
     // for (int i = 1; i < argc; i++)
     //     printf("arg %2d = %s\n", i, argv[i]);

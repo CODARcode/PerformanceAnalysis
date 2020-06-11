@@ -1,5 +1,6 @@
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <curl/curl.h>
+#include <chimbuko/verbose.hpp>
 
 using namespace chimbuko;
 
@@ -68,10 +69,14 @@ static void send_stat(std::string url,
       nlohmann::json json_packet;
       bool do_fetch = false;
       //Collect data
+      VERBOSE(std::cout << "PSstatSender building packet from " << payloads.size() << " payloads" << std::endl);
       for(auto payload : payloads){
 	payload->add_json(json_packet);
 	do_fetch = do_fetch || payload->do_fetch();
       }
+      VERBOSE(std::cout << "PSstatSender packet size " << json_packet.size() << std::endl);
+      VERBOSE(std::cout << "PSstatSender do_fetch=" << do_fetch << std::endl);
+
       //Send if object has content
       if(json_packet.size() != 0){
 	std::string packet = json_packet.dump();

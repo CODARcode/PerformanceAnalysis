@@ -1,4 +1,5 @@
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
+#include <chimbuko/verbose.hpp>
 
 using namespace chimbuko;
 
@@ -82,7 +83,9 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data()
     for (auto pair: m_anomaly_stats)
     {
         std::string stat_id = pair.first;
-        auto stats = pair.second->get();        
+        auto stats = pair.second->get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
+	                                 //We now own the std::list<std::string>* pointer and have to delete it
+      
         if (stats.second && stats.second->size())
         {
             nlohmann::json object;
@@ -105,7 +108,7 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data()
     return jsonObjects;
 }
 
-nlohmann::json GlobalAnomalyStats::collect_func_data()
+nlohmann::json GlobalAnomalyStats::collect_func_data() const
 {
     nlohmann::json jsonObjects = nlohmann::json::array();
     {
@@ -115,9 +118,9 @@ nlohmann::json GlobalAnomalyStats::collect_func_data()
             nlohmann::json object;
             object["fid"] = pair.first;
             object["name"] = pair.second;
-            object["stats"] = m_func_anomaly[pair.first].get_json();
-            object["inclusive"] = m_inclusive[pair.first].get_json();
-            object["exclusive"] = m_exclusive[pair.first].get_json();
+            object["stats"] = m_func_anomaly.find(pair.first)->second.get_json();
+            object["inclusive"] = m_inclusive.find(pair.first)->second.get_json();
+            object["exclusive"] = m_exclusive.find(pair.first)->second.get_json();
             jsonObjects.push_back(object);
         }
     }
@@ -129,7 +132,7 @@ nlohmann::json GlobalAnomalyStats::collect()
     nlohmann::json object;
     object["anomaly"] = collect_stat_data();
     if (object["anomaly"].size() == 0)
-      return nlohmann::json(); //return empty objectOB
+      return nlohmann::json(); //return empty object
     object["func"] = collect_func_data();
     object["created_at"] = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch() ).count();
