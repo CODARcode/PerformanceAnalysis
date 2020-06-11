@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include "chimbuko/ad/AnomalyStat.hpp"
 #include <chimbuko/net.hpp>
+#include <chimbuko/pserver/PSstatSender.hpp>
 
 namespace chimbuko{
 
@@ -104,6 +105,22 @@ namespace chimbuko{
       if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
       m_global_anom_stats->add_anomaly_data(message.buf());
       response.set_msg("", false);
+    }
+  };
+
+
+  /**
+   * @brief Payload object for communicating anomaly data pserver->viz
+   */
+  class PSstatSenderGlobalAnomalyStatsPayload: public PSstatSenderPayloadBase{
+  private:    
+    GlobalAnomalyStats *m_stats;
+  public:
+    PSstatSenderGlobalAnomalyStatsPayload(GlobalAnomalyStats *stats): m_stats(stats){}
+    void add_json(nlohmann::json &into) const override{ 
+      nlohmann::json stats = m_stats->collect();
+      if(stats.size() > 0)
+	into["anomaly_stats"] = std::move(stats);
     }
   };
 

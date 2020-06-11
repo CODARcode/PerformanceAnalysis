@@ -1,8 +1,11 @@
 #pragma once
 
-#include "chimbuko/pserver/global_anomaly_stats.hpp"
 #include <thread>
 #include <atomic>
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <string>
+#include <vector>
 
 namespace chimbuko{
 
@@ -30,20 +33,6 @@ namespace chimbuko{
     virtual void process_callback(const std::string &packet, const std::string &returned) const{}
 
     virtual ~PSstatSenderPayloadBase(){}
-  };
-  /**
-   * @brief Payload object that returns the collected GlobalAnomalyStats data
-   */
-  class PSstatSenderGlobalAnomalyStatsPayload: public PSstatSenderPayloadBase{
-  private:    
-    GlobalAnomalyStats *m_stats;
-  public:
-    PSstatSenderGlobalAnomalyStatsPayload(GlobalAnomalyStats *stats): m_stats(stats){}
-    void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->collect();
-      if(stats.size() > 0)
-	into["anomaly_stats"] = std::move(stats);
-    }
   };
 
 
