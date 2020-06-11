@@ -14,6 +14,12 @@ cd -
 echo "Simple test"
 ./mainSimple
 
+echo "Stat sender test"
+echo "Wait for next tests for 5 seconds ..."
+sleep 5
+./run_stat_sender.sh
+
+
 echo "Parameter server test"
 echo "Wait for next tests for 5 seconds ..."
 sleep 5
