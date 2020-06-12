@@ -19,3 +19,19 @@ std::unordered_map<std::string, RunStats> GlobalCounterStats::get_stats() const{
   std::unordered_map<std::string, RunStats> out = m_counter_stats;
   return out;
 }
+
+nlohmann::json GlobalCounterStats::get_json_state() const
+{
+    nlohmann::json jsonObjects = nlohmann::json::array();
+    {
+        std::lock_guard<std::mutex> _(m_mutex);
+        for (auto pair: m_counter_stats)
+        {
+            nlohmann::json object;
+            object["counter"] = pair.first;
+	    object["stats"] = pair.second.get_json();
+            jsonObjects.push_back(object);
+        }
+    }
+    return jsonObjects;
+}

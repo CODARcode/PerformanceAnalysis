@@ -5,8 +5,8 @@
 using namespace chimbuko;
 
 
-PSstatSender::PSstatSender() 
-  : m_stat_sender(nullptr), m_stop_sender(false), m_bad(false)
+PSstatSender::PSstatSender(size_t send_freq) 
+  : m_stat_sender(nullptr), m_stop_sender(false), m_bad(false), m_send_freq(send_freq)
 {
 }
 
@@ -42,7 +42,8 @@ static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
 static void send_stat(std::string url, 
 		      std::atomic_bool& bStop, 
 		      const std::vector<PSstatSenderPayloadBase*> &payloads,
-		      std::atomic_bool &bad){
+		      std::atomic_bool &bad,
+		      size_t send_freq){
   try{
     curl_global_init(CURL_GLOBAL_ALL);
     
@@ -101,7 +102,7 @@ static void send_stat(std::string url,
 	  }
 	}
       }//json object has content
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(send_freq));
     }
   
 
@@ -122,7 +123,8 @@ void PSstatSender::run_stat_sender(std::string url)
         m_stat_sender = new std::thread(send_stat, url, 
 					std::ref(m_stop_sender), 
 					std::ref(m_payloads),
-					std::ref(m_bad));
+					std::ref(m_bad),
+					m_send_freq);
     }
 }
 

@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <chimbuko/util/RunStats.hpp>
 #include <chimbuko/net.hpp>
+#include <chimbuko/pserver/PSstatSender.hpp>
 
 namespace chimbuko{
 
@@ -27,6 +28,11 @@ namespace chimbuko{
      * @brief Return a copy of the internal counter statistics
      */
     std::unordered_map<std::string, RunStats> get_stats() const;
+    
+    /**
+     * @brief Serialize the state into a JSON object for sending to viz
+     */
+    nlohmann::json get_json_state() const;
 
   protected:
     mutable std::mutex m_mutex;
@@ -50,6 +56,19 @@ namespace chimbuko{
     }
   };
 
+  /**
+   * @brief Payload object for communicating counter data pserver->viz
+   */
+  class PSstatSenderGlobalCounterStatsPayload: public PSstatSenderPayloadBase{
+  private:    
+    GlobalCounterStats *m_stats;
+  public:
+    PSstatSenderGlobalCounterStatsPayload(GlobalCounterStats *stats): m_stats(stats){}
+    void add_json(nlohmann::json &into) const override{ 
+      nlohmann::json stats = m_stats->get_json_state();
+      into["counter_stats"] = std::move(stats);
+    }
+  };
 
 
 };

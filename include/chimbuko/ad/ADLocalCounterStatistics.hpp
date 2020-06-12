@@ -19,7 +19,7 @@ namespace chimbuko{
   class ADLocalCounterStatistics{
   public:
     ADLocalCounterStatistics(const int step,
-			     const std::unordered_set<std::string> *which_counters			     
+			     const std::unordered_set<std::string> *which_counters
 #ifdef _PERF_METRIC
 			     , RunMetric *perf = nullptr
 #endif			 		     

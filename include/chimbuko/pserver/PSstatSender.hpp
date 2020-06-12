@@ -42,8 +42,19 @@ namespace chimbuko{
    */
   class PSstatSender{
   public:
-    PSstatSender();
+    
+
+    /**
+     * @brief Constructpr
+     * @param send_freq The frequency (in milliseconds) at which sends are performed to the viz module
+     */
+    PSstatSender(size_t send_freq = 1000);
     ~PSstatSender();
+    
+    /**
+     * @brief Change the frequency (in milliseconds) at which sends are performed to the viz module. Must be set prior to calling run_stat_sender.
+     */
+    void set_send_freq(const size_t freq){ m_send_freq = freq; }
 
     /**
      * @brief Start sending global anomaly stats to the visualization module (curl)
@@ -68,6 +79,7 @@ namespace chimbuko{
     bool bad() const{ return m_bad == true; }
 
   private:
+    size_t m_send_freq; /**< Number of seconds between sends to viz*/
     // thread workder to periodically send anomaly statistics to web server, if it is available.
     std::thread     * m_stat_sender; 
     std::atomic_bool  m_stop_sender;

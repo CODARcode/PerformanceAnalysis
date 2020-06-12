@@ -1,6 +1,8 @@
 #include "chimbuko/pserver/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/global_counter_stats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/ad/ADLocalCounterStatistics.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
@@ -130,6 +132,64 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   EXPECT_EQ(stat_sender.bad(), false);
   EXPECT_EQ(calls,1); //after the first call the internal data are deleted, so no more data should be sent despite multiple further sends
 }
+
+
+
+
+namespace chimbuko{
+/**
+ * @brief A payload used to test the data sent by CURL is correctly formatted
+ */
+struct PSstatSenderGlobalCounterStatsCallbackPayload: public PSstatSenderGlobalCounterStatsPayload{
+  int *calls;
+  PSstatSenderGlobalCounterStatsCallbackPayload(GlobalCounterStats *stats, int *_calls): PSstatSenderGlobalCounterStatsPayload(stats), calls(_calls){}
+
+  bool do_fetch() const override{ return true; }
+  void process_callback(const std::string &packet, const std::string &returned) const override{
+    ++(*calls);
+    std::cout << "CALLBACK PROCESS" << std::endl;
+    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+    nlohmann::json p = nlohmann::json::parse(packet);
+    nlohmann::json r = nlohmann::json::parse(returned);
+
+    if(p != r) throw std::runtime_error("test failed");
+  }
+};
+
+}
+
+TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)
+{
+  std::string url = "http://0.0.0.0:5000/bouncejson";
+
+  std::string counter = "mYcOuNtEr";
+
+  std::unordered_set<std::string> which_counters = {counter};
+
+  ADLocalCounterStatistics cs(77, &which_counters);
+  
+  RunStats stats;
+  for(int i=0;i<100;i++) stats.push(double(i));
+
+  cs.setStats(counter, stats);
+  
+  GlobalCounterStats glob;
+  glob.add_data(cs.get_json_state().dump());
+
+  PSstatSender stat_sender(1000);
+  int calls = 0;
+  stat_sender.add_payload(new PSstatSenderGlobalCounterStatsCallbackPayload(&glob, &calls));
+  
+  stat_sender.run_stat_sender(url);
+  std::this_thread::sleep_for(std::chrono::milliseconds(5500));    
+  stat_sender.stop_stat_sender();  
+  EXPECT_EQ(stat_sender.bad(), false);
+  EXPECT_EQ(calls,6); //one immediately then 5 more
+}
+
+
+
 
 
 
