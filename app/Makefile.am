@@ -1,7 +1,7 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = ../src/libchimbuko.la -lstdc++fs 
 
-bin_PROGRAMS = driver pclient pclient_stats pserver pshutdown sstSinker sst_view
+bin_PROGRAMS = driver pclient pclient_stats pserver pshutdown sstSinker sst_view bpfile_replay
 
 driver_SOURCES = driver.cpp
 driver_LDADD = $(LDADD)
@@ -23,6 +23,10 @@ sstSinker_LDADD = $(LDADD)
 
 sst_view_SOURCES = sst_view.cpp
 sst_view_LDADD = $(LDADD)
+
+bpfile_replay_SOURCES = bpfile_replay.cpp
+bpfile_replay_LDADD = $(LDADD)
+
 
 if ENABLE_PROVDB
 bin_PROGRAMS += provdb_admin provdb_query
