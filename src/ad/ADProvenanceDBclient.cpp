@@ -111,7 +111,7 @@ void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const Prov
     sreq = &req->req;
   }
   
-  getCollection(type).store(entry.dump(), ids, sreq);
+  getCollection(type).store(entry.dump(), ids, false, sreq);
 }
 
 void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
@@ -136,7 +136,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
     sreq = &req->req;
   }
 
-  getCollection(type).store_multi(dump, ids, sreq); 
+  getCollection(type).store_multi(dump, ids, false, sreq); 
 }
 
 void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
@@ -164,7 +164,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, 
     sreq = &req->req;
   }
 
-  getCollection(type).store_multi(dump, ids, sreq); 
+  getCollection(type).store_multi(dump, ids, false, sreq); 
 }  
 
 
