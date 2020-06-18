@@ -35,9 +35,17 @@ WORKDIR /Downloads
 #Change the tag below to force docker build not to use cache
 RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
+
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -papi=/opt/papi \
+ && make -j$JOBS install
+
+RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
     -papi=/opt/papi \
  && make -j$JOBS install
 
@@ -61,5 +69,3 @@ ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
 
 #Set default options
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
-
-
