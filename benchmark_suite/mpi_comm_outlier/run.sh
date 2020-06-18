@@ -15,29 +15,29 @@ rm -rf profile.* tau-metrics* 0*
 admin=-1
 extra_args=""
 
-# if [ -x "$(command -v provdb_admin)" ]; then
-#     rm provdb.unqlite  provider.address
+if [ -x "$(command -v provdb_admin)" ]; then
+    rm provdb.unqlite  provider.address
 
-#     ip=$(hostname -i)
-#     port=1234
+    ip=$(hostname -i)
+    port=1234
 
-#     echo "Instantiating provenance database"
-#     provdb_admin ${ip}:${port} &
-#     admin=$!
+    echo "Instantiating provenance database"
+    provdb_admin ${ip}:${port} &
+    admin=$!
 
-#     sleep 1
-#     if ! [[ -f provider.address ]]; then
-# 	echo "Provider address file not created after 1 second"
-# 	exit 1
-#     fi
+    sleep 1
+    if ! [[ -f provider.address ]]; then
+	echo "Provider address file not created after 1 second"
+	exit 1
+    fi
 
-#     prov_add=$(cat provider.address)
-#     extra_args="-provdb_addr ${prov_add}"
-#     echo "Enabling provenance database with arg: ${extra_args}"
+    prov_add=$(cat provider.address)
+    extra_args="-provdb_addr ${prov_add}"
+    echo "Enabling provenance database with arg: ${extra_args}"
 
-# else
-#     echo "Not using provenance database"
-# fi
+else
+    echo "Not using provenance database"
+fi
 
 appdir=$(which pserver | sed 's/pserver//')
 
