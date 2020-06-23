@@ -2,7 +2,7 @@ FROM chimbuko/adios2:ubuntu18.04 AS ad-build
 
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 5_21_20_18_20" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 6_12_20_12_58" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
