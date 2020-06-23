@@ -1,6 +1,10 @@
 import time
 from mpi4py import MPI
 
-for i in range(10):
+def myfunc(sleep_time):
+    time.sleep(sleep_time)
     print("Hello world")
-    time.sleep(1)
+
+for i in range(15):
+    myfunc( float(i)/10 )
+
