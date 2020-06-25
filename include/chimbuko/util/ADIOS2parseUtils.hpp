@@ -194,6 +194,26 @@ public:
     }
     return os.str();
   }
+
+  /**
+   * @brief Get the value at given coordinate (non-const)
+   */
+  inline T & operator()(const std::vector<unsigned long> &coord){
+    return val[map(coord)];
+  }
+
+  /**
+   * @brief Get the value at given coordinate (const)
+   */
+  inline const T & operator()(const std::vector<unsigned long> &coord) const{
+    return val[map(coord)];
+  }
+
+  /**
+   * @brief Get the shape of the tensor
+   */
+  const std::vector<unsigned long> & getShape() const{ return shape; }
+
 };
 
 
