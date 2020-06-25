@@ -72,6 +72,7 @@ namespace chimbuko {
     MessageType type() const{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
+      //Response message is a copy of the updated statistics in JSON form
       response.set_msg(m_param->update(message.buf(), true), false);
     }	
   };

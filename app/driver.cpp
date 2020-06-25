@@ -45,6 +45,11 @@ void printHelp(){
 }
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
+  if(argc < 5){
+    std::cerr << "Expected at least 5 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix> <output (ip/dir)>" << std::endl;
+    exit(-1);
+  }
+
   // -----------------------------------------------------------------------
   // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
   // -----------------------------------------------------------------------
@@ -92,7 +97,7 @@ int main(int argc, char ** argv){
     return 0;
   }
       
-  MPI_Init(&argc, &argv);
+  assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
   int world_rank, world_size;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);

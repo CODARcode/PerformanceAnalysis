@@ -57,6 +57,8 @@ int main(int argc, char** argv){
   io.SetParameters({
 		       {"MarshalMethod", "BP"},{"DataTransport", "RDMA"}
     });
+
+  std::cout << "sst_view is connecting to file " << filename << " on mode " << (offline ? "BPFile" : "SST") << std::endl;
   
   eng = io.Open(filename, adios2::Mode::Read);
   

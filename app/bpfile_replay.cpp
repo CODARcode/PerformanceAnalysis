@@ -15,7 +15,12 @@ using namespace chimbuko;
 
 int main(int argc, char** argv){
   MPI_Init(&argc, &argv);
-  assert(argc == 3);
+  if(argc != 3){
+    std::cout << "Usage: bpfile_replay <input BPfile filename> <output step freq (ms)>\n"
+	      << "Output will be on SST under the same filename ${input BPfile filename}. The temporary .sst file created will thus be ${input BPfile filename}.sst"
+	      << std::endl;
+    exit(0);
+  }
   std::string filename = argv[1];
   size_t step_freq_ms = strToAny<size_t>(argv[2]);
 

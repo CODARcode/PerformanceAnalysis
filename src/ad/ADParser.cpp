@@ -1,4 +1,5 @@
 #include "chimbuko/ad/ADParser.hpp"
+#include "chimbuko/verbose.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -23,6 +24,7 @@ ADParser::ADParser(std::string inputFile, std::string engineType, int openTimeou
 
   // open file
   // for sst engine, is the adios2 internally blocked here until *.sst file is found?  
+  VERBOSE(std::cout << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl);
   m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
     
   m_opened = true;
@@ -123,7 +125,13 @@ void ADParser::update_attributes() {
     }
 
     //Get the key
-    int key = std::stoi(name.substr(name.find(" ")));
+    size_t space_pos = name.find(" ");
+    if(space_pos == std::string::npos){
+      std::cout << "WARNING: Encountered malformed attribute (missing space) \"" << name << "\"" << std::endl;
+      continue;
+    }
+
+    int key = std::stoi(name.substr(space_pos));
 
     //Get the map
     std::unordered_map<int, std::string>* m;
