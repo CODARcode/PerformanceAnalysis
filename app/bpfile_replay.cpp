@@ -9,11 +9,17 @@
 #include <regex>
 #include <chimbuko/util/string.hpp>
 #include <chimbuko/util/ADIOS2parseUtils.hpp>
+#include <chimbuko/verbose.hpp>
 
 using namespace chimbuko;
 
 
 int main(int argc, char** argv){
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+    std::cout << "Enabling verbose debug output" << std::endl;
+    Verbose::set_verbose(true);
+  }       
+
   MPI_Init(&argc, &argv);
   if(argc != 3){
     std::cout << "Usage: bpfile_replay <input BPfile filename> <output step freq (ms)>\n"
@@ -65,7 +71,7 @@ int main(int argc, char** argv){
       const std::map<std::string, adios2::Params> attributes = io_in.AvailableAttributes(); 
       for (const auto attributePair: attributes){
 	if(!attribs_seen.count(attributePair.first)){
-	  std::cout << "Defining attribute " << attributePair.first << std::endl;
+	  VERBOSE(std::cout << "Defining attribute " << attributePair.first << std::endl);
 	  io_out.DefineAttribute<std::string>(attributePair.first, attributePair.second.find("Value")->second);
 	  attribs_seen.insert(attributePair.first);
 	}
@@ -74,10 +80,10 @@ int main(int argc, char** argv){
       //Get new variables
       const std::map<std::string, adios2::Params> variables = io_in.AvailableVariables(); 
       for (const auto variablePair: variables){
-	std::cout << "Found variable " << variablePair.first << std::endl;
+	VERBOSE(std::cout << "Found variable " << variablePair.first << std::endl);
 	varBase* var = parseVariable(variablePair.first, variablePair.second, io_in, rd);
 	if(var != NULL){
-	  std::cout << " Value : " << var->value() << std::endl;
+	  VERBOSE(std::cout << " Value : " << var->value() << std::endl);
 	  var->put(io_out, wr);
 	  delete var;
 	}
