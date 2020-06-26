@@ -8,7 +8,7 @@ COPY --from=mochi /root/.spack /root/.spack
 
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 5_21_20_18_20" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 6_25_20_17_09" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
