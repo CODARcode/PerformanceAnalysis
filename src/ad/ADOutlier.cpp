@@ -75,6 +75,7 @@ Anomalies ADOutlierSSTD::run(int step) {
   if (m_execDataMap == nullptr) return outliers;
 
   //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
+  //Python scripts also appear to take longer executing a function the first time
   //This is worked around by ignoring the first time a function is encountered (per device)
   //Set this environment variable to disable the workaround
   bool cuda_jit_workaround = true;

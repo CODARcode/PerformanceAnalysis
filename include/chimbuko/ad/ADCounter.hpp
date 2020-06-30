@@ -72,6 +72,6 @@ namespace chimbuko {
     CounterDataListMap_p_t* m_counters; /**< process/rank/thread -> List of counters */
     const std::unordered_map<int, std::string> *m_counterMap; /**< counter index -> counter name map */
     CounterTimeStampMap_p_t m_timestampCounterMap; /**< process/rank/thread -> *Ordered* map of timestamp to counter list iterator (flushed with flushCounters) */
-    CountersByIndex_t m_countersByIdx; /**< Counter index -> all instances of this counter in the timestep (flished with flushCounters) */
+    CountersByIndex_t m_countersByIdx; /**< Counter index -> all instances of this counter in the timestep (flushed with flushCounters) */
   };
 };

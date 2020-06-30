@@ -1,3 +1,4 @@
+#include <limits>
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 
@@ -90,6 +91,7 @@ void Chimbuko::init_event(){
   m_event = new ADEvent(m_params.verbose);
   m_event->linkFuncMap(m_parser->getFuncMap());
   m_event->linkEventType(m_parser->getEventType());
+  m_event->linkCounterMap(m_parser->getCounterMap());
 }
 
 void Chimbuko::init_net_client(){
@@ -196,88 +198,105 @@ bool Chimbuko::parseInputStep(int &step,
   return true;
 }
 
+/**
+ * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest
+ * @param arrays A vector of array pointers
+ * @param ts_offsets The elements of the arrays that correspond to the timestamp
+ *
+ * Some (but not all) arrays can be nullptr
+ * If there is a tie between two entries, the array that enters first (lowest index) in the input vectors is chosen
+ */
+const unsigned long* getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets){
+  if(ts_offsets.size() != arrays.size()) throw std::runtime_error("Input parameter vectors have different sizes!");
+  unsigned long earliest_ts = std::numeric_limits<unsigned long>::max();
+  int earliest = -1;
+  for(int i=0;i<arrays.size();i++){
+    if(arrays[i] != nullptr &&
+       arrays[i][ts_offsets[i]] < earliest_ts){
+      earliest = i;
+      earliest_ts = arrays[i][ts_offsets[i]];
+    }
+  }
+  if(earliest == -1) throw std::runtime_error("Failed to determine earliest entry");
+  return arrays[earliest];  
+}
+
+
+std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
+					       ADParser * parser, int rank){
+  // Create event
+  Event_t ev(data, t, idx, id);
+
+  // Validate the event
+  // NOTE: in SST mode with large rank number (>=10), sometimes I got
+  // very large number of pid, rid and tid. This issue was also observed in python version.
+  // In BP mode, it doesn't have such problem. As temporal solution, we skip those data and
+  // it doesn't cause any problems (e.g. call stack violation). Need to consult with 
+  // adios team later
+  bool good = true;
+
+  if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
+    std::cout << "\n***** Invalid event *****\n";
+    //std::cout << "[" << rank << "] " << ev << std::endl;
+    if(ev.valid()){
+      std::string event_type("UNKNOWN"), func_name("UNKNOWN");
+      
+      auto eit = parser->getEventType()->find(ev.eid());
+      if(eit != parser->getEventType()->end())
+	event_type = eit->second;
+      
+      auto fit = parser->getFuncMap()->find(ev.fid());
+      if(fit != parser->getFuncMap()->end())
+	func_name = fit->second;
+      
+      std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
+    }else std::cerr << "Data pointer is null" << std::endl;
+    
+    good = false;
+  }
+  return {ev, good};
+}
+
+
+
+
+
 //Extract parsed events and insert into the event manager
 void Chimbuko::extractEvents(int rank, int step){
-  size_t idx_funcData=0, idx_commData = 0;
+  //During the timestep a number of function and perhaps also comm and counter events occurred
+  //The parser stores these events separately in order of their timestamp
+  //We want to iterate through these events in order of their timestamp in order to correlate them
+  size_t idx_funcData=0, idx_commData = 0, idx_counterData = 0;
   const unsigned long *funcData = nullptr;
   const unsigned long *commData = nullptr;
+  const unsigned long *counterData = nullptr;
 
-  //During the timestep a number of function and perhaps also comm events occurred
-  //The parser stores these events separately in order of their timestamp
-  //We want to generate a combined list of both function and comm events ordered by their timestamp	
   funcData = m_parser->getFuncData(idx_funcData);
   commData = m_parser->getCommData(idx_commData);
-  
-  while (funcData != nullptr || commData != nullptr){
+  counterData = m_parser->getCounterData(idx_counterData);
+
+  while (funcData != nullptr || commData != nullptr || counterData != nullptr){
+    //This functionality should really be part of the event manager
     // Determine event to handle
     // - if both, funcData and commData, are available, select one that occurs earlier.
     // - priority is on funcData because communication might happen within a function.
     // - in the future, we may not need to process on commData (i.e. exclude it from execution data).
-    const unsigned long* data = nullptr;
-    bool is_func_event = true;
-    if ( (funcData != nullptr && commData == nullptr) ) {
-      data = funcData;
-      is_func_event = true;
-    }
-    else if (funcData == nullptr && commData != nullptr) {
-      data = commData;
-      is_func_event = false;
-    }
-    else if (funcData[FUNC_IDX_TS] <= commData[COMM_IDX_TS]) {
-      data = funcData;
-      is_func_event = true;
-    }
-    else {
-      data = commData;
-      is_func_event = false;
-    }
+    const unsigned long *data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
 
-    // Create event
-    const Event_t ev = Event_t(
-			       data,
-			       (is_func_event ? EventDataType::FUNC: EventDataType::COMM),
-			       (is_func_event ? idx_funcData: idx_commData),
-			       (is_func_event ? generate_event_id(rank, step, idx_funcData): "event_id")
-			       );
-    // std::cout << ev << std::endl;
-
-    // Validate the event
-    // NOTE: in SST mode with large rank number (>=10), sometimes I got
-    // very large number of pid, rid and tid. This issue was also observed in python version.
-    // In BP mode, it doesn't have such problem. As temporal solution, we skip those data and
-    // it doesn't cause any problems (e.g. call stack violation). Need to consult with 
-    // adios team later
-    if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
-      std::cout << "\n***** Invalid event *****\n";
-      //std::cout << "[" << rank << "] " << ev << std::endl;
-      if(ev.valid()){
-	std::string event_type("UNKNOWN"), func_name("UNKNOWN");
-
-	auto eit = m_parser->getEventType()->find(ev.eid());
-	if(eit != m_parser->getEventType()->end())
-	  event_type = eit->second;
-	
-	auto fit = m_parser->getFuncMap()->find(ev.fid());
-	if(fit != m_parser->getFuncMap()->end())
-	  func_name = fit->second;
-	
-	std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
-      }else std::cerr << "Data pointer is null" << std::endl;
+    if(data == funcData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, generate_event_id(rank, step, idx_funcData), m_parser, rank);
+      if(evp.second) m_event->addFunc(evp.first);
+      funcData = m_parser->getFuncData(++idx_funcData);
+    }else if(data == commData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, "event_id", m_parser, rank);
+      if(evp.second) m_event->addComm(evp.first);
+      commData = m_parser->getCommData(++idx_commData);
+    }else if(data == counterData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, "event_id", m_parser, rank);
+      if(evp.second) m_event->addCounter(evp.first);
+      counterData = m_parser->getCounterData(++idx_counterData);
     }else{
-      EventError err = m_event->addEvent(ev);
-      // if (err == EventError::CallStackViolation)
-      // {
-      //     std::cout << "\n***** Call stack violation *****\n";
-      // }
-    }
-    
-    // go next event
-    if (is_func_event) {
-      idx_funcData++;
-      funcData = m_parser->getFuncData(idx_funcData);
-    } else {
-      idx_commData++;
-      commData = m_parser->getCommData(idx_commData);
+      throw std::runtime_error("Unexpected pointer");
     }
   }//while loop over func and comm data
 }
@@ -356,7 +375,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
     frames++;
 
 #ifdef ENABLE_PROVDB
+    //Generate anomaly provenance for detected anomalies and send to DB
     extractAndSendProvenance(anomalies);
+    
+    //Send any new metadata to the DB
     sendNewMetadataToProvDB();
 #endif	
 

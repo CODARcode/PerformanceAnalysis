@@ -43,14 +43,36 @@ bool ExecData_t::update_exit(const Event_t& ev)
     return true;
 }
 
-bool ExecData_t::add_message(CommData_t& comm) {
+bool ExecData_t::add_message(const CommData_t& comm, ListEnd end) {
     if ((long)comm.ts() < m_entry || (long)comm.ts() > m_exit)
         return false;
-    comm.set_exec_key(m_id);
-    m_messages.push_back(comm);
+    if(end == ListEnd::Back){
+      m_messages.push_back(comm);
+      m_messages.back().set_exec_key(m_id);
+    }else{
+      m_messages.push_front(comm);
+      m_messages.front().set_exec_key(m_id);
+    }
+
     m_n_messages++;
     return true;
 }
+
+bool ExecData_t::add_counter(const CounterData_t& counter, ListEnd end) {
+    if ((long)counter.get_ts() < m_entry || (long)counter.get_ts() > m_exit)
+        return false;
+    if(end == ListEnd::Back){
+      m_counters.push_back(counter);
+      m_counters.back().set_exec_key(m_id);
+    }else{
+      m_counters.push_front(counter);
+      m_counters.front().set_exec_key(m_id);
+    }
+
+    return true;
+}
+
+
 
 bool ExecData_t::is_same(const ExecData_t& other) const {
     if (!(m_id == other.m_id)) return false;

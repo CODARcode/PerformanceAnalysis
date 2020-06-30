@@ -19,6 +19,21 @@ namespace chimbuko {
    */
   DEF_MAP3UL(CommStackMap, CommStack_t); 
   
+
+
+  /**
+   * @brief a stack of CounterData_t
+   * 
+   */
+  typedef std::stack<CounterData_t> CounterStack_t;
+
+  /**
+   * @brief map of process, rank, thread -> Counterstack_t
+   */
+  DEF_MAP3UL(CounterStackMap, CounterStack_t); 
+
+
+
   /**
    * @brief list of function calls (ExecData_t) in entry time order
    * 
@@ -37,6 +52,7 @@ namespace chimbuko {
   DEF_MAP3UL(CallListMap, CallList_t);
   
 
+
   /**
    * @brief function call stack
    */
@@ -48,6 +64,7 @@ namespace chimbuko {
   DEF_MAP3UL(CallStackMap, CallStack_t);
 
 
+
   /**
    * @brief hash map of a collection of ExecData_t per function
    * 
@@ -57,8 +74,11 @@ namespace chimbuko {
   typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
 
   /**
-   * @brief Event manager
+   * @brief Event manager whose role is to correlate function entry and exit events and associate other counters with the function call
    * 
+   * When a function call with ENTRY signature is inserted, the event is placed on the call stack for that thread. Events associated with MPI comms and counters are also placed 
+   * on their respective stacks. When a function call with EXIT signature on the same thread is inserted, a complete call is generated and placed in the call list, and all comm and 
+   * counter events on their stacks are associated with that call.
    */
   class ADEvent {
 
@@ -90,6 +110,13 @@ namespace chimbuko {
     void linkFuncMap(const std::unordered_map<int, std::string>* m) { m_funcMap = m; }
 
     /**
+     * @brief copy a pointer that is externally defined function map object
+     * 
+     * @param m counter map object
+     */
+    void linkCounterMap(const std::unordered_map<int, std::string>* m) { m_counterMap = m; }
+
+    /**
      * @brief Get the Func Map object
      * 
      * @return const std::unordered_map<int, std::string>* pointer to function map object
@@ -102,6 +129,15 @@ namespace chimbuko {
      * @return const std::unordered_map<int, std::string>* pointer to event type object
      */
     const std::unordered_map<int, std::string>* getEventType() const { return m_eventType; }
+
+
+    /**
+     * @brief Get the Counter name object
+     * 
+     * @return const std::unordered_map<int, std::string>* pointer to counter name object
+     */
+    const std::unordered_map<int, std::string>* getCounterMap() const { return m_counterMap; }
+
 
     /**
      * @brief Get the Exec Data Map object
@@ -157,6 +193,15 @@ namespace chimbuko {
     EventError addComm(const Event_t& event);
 
     /**
+     * @brief add a counter event
+     * 
+     * @param event counter event
+     * @return EventError event error code
+     */
+    EventError addCounter(const Event_t& event);
+
+
+    /**
      * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
      * 
      * @return CallListMap_p_t* trimed function calls
@@ -184,10 +229,23 @@ namespace chimbuko {
     const std::unordered_map<int, std::string> *m_eventType;
 
     /**
+     * @brief pointer to map of counter index to counter name string
+     * 
+     */
+    const std::unordered_map<int, std::string> *m_counterMap;
+
+
+    /**
      * @brief communication event stack. Once a function call has exited, all comms events are associated with that call and the stack is cleared
      * 
      */
     CommStackMap_p_t  m_commStack;
+
+    /**
+     * @brief map of process,rank,thread to counter events. Once a function call has exited, all counter events are associated with that call and the stack is cleaned.
+     */
+    CounterStackMap_p_t m_counterStack;
+
     /**
      * @brief map of process,rank,thread to the current function call stack. As functions exit they are popped from the stack
      * 

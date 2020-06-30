@@ -100,6 +100,36 @@ namespace chimbuko{
   }
     
 
+  /**
+   * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+   */
+  Event_t createCommEvent_t(unsigned long pid,
+			    unsigned long rid,
+			    unsigned long tid,
+			    unsigned long eid,
+			    unsigned long comm_tag,
+			    unsigned long comm_partner,
+			    unsigned long comm_bytes,
+			    unsigned long ts){
+    static size_t event_idx = -1;
+    event_idx++;
+    std::stringstream ss; ss << "comm_event" << event_idx;
+  
+    static std::list< std::array<unsigned long, COMM_EVENT_DIM> > todelete; //make sure they get deleted eventually
+    std::array<unsigned long, COMM_EVENT_DIM> ev;
+    ev[IDX_P] = pid;
+    ev[IDX_R] = rid;
+    ev[IDX_T] = tid;
+    ev[IDX_E] = eid;
+    ev[COMM_IDX_TAG] = comm_tag;
+    ev[COMM_IDX_PARTNER] = comm_partner;
+    ev[COMM_IDX_BYTES] = comm_bytes;
+    ev[COMM_IDX_TS] = ts;
+    todelete.push_back(ev);
+
+    return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, ss.str());
+  }
+
 
 
   //A mock class that acts as the parameter server

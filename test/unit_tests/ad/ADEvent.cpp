@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADEvent.hpp>
 #include "gtest/gtest.h"
+#include "../unit_test_common.hpp"
 
 #include<array>
 #include<vector>
@@ -250,4 +251,78 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
 
   EXPECT_EQ( data.get_runtime(), time );
   
+}
+
+TEST(ADEvent, associatesCommsAndCountersWithFunc){
+  ADEvent event_man;
+  std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
+  std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"} };
+  std::unordered_map<int, std::string> counter_names = { {0,"MYCOUNTER"} };
+  event_man.linkEventType(&event_types);
+  event_man.linkFuncMap(&func_names);
+  event_man.linkCounterMap(&counter_names);
+  int ENTRY = 0;
+  int EXIT = 1;
+  int SEND = 2;
+  int RECV = 3;
+  int MYCOUNTER = 0;
+  int MYFUNC = 0;
+
+  //Generate some ordered events. Put a counter and comm event before and after the function execution also to ensure that it doesn't pick those up
+
+  // Event_t createCounterEvent_t(unsigned long pid,
+  // 					 unsigned long rid,
+  // 					 unsigned long tid,
+  // 					 unsigned long counter_id,
+  // 					 unsigned long value,
+  // 					 unsigned long ts){
+
+  // Event_t createFuncEvent_t(unsigned long pid,
+  // 				      unsigned long rid,
+  // 				      unsigned long tid,
+  // 				      unsigned long eid,
+  // 				      unsigned long func_id,
+  // 				      unsigned long ts){
+
+  // Event_t createCommEvent_t(unsigned long pid,
+  // 			    unsigned long rid,
+  // 			    unsigned long tid,
+  // 			    unsigned long eid,
+  // 			    unsigned long comm_tag,
+  // 			    unsigned long comm_partner,
+  // 			    unsigned long comm_bytes,
+  // 			    unsigned long ts){
+  int pid=0, tid=0, rid=0;
+
+  std::vector<Event_t> events = {
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1234, 100),
+    createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110),
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1256, 130),
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1267, 140),
+    createCommEvent_t(pid, rid, tid, SEND, 1, 99, 1024, 150),
+    createCommEvent_t(pid, rid, tid, RECV, 2, 99, 1024, 160),
+    createCounterEvent_t(pid, rid, tid+1, MYCOUNTER, 1267, 170),  //not on same thread
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180),
+    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190)
+  };
+  for(int i=0;i<events.size();i++)
+    event_man.addEvent(events[i]);
+
+  const ExecDataMap_t &func_calls_by_idx = *event_man.getExecDataMap();
+  EXPECT_NE(func_calls_by_idx.find(MYFUNC), func_calls_by_idx.end());
+  
+  const std::vector<CallListIterator_t> &myfunc_calls = func_calls_by_idx.find(MYFUNC)->second;
+  EXPECT_EQ(myfunc_calls.size(), 1);
+
+  const ExecData_t &myfunc_exec = *myfunc_calls[0];
+  std::string exec_id = myfunc_exec.get_id();
+
+  EXPECT_EQ(myfunc_exec.get_funcname(), "MYFUNC");
+  EXPECT_EQ(myfunc_exec.get_n_message(), 2);
+  EXPECT_EQ(myfunc_exec.get_messages()[0].ts(), 150);
+  EXPECT_EQ(myfunc_exec.get_messages()[0].get_exec_key(), exec_id);
+  EXPECT_EQ(myfunc_exec.get_n_counter(), 2);
+  EXPECT_EQ(myfunc_exec.get_counters()[0].get_ts(), 130);
+  EXPECT_EQ(myfunc_exec.get_counters()[0].get_exec_key(), exec_id);
 }

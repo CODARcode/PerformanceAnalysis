@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <deque>
 #include <nlohmann/json.hpp>
 
 namespace chimbuko {
@@ -179,11 +180,16 @@ public:
     unsigned long tar() const { return m_tar; }
 
     /**
-     * @brief Set the execution key id (i.e. where this communication event occurs)
+     * @brief Set the execution key id (i.e. where this communication event occurs). This is equal to the "id" string associated with a parent ExecData_t object
      * 
      * @param key execution id
      */
     void set_exec_key(std::string key) { m_execkey = key; }
+
+    /**
+     * @brief Get the execution key id. This is equal to the "id" string associated with a parent ExecData_t object
+     */
+    const std::string & get_exec_key() const { return m_execkey; }
 
     /**
      * @brief compare two communication data
@@ -273,6 +279,18 @@ private:
      */
     unsigned long get_counterid() const{ return m_cid; }
 
+    /**
+     * @brief Set the execution key id (i.e. where this counter event occurs). This is equal to the "id" string associated with a parent ExecData_t object
+     * 
+     * @param key execution id
+     */
+    void set_exec_key(std::string key) { m_execkey = key; }
+
+    /**
+     * @brief Get the execution key id. This is equal to the "id" string associated with a parent ExecData_t object
+     */
+    const std::string & get_exec_key() const { return m_execkey; }
+
     private:
     std::string m_countername;             /**< counter name */
     unsigned long 
@@ -282,6 +300,7 @@ private:
       m_cid,                          /**< counted id */
       m_value,                        /**< counter value */
       m_ts;                           /**< counter timestamp */
+    std::string m_execkey;              /**< execution key (or id) where this counter event occurs */
   };
 
 
@@ -368,7 +387,12 @@ public:
     /**
      * @brief Get a list of communication data occured in this execution data
      */
-    std::vector<CommData_t>& get_messages() { return m_messages; }
+    const std::deque<CommData_t>& get_messages() const{ return m_messages; } 
+
+    /**
+     * @brief Get a list of counter events that occured in this execution data
+     */
+    const std::deque<CounterData_t>& get_counters() const{ return m_counters; }
 
     /**
      * @brief Get the number of communication events
@@ -378,6 +402,11 @@ public:
      * @brief Get the number of childrent functions
      */
     unsigned long get_n_children() const { return m_n_children; }
+
+    /**
+     * @brief Get the number of counter
+     */
+    unsigned long get_n_counter() const { return m_counters.size(); }
 
     /**
      * @brief Set the label 
@@ -418,13 +447,25 @@ public:
      */
     void inc_n_children() { m_n_children++; }
     /**
-     * @brief add communication data
+     * @brief add communication data to one end of the message queue
      * 
      * @param comm communication event occured in this execution
+     * @param end add to which end of the deque
      * @return true no errors
      * @return false invalid communication event
      */
-    bool add_message(CommData_t& comm);
+    bool add_message(const CommData_t& comm, ListEnd end = ListEnd::Back);
+
+    /**
+     * @brief add counter data
+     * 
+     * @param counter counter event occurred in this execution
+     * @param end add to which end of the deque
+     * @return true no errors
+     * @return false invalid communication event
+     */
+    bool add_counter(const CounterData_t& count, ListEnd end = ListEnd::Back);
+
 
     /**
      * @brief compare with other execution
@@ -460,7 +501,8 @@ private:
     std::string m_parent;                /**< parent execution */
     unsigned long m_n_children;          /**< the number of childrent executions */
     unsigned long m_n_messages;          /**< the number of messages */
-    std::vector<CommData_t> m_messages;  /**< a vector of all messages */
+    std::deque<CommData_t> m_messages;  /**< a vector of all messages */
+    std::deque<CounterData_t> m_counters; /**< a vector of all counters */
 };
 
 

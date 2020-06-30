@@ -4,7 +4,7 @@
 using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose) 
-  : m_funcMap(nullptr), m_eventType(nullptr), m_verbose(verbose) 
+  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose) 
 {
 
 }
@@ -21,6 +21,7 @@ EventError ADEvent::addEvent(const Event_t& event) {
     {
     case EventDataType::FUNC: return addFunc(event);
     case EventDataType::COMM: return addComm(event);    
+    case EventDataType::COUNT: return addCounter(event);    
     default: return EventError::UnknownEvent;
     }
 }
@@ -106,7 +107,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
       return EventError::CallStackViolation;
     }
     //Remove the object from the stack (it still lives in the CallList)
-    cs.pop();
+    cs.pop(); //I'm surprised this doesn't invalidate the iterator
     //Tell the former parent function to subtract the child runtime from its exclusive runtime 
     if (!cs.empty()) {
       cs.top()->update_exclusive(it->get_runtime());
@@ -115,9 +116,17 @@ EventError ADEvent::addFunc(const Event_t& event) {
     //Associate all comms events on the stack with the call object
     CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
     while (!comm.empty()) {
-      if (!it->add_message(comm.top()))
+      if (!it->add_message(comm.top(), ListEnd::Front))    //stack access is reverse time order!
 	break;
       comm.pop();
+    }
+
+    //Associate all counter events on the stack with the call object
+    CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
+    while (!count.empty()) {
+      if (!it->add_counter(count.top(), ListEnd::Front))
+	break;
+      count.pop();
     }
 
     //Add the now complete event to the map
@@ -150,6 +159,23 @@ EventError ADEvent::addComm(const Event_t& event) {
     
   return EventError::OK;
 }
+
+EventError ADEvent::addCounter(const Event_t& event){
+  if (m_counterMap == nullptr)
+    return EventError::UnknownEvent;
+
+  //Maybe add a filter to only include select counters
+  
+  int eid = event.counter_id();
+  auto it = m_counterMap->find(eid);
+  if (it == m_counterMap->end())
+    return EventError::UnknownEvent;
+  
+  std::string counterName = it->second;
+  CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
+  cs.push(CounterData_t(event, counterName));
+}
+
 
 template <typename T>
 static unsigned long nested_map_size(const T& m) {

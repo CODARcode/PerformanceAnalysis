@@ -195,6 +195,17 @@ enum class EventDataType {
 
 
 /**
+ * @brief Which end of a list/deque
+ * 
+ */
+enum class ListEnd {
+    Back = 0,
+    Front = 1
+};
+
+
+
+/**
  * @brief Macro to generate a 3-level map of unsigned long to objects of type BASE. The naming convention for the map levels are ${NAME}_p_t, ${NAME}_r_t, ${NAME}_t_t
  */
 #define DEF_MAP3UL(NAME, BASE) \
