@@ -323,11 +323,30 @@ std::vector<Event_t> ADParser::getEvents(const int rank) const{
 
   while (funcData != nullptr || commData != nullptr || counterData != nullptr){
     // Determine event to handle
-    // - if both, funcData and commData, are available, select one that occurs earlier.
-    // - priority is on funcData because communication might happen within a function.
-    // - in the future, we may not need to process on commData (i.e. exclude it from execution data).
-    const unsigned long *data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
+    //If multiple events have the same timestamp and one is a function entry/exit, we want the entry to be inserted first and the exit last
+    //such that the comm/counter events are correctly associated with the function
 
+    //Determine what kind of func event it is (if !nullptr)
+    static const int ENTRY(0), EXIT(1), NA(2);
+    int func_event_type = NA;
+    if(funcData != nullptr){
+      auto it = m_eventType.find(funcData[IDX_E]);
+      if(it != m_eventType.end()){
+	if(it->second == "ENTRY") func_event_type = ENTRY;
+	else if(it->second == "EXIT") func_event_type = EXIT;
+      }
+    }
+
+    const unsigned long *data;
+    //For entry event, funcData takes highest priority
+    if(func_event_type == ENTRY){
+      data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
+    }else{    
+      //Otherwise funcData takes lowest priority
+      data = getEarliest( {commData, counterData, funcData}, {COMM_IDX_TS, COUNTER_IDX_TS, FUNC_IDX_TS} );
+    }
+
+    //Create and insert the event
     if(data == funcData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
 							   generate_event_id(rank, step, idx_funcData), rank);

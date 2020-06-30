@@ -313,7 +313,6 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
   EXPECT_EQ(err, false);
 }
 
-
 //Events same up to id string
 bool same_up_to_id_string(const Event_t &l, const Event_t &r){
   if(r.type() != l.type() || r.idx() != l.idx()) return false;
@@ -340,21 +339,24 @@ TEST(ADParserTest, eventsOrderedCorrectly){
 
   std::vector<Event_t> events = {
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1234, 100),
-    createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110),
-    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 110),
+    createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110), //Same time as entry. Should be included in function. For this to happen it has to appear in the ordering after func entry
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1256, 130),
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1267, 140),
     createCommEvent_t(pid, rid, tid, SEND, 1, 99, 1024, 150),
     createCommEvent_t(pid, rid, tid, RECV, 2, 99, 1024, 160),
     createCounterEvent_t(pid, rid, tid+1, MYCOUNTER, 1267, 170),  //not on same thread
-    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180),
-    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190)
+    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 180), //Same time as exit. Should be included in function. For this to happen it has to appear in the ordering before func exit
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180)
   };
 
   ADParser parser("","BPFile");
   parser.setFuncDataCapacity(100);
   parser.setCommDataCapacity(100);
   parser.setCounterDataCapacity(100);
+  parser.setFuncMap(func_names);
+  parser.setEventTypeMap(event_types);
+  parser.setCounterMap(counter_names);
 
   for(int i=0;i<events.size();i++){
     if(events[i].type() == EventDataType::FUNC)

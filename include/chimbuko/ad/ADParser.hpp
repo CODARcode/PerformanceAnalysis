@@ -216,6 +216,20 @@ namespace chimbuko {
      */
     void setCounterDataCapacity(size_t cap){ m_counter_timestamps.reserve(cap*COUNTER_EVENT_DIM); }
 
+    /**
+     * @brief Set the function index->name map for testing
+     */
+    void setFuncMap(const std::unordered_map<int, std::string> &m){ m_funcMap = m; }
+
+    /**
+     * @brief Set the function event index -> event type  map for testing
+     */
+    void setEventTypeMap(const std::unordered_map<int, std::string> &m){ m_eventType = m; }
+
+    /**
+     * @brief Set the counter index->name map for testing
+     */
+    void setCounterMap(const std::unordered_map<int, std::string> &m){ m_counterMap = m; }
 
   private:
     /**
