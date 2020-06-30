@@ -117,9 +117,26 @@ public:
     friend bool operator>(const Event_t& lhs, const Event_t& rhs);
 
     /**
+     * @brief Equivalence operation
+     *
+     * Note the underlying array pointers can be different providing the values are identical
+     */
+    bool operator==(const Event_t &r) const;
+
+    /**
      * @brief Get the json object of this event object
      */
     nlohmann::json get_json() const;
+  
+    /**
+     * @brief Return the pointer to the underlying data
+     */
+    const unsigned long* get_ptr() const{ return m_data; }
+
+    /**
+     * @brief Get the length of the underlying array
+     */
+    int get_data_len() const;
 
 private:
     const unsigned long * m_data;   /**< pointer to raw performance trace data vector */

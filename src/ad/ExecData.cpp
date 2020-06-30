@@ -191,6 +191,29 @@ unsigned long Event_t::counter_value() const {
 }
 
 
+int Event_t::get_data_len() const{
+  int len;
+  switch(type()){
+  case EventDataType::FUNC:
+    len = FUNC_EVENT_DIM; break;
+  case EventDataType::COMM:
+    len = COMM_EVENT_DIM; break;
+  case EventDataType::COUNT:
+    len = COUNTER_EVENT_DIM; break;
+  default:
+    throw std::runtime_error("Invalid EventDataType");
+  }
+  return len;
+}
+
+bool Event_t::operator==(const Event_t &r) const{
+  if(r.m_t != m_t || r.m_id != m_id || r.m_idx != m_idx) return false;
+  int len = get_data_len();
+  for(int i=0;i<len;i++) if(m_data[i] != r.m_data[i]) return false;
+  return true;
+}
+
+
 bool chimbuko::operator<(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() < rhs.idx();
     return lhs.ts() < rhs.ts();

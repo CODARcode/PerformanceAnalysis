@@ -170,10 +170,52 @@ namespace chimbuko {
 
     
     /**
-     * @brief Get all the events occuring in the IO step ordered by their timestamp
+     * @brief Get all the events (func, comm and counter) occuring in the IO step ordered by their timestamp
      * @param rank The MPI rank of the AD process
      */
     std::vector<Event_t> getEvents(const int rank) const;
+
+
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_event_timestamps array
+     * @param d An array of length FUNC_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addFuncData(unsigned long const* d);
+    
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_counter_timestamps array
+     * @param d An array of length COUNTER_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addCounterData(unsigned long const* d);
+
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_comm_timestamps array
+     * @param d An array of length COMM_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addCommData(unsigned long const* d);
+
+    
+    /**
+     * @brief Set the m_event_timestamps vector capacity in units of FUNC_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setFuncDataCapacity(size_t cap){ m_event_timestamps.reserve(cap*FUNC_EVENT_DIM); }
+
+    /**
+     * @brief Set the m_comm_timestamps vector capacity in units of COMM_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setCommDataCapacity(size_t cap){ m_comm_timestamps.reserve(cap*COMM_EVENT_DIM); }
+
+    /**
+     * @brief Set the m_counter_timestamp vector capacity in units of COUNTER_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setCounterDataCapacity(size_t cap){ m_counter_timestamps.reserve(cap*COUNTER_EVENT_DIM); }
+
 
   private:
     /**

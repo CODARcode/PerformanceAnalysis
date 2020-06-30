@@ -9,9 +9,12 @@
 using namespace chimbuko;
 
 ADParser::ADParser(std::string inputFile, std::string engineType, int openTimeoutSeconds)
-  : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1)
+  : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
+    m_timer_event_count(0), m_comm_count(0), m_counter_count(0)
 {
   m_inputFile = inputFile;
+  if(inputFile == "") return;
+
   m_ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
 
   // set io and engine
@@ -279,14 +282,20 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
     //std::cout << "[" << rank << "] " << ev << std::endl;
     if(ev.valid()){
       std::string event_type("UNKNOWN"), func_name("UNKNOWN");
+
+      if(ev.type() == EventDataType::FUNC || ev.type() == EventDataType::COMM){
+	auto eit = this->getEventType()->find(ev.eid());
+	if(eit != this->getEventType()->end())
+	  event_type = eit->second;
+      }else if(ev.type() == EventDataType::COUNT)
+	event_type = "N/A";
       
-      auto eit = this->getEventType()->find(ev.eid());
-      if(eit != this->getEventType()->end())
-	event_type = eit->second;
-      
-      auto fit = this->getFuncMap()->find(ev.fid());
-      if(fit != this->getFuncMap()->end())
-	func_name = fit->second;
+      if(ev.type() == EventDataType::FUNC){
+	auto fit = this->getFuncMap()->find(ev.fid());
+	if(fit != this->getFuncMap()->end())
+	  func_name = fit->second;
+      }else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
+	func_name = "N/A";
       
       std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
     }else std::cerr << "Data pointer is null" << std::endl;
@@ -340,5 +349,26 @@ std::vector<Event_t> ADParser::getEvents(const int rank) const{
   return out;
 }
 
+void ADParser::addFuncData(unsigned long const* d){
+  if(m_event_timestamps.size() + FUNC_EVENT_DIM > m_event_timestamps.capacity())
+    throw std::runtime_error("Adding func data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+
+  m_event_timestamps.insert(m_event_timestamps.end(), d, d+FUNC_EVENT_DIM);
+  ++m_timer_event_count;
+}
+void ADParser::addCounterData(unsigned long const* d){
+  if(m_counter_timestamps.size() + COUNTER_EVENT_DIM > m_counter_timestamps.capacity())
+    throw std::runtime_error("Adding counter data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+
+  m_counter_timestamps.insert(m_counter_timestamps.end(), d, d+COUNTER_EVENT_DIM);
+  ++m_counter_count;
+}
+void ADParser::addCommData(unsigned long const* d){
+  if(m_comm_timestamps.size() + COMM_EVENT_DIM > m_comm_timestamps.capacity())
+    throw std::runtime_error("Adding comm data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+
+  m_comm_timestamps.insert(m_comm_timestamps.end(), d, d+COMM_EVENT_DIM);
+  ++m_comm_count;
+}
 
 

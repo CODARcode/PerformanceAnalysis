@@ -10,7 +10,6 @@
 
 using namespace chimbuko;
 
-
 TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
   std::string filename = "commfile";
   bool got_err= false;
@@ -312,4 +311,72 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
     err = true;
   }
   EXPECT_EQ(err, false);
+}
+
+
+//Events same up to id string
+bool same_up_to_id_string(const Event_t &l, const Event_t &r){
+  if(r.type() != l.type() || r.idx() != l.idx()) return false;
+  int len = l.get_data_len();
+  for(int i=0;i<len;i++) if(l.get_ptr()[i] != r.get_ptr()[i]) return false;
+  return true;
+}
+
+
+TEST(ADParserTest, eventsOrderedCorrectly){
+  std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
+  std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"} };
+  std::unordered_map<int, std::string> counter_names = { {0,"MYCOUNTER"} };
+
+
+  int ENTRY = 0;
+  int EXIT = 1;
+  int SEND = 2;
+  int RECV = 3;
+  int MYCOUNTER = 0;
+  int MYFUNC = 0;
+
+  int pid=0, tid=0, rid=0;
+
+  std::vector<Event_t> events = {
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1234, 100),
+    createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110),
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1256, 130),
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1267, 140),
+    createCommEvent_t(pid, rid, tid, SEND, 1, 99, 1024, 150),
+    createCommEvent_t(pid, rid, tid, RECV, 2, 99, 1024, 160),
+    createCounterEvent_t(pid, rid, tid+1, MYCOUNTER, 1267, 170),  //not on same thread
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180),
+    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190)
+  };
+
+  ADParser parser("","BPFile");
+  parser.setFuncDataCapacity(100);
+  parser.setCommDataCapacity(100);
+  parser.setCounterDataCapacity(100);
+
+  for(int i=0;i<events.size();i++){
+    if(events[i].type() == EventDataType::FUNC)
+      parser.addFuncData(events[i].get_ptr());
+    else if(events[i].type() == EventDataType::COMM)
+      parser.addCommData(events[i].get_ptr());
+    else if(events[i].type() == EventDataType::COUNT)
+      parser.addCounterData(events[i].get_ptr());
+    else
+      FAIL() << "Invalid EventDataType";
+  }
+  
+  EXPECT_EQ(parser.getNumFuncData(), 2);
+  EXPECT_EQ(parser.getNumCommData(), 4);
+  EXPECT_EQ(parser.getNumCounterData(), 4);
+
+  std::vector<Event_t> events_out = parser.getEvents(rid);
+  
+  EXPECT_EQ(events_out.size(), events.size());
+
+  for(int i=0;i<events_out.size();i++)
+    EXPECT_EQ(same_up_to_id_string(events[i], events_out[i]), true);
+  
+
 }
