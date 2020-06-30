@@ -167,8 +167,33 @@ namespace chimbuko {
      * @brief Get metadata parsed for the first time during the current step
      */
     const std::vector<MetaData_t> & getNewMetaData() const{ return m_new_metadata; }
+
     
+    /**
+     * @brief Get all the events occuring in the IO step ordered by their timestamp
+     * @param rank The MPI rank of the AD process
+     */
+    std::vector<Event_t> getEvents(const int rank) const;
+
   private:
+    /**
+     * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest
+     * @param arrays A vector of array pointers
+     * @param ts_offsets The elements of the arrays that correspond to the timestamp
+     *
+     * Some (but not all) arrays can be nullptr
+     * If there is a tie between two entries, the array that enters first (lowest index) in the input vectors is chosen
+     */
+    static const unsigned long* getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets);
+
+    /**
+     * @brief Create an Event_t instance from the data at the provided pointer and run simple validation
+     */
+    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
+						   int rank) const;
+
+
+
     adios2::ADIOS   m_ad;                               /**< adios2 handler */
     adios2::IO      m_io;                               /**< adios2 I/O handler */
     adios2::Engine  m_reader;                           /**< adios2 engine handler */

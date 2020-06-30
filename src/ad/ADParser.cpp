@@ -1,4 +1,5 @@
 #include "chimbuko/ad/ADParser.hpp"
+#include "chimbuko/ad/utils.hpp"
 #include "chimbuko/verbose.hpp"
 #include <thread>
 #include <chrono>
@@ -243,3 +244,101 @@ ParserError ADParser::fetchCounterData() {
     }
   return ParserError::NoCountData;
 }
+
+
+const unsigned long* ADParser::getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets){
+  if(ts_offsets.size() != arrays.size()) throw std::runtime_error("Input parameter vectors have different sizes!");
+  unsigned long earliest_ts = std::numeric_limits<unsigned long>::max();
+  int earliest = -1;
+  for(int i=0;i<arrays.size();i++){
+    if(arrays[i] != nullptr &&
+       arrays[i][ts_offsets[i]] < earliest_ts){
+      earliest = i;
+      earliest_ts = arrays[i][ts_offsets[i]];
+    }
+  }
+  if(earliest == -1) throw std::runtime_error("Failed to determine earliest entry");
+  return arrays[earliest];  
+}
+
+std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
+							 int rank) const{
+  // Create event
+  Event_t ev(data, t, idx, id);
+
+  // Validate the event
+  // NOTE: in SST mode with large rank number (>=10), sometimes I got
+  // very large number of pid, rid and tid. This issue was also observed in python version.
+  // In BP mode, it doesn't have such problem. As temporal solution, we skip those data and
+  // it doesn't cause any problems (e.g. call stack violation). Need to consult with 
+  // adios team later
+  bool good = true;
+
+  if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
+    std::cout << "\n***** Invalid event *****\n";
+    //std::cout << "[" << rank << "] " << ev << std::endl;
+    if(ev.valid()){
+      std::string event_type("UNKNOWN"), func_name("UNKNOWN");
+      
+      auto eit = this->getEventType()->find(ev.eid());
+      if(eit != this->getEventType()->end())
+	event_type = eit->second;
+      
+      auto fit = this->getFuncMap()->find(ev.fid());
+      if(fit != this->getFuncMap()->end())
+	func_name = fit->second;
+      
+      std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
+    }else std::cerr << "Data pointer is null" << std::endl;
+    
+    good = false;
+  }
+  return {ev, good};
+}
+
+std::vector<Event_t> ADParser::getEvents(const int rank) const{
+  std::vector<Event_t> out;
+
+  //During the timestep a number of function and perhaps also comm and counter events occurred
+  //The parser stores these events separately in order of their timestamp
+  //We want to iterate through these events in order of their timestamp in order to correlate them
+  size_t idx_funcData=0, idx_commData = 0, idx_counterData = 0;
+  const unsigned long *funcData = nullptr;
+  const unsigned long *commData = nullptr;
+  const unsigned long *counterData = nullptr;
+  int step = m_current_step;
+
+  funcData = this->getFuncData(idx_funcData);
+  commData = this->getCommData(idx_commData);
+  counterData = this->getCounterData(idx_counterData);
+
+  while (funcData != nullptr || commData != nullptr || counterData != nullptr){
+    // Determine event to handle
+    // - if both, funcData and commData, are available, select one that occurs earlier.
+    // - priority is on funcData because communication might happen within a function.
+    // - in the future, we may not need to process on commData (i.e. exclude it from execution data).
+    const unsigned long *data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
+
+    if(data == funcData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
+							   generate_event_id(rank, step, idx_funcData), rank);
+      if(evp.second) out.push_back(evp.first);
+      funcData = this->getFuncData(++idx_funcData);
+    }else if(data == commData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, "event_id", rank);
+      if(evp.second) out.push_back(evp.first);
+      commData = this->getCommData(++idx_commData);
+    }else if(data == counterData){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, 
+							   generate_event_id(rank, step, idx_counterData), rank);
+      if(evp.second) out.push_back(evp.first);
+      counterData = this->getCounterData(++idx_counterData);
+    }else{
+      throw std::runtime_error("Unexpected pointer");
+    }
+  }//while loop over func and comm data
+  return out;
+}
+
+
+
