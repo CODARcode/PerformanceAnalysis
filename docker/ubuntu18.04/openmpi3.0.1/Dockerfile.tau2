@@ -1,0 +1,71 @@
+# chimbuko/adios2:brusselator suports zfp that is required to run Brusselator 
+# Note that chimbuko/adios2:ubuntu18.04-openmpi3.0.1 doesn't support zfp.
+FROM chimbuko/adios2:ubuntu18.04-openmpi3.0.1 AS tau-build
+ARG JOBS=6
+
+# --------------------------------------------------------
+# TAU
+# --------------------------------------------------------
+
+# PDT
+
+WORKDIR /Downloads
+RUN wget http://tau.uoregon.edu/pdt_lite.tar.gz \
+ && tar -xzf pdt_lite.tar.gz
+WORKDIR /Downloads/pdtoolkit-3.25.1
+RUN ./configure -GNU -prefix=/opt/pdt \
+ && make -j$JOBS \
+ && make install
+
+# PAPI
+
+WORKDIR /Downloads
+RUN wget http://icl.utk.edu/projects/papi/downloads/papi-5.6.0.tar.gz \
+ && tar -xzf papi-5.6.0.tar.gz
+WORKDIR /Downloads/papi-5.6.0/src
+RUN ./configure --prefix=/opt/papi \
+ && make -j$JOBS \
+ && make install
+
+# TAU 
+
+WORKDIR /Downloads
+
+#Download and install tau from git
+#Change the tag below to force docker build not to use cache
+RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
+WORKDIR /Downloads/tau2
+
+RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -papi=/opt/papi \
+ && make -j$JOBS install
+
+RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
+    -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
+    -papi=/opt/papi \
+ && make -j$JOBS install
+
+RUN git log | head -1 > /opt/tau2/git_version
+
+# Use tarball version instead
+# RUN	wget http://tau.uoregon.edu/tau.tgz && \
+# 	tar -xvzf tau.tgz && \
+#  	cd tau-2.29 && \
+# 	./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi -pthread -bfd=download -unwind=download -pdt=/opt/pdt -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 -papi=/opt/papi && \
+#  	make -j$JOBS install
+
+FROM chimbuko/adios2:ubuntu18.04-openmpi3.0.1
+
+COPY --from=tau-build /opt /opt
+
+#Set environment variables
+ENV PATH=${PATH}:/opt/tau2/x86_64/bin
+ENV PATH=${PATH}:/opt/adios2/bin
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
+
+#Set default options
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
