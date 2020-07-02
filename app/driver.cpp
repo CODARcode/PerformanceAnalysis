@@ -210,5 +210,6 @@ int main(int argc, char ** argv){
     }
 
   MPI_Finalize();
+  VERBOSE(std::cout << "Rank " << world_rank << ": driver is exiting" << std::endl);
   return 0;
 }

@@ -161,4 +161,5 @@ int main(int argc, char** argv){
   wr.Close();
 
   MPI_Finalize();
+  return 0;
 };

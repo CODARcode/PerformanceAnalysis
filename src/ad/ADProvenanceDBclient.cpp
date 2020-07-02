@@ -36,6 +36,14 @@ AnomalousSendManager::~AnomalousSendManager(){
 AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
 
+ADProvenanceDBclient::~ADProvenanceDBclient(){ 
+  if(m_is_connected){
+    VERBOSE(std::cout << "ADProvenanceDBclient is waiting for outstanding calls to complete" << std::endl);
+    anom_send_man.waitAll();
+  }
+  VERBOSE(std::cout << "ADProvenanceDBclient exiting" << std::endl);
+}
+
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
     VERBOSE(std::cout << "DB client connecting to " << addr << std::endl);

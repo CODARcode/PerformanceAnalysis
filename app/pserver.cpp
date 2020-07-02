@@ -104,9 +104,11 @@ int main (int argc, char ** argv){
       std::cout << e.what() << std::endl;
     }
 
+  std::cout << "Pserver finalizing the network" << std::endl;
   net.finalize();
 #ifdef _USE_ZMQNET
   MPI_Finalize();
 #endif
+  std::cout << "Pserver finished" << std::endl;
   return 0;
 }
