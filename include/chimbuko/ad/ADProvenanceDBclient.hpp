@@ -75,7 +75,7 @@ namespace chimbuko{
     
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
   public:
-    ADProvenanceDBclient(): m_client(ADProvenanceDBengine::getEngine()), m_is_connected(false){}
+    ADProvenanceDBclient(): m_is_connected(false){}
 
     ~ADProvenanceDBclient();
     

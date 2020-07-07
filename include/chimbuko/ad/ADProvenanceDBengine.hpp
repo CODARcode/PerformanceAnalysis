@@ -20,7 +20,7 @@ namespace chimbuko{
       thallium::engine* m_eng;
       std::pair<std::string, int> m_protocol;
       bool m_is_initialized;
-      inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp", THALLIUM_CLIENT_MODE}), m_is_initialized(false){}
+      inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp;ofi_rxm", THALLIUM_CLIENT_MODE}), m_is_initialized(false){}
 
       /**
        * @brief Initialize the engine (if not already initialized)
@@ -51,6 +51,14 @@ namespace chimbuko{
     static inline void setProtocol(const std::string &transport, const int mode){
       data().m_protocol = {transport, mode};
     }
+
+    /**
+     * @brief Get the protocol used to create the engine.
+     */
+    static inline std::pair<std::string, int> getProtocol(){
+      return data().m_protocol;
+    }
+
     /**
      * @bried Get the engine. Initializes if not already done so
      */

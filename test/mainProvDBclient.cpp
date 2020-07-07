@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
+#include <chimbuko/verbose.hpp>
 
 using namespace chimbuko;
 
@@ -275,6 +276,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 
 int main(int argc, char** argv) 
 {
+  Verbose::set_verbose(true);
   assert(argc == 2);
   addr = argv[1];
   std::cout << "Provenance DB admin is on address: " << addr << std::endl;

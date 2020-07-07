@@ -46,6 +46,19 @@ ADProvenanceDBclient::~ADProvenanceDBclient(){
 
 void ADProvenanceDBclient::connect(const std::string &addr){
   try{
+    //Get the protocol
+    size_t pos = addr.find(':');
+    if(pos == std::string::npos) throw std::runtime_error("Address \"" + addr + "\" does not have expected form");
+    std::string protocol = addr.substr(0,pos);
+    
+    if(ADProvenanceDBengine::getProtocol().first != protocol){
+      int mode = ADProvenanceDBengine::getProtocol().second;
+      VERBOSE(std::cout << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl);
+      ADProvenanceDBengine::finalize();
+      ADProvenanceDBengine::setProtocol(protocol,mode);      
+    }      
+
+    m_client = sonata::Client(ADProvenanceDBengine::getEngine());
     VERBOSE(std::cout << "DB client connecting to " << addr << std::endl);
     m_database = m_client.open(addr, 0, "provdb");
     VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
