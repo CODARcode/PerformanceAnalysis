@@ -27,12 +27,35 @@ void termSignalHandler( int signum ) {
 
 
 int main(int argc, char** argv) {
-  assert(argc <= 2);
+  if(argc < 2){
+    std::cout << "Usage: provdb_admin <ip:port> <options>\n"
+	      << "ip:port should specify the ip address and port. Using an empty string will cause it to default to Mochi's default ip/port.\n"
+	      << "Options:\n"
+	      << "-engine Specify the Thallium/Margo engine type (default \"ofi+tcp\""
+	      << std::endl;
+    return 0;
+  }
 
-  //argv[1] optionally specify the ip address and port (the only way to fix the port that I'm aware of)
+  //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
   //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
+  //Using an empty string will cause it to default to Mochi's default ip/port
+  
+  std::string ip = argv[1];
+
   std::string eng_opt = "ofi+tcp";
-  if(argc == 2){
+
+  int arg=2;
+  while(arg < argc){
+    std::string sarg = argv[arg];
+    if(sarg == "-engine"){
+      eng_opt = argv[arg+1];
+      arg+=2;
+    }else{
+      throw std::runtime_error("Unknown option: " + sarg);
+    }
+  }
+  
+  if(ip.size() > 0){
     eng_opt += std::string("://") + argv[1];
   }
 
