@@ -50,6 +50,8 @@ void ADProvenanceDBclient::connect(const std::string &addr){
     size_t pos = addr.find(':');
     if(pos == std::string::npos) throw std::runtime_error("Address \"" + addr + "\" does not have expected form");
     std::string protocol = addr.substr(0,pos);
+    //Ignore opening quotation marks
+    while(protocol[0] == '"' || protocol[0] == '\'') protocol = protocol.substr(1,std::string::npos);
     
     if(ADProvenanceDBengine::getProtocol().first != protocol){
       int mode = ADProvenanceDBengine::getProtocol().second;
