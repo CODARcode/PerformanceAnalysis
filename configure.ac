@@ -71,6 +71,7 @@ if test "$enable_provenancedb" != "no"; then
    AC_CHECK_LIB([thallium], [_init], [],  [AC_MSG_WARN([Could not link to Thallium: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([mercury], [_init], [],  [AC_MSG_WARN([Could not link to Mercury: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([margo], [_init], [],  [AC_MSG_WARN([Could not link to Margo: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([abt], [_init], [],  [AC_MSG_WARN([Could not link to Argobots: Provenance DB will not be built]); enable_provenancedb=no]  )
 fi
 
 AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")
@@ -94,6 +95,6 @@ AC_CONFIG_SRCDIR([src/chimbuko.cpp])
 AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py app/sst_view_parse.pl:app/sst_view_parse.pl])
-AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh test/run_ad_with_provdb.sh:test/run_ad_with_provdb.sh test/run_stat_sender.sh:test/run_stat_sender.sh], [chmod u+x $(echo $ac_tag | sed s/.*\://)])
+AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/run_provdb_autoshutdown_test.sh:test/run_provdb_autoshutdown_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh test/run_ad_with_provdb.sh:test/run_ad_with_provdb.sh test/run_stat_sender.sh:test/run_stat_sender.sh], [chmod u+x $(echo $ac_tag | sed s/.*\://)])
 
 AC_OUTPUT

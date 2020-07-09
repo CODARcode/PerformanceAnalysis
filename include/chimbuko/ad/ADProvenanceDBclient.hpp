@@ -74,8 +74,13 @@ namespace chimbuko{
     bool m_is_connected; /**< True if connection has been established to the provider */
     
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
+
+    int m_rank; /**< MPI rank of current process */
+    thallium::endpoint m_server; /**< Endpoint for provDB comms*/
+    thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
+    thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
   public:
-    ADProvenanceDBclient(): m_is_connected(false){}
+    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr){}
 
     ~ADProvenanceDBclient();
     
@@ -90,6 +95,12 @@ namespace chimbuko{
      */
     bool isConnected() const{ return m_is_connected; }
     
+    /**
+     * @brief Disconnect if presently connected
+     */
+    void disconnect(); 
+
+
     /**
      * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
      */

@@ -37,11 +37,23 @@ AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
 
 ADProvenanceDBclient::~ADProvenanceDBclient(){ 
+  disconnect();
+  VERBOSE(std::cout << "ADProvenanceDBclient exiting" << std::endl);
+}
+
+void ADProvenanceDBclient::disconnect(){
   if(m_is_connected){
+    VERBOSE(std::cout << "ADProvenanceDBclient disconnecting" << std::endl);
     VERBOSE(std::cout << "ADProvenanceDBclient is waiting for outstanding calls to complete" << std::endl);
     anom_send_man.waitAll();
+    VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
+    m_client_goodbye->on(m_server)(m_rank);    
+    VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
+
+    delete m_client_hello; m_client_hello = nullptr;
+    delete m_client_goodbye; m_client_goodbye = nullptr;
+    m_is_connected = false;
   }
-  VERBOSE(std::cout << "ADProvenanceDBclient exiting" << std::endl);
 }
 
 void ADProvenanceDBclient::connect(const std::string &addr){
@@ -60,15 +72,24 @@ void ADProvenanceDBclient::connect(const std::string &addr){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
-    m_client = sonata::Client(ADProvenanceDBengine::getEngine());
+    thallium::engine &eng = ADProvenanceDBengine::getEngine();
+    m_client = sonata::Client(eng);
     VERBOSE(std::cout << "DB client connecting to " << addr << std::endl);
     m_database = m_client.open(addr, 0, "provdb");
     VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
     m_coll_anomalies = m_database.open("anomalies");
     VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
     m_coll_metadata = m_database.open("metadata");
+
+    VERBOSE(std::cout << "DB client registering RPCs and handshaking with provDB" << std::endl);
+    m_server = eng.lookup(addr);
+    m_client_hello = new thallium::remote_procedure(eng.define("client_hello").disable_response());
+    m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
+    m_client_hello->on(m_server)(m_rank);
+
     m_is_connected = true;
     VERBOSE(std::cout << "DB client connected successfully" << std::endl);
+    
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());
   }

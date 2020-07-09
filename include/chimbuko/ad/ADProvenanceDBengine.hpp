@@ -34,7 +34,7 @@ namespace chimbuko{
 
       inline ~data_v(){
 	finalize();
-      }
+       }
     };
 
     /**

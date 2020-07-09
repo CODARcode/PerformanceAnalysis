@@ -11,7 +11,7 @@
 #include <sonata/Client.hpp>
 #include <unistd.h>
 #include <fstream>
-
+#include <set>
 #include <iostream>
 #include <csignal>
 #include <cassert>
@@ -25,6 +25,25 @@ void termSignalHandler( int signum ) {
   stop_wait_loop = true;
 }
 
+tl::mutex *mtx;
+std::set<int> connected;
+bool a_client_has_connected = false;
+
+//Allows a client to register with the provider
+void client_hello(const tl::request& req, const int rank) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  connected.insert(rank);
+  a_client_has_connected = true;
+  std::cout << "Client " << rank << " has said hello: " << connected.size() << " ranks now connected" << std::endl;
+}
+//Allows a client to deregister from the provider
+void client_goodbye(const tl::request& req, const int rank) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  connected.erase(rank);
+  std::cout << "Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
+}
+
+
 
 int main(int argc, char** argv) {
   if(argc < 2){
@@ -32,6 +51,7 @@ int main(int argc, char** argv) {
 	      << "ip:port should specify the ip address and port. Using an empty string will cause it to default to Mochi's default ip/port.\n"
 	      << "Options:\n"
 	      << "-engine Specify the Thallium/Margo engine type (default \"ofi+tcp\""
+	      << "-autoshutdown If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected\n"
 	      << std::endl;
     return 0;
   }
@@ -43,6 +63,7 @@ int main(int argc, char** argv) {
   std::string ip = argv[1];
 
   std::string eng_opt = "ofi+tcp";
+  bool autoshutdown = false;
 
   int arg=2;
   while(arg < argc){
@@ -50,6 +71,9 @@ int main(int argc, char** argv) {
     if(sarg == "-engine"){
       eng_opt = argv[arg+1];
       arg+=2;
+    }else if(sarg == "-autoshutdown"){
+      autoshutdown = true;
+      arg++;
     }else{
       throw std::runtime_error("Unknown option: " + sarg);
     }
@@ -62,8 +86,12 @@ int main(int argc, char** argv) {
   //Initialize provider engine
   tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
   engine.enable_remote_shutdown();
-
   engine.push_finalize_callback([]() { engine_is_finalized = true; stop_wait_loop = true; });
+
+  mtx = new tl::mutex;
+  engine.define("client_hello",client_hello).disable_response();
+  engine.define("client_goodbye",client_goodbye).disable_response();
+
 
   //Write address to file
   std::string addr = (std::string)engine.self();    
@@ -98,6 +126,9 @@ int main(int argc, char** argv) {
     std::cout << "Admin waiting for SIGTERM" << std::endl;
     while(!stop_wait_loop) {
       tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+      
+      //If at least one client has previously connected but none are now connected, shutdown the server
+      if(autoshutdown && a_client_has_connected && connected.size() == 0) break;
     }
 
     std::cout << "Admin detaching database" << std::endl;
@@ -108,5 +139,8 @@ int main(int argc, char** argv) {
       engine.finalize();
     std::cout << "Admin thread finished" << std::endl;
   }
+
+  delete mtx;
+  
   return 0;
 }

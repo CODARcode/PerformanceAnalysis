@@ -2,16 +2,18 @@
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
+#include <mpi.h>
 
 using namespace chimbuko;
 
 //For these tests the provenance DB admin must be running
 std::string addr;
+int rank;
 
 TEST(ADProvenanceDBclientTest, Connects){
 
   bool connect_fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -24,7 +26,7 @@ TEST(ADProvenanceDBclientTest, Connects){
 TEST(ADProvenanceDBclientTest, ConnectsTwice){
 
   bool connect_fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection for second time" << std::endl;
   try{
     client.connect(addr);
@@ -37,7 +39,7 @@ TEST(ADProvenanceDBclientTest, ConnectsTwice){
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -68,7 +70,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -98,7 +100,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -131,7 +133,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -164,7 +166,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -200,7 +202,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -238,7 +240,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
 TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connect(addr);
@@ -276,11 +278,15 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 
 int main(int argc, char** argv) 
 {
+  MPI_Init(&argc, &argv);
   Verbose::set_verbose(true);
-  assert(argc == 2);
+  assert(argc >= 2);
   addr = argv[1];
   std::cout << "Provenance DB admin is on address: " << addr << std::endl;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  int ret = RUN_ALL_TESTS();
+  MPI_Finalize();
+  return ret;
 }

@@ -120,7 +120,7 @@ int main(int argc, char** argv){
 
   admin.attachDatabase(addr, 0, "provdb", "unqlite", config);
 
-  ADProvenanceDBclient client;
+  ADProvenanceDBclient client(0);
   client.connect(addr);
 
   if(!client.isConnected()){

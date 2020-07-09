@@ -123,7 +123,7 @@ void Chimbuko::init_counter(){
 
 #ifdef ENABLE_PROVDB
 void Chimbuko::init_provdb(){
-  m_provdb_client = new ADProvenanceDBclient;
+  m_provdb_client = new ADProvenanceDBclient(m_params.rank);
   if(m_params.provdb_addr.length() > 0)
     m_provdb_client->connect(m_params.provdb_addr);
 }
