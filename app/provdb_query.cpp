@@ -93,6 +93,12 @@ void execute(ADProvenanceDBclient &client,
 }
 
 
+void client_hello(const thallium::request& req, const int rank) {
+}
+void client_goodbye(const thallium::request& req, const int rank) {
+}
+
+
 int main(int argc, char** argv){
   if(argc < 2) printUsageAndExit();
 
@@ -111,6 +117,10 @@ int main(int argc, char** argv){
 
   ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
   thallium::engine & engine = ADProvenanceDBengine::getEngine();
+
+  engine.define("client_hello",client_hello).disable_response();
+  engine.define("client_goodbye",client_goodbye).disable_response();
+
 
   sonata::Provider provider(engine);
   sonata::Admin admin(engine);
@@ -134,6 +144,9 @@ int main(int argc, char** argv){
     execute(client, argc-arg_offset, argv+arg_offset);
   }else throw std::runtime_error("Invalid mode");
     
+  client.disconnect();
+  
+
   admin.detachDatabase(addr, 0, "provdb");
 
   return 0;

@@ -403,4 +403,66 @@ TEST(ADEvent, trimsCallListCorrectly){
 
 
 }
+
+
+
+TEST(ADEvent, matchesEventsByCorrelationID){
+  ADEvent event_man;
+  
+  int pid = 1;
+  int rid = 2;
+  int tid_cpu = 3;
+  int tid_gpu = 4;
+
+  int func_id[] = {4,5};
+  int counter_id = 13;
+  std::string func_name[] = {"cpu_launch_kernel", "gpu_kernel"};
+
+  int corrid = 1995;
+
+  //Add 2 events and check added properly
+  ExecData_t c1 = createFuncExecData_t(pid, rid, tid_cpu, func_id[0], func_name[0], 100, 200);
+  CounterData_t corrid_init = createCounterData_t(pid,rid,tid_cpu,counter_id, corrid, 100, "Correlation ID");  
+  c1.add_counter(corrid_init);
+
+  ExecData_t c2 = createFuncExecData_t(pid, rid, tid_gpu, func_id[1], func_name[1], 300, 400);
+  CounterData_t corrid_kern = createCounterData_t(pid,rid,tid_gpu,counter_id, corrid, 400, "Correlation ID");  
+  c2.add_counter(corrid_kern);
+
+  event_man.addCall(c1);
+
+  //Ensure the correlation ID got picked up
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+
+  //Ensure the unmatched event doesn't get deleted by trimming
+  delete event_man.trimCallList();
+
+  const CallListMap_p_t &calls = event_man.getCallListMap();
+  auto p = calls.find(pid);
+  EXPECT_EQ(p != calls.end(), true);
+  auto r = p->second.find(rid);
+  EXPECT_EQ(r != p->second.end(), true);
+  auto t = r->second.find(tid_cpu);
+  EXPECT_EQ(t != r->second.end(), true);  
+  const CallList_t &calls_p_r_t_cpu = t->second;
+
+  EXPECT_EQ( calls_p_r_t_cpu.size(), 1);
+
+  event_man.addCall(c2);
+
+  t = r->second.find(tid_gpu);
+  EXPECT_EQ(t != r->second.end(), true);  
+  const CallList_t &calls_p_r_t_gpu = t->second;
+
+  EXPECT_EQ( calls_p_r_t_gpu.size(), 1);
+  
+  EXPECT_EQ( calls_p_r_t_cpu.begin()->get_GPU_correlationID_partner(), c2.get_id() );
+  EXPECT_EQ( calls_p_r_t_gpu.begin()->get_GPU_correlationID_partner(), c1.get_id() );
+
+
+  //Ensure both events are now trimmed out
+  delete event_man.trimCallList();
+  EXPECT_EQ( calls_p_r_t_cpu.size(), 0);
+  EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
+}
   

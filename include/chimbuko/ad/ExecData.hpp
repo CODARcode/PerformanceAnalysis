@@ -512,6 +512,22 @@ public:
      */
     void can_delete(const bool v){ m_can_delete = v; }
     
+
+    /**
+     * @brief Set the partner event linked by a GPU correlation ID
+     */
+    void set_GPU_correlationID_partner(const std::string event_id){ m_gpu_correlation_id_partner = event_id; }
+
+    /**
+     * @brief Return true if this event has been matched to a partner event by a GPU correlation ID
+     */  
+    bool has_GPU_correlationID_partner() const{ return m_gpu_correlation_id_partner.size() > 0; }
+
+    /**
+     * @brief Get the partner event linked by a GPU correlation ID (empty string if none)
+     */  
+    const std::string & get_GPU_correlationID_partner() const{ return m_gpu_correlation_id_partner; }
+
 private:
     std::string m_id;                    /**< execution id */                           
     std::string m_funcname;              /**< function name */
@@ -532,6 +548,7 @@ private:
     std::deque<CommData_t> m_messages;  /**< a vector of all messages */
     std::deque<CounterData_t> m_counters; /**< a vector of all counters */
     bool m_can_delete; /**< Flag indicating that the event is deletable by the garbage collection */
+    std::string m_gpu_correlation_id_partner;  /**< The event id of a partner event linked by a correlation ID, either the launching CPU event or the GPU kernel event */
 };
 
 

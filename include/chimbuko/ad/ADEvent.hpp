@@ -224,6 +224,11 @@ namespace chimbuko {
      */
     void show_status(bool verbose=false) const;
 
+    /**
+     * @brief Get the map of correlation ID to event for those events that have yet to be partnered
+     */
+    const std::unordered_map<unsigned long, CallListIterator_t> & getUnmatchCorrelationIDevents() const{ return  m_unmatchedCorrelationID; }
+    
   private:
     /**
      * @brief pointer to map of function index to function name
@@ -279,12 +284,29 @@ namespace chimbuko {
      * Completed calls are removed from this list every IO step by calls to trimCallList
      */
     std::unordered_map<std::string, CallListIterator_t> m_callIDMap;
+
+
+    /**
+     * @brief Events with unmatched correlation IDs
+     *
+     * Events that correspond to GPU kernel launches and executions are given correlation IDs as 
+     * counters that allow us to match the CPU thread that launched them to the GPU kernel event
+     */
+    std::unordered_map<unsigned long, CallListIterator_t> m_unmatchedCorrelationID; 
     
     /**
      * @brief verbose
      * 
      */
     bool m_verbose;
+
+    
+    /**
+     * @brief  Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
+     *         event with a correlation ID
+     */
+    void checkAndMatchCorrelationID(CallListIterator_t it);
+
   };
 
 } // end of AD namespace

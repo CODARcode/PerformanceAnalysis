@@ -21,6 +21,7 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   //Get the counters that appeared during the execution window on this p/r/t
   std::list<CounterDataListIterator_t> win_count = counters.getCountersInWindow(call.get_pid(), call.get_rid(), call.get_tid(),
 										call.get_entry(), call.get_exit());
+
   m_counters.resize(win_count.size());
   size_t i=0;
   for(auto &e : win_count){
