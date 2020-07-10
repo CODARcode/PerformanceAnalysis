@@ -326,3 +326,81 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   EXPECT_EQ(myfunc_exec.get_counters()[0].get_ts(), 130);
   EXPECT_EQ(myfunc_exec.get_counters()[0].get_exec_key(), exec_id);
 }
+
+
+TEST(ADEvent, trimsCallListCorrectly){
+  ADEvent event_man;
+  //std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"} };
+  //event_man.linkFuncMap(&func_names);
+  
+  int pid = 1;
+  int tid = 2;
+  int rid = 3;
+  int func_id[] = {4,5};
+  std::string func_name[] = {"hello_world", "goodbye_world"};
+  
+  //Add 2 events and check added properly
+  ExecData_t c1 = createFuncExecData_t(pid, rid, tid, func_id[0], func_name[0], 100, 200);
+  ExecData_t c2 = createFuncExecData_t(pid, rid, tid, func_id[1], func_name[1], 300, 400);
+  event_man.addCall(c1);
+  event_man.addCall(c2);
+  
+  const CallListMap_p_t &calls = event_man.getCallListMap();
+  auto p = calls.find(pid);
+  EXPECT_EQ(p != calls.end(), true);
+  auto r = p->second.find(rid);
+  EXPECT_EQ(r != p->second.end(), true);
+  auto t = r->second.find(tid);
+  EXPECT_EQ(t != r->second.end(), true);
+  
+  const CallList_t &calls_p_r_t = t->second;
+  EXPECT_EQ(calls_p_r_t.size(), 2);
+
+  //Check purged events are correct
+  {
+    CallListMap_p_t* purged = event_man.trimCallList();
+    EXPECT_EQ(calls_p_r_t.size(), 0);
+    
+    auto zp = purged->find(pid);
+    EXPECT_EQ(zp != purged->end(), true);
+    auto zr = zp->second.find(rid);
+    EXPECT_EQ(zr != zp->second.end(), true);
+    auto zt = zr->second.find(tid);
+    EXPECT_EQ(zt != zr->second.end(), true);
+    
+    const CallList_t &purged_calls_p_r_t = zt->second;
+    EXPECT_EQ(purged_calls_p_r_t.size(), 2);
+    
+    EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
+    EXPECT_EQ(std::next(purged_calls_p_r_t.begin(),1)->get_funcname(), func_name[1]);
+    delete purged;
+  }
+  
+  //Add 2 events but mark 1 to be undeletable
+  event_man.addCall(c1);
+  c2.can_delete(false);
+  event_man.addCall(c2);
+  EXPECT_EQ(calls_p_r_t.size(), 2);
+  
+  //Check purged events are correct
+  {
+    CallListMap_p_t* purged = event_man.trimCallList();
+    EXPECT_EQ(calls_p_r_t.size(), 1);
+    
+    auto zp = purged->find(pid);
+    EXPECT_EQ(zp != purged->end(), true);
+    auto zr = zp->second.find(rid);
+    EXPECT_EQ(zr != zp->second.end(), true);
+    auto zt = zr->second.find(tid);
+    EXPECT_EQ(zt != zr->second.end(), true);
+    
+    const CallList_t &purged_calls_p_r_t = zt->second;
+    EXPECT_EQ(purged_calls_p_r_t.size(), 1);
+    
+    EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
+    delete purged;
+  }
+
+
+}
+  

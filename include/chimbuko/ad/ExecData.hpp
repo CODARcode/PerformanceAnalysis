@@ -500,6 +500,17 @@ public:
      * @return nlohmann::json json object
      */
     nlohmann::json get_json(bool with_message=false) const;
+
+    
+    /**
+     * @brief Determine whether the event can be deleted by the garbage collection at the end of the io step
+     */
+    bool can_delete() const{ return m_can_delete;}
+
+    /**
+     * @brief Set whether the event can be deleted by the garbage collection at the end of the io step (default true)
+     */
+    void can_delete(const bool v){ m_can_delete = v; }
     
 private:
     std::string m_id;                    /**< execution id */                           
@@ -520,6 +531,7 @@ private:
     unsigned long m_n_messages;          /**< the number of messages */
     std::deque<CommData_t> m_messages;  /**< a vector of all messages */
     std::deque<CounterData_t> m_counters; /**< a vector of all counters */
+    bool m_can_delete; /**< Flag indicating that the event is deletable by the garbage collection */
 };
 
 

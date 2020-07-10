@@ -26,6 +26,15 @@ EventError ADEvent::addEvent(const Event_t& event) {
     }
 }
 
+
+void ADEvent::addCall(const ExecData_t &exec){
+  CallList_t& cl = m_callList[exec.get_pid()][exec.get_rid()][exec.get_tid()];
+  CallListIterator_t it = cl.emplace(cl.end(),exec);
+  m_execDataMap[it->get_fid()].push_back(it);
+  m_callIDMap[it->get_id()] = it;
+}
+
+
 EventError ADEvent::addFunc(const Event_t& event) {
   if (m_eventType == nullptr) {
     std::cerr << "Uninitialized eventType\n";
@@ -201,7 +210,7 @@ CallListMap_p_t* ADEvent::trimCallList() {
 	auto it = cl.begin();
 	while (it != cl.end()) {
 	  // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
-	  if (it->get_runtime()) {
+	  if (it->can_delete() && it->get_runtime()) {
 	    //Add copy of completed event to output
 	    cpList.push_back(*it);
 	    //Remove completed event from map of event index string to call list

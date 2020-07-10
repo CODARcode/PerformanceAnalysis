@@ -6,13 +6,14 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-    : m_runtime(0), m_label(1), m_parent("-1")
+  : m_runtime(0), m_label(1), m_parent("-1"), m_can_delete(true)
 {
     m_exclusive = 0;
     m_n_children = 0;
     m_n_messages = 0;
 }
-ExecData_t::ExecData_t(const Event_t& ev) 
+ExecData_t::ExecData_t(const Event_t& ev)
+  : m_can_delete(true)
 {
     m_id = ev.id();
     m_pid = ev.pid();

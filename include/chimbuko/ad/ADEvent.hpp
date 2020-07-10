@@ -202,6 +202,14 @@ namespace chimbuko {
 
 
     /**
+     * @brief Add a complete function call, primarily for testing
+     * 
+     * @param exec Instance of ExecData_t
+     */
+    void addCall(const ExecData_t &exec);
+
+
+    /**
      * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
      * 
      * @return CallListMap_p_t* trimed function calls
