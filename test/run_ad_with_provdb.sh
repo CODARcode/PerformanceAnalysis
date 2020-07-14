@@ -10,7 +10,7 @@ if [ -f "../bin/provdb_admin" ]; then
     admin=$!
     sleep 1
 
-    mpirun --allow-run-as-root -n 4 ./mainADwithProvDB $(cat provider.address)
+    mpirun --oversubscribe --allow-run-as-root -n 4 ./mainADwithProvDB $(cat provider.address)
 
     kill $admin
 else 

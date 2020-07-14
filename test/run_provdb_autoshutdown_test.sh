@@ -11,7 +11,7 @@ if [ -f "../bin/provdb_admin" ]; then
     admin=$!
     sleep 1
 
-    mpirun -n 3 --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address)
+    mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address)
 
     sleep 5
     if [[ $(ps | grep $admin) != "" ]]; then
