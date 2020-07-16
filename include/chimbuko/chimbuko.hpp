@@ -38,11 +38,9 @@ namespace chimbuko {
 				< Has format "ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}". Should also accept "tcp://${IP_ADDR}:${PORT}" */
 #endif
 
-#ifdef _PERF_METRIC
     //Parameters associated with performance analysis of AD module
     std::string perf_outputpath; /**< Output path for AD performance monitoring data. If an empty string no output is written.*/
     int perf_step; /**<How frequently (in IO steps) the performance data is dumped*/
-#endif
 
     //General parameters for Chimbuko
     int rank; /**< MPI rank of AD process */
@@ -59,9 +57,7 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
 		      provdb_addr(""),
 #endif
-#ifdef _PERF_METRIC
 		      perf_outputpath(""), perf_step(10),
-#endif
 		      only_one_frame(false), interval_msec(0)		      
     {}
 
@@ -207,7 +203,8 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif
-
+    PerfStats m_perf;
+    
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/
   };

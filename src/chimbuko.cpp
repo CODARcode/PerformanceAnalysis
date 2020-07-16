@@ -2,14 +2,6 @@
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 
-#ifdef _PERF_METRIC
-#include <chrono>
-typedef std::chrono::high_resolution_clock Clock;
-typedef std::chrono::milliseconds MilliSec;
-typedef std::chrono::microseconds MicroSec;
-#endif
-
-
 using namespace chimbuko;
 
 void ChimbukoParams::print() const{
@@ -29,10 +21,8 @@ void ChimbukoParams::print() const{
 #ifdef ENABLE_PROVDB
 	    << "\nProvDB addr: " << provdb_addr << "\n"
 #endif
-#ifdef _PERF_METRIC
 	    << "perf. metric outpath : " << perf_outputpath << "\n"
 	    << "perf. step   : " << perf_step << "\n"
-#endif
 	    << std::endl;
 }
 
@@ -121,6 +111,9 @@ void Chimbuko::init_outlier(){
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
+#ifdef _PERF_METRIC
+  m_outlier->linkPerf(&m_perf);
+#endif
 }
 
 void Chimbuko::init_counter(){
@@ -273,17 +266,14 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   int step = 0; 
 
-#ifdef _PERF_METRIC
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
-  RunMetric perf;
-  m_outlier->linkPerf(&perf);
-#endif
+  m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
+  
+  PerfTimer timer;
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
-#ifdef _PERF_METRIC
-    Clock::time_point t_step_start = Clock::now();     
-#endif
+    timer.start();
 
     //Extract counters and put into counter manager
     extractCounters(m_params.rank, step);
@@ -306,11 +296,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     //Gather function profile and anomaly statistics and send to the pserver
     if(m_net_client && m_net_client->use_ps()){
-      ADLocalFuncStatistics prof_stats(step
-#ifdef _PERF_METRIC
-				       , &perf
-#endif
-				       );
+      ADLocalFuncStatistics prof_stats(step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
       prof_stats.updateGlobalStatistics(*m_net_client);
@@ -321,15 +307,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_io->writeCounters(m_counter->flushCounters(), step);
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
 
-#ifdef _PERF_METRIC
-    Clock::time_point t_step_end = Clock::now();
-    perf.add("total_step_time_us", std::chrono::duration_cast<MicroSec>(t_step_end - t_step_start).count());
+    m_perf.add("total_step_time_us", timer.elapsed_us());
 
-    // dump performance metric event perf_step steps
-    if ( m_params.perf_outputpath.length() && m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0 ) {
-      perf.dump(m_params.perf_outputpath, ad_perf);
-    }
-#endif
+    if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0)
+      m_perf.write(); //only writes if filename/output path set
+
     if (m_params.only_one_frame)
       break;
 
@@ -337,11 +319,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
       std::this_thread::sleep_for(std::chrono::microseconds(m_params.interval_msec));
   } // end of parser while loop
 
-#ifdef _PERF_METRIC
   //Always dump perf at end
-  if ( m_params.perf_outputpath.length() ) {
-    perf.dump(m_params.perf_outputpath, ad_perf);
-  }
-#endif
+  m_perf.write();
 
 }

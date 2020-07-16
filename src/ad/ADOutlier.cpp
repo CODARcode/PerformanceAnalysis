@@ -5,13 +5,6 @@
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
-#ifdef _PERF_METRIC
-#include <chrono>
-typedef std::chrono::high_resolution_clock Clock;
-typedef std::chrono::milliseconds MilliSec;
-typedef std::chrono::microseconds MicroSec;
-#endif
-
 using namespace chimbuko;
 
 /* ---------------------------------------------------------------------------
@@ -103,20 +96,15 @@ Anomalies ADOutlierSSTD::run(int step) {
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-#ifdef _PERF_METRIC
-  Clock::time_point t0 = Clock::now();
+  PerfTimer timer;
+  timer.start();
   std::pair<size_t, size_t> msgsz = sync_param(&param);
-  Clock::time_point t1 = Clock::now();
-    
-  MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
+
   if(m_perf != nullptr){
-    m_perf->add("param_update_us", (double)usec.count());
+    m_perf->add("param_update_us", timer.elapsed_us());
     m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
-#else
-  sync_param(&param);
-#endif
 
   //Run anomaly detection algorithm
   for (auto it : *m_execDataMap) { //loop over function index

@@ -6,9 +6,7 @@
 #include "chimbuko/param.hpp"
 #include "chimbuko/util/hash.hpp"
 #include "chimbuko/ad/ADNetClient.hpp"
-#ifdef _PERF_METRIC
-#include "chimbuko/util/RunMetric.hpp"
-#endif
+#include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/Anomalies.hpp"
 
 namespace chimbuko {  
@@ -59,12 +57,10 @@ namespace chimbuko {
      */
     virtual Anomalies run(int step=0) = 0;
 
-#ifdef _PERF_METRIC
     /**
      * @brief If linked, performance information on the sync_param routine will be gathered
      */
-    void linkPerf(RunMetric* perf){ m_perf = perf; }
-#endif
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
 
     /**
      * @brief Get the local copy of the global parameters
@@ -102,9 +98,7 @@ namespace chimbuko {
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
-#ifdef _PERF_METRIC
-    RunMetric *m_perf;
-#endif
+    PerfStats *m_perf;
   };
 
   /**

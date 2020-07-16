@@ -4,10 +4,7 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/ad/ADCounter.hpp>
-#ifdef _PERF_METRIC
-#include "chimbuko/util/RunMetric.hpp"
-#endif
-
+#include "chimbuko/util/PerfStats.hpp"
 
 namespace chimbuko{
 
@@ -19,14 +16,8 @@ namespace chimbuko{
   class ADLocalCounterStatistics{
   public:
     ADLocalCounterStatistics(const int step,
-			     const std::unordered_set<std::string> *which_counters
-#ifdef _PERF_METRIC
-			     , RunMetric *perf = nullptr
-#endif			 		     
-			     ): m_step(step), m_which_counter(which_counters)
-#ifdef _PERF_METRIC
-			  , m_perf(perf)
-#endif
+			     const std::unordered_set<std::string> *which_counters, PerfStats *perf = nullptr):
+      m_step(step), m_which_counter(which_counters), m_perf(perf)
     {}
 				
 
@@ -46,12 +37,10 @@ namespace chimbuko{
      */
     std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client) const;
 
-#ifdef _PERF_METRIC
     /**
-     * @brief Attach a RunMetric object into which performance metrics are accumulated
+     * @brief Attach a PerfStats object into which performance metrics are accumulated
      */
-    void linkPerf(RunMetric* perf){ m_perf = perf; }
-#endif
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
 
     /**
      * @brief Get the map of counter name to statistics
@@ -85,9 +74,7 @@ namespace chimbuko{
     const std::unordered_set<std::string> *m_which_counter; /** The set of counters whose statistics we are accumulating */
     std::unordered_map<std::string , RunStats> m_stats; /**< map of counter to statistics */
 
-#ifdef _PERF_METRIC
-    RunMetric *m_perf; /**< Store performance data */
-#endif 
+    PerfStats *m_perf; /**< Store performance data */
   };
   
   

@@ -3,10 +3,7 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/util/Anomalies.hpp>
-#ifdef _PERF_METRIC
-#include "chimbuko/util/RunMetric.hpp"
-#endif
-
+#include "chimbuko/util/PerfStats.hpp"
 
 namespace chimbuko{
 
@@ -15,15 +12,7 @@ namespace chimbuko{
    */
   class ADLocalFuncStatistics{
   public:
-    ADLocalFuncStatistics(const int step
-#ifdef _PERF_METRIC
-			  , RunMetric *perf = nullptr
-#endif			  
-			  ): m_step(step), m_min_ts(0), m_max_ts(0)
-#ifdef _PERF_METRIC
-					 , m_perf(perf)
-#endif
-    {}
+    ADLocalFuncStatistics(const int step, PerfStats* perf = nullptr): m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf){}
 
     /**
      * @brief Add function executions to internal statistics
@@ -54,12 +43,10 @@ namespace chimbuko{
     nlohmann::json get_json_state(const int rank) const;
 
 
-#ifdef _PERF_METRIC
     /**
      * @brief Attach a RunMetric object into which performance metrics are accumulated
      */
-    void linkPerf(RunMetric* perf){ m_perf = perf; }
-#endif
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
 
   protected:
 
@@ -82,9 +69,7 @@ namespace chimbuko{
     std::unordered_map<unsigned long, size_t> m_anomaly_count; /**< map of function index to number of anomalies */
     size_t m_n_anomalies; /**< Number of anomalies in total */
 
-#ifdef _PERF_METRIC
-    RunMetric *m_perf; /**< Store performance data */
-#endif 
+    PerfStats *m_perf; /**< Store performance data */
   };
   
   

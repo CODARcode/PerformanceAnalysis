@@ -1,13 +1,6 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/ad/AnomalyStat.hpp>
 
-#ifdef _PERF_METRIC
-#include <chrono>
-typedef std::chrono::high_resolution_clock Clock;
-typedef std::chrono::milliseconds MilliSec;
-typedef std::chrono::microseconds MicroSec;
-#endif
-
 using namespace chimbuko;
 
 void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
@@ -60,24 +53,17 @@ nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{
 std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
   nlohmann::json g_info = get_json_state(net_client.get_client_rank());
-#ifndef _PERF_METRIC
-  return updateGlobalStatistics(net_client, g_info.dump(), m_step);
-#else
-
-  Clock::time_point t0 = Clock::now();
+  PerfTimer timer;
+  timer.start();
   auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
-  Clock::time_point t1 = Clock::now();
-
-  MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
   
   if(m_perf != nullptr){
-    m_perf->add("func_stats_stream_update_us", (double)usec.count());
+    m_perf->add("func_stats_stream_update_us", timer.elapsed_us());
     m_perf->add("func_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("func_stats_stream_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
   
   return msgsz;
-#endif
 }
 
 std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){

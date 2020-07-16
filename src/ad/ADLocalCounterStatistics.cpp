@@ -1,12 +1,5 @@
 #include <chimbuko/ad/ADLocalCounterStatistics.hpp>
 
-#ifdef _PERF_METRIC
-#include <chrono>
-typedef std::chrono::high_resolution_clock Clock;
-typedef std::chrono::milliseconds MilliSec;
-typedef std::chrono::microseconds MicroSec;
-#endif
-
 using namespace chimbuko;
 
 void ADLocalCounterStatistics::gatherStatistics(const CountersByIndex_t &cntrs_by_idx){
@@ -41,23 +34,16 @@ nlohmann::json ADLocalCounterStatistics::get_json_state() const{
 
 std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
   nlohmann::json state = get_json_state();
-#ifndef _PERF_METRIC
-  return updateGlobalStatistics(net_client, state.dump(), m_step);
-#else
-
-  Clock::time_point t0 = Clock::now();
+  PerfTimer timer;
+  timer.start();
   auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
-  Clock::time_point t1 = Clock::now();
-
-  MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
   
   if(m_perf != nullptr){
-    m_perf->add("counter_stats_stream_update_us", (double)usec.count());
+    m_perf->add("counter_stats_stream_update_us", timer.elapsed_us());
     m_perf->add("counter_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("counter_stats_stream_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }  
   return msgsz;
-#endif
 }
 
 std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){
