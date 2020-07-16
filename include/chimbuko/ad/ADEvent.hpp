@@ -161,6 +161,8 @@ namespace chimbuko {
 
     /**
      * @brief Get an iterator to an ExecData_t instance with given event index string
+     *
+     * throws a runtime error if the call is not present in the call-list
      */
     CallListIterator_t getCallData(const std::string &event_id) const;     
     
@@ -205,9 +207,10 @@ namespace chimbuko {
      * @brief Add a complete function call, primarily for testing
      * 
      * @param exec Instance of ExecData_t
+     * @return Iterator to inserted call
      */
-    void addCall(const ExecData_t &exec);
-
+    CallListIterator_t addCall(const ExecData_t &exec);
+    
 
     /**
      * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)

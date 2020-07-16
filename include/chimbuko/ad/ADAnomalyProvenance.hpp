@@ -31,6 +31,7 @@ namespace chimbuko{
     std::vector<nlohmann::json> m_counters; /**< A list of counter events that occurred during the execution of the anomalous function*/
     bool m_is_gpu_event; /**< Is this an anomaly that occurred on a GPU? */
     nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
+    nlohmann::json m_gpu_event_parent_info; /**< If a GPU event, info related to CPU event spawned it (name, thread, callstack) */
   };
 
 

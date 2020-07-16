@@ -119,11 +119,17 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
 
 TEST(TestADAnomalyProvenance, detectsGPUevents){
   int gpu_thr = 9;
+  int corridx = 1234;
+  int corrid_cid = 22;
   ExecData_t exec1 = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
+  exec1.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx, 1000, "Correlation ID"));
+  
   ExecData_t exec2 = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
+  exec2.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx, 1000, "Correlation ID"));
+
   ADEvent event_man;
-  event_man.addCall(exec1);
-  event_man.addCall(exec2);
+  CallListIterator_t exec1_it = event_man.addCall(exec1);
+  CallListIterator_t exec2_it = event_man.addCall(exec2);
 
   RunStats stats;
   for(int i=0;i<50;i++)
@@ -154,21 +160,24 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_NE( pit, it->second.end() );
   EXPECT_EQ( pit->second, "Fake GPU" );
 
-  ADAnomalyProvenance prov_gpu(exec1,
+  ADAnomalyProvenance prov_gpu(*exec1_it,
 			       event_man,
 			       param,
 			       counter, metadata);
     
   nlohmann::json output = prov_gpu.get_json();
+  std::cout << "For GPU event, got: " << output.dump() << std::endl;
+
   EXPECT_EQ(output["is_gpu_event"], true);
   EXPECT_EQ(output["gpu_location"]["context"], 8);
   EXPECT_EQ(output["gpu_location"]["device"], 7);
   EXPECT_EQ(output["gpu_location"]["stream"], 1);
 
-  ADAnomalyProvenance prov_nongpu(exec2,
+  ADAnomalyProvenance prov_nongpu(*exec2_it,
 			       event_man,
 			       param,
 			       counter, metadata);
   output = prov_nongpu.get_json();
+  std::cout << "For CPU event, got: " << output.dump() << std::endl;
   EXPECT_EQ(output["is_gpu_event"], false);
 }

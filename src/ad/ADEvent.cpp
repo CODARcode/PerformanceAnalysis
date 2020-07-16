@@ -60,12 +60,13 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 
 
 
-void ADEvent::addCall(const ExecData_t &exec){
+CallListIterator_t ADEvent::addCall(const ExecData_t &exec){
   CallList_t& cl = m_callList[exec.get_pid()][exec.get_rid()][exec.get_tid()];
   CallListIterator_t it = cl.emplace(cl.end(),exec);
   m_execDataMap[it->get_fid()].push_back(it);
   m_callIDMap[it->get_id()] = it;
   checkAndMatchCorrelationID(it);
+  return it;
 }
 
 
