@@ -19,13 +19,12 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();
 
   //Get the counters that appeared during the execution window on this p/r/t
-  std::list<CounterDataListIterator_t> win_count = counters.getCountersInWindow(call.get_pid(), call.get_rid(), call.get_tid(),
-										call.get_entry(), call.get_exit());
+  const std::deque<CounterData_t> &win_count = call.get_counters();
 
   m_counters.resize(win_count.size());
   size_t i=0;
   for(auto &e : win_count){
-    m_counters[i++] = e->get_json();
+    m_counters[i++] = e.get_json();
   }
   
   //Determine if it is a GPU event, and if so get the context

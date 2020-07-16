@@ -297,12 +297,14 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   std::vector<Event_t> events = {
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1234, 100),
     createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110),
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 18783, 120), //same time as function entry, should get picked up
     createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1256, 130),
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1267, 140),
     createCommEvent_t(pid, rid, tid, SEND, 1, 99, 1024, 150),
     createCommEvent_t(pid, rid, tid, RECV, 2, 99, 1024, 160),
     createCounterEvent_t(pid, rid, tid+1, MYCOUNTER, 1267, 170),  //not on same thread
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1777, 180), //same time as function exit, should get picked up
     createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180),
     createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190)
   };
@@ -322,8 +324,15 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   EXPECT_EQ(myfunc_exec.get_n_message(), 2);
   EXPECT_EQ(myfunc_exec.get_messages()[0].ts(), 150);
   EXPECT_EQ(myfunc_exec.get_messages()[0].get_exec_key(), exec_id);
-  EXPECT_EQ(myfunc_exec.get_n_counter(), 2);
-  EXPECT_EQ(myfunc_exec.get_counters()[0].get_ts(), 130);
+
+
+  std::cout << "Found " << myfunc_exec.get_n_counter() << " counters:" << std::endl;
+  for(int i=0;i<myfunc_exec.get_n_counter();i++)
+    std::cout << i << ": " << myfunc_exec.get_counters()[i].get_json().dump() << std::endl;
+
+
+  EXPECT_EQ(myfunc_exec.get_n_counter(), 4);
+  EXPECT_EQ(myfunc_exec.get_counters()[0].get_ts(), 120);
   EXPECT_EQ(myfunc_exec.get_counters()[0].get_exec_key(), exec_id);
 }
 

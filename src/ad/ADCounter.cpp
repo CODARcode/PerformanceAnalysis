@@ -32,6 +32,7 @@ CounterDataListMap_p_t* ADCounter::flushCounters(){
 
 std::list<CounterDataListIterator_t> ADCounter::getCountersInWindow(const unsigned long pid, const unsigned long rid, const unsigned long tid,
 								    const unsigned long t_start, const unsigned long t_end) const{
+  if(t_end < t_start) throw std::runtime_error("ADCounter::getCountersInWindow t_end must be >= t_start");
   std::list<CounterDataListIterator_t> out;
 
   //Find the counter timestamp map for process/rank/thread. Return empty list if no map entries

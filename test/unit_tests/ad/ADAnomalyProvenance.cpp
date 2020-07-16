@@ -90,7 +90,12 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   ADCounter counter;
   counter.linkCounterMap(&counters);
   for(int i=0;i<7;i++) counter.addCounter(cevents[i]);
-    
+
+  //These are normally assigned by ADEvent; correct determination of counters in window tested by ADEvent unit test
+  std::list<CounterDataListIterator_t> exec2_counters = counter.getCountersInWindow(0,1,0, 1050,1100);
+  for(auto const &e : exec2_counters)
+    exec2.add_counter(*e);
+  
   ADMetadataParser metadata;
 
   ADAnomalyProvenance prov(exec2,
