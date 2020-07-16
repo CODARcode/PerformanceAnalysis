@@ -2,6 +2,14 @@
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 
+#ifdef _PERF_METRIC
+#include <chrono>
+typedef std::chrono::high_resolution_clock Clock;
+typedef std::chrono::milliseconds MilliSec;
+typedef std::chrono::microseconds MicroSec;
+#endif
+
+
 using namespace chimbuko;
 
 void ChimbukoParams::print() const{
@@ -273,6 +281,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
+#ifdef _PERF_METRIC
+    Clock::time_point t_step_start = Clock::now();     
+#endif
+
     //Extract counters and put into counter manager
     extractCounters(m_params.rank, step);
 
@@ -310,6 +322,9 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
 
 #ifdef _PERF_METRIC
+    Clock::time_point t_step_end = Clock::now();
+    perf.add("total_step_time_us", std::chrono::duration_cast<MicroSec>(t_step_end - t_step_start).count());
+
     // dump performance metric event perf_step steps
     if ( m_params.perf_outputpath.length() && m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0 ) {
       perf.dump(m_params.perf_outputpath, ad_perf);
@@ -321,4 +336,12 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::microseconds(m_params.interval_msec));
   } // end of parser while loop
+
+#ifdef _PERF_METRIC
+  //Always dump perf at end
+  if ( m_params.perf_outputpath.length() ) {
+    perf.dump(m_params.perf_outputpath, ad_perf);
+  }
+#endif
+
 }

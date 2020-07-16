@@ -110,9 +110,9 @@ Anomalies ADOutlierSSTD::run(int step) {
     
   MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
   if(m_perf != nullptr){
-    m_perf->add("param_update", (double)usec.count());
-    m_perf->add("param_sent", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv", (double)msgsz.second / 1000000.0); // MB
+    m_perf->add("param_update_us", (double)usec.count());
+    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
 #else
   sync_param(&param);

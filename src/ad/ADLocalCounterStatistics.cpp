@@ -52,9 +52,9 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNet
   MicroSec usec = std::chrono::duration_cast<MicroSec>(t1 - t0);
   
   if(m_perf != nullptr){
-    m_perf->add("stream_update", (double)usec.count());
-    m_perf->add("stream_sent", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("stream_recv", (double)msgsz.second / 1000000.0); // MB
+    m_perf->add("counter_stats_stream_update_us", (double)usec.count());
+    m_perf->add("counter_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("counter_stats_stream_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }  
   return msgsz;
 #endif
