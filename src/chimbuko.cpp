@@ -207,13 +207,19 @@ bool Chimbuko::parseInputStep(int &step,
 
 //Extract parsed events and insert into the event manager
 void Chimbuko::extractEvents(int rank, int step){
+  PerfTimer timer;
   std::vector<Event_t> events = m_parser->getEvents(rank);
+  m_perf.add("parser_event_extract_us", timer.elapsed_us());
+  timer.start();
   for(auto &e : events)
     m_event->addEvent(e);
+  m_perf.add("parser_event_register_us", timer.elapsed_us());
+  m_perf.add("parser_event_count", events.size());
 }
   
 void Chimbuko::extractCounters(int rank, int step){
   if(!m_counter) throw std::runtime_error("Counter is not initialized");
+  PerfTimer timer;
   for(size_t c=0;c<m_parser->getNumCounterData();c++){
     Event_t ev(m_parser->getCounterData(c),
 	       EventDataType::COUNT,
@@ -221,6 +227,7 @@ void Chimbuko::extractCounters(int rank, int step){
 	       generate_event_id(rank, step, c));    
     m_counter->addCounter(ev);
   }
+  m_perf.add("parser_counter_extract_register_us", timer.elapsed_us());
 } 
 
 
@@ -229,23 +236,36 @@ void Chimbuko::extractCounters(int rank, int step){
 void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
   //Gather provenance data on anomalies and send to provenance database
   if(m_provdb_client->isConnected()){
+    PerfTimer timer,timer2;
+
+    timer.start();
     std::vector<nlohmann::json> anomaly_prov(anomalies.nOutliers());
     size_t i=0;
     for(auto anom_it : anomalies.allOutliers()){
+      timer2.start();
       ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
       anomaly_prov[i++] = extract_prov.get_json();
+      m_perf.add("provdb_anom_data_generation_per_anom_us", timer2.elapsed_us());
     }
+    m_perf.add("provdb_anom_data_generation_total_us", timer.elapsed_us());
+    
+    timer.start();
     m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
+    m_perf.add("provdb_anom_data_send_async_us", timer.elapsed_us());
   }
 }
 
 void Chimbuko::sendNewMetadataToProvDB() const{
   if(m_provdb_client->isConnected()){
+    PerfTimer timer;
     std::vector<MetaData_t> const & new_metadata = m_parser->getNewMetaData();
     std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
     for(size_t i=0;i<new_metadata.size();i++)
       new_metadata_j[i] = new_metadata[i].get_json();
+    m_perf.add("provdb_metadata_gather_us", timer.elapsed_us());
+    timer.start();
     m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
+    m_perf.add("provdb_metadata_send_async_us", timer.elapsed_us());
   }
 }
 
@@ -269,11 +289,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
   
-  PerfTimer timer;
+  PerfTimer step_timer;
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
-    timer.start();
+    step_timer.start();
 
     //Extract counters and put into counter manager
     extractCounters(m_params.rank, step);
@@ -282,9 +302,13 @@ void Chimbuko::run(unsigned long long& n_func_events,
     extractEvents(m_params.rank, step);
 
     //Run the outlier detection algorithm on the events
+    PerfTimer anom_timer;
     Anomalies anomalies = m_outlier->run(step);
+    m_perf.add("anom_detection_time_us", anom_timer.elapsed_us());
+
     n_outliers += anomalies.nOutliers();
     frames++;
+    
 
 #ifdef ENABLE_PROVDB
     //Generate anomaly provenance for detected anomalies and send to DB
@@ -307,7 +331,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_io->writeCounters(m_counter->flushCounters(), step);
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
 
-    m_perf.add("total_step_time_us", timer.elapsed_us());
+    m_perf.add("total_step_time_us", step_timer.elapsed_us());
 
     if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0)
       m_perf.write(); //only writes if filename/output path set

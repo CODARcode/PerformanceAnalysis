@@ -18,6 +18,13 @@ namespace chimbuko{
     Clock::time_point m_start; /**< The start timepoint */
 #endif
   public:
+    PerfTimer(bool start_now = true){
+#ifdef _PERF_METRIC
+      if(start_now) 
+	m_start = Clock::now();
+#endif
+    }
+
     /**
      * @brief (Re)start the timer
      */

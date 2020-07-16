@@ -203,7 +203,7 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif
-    PerfStats m_perf;
+    mutable PerfStats m_perf;
     
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/
