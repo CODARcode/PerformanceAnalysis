@@ -10,6 +10,7 @@ void ADCounter::addCounter(const Event_t& event){
   if(!m_counters) m_counters = new CounterDataListMap_p_t;
 
   //Get the counter name
+  if(m_counterMap == nullptr) throw std::runtime_error("Counter map not linked");
   auto it = m_counterMap->find(event.counter_id());
   if(it == m_counterMap->end()) throw std::runtime_error("Counter index could not be found in map");
 
@@ -51,7 +52,7 @@ std::list<CounterDataListIterator_t> ADCounter::getCountersInWindow(const unsign
 
   //Get iterators to start and end of window (this is only log(n) complexity which is why std::map is cool)
   auto start = the_map.lower_bound(t_start);
-  auto end = the_map.upper_bound(t_end);
+  auto end = the_map.upper_bound(t_end); //points to first element *greater than value*, so we can use != in iteration over elements
 
   //Return empty list if nothing in window
   if(start == the_map.end()) return out;

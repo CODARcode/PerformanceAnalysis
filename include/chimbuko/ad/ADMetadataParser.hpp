@@ -49,7 +49,10 @@ namespace chimbuko{
      */
     const GPUvirtualThreadInfo & getGPUthreadInfo(const unsigned long thread) const;
 
-
+    
+    /**
+     * @brief Get the map of CUDA device index to a key/value pair of GPU properties
+     */
     const std::unordered_map<int, std::unordered_map<std::string, std::string> > & getGPUproperties() const{ return m_gpu_properties; }
   };
 

@@ -107,6 +107,6 @@ void SstdParam::show(std::ostream& os) const
 
 const RunStats & SstdParam::get_function_stats(const unsigned long func_id) const{
   auto it = m_runstats.find(func_id);
-  if(it == m_runstats.end()) throw std::runtime_error("Invalid function index");
+  if(it == m_runstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
   return it->second;
 }
