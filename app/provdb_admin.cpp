@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
       sonata::Database db = client.open(addr, 0, "provdb");
       db.create("anomalies");
       db.create("metadata");
+      db.create("normalexecs");
       std::cout << "Admin initialized collections" << std::endl;
     }
 

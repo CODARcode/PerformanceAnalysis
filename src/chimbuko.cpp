@@ -238,21 +238,27 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
   if(m_provdb_client->isConnected()){
     PerfTimer timer,timer2;
 
-    timer.start();
-    std::vector<nlohmann::json> anomaly_prov(anomalies.nEvents(Anomalies::EventType::Outlier));
-    size_t i=0;
-    for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
-      timer2.start();
-      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
-      anomaly_prov[i++] = extract_prov.get_json();
-      m_perf.add("provdb_anom_data_generation_per_anom_us", timer2.elapsed_us());
+    static const Anomalies::EventType event_types[2] = { Anomalies::EventType::Outlier, Anomalies::EventType::Normal };
+    static const std::string descr[2] = { "anom_data", "normalexec_data" };
+    static const ProvenanceDataType provdb_types[2] = { ProvenanceDataType::AnomalyData, ProvenanceDataType::NormalExecData };
+    for(int typeidx=0;typeidx<2;typeidx++){
+      timer.start();
+      std::vector<nlohmann::json> anomaly_prov(anomalies.nEvents(event_types[typeidx]));
+      size_t i=0;
+      for(auto anom_it : anomalies.allEvents(event_types[typeidx])){
+	timer2.start();
+	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
+	anomaly_prov[i++] = extract_prov.get_json();
+	m_perf.add("provdb_" + descr[typeidx] + "_generation_per_anom_us", timer2.elapsed_us());
+      }
+      m_perf.add("provdb_" + descr[typeidx] + "_generation_total_us", timer.elapsed_us());
+      
+      timer.start();
+      m_provdb_client->sendMultipleDataAsync(anomaly_prov, provdb_types[typeidx]); //non-blocking send
+      m_perf.add("provdb_" + descr[typeidx] + "_send_async_us", timer.elapsed_us());
     }
-    m_perf.add("provdb_anom_data_generation_total_us", timer.elapsed_us());
-    
-    timer.start();
-    m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
-    m_perf.add("provdb_anom_data_send_async_us", timer.elapsed_us());
-  }
+
+  }//isConnected
 }
 
 void Chimbuko::sendNewMetadataToProvDB() const{

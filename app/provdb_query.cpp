@@ -31,7 +31,7 @@ void printUsageAndExit(){
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter: Apply a filter to a collection.\n"
 	    << "Arguments: <collection> <query>\n"
-	    << "where collection = 'anomalies' or 'metadata'\n"
+	    << "where collection = 'anomalies', 'metadata', 'normalexecs'\n"
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << "-------------------------------------------------------------------------\n"
@@ -44,7 +44,7 @@ void printUsageAndExit(){
 	    << "                     array_push(\\$vals, \\$member);\n"
 	    << "                  }\"\n"
 	    << "          vars = 'vals'\n"
-	    << "NOTE: The collections are 'anomalies' and 'metadata'\n"
+	    << "NOTE: The collections are 'anomalies', 'metadata' and 'normalexecs'\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << std::endl;  
   exit(0);
@@ -60,6 +60,7 @@ void filter(ADProvenanceDBclient &client,
   ProvenanceDataType coll;
   if(coll_str == "anomalies") coll = ProvenanceDataType::AnomalyData;
   else if(coll_str == "metadata") coll = ProvenanceDataType::Metadata;
+  else if(coll_str == "normalexecs") coll = ProvenanceDataType::NormalExecData;
   else throw std::runtime_error("Invalid collection");
 
   std::vector<std::string> result = client.filterData(coll, query);

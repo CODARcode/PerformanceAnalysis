@@ -41,6 +41,25 @@ ADProvenanceDBclient::~ADProvenanceDBclient(){
   VERBOSE(std::cout << "ADProvenanceDBclient exiting" << std::endl);
 }
 
+sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type){ 
+  switch(type){
+  case ProvenanceDataType::AnomalyData:
+    return m_coll_anomalies;
+  case ProvenanceDataType::Metadata:
+    return m_coll_metadata;
+  case ProvenanceDataType::NormalExecData:
+    return m_coll_normalexecs;
+  default:
+    throw std::runtime_error("Invalid type");
+  }
+}
+
+const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type) const{ 
+  return const_cast<ADProvenanceDBclient*>(this)->getCollection(type);
+}
+
+
+
 void ADProvenanceDBclient::disconnect(){
   if(m_is_connected){
     VERBOSE(std::cout << "ADProvenanceDBclient disconnecting" << std::endl);
@@ -80,6 +99,9 @@ void ADProvenanceDBclient::connect(const std::string &addr){
     m_coll_anomalies = m_database.open("anomalies");
     VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
     m_coll_metadata = m_database.open("metadata");
+    VERBOSE(std::cout << "DB client opening normal execution collection" << std::endl);
+    m_coll_normalexecs = m_database.open("normalexecs");
+
 
     VERBOSE(std::cout << "DB client registering RPCs and handshaking with provDB" << std::endl);
     m_server = eng.lookup(addr);

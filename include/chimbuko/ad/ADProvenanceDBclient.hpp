@@ -10,7 +10,10 @@
 
 namespace chimbuko{
 
-  enum class ProvenanceDataType { AnomalyData, Metadata };
+  /**
+   * @brief The type of provenance data: AnomalyData (anomalous events), Metadata (key/value pairs of system properties and the like), NormalExecData (non-anomalous events)
+   */
+  enum class ProvenanceDataType { AnomalyData, Metadata, NormalExecData };
 
   /**
    * @brief A container for an outstanding request and the ids of the DB entries
@@ -71,6 +74,7 @@ namespace chimbuko{
     sonata::Database m_database; /**< Sonata database */
     sonata::Collection m_coll_anomalies; /**< The anomalies collection */
     sonata::Collection m_coll_metadata; /**< The metadata collection */
+    sonata::Collection m_coll_normalexecs; /**< The normal executions collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
     
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
@@ -104,8 +108,8 @@ namespace chimbuko{
     /**
      * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
      */
-    inline sonata::Collection & getCollection(const ProvenanceDataType type){ return type == ProvenanceDataType::AnomalyData ? m_coll_anomalies : m_coll_metadata; }
-    inline const sonata::Collection & getCollection(const ProvenanceDataType type) const{ return type == ProvenanceDataType::AnomalyData ? m_coll_anomalies : m_coll_metadata; }
+    sonata::Collection & getCollection(const ProvenanceDataType type);
+    const sonata::Collection & getCollection(const ProvenanceDataType type) const;
 		
     /**
      * @brief Send data JSON objects synchronously to the database (blocking)
