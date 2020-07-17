@@ -108,8 +108,8 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   auto it1 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 100, 200) );
   auto it2 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 300, 400) );
   Anomalies anom;
-  anom.insert(it1);
-  anom.insert(it2);
+  anom.insert(it1, Anomalies::EventType::Outlier);
+  anom.insert(it2, Anomalies::EventType::Outlier);
 
   ExecDataMap_t dmap;
   dmap[func_id].push_back(it1);

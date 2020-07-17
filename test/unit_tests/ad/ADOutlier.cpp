@@ -172,7 +172,7 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "# outliers detected: " << nout << std::endl;
 
   EXPECT_EQ(nout, 1);
-  EXPECT_EQ( (unsigned long)outliers.nOutliers(), nout);
+  EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
 }
 
 
@@ -206,10 +206,20 @@ TEST(ADOutlierTestRunWithoutPS, Works){
   outlier.linkExecDataMap(&data_map);
   Anomalies anomalies = outlier.run(0);
 
-  size_t nout = anomalies.nOutliers();
+  size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
   std::cout << "# outliers detected: " << nout << std::endl;
-
   EXPECT_EQ(nout, 1);
+  size_t nout_func = anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier);
+  EXPECT_EQ(nout_func, 1);
+  EXPECT_EQ( anomalies.allEvents(Anomalies::EventType::Outlier)[0], std::next(call_list.begin(), N-1) ); //last event
+
+  //It should also have captured exactly one normal event for comparison (we don't capture all normal events as that would defeat the purpose!)
+  size_t nnorm = anomalies.nEvents(Anomalies::EventType::Normal);
+  std::cout << "# normal events recorded: " << nnorm << std::endl;
+  EXPECT_EQ(nnorm, 1);
+  size_t nnorm_func = anomalies.nFuncEvents(func_id, Anomalies::EventType::Normal);
+  EXPECT_EQ(nnorm_func, 1);
+  EXPECT_EQ( anomalies.allEvents(Anomalies::EventType::Normal)[0], std::next(call_list.begin(), 0) ); //first event
 }
 
 

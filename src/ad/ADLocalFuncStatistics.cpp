@@ -22,9 +22,9 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
 void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
   for(auto fit: m_func){
     unsigned long func_id = fit.first;
-    m_anomaly_count[func_id] += anom.nFuncOutliers(func_id);
+    m_anomaly_count[func_id] += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
   }
-  m_n_anomalies += anom.nOutliers();
+  m_n_anomalies += anom.nEvents(Anomalies::EventType::Outlier);
 }
 
 nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{

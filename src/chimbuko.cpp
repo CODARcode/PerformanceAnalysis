@@ -239,9 +239,9 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
     PerfTimer timer,timer2;
 
     timer.start();
-    std::vector<nlohmann::json> anomaly_prov(anomalies.nOutliers());
+    std::vector<nlohmann::json> anomaly_prov(anomalies.nEvents(Anomalies::EventType::Outlier));
     size_t i=0;
-    for(auto anom_it : anomalies.allOutliers()){
+    for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
       timer2.start();
       ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
       anomaly_prov[i++] = extract_prov.get_json();
@@ -306,7 +306,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     Anomalies anomalies = m_outlier->run(step);
     m_perf.add("anom_detection_time_us", anom_timer.elapsed_us());
 
-    n_outliers += anomalies.nOutliers();
+    n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
     frames++;
     
 
