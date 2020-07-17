@@ -7,7 +7,7 @@ void ADLocalCounterStatistics::gatherStatistics(const CountersByIndex_t &cntrs_b
     const std::list<CounterDataListIterator_t> &counters = it.second;
     if(counters.size() > 0){
       const std::string &counter_name = (*counters.begin())->get_countername(); //all counters with this index by definition have the same name
-      if(m_which_counter->count(counter_name)){
+      if(m_which_counter == nullptr || m_which_counter->count(counter_name)){
 	auto &stats = m_stats[counter_name];
 	for(const auto &c : counters)
 	  stats.push(c->get_value());
@@ -62,7 +62,7 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNet
 }
 
 void ADLocalCounterStatistics::setStats(const std::string &counter, const RunStats &to){
-  if(!m_which_counter->count(counter)) throw std::runtime_error("Counter is not in the list of counters we are collecting");
+  if(m_which_counter != nullptr && !m_which_counter->count(counter)) throw std::runtime_error("Counter is not in the list of counters we are collecting");
   m_stats[counter] = to;
 }
 

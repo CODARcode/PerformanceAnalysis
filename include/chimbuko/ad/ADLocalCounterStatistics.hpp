@@ -11,7 +11,8 @@ namespace chimbuko{
   /**
    * @brief A class that gathers local counter statistics and communicates them to the parameter server
    * @param step The current io step
-   * @param which_counters The set of counters we are interested in (not all might appear in any given run)
+   * @param which_counters The set of counters we are interested in (not all might appear in any given run). If nullptr all counters are accepted.
+   * @param perf A pointer to a PerfStats instance for performance data monitoring
    */
   class ADLocalCounterStatistics{
   public:

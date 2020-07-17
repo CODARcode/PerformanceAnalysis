@@ -323,15 +323,22 @@ void Chimbuko::run(unsigned long long& n_func_events,
     //Send any new metadata to the DB
     sendNewMetadataToProvDB();
 #endif	
-
-    //Gather function profile and anomaly statistics and send to the pserver
+    
     if(m_net_client && m_net_client->use_ps()){
+      //Gather function profile and anomaly statistics and send to the pserver
       ADLocalFuncStatistics prof_stats(step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
       prof_stats.updateGlobalStatistics(*m_net_client);
+
+      //Gather counter statistics and send to pserver
+      ADLocalCounterStatistics count_stats(step, nullptr, &m_perf); //currently collect all counters
+      count_stats.gatherStatistics(m_counter->getCountersByIndex());
+      count_stats.updateGlobalStatistics(*m_net_client);
     }
-      
+    
+
+
     //Dump data accumulated during IO step
     m_io->write(m_event->trimCallList(), step);
     m_io->writeCounters(m_counter->flushCounters(), step);

@@ -51,7 +51,7 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
-      m_global_counter_stats->add_data(message.buf());
+      m_global_counter_stats->add_data(message.buf()); //note, this uses a mutex lock internally
       response.set_msg("", false);
     }
   };

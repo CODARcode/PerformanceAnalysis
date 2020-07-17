@@ -1,6 +1,7 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
+#include <chimbuko/pserver/global_counter_stats.hpp>
 #ifdef _USE_MPINET
 #include <chimbuko/net/mpi_net.hpp>
 #else
@@ -14,7 +15,8 @@ using namespace chimbuko;
 
 int main (int argc, char ** argv){
   SstdParam param; //global collection of parameters used to identify anomalies
-  GlobalAnomalyStats global_stats; //global anomaly statistics
+  GlobalAnomalyStats global_func_stats; //global anomaly statistics
+  GlobalCounterStats global_counter_stats; //global counter statistics
     
   int nt = -1, n_ad_modules = 0;
   std::string logdir = ".";
@@ -53,16 +55,18 @@ int main (int argc, char ** argv){
     std::cout << "Run parameter server with " << nt << " threads" << std::endl;
     if (ws_addr.size() && n_ad_modules){
       std::cout << "Run anomaly statistics sender (ws @ " << ws_addr << ")." << std::endl;
-      global_stats.reset_anomaly_stat({n_ad_modules});
+      global_func_stats.reset_anomaly_stat({n_ad_modules});
     }
 
     net.add_payload(new NetPayloadUpdateParams(&param));
     net.add_payload(new NetPayloadGetParams(&param));
-    net.add_payload(new NetPayloadUpdateAnomalyStats(&global_stats));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
+    net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
     net.init(nullptr, nullptr, nt);
 
     //Start sending anomaly statistics to viz
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
     stat_sender.run_stat_sender(ws_addr);
 
     //Start communicating with the AD instances
