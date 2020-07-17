@@ -3,15 +3,19 @@
 
 using namespace chimbuko;
 
+inline nlohmann::json getCallStackEntry(const ExecData_t &call){
+  return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry_time",call.get_entry()} };
+};
+
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
 					 const ADCounter &counters, const ADMetadataParser &metadata): m_call(call), m_is_gpu_event(false){
   //Get stack information
-  m_callstack.push_back({ {"fid",call.get_fid()}, {"func",call.get_funcname()} });
+  m_callstack.push_back(getCallStackEntry(call));
   std::string parent = call.get_parent();
   while(parent != "root"){
     auto call_it = event_man.getCallData(parent);
-    m_callstack.push_back({ {"fid",call_it->get_fid()}, {"func",call_it->get_funcname()} });
+    m_callstack.push_back(getCallStackEntry(*call_it));
     parent = call_it->get_parent();
   }
 
@@ -43,12 +47,12 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
 
       //Generate the parent stack
       nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
-      gpu_event_parent_stack.push_back({ {"fid",pit->get_fid()}, {"func",pit->get_funcname() } });
+      gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
 
       std::string parent = pit->get_parent();
       while(parent != "root"){
 	auto call_it = event_man.getCallData(parent);
-	gpu_event_parent_stack.push_back({ {"fid",call_it->get_fid()}, {"func",call_it->get_funcname()} });
+	gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
 	parent = call_it->get_parent();
       }
       m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);

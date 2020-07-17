@@ -47,8 +47,9 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   //Check call stack
   EXPECT_EQ(output["call_stack"].size(), 2);
   EXPECT_EQ(output["call_stack"][0]["func"], "thechild");
+  EXPECT_EQ(output["call_stack"][0]["entry_time"], 1050);
   EXPECT_EQ(output["call_stack"][1]["func"], "theparent");
-
+  EXPECT_EQ(output["call_stack"][1]["entry_time"], 1000);
   //Test statistics
   EXPECT_EQ(output["func_stats"], stats.get_json());
   
