@@ -9,5 +9,6 @@
 ./ad/ADLocalCounterStatistics
 ./ad/ADMetadataParser
 ./ad/ADCounter
+./ad/ADglobalFunctionIndexMap
 ./util/DispatchQueue
 ./util/commandLineParser

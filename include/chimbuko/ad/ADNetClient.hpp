@@ -52,8 +52,7 @@ namespace chimbuko{
     /**
      * @brief Send a message to the parameter server and receive the response
      * @param msg The message
-     * @param response_include_header response message will capture the header also
-     * @return The response message in string format
+     * @return The response message in string format. This is a JSON object with 'Header' and 'Buffer' fields
      */       
     std::string send_and_receive(const Message &msg);
     
