@@ -1,4 +1,5 @@
 #include<chimbuko/ad/ADParser.hpp>
+#include<chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -23,8 +24,8 @@ TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
 }
 
 struct SSTrw{
-  //Common variables accessed by both threads
-  Barrier barrier2; //a barrier for 2 threads
+  //Common variables accessed by both writer and reader threads
+  Barrier barrier; //a barrier for a fixed number of threads
   bool completed;
   std::mutex m;
   std::condition_variable cv;
@@ -37,7 +38,7 @@ struct SSTrw{
   adios2::Engine wr;
 
   void openWriter(){
-    barrier2.wait(); 
+    barrier.wait(); 
     std::cout << "Writer thread initializing" << std::endl;
   
     ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
@@ -53,24 +54,24 @@ struct SSTrw{
 
     std::cout << "Writer thread init is completed" << std::endl;
 
-    barrier2.wait();
+    barrier.wait();
   }
   void closeWriter(){
-    barrier2.wait();
+    barrier.wait();
     
     std::cout << "Writer thread closing shop" << std::endl;
     wr.Close();
     
     std::cout << "Writer thread closed" << std::endl;
     
-    barrier2.wait();    
+    barrier.wait();    
   }
   
   //Reader
   ADParser *parser;
 
   void openReader(){
-    barrier2.wait();
+    barrier.wait();
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); //ADIOS2 seems to crash if we don't wait a short amount of time between starting the writer and starting the reader
     std::cout << "Parse thread initializing" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
@@ -78,20 +79,20 @@ struct SSTrw{
     parser = new ADParser(filename, "SST");
     std::cout << "Parser initialized" << std::endl;
     
-    barrier2.wait();
+    barrier.wait();
   }
   void closeReader(){
-    barrier2.wait();
+    barrier.wait();
     std::cout << "Parser thread waiting to exit" << std::endl;
     
-    barrier2.wait(); //have to wait until after the writer has closed!
+    barrier.wait(); //have to wait until after the writer has closed!
     
     std::cout << "Parser thread exiting" << std::endl;
     
     if(parser){ delete parser; parser = NULL; }
   }
   
-  SSTrw(): barrier2(2), completed(false), parser(NULL), filename("commFile"){}
+  SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
 
 
@@ -171,7 +172,7 @@ TEST(ADParserTestAttributeIO, funcAttributeCommunicated){
 		       rw.io.DefineAttribute<std::string>("timer 1234", "my_function");
 		       rw.wr.EndStep();
 
-		       rw.barrier2.wait();
+		       rw.barrier.wait();
 		       
 		       rw.closeWriter();
 		     });
@@ -191,7 +192,7 @@ TEST(ADParserTestAttributeIO, funcAttributeCommunicated){
       EXPECT_EQ(it->second, "my_function");
     }
 
-    rw.barrier2.wait();
+    rw.barrier.wait();
     
     rw.closeReader();
   
@@ -224,7 +225,7 @@ TEST(ADParserTestAttributeIO, eventAttributeCommunicated){
 		       rw.io.DefineAttribute<std::string>("event_type 1234", "my_event");
 		       rw.wr.EndStep();
 
-		       rw.barrier2.wait();
+		       rw.barrier.wait();
 		       
 		       rw.closeWriter();
 		     });
@@ -244,7 +245,7 @@ TEST(ADParserTestAttributeIO, eventAttributeCommunicated){
       EXPECT_EQ(it->second, "my_event");
     }
 
-    rw.barrier2.wait();
+    rw.barrier.wait();
     
     rw.closeReader();
   
@@ -283,7 +284,7 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
 		       
 		       rw.wr.EndStep();
 
-		       rw.barrier2.wait();
+		       rw.barrier.wait();
 		       
 		       rw.closeWriter();
 		     });
@@ -301,7 +302,7 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
     const unsigned long* rdata = rw.parser->getFuncData(0);
     EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );
     
-    rw.barrier2.wait();
+    rw.barrier.wait();
     
     rw.closeReader();
   
@@ -312,6 +313,119 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
   }
   EXPECT_EQ(err, false);
 }
+
+
+//The pserver stores a global map of function name to a global index
+//this is synchronized to a local object that maintains a mapping of local to global index
+TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
+  unsigned long local_idx = 1234;
+  unsigned long global_idx = 0; //this is the value always assigned to the first function
+  std::string func_name = "my_function";
+  
+  std::string sname = "tcp://localhost:5559"; //ip of "pserver"
+
+  int argc; char** argv = nullptr;
+  SSTrw rw;
+  
+  Barrier ps_barrier(2);
+
+  //This thread will own the "pserver" instance
+  std::thread psthr([&](){
+      //The "pserver"
+      std::cout << "TEST: Writer thread initializing pserver" << std::endl;
+      PSglobalFunctionIndexMap glob_map;
+      ZMQNet ps;
+      ps.add_payload(new NetPayloadGlobalFunctionIndexMap(&glob_map));
+      ps.init(&argc, &argv, 1); //1 worker
+      ps.run(".");
+
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      ps_barrier.wait(); //main thread should disconnect before ps is finalized
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
+
+
+  ADNetClient net_client;
+  net_client.connect_ps(0, 0, sname);
+  std::cout << "TEST: Net client has connected to pserver" << std::endl;
+
+
+  //This is the ADIOS2 writer thread
+  std::thread wthr([&](){
+      //The ADIOS2 writer
+      std::cout << "TEST: Writer thread opening ADIOS2 writer" << std::endl;
+      rw.openWriter();
+      rw.wr.BeginStep();
+		       
+      //Pass the map of local index to func name
+      rw.io.DefineAttribute<std::string>("timer " + anyToStr(local_idx), func_name);
+
+      //Setup a data packet
+      unsigned long data[FUNC_EVENT_DIM];
+      for(int i=0;i<FUNC_EVENT_DIM;i++) data[i] = i;
+      size_t count_val = 1;
+      data[FUNC_IDX_F] = local_idx;
+		    		       
+      auto count = rw.io.DefineVariable<size_t>("timer_event_count");
+      auto timestamps = rw.io.DefineVariable<unsigned long>("event_timestamps", {1, FUNC_EVENT_DIM}, {0, 0}, {1, FUNC_EVENT_DIM});
+
+      rw.wr.Put(count, &count_val);			 
+      rw.wr.Put(timestamps, data);
+		       
+      rw.wr.EndStep();
+
+      std::cout << "TEST: Writer thread waiting at barrier for completion" << std::endl;
+      rw.barrier.wait();
+		       
+      rw.closeWriter();
+    });
+  
+
+  std::cout << "TEST: Opening SST reader" << std::endl;
+  rw.openReader();
+  std::cout << "TEST: Link net client" << std::endl;
+  rw.parser->linkNetClient(&net_client);
+
+  std::cout << "TEST: Beginning step" << std::endl;
+  rw.parser->beginStep();
+  std::cout << "TEST: Updating attributes" << std::endl;
+  rw.parser->update_attributes();
+  std::cout << "TEST: Updating func data" << std::endl;
+  rw.parser->fetchFuncData();
+  std::cout << "TEST: Ending step" << std::endl;
+  rw.parser->endStep();
+ 
+  std::cout << "TEST: Checking results" << std::endl;
+  EXPECT_EQ(rw.parser->getGlobalFunctionIndex(local_idx), global_idx);
+
+  auto it = rw.parser->getFuncMap()->find(global_idx); //check the function index -> name map uses the global index
+  EXPECT_NE(it, rw.parser->getFuncMap()->end());
+  EXPECT_EQ(it->second, func_name);
+
+  const unsigned long* dp = rw.parser->getFuncData(0); //check the function index has been replaced in the data
+  EXPECT_NE(dp, nullptr);
+  EXPECT_EQ(dp[FUNC_IDX_F], global_idx);
+
+  std::cout << "TEST: Main thread waiting at barrier for writer thread completion" << std::endl;
+  rw.barrier.wait();  
+  rw.closeReader();
+  wthr.join();
+
+  net_client.disconnect_ps();
+  std::cout << "TEST syncing with pserver thread for ps finalize" << std::endl;
+  ps_barrier.wait();
+  psthr.join();
+}
+
+
+
+
+
+
+
+
+
 
 //Events same up to id string
 bool same_up_to_id_string(const Event_t &l, const Event_t &r){

@@ -241,6 +241,12 @@ namespace chimbuko {
      */
     void setCounterMap(const std::unordered_map<int, std::string> &m){ m_counterMap = m; }
 
+
+    /**
+     * @brief Get the global index corresponding to a given local function index. 1<->1 mapping if pserver not connected
+     */
+    unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
+
   private:
     /**
      * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest

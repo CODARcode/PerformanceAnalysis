@@ -29,8 +29,8 @@ namespace chimbuko{
      * @brief connect to the parameter server
      * 
      * @param rank this process rank
-     * @param srank server process rank
-     * @param sname server name
+     * @param srank server process rank. If using ZMQnet this is not applicable
+     * @param sname server name. If using ZMQNet this is the server ip address, for MPINet it is not applicable
      */
     void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
     /**

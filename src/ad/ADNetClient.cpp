@@ -66,14 +66,14 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
     msg.set_msg("Hello!");
 
-    VERBOSE(std::cout << "AD sending hello message" << std::endl);
+    VERBOSE(std::cout << "ADNetClient sending handshake message to server" << std::endl);
     ZMQNet::send(m_socket, msg.data());
 
     msg.clear();
 
-    VERBOSE(std::cout << "AD waiting for response message" << std::endl);
+    VERBOSE(std::cout << "ADNetClient waiting for handshake response from server" << std::endl);
     ZMQNet::recv(m_socket, strmsg);
-    VERBOSE(std::cout << "AD received response message" << std::endl);
+    VERBOSE(std::cout << "ADNetClient handshake response received" << std::endl);
     
     msg.set_msg(strmsg, true);
 
@@ -81,7 +81,8 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     {
       throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
     } 
-    m_use_ps = true;      
+    m_use_ps = true;
+    std::cout << "ADNetClient successfully connected to server" << std::endl;
 #endif
     //MPI_Barrier(MPI_COMM_WORLD);
 }
