@@ -19,13 +19,31 @@ namespace chimbuko{
   public:
 
     ADglobalFunctionIndexMap(ADNetClient *net_client = nullptr): m_net_client(net_client){}
+
+    /**
+     * @brief Check if the pserver is connected
+     */
+    bool connectedToPS() const{ return m_net_client != nullptr && m_net_client->use_ps(); }
     
+    /**
+     * @brief Link the net client
+     */
+    void linkNetClient(ADNetClient *net_client){ m_net_client = net_client; }
+
     /**
      * @brief Lookup the global index corresponding to the input local index
      *
      * Function names must be unique
      */
     unsigned long lookup(const unsigned long local_idx, const std::string &func_name);
+
+
+    /**
+     * @brief Lookup the global index corresponding to the input local index (const version; throws if not already present)
+     *
+     */
+    unsigned long lookup(const unsigned long local_idx) const;
+
   };
 
 }

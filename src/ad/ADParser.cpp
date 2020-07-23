@@ -154,10 +154,14 @@ void ADParser::update_attributes() {
     if(m->count(key) == 0 && attributePair.second.count("Value")){
       std::string value = attributePair.second.find("Value")->second;
 
-      //Remove quotation marks
+      //Remove quotation marks from name string
       size_t idx = 0;
       while ( (idx = value.find("\"")) != std::string::npos )
 	value.replace(idx, 1, "");
+
+      //Replace local with global index if a function and pserver connected
+      if(attrib_type == Func)
+	key = m_global_func_idx_map.lookup(key, value);      
 
       //Insert into map
       (*m)[key] = value;
@@ -188,6 +192,17 @@ ParserError ADParser::fetchFuncData() {
 
       in_event_timestamps.SetSelection({{0, 0}, {m_timer_event_count, FUNC_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_event_timestamps, m_event_timestamps.data(), adios2::Mode::Sync);
+
+      //Replace the function index with the global index
+      //As the function map was populated when the attributes were looked up, this doesn't need comms or the function name here
+      if(m_global_func_idx_map.connectedToPS()){
+	unsigned long *fidx_p = m_event_timestamps.data() + FUNC_IDX_F;
+	for(size_t i=0;i<m_timer_event_count;i++){
+	  *fidx_p = m_global_func_idx_map.lookup(*fidx_p);
+	  fidx_p += FUNC_EVENT_DIM;
+	}
+      }
+
       return ParserError::OK;
     }
   return ParserError::NoFuncData;

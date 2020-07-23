@@ -3,15 +3,18 @@
 #include <adios2.h>
 #include <unordered_map>
 #include <unordered_set>
-#include "chimbuko/ad/ADDefine.hpp"
-#include "chimbuko/ad/ExecData.hpp"
+#include "ExecData.hpp"
 #include "ADDefine.hpp"
+#include "ADglobalFunctionIndexMap.hpp"
 
 namespace chimbuko {
 
   /**
    * @brief parsing performance trace data streamed via ADIOS2
-   * 
+   *
+   * Note: The "function index" assigned to each function by Tau is not necessarily the same for every node as it depends on the order in which the function
+   *       is encountered. To deal with this, if the parameter server is running it maintains a global mapping of function name to an index, which is 
+   *       synchronized to the parser (providing the net client is linked) and the local index is replaced by the global index in the incoming data stream.
    */
   class ADParser {
 
@@ -29,6 +32,13 @@ namespace chimbuko {
      * 
      */
     ~ADParser();
+
+    /**
+     * @brief Link the net client to the object that maintains a mapping of local function index to global index
+     *
+     * If this is performed, the parser will replace the local with global index in the incoming data stream
+     */
+    void linkNetClient(ADNetClient *net_client){ m_global_func_idx_map.linkNetClient(net_client); }
 
     /**
      * @brief Get the function hash map (function id --> function name)
@@ -277,6 +287,8 @@ namespace chimbuko {
 
     size_t m_counter_count;                             /**< the number of counter events in the current step */
     std::vector<unsigned long> m_counter_timestamps;    /**< array of all counter events in the current step */
+
+    ADglobalFunctionIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
   };
 
 } // end of AD namespace

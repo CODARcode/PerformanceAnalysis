@@ -3,7 +3,7 @@
 using namespace chimbuko;
 
 unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, const std::string &func_name){
-  if(m_net_client == nullptr || m_net_client->use_ps() == false) return local_idx;
+  if(!connectedToPS()) return local_idx;
   auto it = m_idxmap.find(local_idx);
   if(it != m_idxmap.end()) return it->second;
   else{
@@ -25,3 +25,11 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
   assert(0);
 }      
 
+unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx) const{
+  if(!connectedToPS()) return local_idx;
+  auto it = m_idxmap.find(local_idx);
+  if(it != m_idxmap.end()) return it->second;
+  else throw std::runtime_error("ADglobalFunctionIndexMap::lookup (const version): local index not in map");
+}
+
+  
