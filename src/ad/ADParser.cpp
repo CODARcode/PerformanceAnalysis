@@ -10,7 +10,7 @@ using namespace chimbuko;
 
 ADParser::ADParser(std::string inputFile, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
-    m_timer_event_count(0), m_comm_count(0), m_counter_count(0)
+    m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -91,6 +91,13 @@ void ADParser::update_attributes() {
   m_new_metadata.clear(); //clear all previously seen metadata
   
   for (const auto attributePair: attributes){
+    if(Verbose::on()){
+      std::cout << "ADParser::update_attributes parsing attribute: (" << attributePair.first << ", {";
+      for(auto const &e : attributePair.second)
+	std::cout << "[" << e.first << "," << e.second << "]";
+      std::cout << "})" << std::endl;
+    }
+
     std::string name = attributePair.first;
     enum AttributeType { Func, Event, Counter, Metadata, Unknown };
 
@@ -101,8 +108,10 @@ void ADParser::update_attributes() {
     else if(name.find("MetaData") != std::string::npos) attrib_type = Metadata;
 
     //Skip attribute if not of known type
-    if(attrib_type == Unknown)
+    if(attrib_type == Unknown){
+      VERBOSE(std::cout << "ADParser::update_attributes: attribute type not recognized" << std::endl);
       continue;
+    }
       
     //Parse metadata attributes
     if(attrib_type == Metadata){
@@ -120,7 +129,7 @@ void ADParser::update_attributes() {
 	 	  
 	  m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
 	    
-	  //std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
+	  VERBOSE(std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl);
 	    
 	  m_metadata_seen.insert(name);
 	}
@@ -150,8 +159,7 @@ void ADParser::update_attributes() {
       throw std::runtime_error("Invalid attribute type");
     }
 
-    //Append to map
-    if(m->count(key) == 0 && attributePair.second.count("Value")){
+    if(attributePair.second.count("Value")){
       std::string value = attributePair.second.find("Value")->second;
 
       //Remove quotation marks from name string
@@ -160,11 +168,18 @@ void ADParser::update_attributes() {
 	value.replace(idx, 1, "");
 
       //Replace local with global index if a function and pserver connected
-      if(attrib_type == Func)
+      if(attrib_type == Func){
+	PerfTimer timer;
 	key = m_global_func_idx_map.lookup(key, value);      
-
-      //Insert into map
-      (*m)[key] = value;
+	if(m_perf != nullptr) m_perf->add("global_func_idx_lookup_us", timer.elapsed_us());
+      }
+    
+      //Append to map
+      if(!m->count(key)){
+	(*m)[key] = value;
+      }else{ 
+	VERBOSE(std::cout << "ADParser::update_attributes: attribute key already in map, value " << m->find(key)->second << std::endl);
+      }
     }
   }
   m_attr_once = true;
@@ -198,7 +213,25 @@ ParserError ADParser::fetchFuncData() {
       if(m_global_func_idx_map.connectedToPS()){
 	unsigned long *fidx_p = m_event_timestamps.data() + FUNC_IDX_F;
 	for(size_t i=0;i<m_timer_event_count;i++){
-	  *fidx_p = m_global_func_idx_map.lookup(*fidx_p);
+	  unsigned long new_idx;
+	  try{
+	    new_idx = m_global_func_idx_map.lookup(*fidx_p);
+	  }catch(const std::exception &e){
+	    //Sometimes tau gives us malformed (nonsense) data entries, and this can cause the lookup to fail
+	    //We need to work around that here
+	    int rank = m_global_func_idx_map.getNetClient()->get_client_rank();
+	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", rank);
+	    if(!ev.second){
+	      VERBOSE(std::cout << "ADParser::fetchFuncData caught local index lookup error but appears to be associated with malformed event: " << ev.first.get_json().dump() << std::endl);
+	      fidx_p += FUNC_EVENT_DIM;
+	      continue;
+	    }else{
+	      std::cerr << "ADParser::fetchFuncData caught local index lookup error: " << e.what() << std::endl;
+	      std::cerr << "Associated event: " << ev.first.get_json().dump() << std::endl;
+	      throw std::runtime_error("ADParser::fetchFuncData failed local->global index substitution");
+	    }
+	  }
+	  *fidx_p = new_idx;
 	  fidx_p += FUNC_EVENT_DIM;
 	}
       }
@@ -293,7 +326,7 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   bool good = true;
 
   if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
-    std::cout << "\n***** Invalid event *****\n";
+    std::cerr << "\n***** Invalid event detected *****\n";
     //std::cout << "[" << rank << "] " << ev << std::endl;
     if(ev.valid()){
       std::string event_type("UNKNOWN"), func_name("UNKNOWN");
@@ -312,8 +345,9 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
       }else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
 	func_name = "N/A";
       
-      std::cerr << ev.get_json().dump() << std::endl << event_type << ": " << func_name << std::endl;
-    }else std::cerr << "Data pointer is null" << std::endl;
+      std::cerr << "Invalid event data: " << ev.get_json().dump() << std::endl 
+		<< "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
+    }else std::cerr << "Invalid event data pointer is null" << std::endl;
     
     good = false;
   }

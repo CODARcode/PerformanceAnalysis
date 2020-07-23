@@ -44,6 +44,11 @@ namespace chimbuko{
      */
     unsigned long lookup(const unsigned long local_idx) const;
 
+    
+    /**
+     * @brief Return a pointer to the net client
+     */
+    ADNetClient* getNetClient(){ return m_net_client; }
   };
 
 }

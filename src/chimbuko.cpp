@@ -82,6 +82,7 @@ void Chimbuko::init_io(){
 
 void Chimbuko::init_parser(){
     m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.trace_engineType);
+    m_parser->linkPerf(&m_perf);  
 }
 
 void Chimbuko::init_event(){
@@ -100,6 +101,7 @@ void Chimbuko::init_net_client(){
 #else
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
+    m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
   }
 }
 
@@ -111,9 +113,7 @@ void Chimbuko::init_outlier(){
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
-#ifdef _PERF_METRIC
   m_outlier->linkPerf(&m_perf);
-#endif
 }
 
 void Chimbuko::init_counter(){
@@ -180,6 +180,8 @@ bool Chimbuko::parseInputStep(int &step,
     
   // get trace data via SST
   step = m_parser->getCurrentStep();
+  VERBOSE(std::cout << "driver commencing input parse for step " << step << std::endl);
+
   m_parser->update_attributes();
   m_parser->fetchFuncData();
   m_parser->fetchCommData();
@@ -195,6 +197,8 @@ bool Chimbuko::parseInputStep(int &step,
 
   //Parse the new metadata for any attributes we want to maintain
   m_metadata_parser->addData(m_parser->getNewMetaData());
+
+  VERBOSE(std::cout << "driver completed input parse for step " << step << std::endl);
 
   return true;
 }

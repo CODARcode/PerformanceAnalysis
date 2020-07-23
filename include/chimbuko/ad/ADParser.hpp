@@ -6,6 +6,7 @@
 #include "ExecData.hpp"
 #include "ADDefine.hpp"
 #include "ADglobalFunctionIndexMap.hpp"
+#include <chimbuko/util/PerfStats.hpp>
 
 namespace chimbuko {
 
@@ -39,6 +40,11 @@ namespace chimbuko {
      * If this is performed, the parser will replace the local with global index in the incoming data stream
      */
     void linkNetClient(ADNetClient *net_client){ m_global_func_idx_map.linkNetClient(net_client); }
+
+    /**
+     * @brief If linked, performance information will be gathered
+     */
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
 
     /**
      * @brief Get the function hash map (function id --> function name)
@@ -295,6 +301,8 @@ namespace chimbuko {
     std::vector<unsigned long> m_counter_timestamps;    /**< array of all counter events in the current step */
 
     ADglobalFunctionIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
+
+    PerfStats* m_perf;                                  /**< Performance monitoring */
   };
 
 } // end of AD namespace

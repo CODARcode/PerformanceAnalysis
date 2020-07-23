@@ -62,9 +62,9 @@ void doWork(void* context,
     msg_reply = msg.createReply();
 
     auto kit = payloads.find((MessageKind)msg.kind());
-    if(kit == payloads.end()) throw std::runtime_error("No payload associated with the message kind provided");
+    if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided (did you add the payload to the server?)");
     auto pit = kit->second.find((MessageType)msg.type());
-    if(pit == kit->second.end()) throw std::runtime_error("No payload associated with the message type provided");
+    if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided (did you add the payload to the server?)");
 
     //Apply the payload
     pit->second->action(msg_reply, msg);

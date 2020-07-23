@@ -15,6 +15,7 @@ int main (int argc, char ** argv){
   SstdParam param; //global collection of parameters used to identify anomalies
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
+  PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
     
   int nt = -1, n_ad_modules = 0;
   std::string logdir = ".";
@@ -60,6 +61,7 @@ int main (int argc, char ** argv){
     net.add_payload(new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
+    net.add_payload(new NetPayloadGlobalFunctionIndexMap(&global_func_index_map));
     net.init(nullptr, nullptr, nt);
 
     //Start sending anomaly statistics to viz

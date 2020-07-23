@@ -47,7 +47,7 @@ public:
      */
     std::string id() const { return m_id; }
     /**
-     * @brief return event index
+     * @brief return event index, typically the index of the event in the input array for the timestep on which it was spawned
      */
     size_t idx() const { return m_idx; }
     /**
@@ -63,7 +63,7 @@ public:
      */
     unsigned long tid() const { return m_data[IDX_T]; }
     /**
-     * @brief return event id (FUNC/COMM only)
+     * @brief return event type id (FUNC/COMM only). Eg for FUNC events is is ENTRY/EXIT
      */
     unsigned long eid() const;   
     /**
