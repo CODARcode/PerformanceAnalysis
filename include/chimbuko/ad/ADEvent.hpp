@@ -59,7 +59,7 @@ namespace chimbuko {
   typedef std::stack<CallListIterator_t> CallStack_t;
 
   /**
-   * @brief map of process, rank, thread -> CallListIterator_t
+   * @bried map of process, rank, thread -> CallListIterator_t
    */
   DEF_MAP3UL(CallStackMap, CallStack_t);
 

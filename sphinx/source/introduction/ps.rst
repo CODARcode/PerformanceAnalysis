@@ -1,6 +1,6 @@
-****************
-Parameter Server
-****************
+***************
+Paramter Server
+***************
 
 The parameter server (PS) provides two services:
 
@@ -24,8 +24,8 @@ acquire a global lock, and update the **in-mem DB**, and return the latest param
 Similrary, for the task of streaming global anomaly statistics, it will stored in a queue and the (**S**)treaming thread, 
 which is dedicated to stream the anomaly statistics to a visualization server periodically.
 
-- For network layer, see :ref:`api/api_code:ZMQNet`
-- For in-Mem DB, see :ref:`api/api_code:SstdParam`
+- For network layer, see `ZMQNet <../api/api_code.html#zmqnet>`__
+- For in-Mem DB, see `SSTDParam <../api/api_code.html#sstdparam>`__
 
 This simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing. 
 In the following subsection, we will describe the scalable parameter server.

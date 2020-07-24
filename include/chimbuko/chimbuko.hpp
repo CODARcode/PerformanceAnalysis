@@ -65,9 +65,6 @@ namespace chimbuko {
   };
 
 
-  /**
-   * @brief The main interface for the AD module
-   */
   class Chimbuko{
   private:
   public:
