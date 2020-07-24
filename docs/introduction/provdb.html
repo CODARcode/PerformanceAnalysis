@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Overview &mdash; Performance Analysis 3.0.0 documentation</title>
+  <title>Provenance Database &mdash; Performance Analysis 3.0.0 documentation</title>
   
 
   
@@ -35,9 +35,7 @@
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Installation" href="install.html" />
-    <link rel="prev" title="Chimbuko: Performance Analysis" href="../index.html" /> 
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -82,31 +80,11 @@
             
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#on-node-ad-module">On-node AD Module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#parser">Parser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#pre-processing">Pre-processing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#update-local-parameters">Update local parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#anomaly-detection">Anomaly Detection</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#statistical-anomaly-analysis">Statistical anomaly analysis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#advanced-anomaly-analysis">Advanced anomaly analysis</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#stream-local-viz-data">Stream local viz data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#post-processing">Post-processing</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="#parameter-server">Parameter Server</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#simple-parameter-server">Simple Parameter Server</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#scalable-parameter-server">Scalable Parameter Server</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="#provenance-database">Provenance Database</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#function-event-schema">Function event schema</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#metadata-schema">Metadata schema</a></li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#on-node-ad-module">On-node AD Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#parameter-server">Parameter Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#provenance-database">Provenance Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API For Developers</span></p>
@@ -157,13 +135,13 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Overview</li>
+      <li>Provenance Database</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/introduction/overview.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/introduction/provdb.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -176,114 +154,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="overview">
-<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
-<p>The anomaly detection (ADM) module consists of three components: <strong>on-node anomaly detection (AD)</strong>,
-<strong>parameter server (PS)</strong> and <strong>provenance database (ProvDB)</strong>.</p>
-<div class="figure align-center" id="id1">
-<a class="reference internal image-reference" href="../_images/ad.png"><img alt="Anomaly detection module architecture" src="../_images/ad.png" style="width: 1220.0px; height: 319.0px;" /></a>
-<p class="caption"><span class="caption-text">Anomaly detection (AD) module: on-node AD module and paramter server (PS).</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
-</div>
-<p>As described by the diagram above, an instrumented application communicates trace information to an instance of the AD, whose role it is to decide whether a function execution was anomalous. The decision is based upon globally aggregated function statistics that are collected on the PS and kept in sync with the AD instances. The PS also fulfils the role of collecting global statistics (number of anomalies, various counters) to forward to the external visualization module.</p>
-<p>Detailed information about each anomaly is collected by the AD instances and forwarded to the ProvDB, which can be queried both online and offline to obtain more information.</p>
-</div>
-<div class="section" id="on-node-ad-module">
-<h1>On-node AD Module<a class="headerlink" href="#on-node-ad-module" title="Permalink to this headline">¶</a></h1>
-<p>The on-node anomaly detection (AD) module (per applications’ process) takes streamed trace data.
-Each AD parses the streamed trace data and maintains a function call stack along with
-any communication events (if available). Then, it determines anomalous function calls that have
-extraordinary behaviors. If there are any anomalies within the current trace data,
-the AD module stores them in files or DB. This is where significant data reduction occurs
-because we only save the anomalies and a few nearby normal function calls of the anomalies.</p>
-<div class="section" id="parser">
-<h2>Parser<a class="headerlink" href="#parser" title="Permalink to this headline">¶</a></h2>
-<p>Currently, the trace data is streamed via <a class="reference external" href="https://github.com/ornladios/ADIOS2">ADIOS2</a>.
-We provide class <a class="reference external" href="../api/api_code.html#adparser">ADParser</a> to connect to an ADIOS2 writer side and
-fetch necessary data for the performance analysis.</p>
-</div>
-<div class="section" id="pre-processing">
-<h2>Pre-processing<a class="headerlink" href="#pre-processing" title="Permalink to this headline">¶</a></h2>
-<p>In the pre-processing step, the <strong>on-node AD moudle</strong> maintains a call stack tree in application,
-rank and thread levels (See class <a class="reference external" href="../api/api_code.html#adevent">ADEvent</a>). While it is building and
-maintaining the call stack tree, it computes inclusive and exclusive running time for each function, and
-mapping communication events to a function event.</p>
-</div>
-<div class="section" id="update-local-parameters">
-<h2>Update local parameters<a class="headerlink" href="#update-local-parameters" title="Permalink to this headline">¶</a></h2>
-<p>Using the pre-processed data, it first computes local parameters (depends on anomaly detection algorithm).
-Then, the local parameters are updated via the Parameter Server to have robust and consistent
-anomaly detection capabilities over the distribued <strong>on-node AD modules</strong>.
-(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>).</p>
-</div>
-<div class="section" id="anomaly-detection">
-<h2>Anomaly Detection<a class="headerlink" href="#anomaly-detection" title="Permalink to this headline">¶</a></h2>
-<p>With updated anomaly detection parameters, it determines anomaly functions calls.
-(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>)</p>
-<div class="section" id="statistical-anomaly-analysis">
-<h3>Statistical anomaly analysis<a class="headerlink" href="#statistical-anomaly-analysis" title="Permalink to this headline">¶</a></h3>
-<p>An anomaly function call is a function call that has a longer (or shorter) execution time than
-a upper (or a lower) threshold.</p>
-<div class="math notranslate nohighlight">
-\[\begin{split}threshold_{upper} = \mu_{i} + \alpha * \sigma_{i} \\
-threshold_{lower} = \mu_{i} - \alpha * \sigma_{i}\end{split}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\mu_{i}\)</span> and <span class="math notranslate nohighlight">\(\sigma_{i}\)</span> are mean and standard deviation of execution time
-of a function <span class="math notranslate nohighlight">\(i\)</span>, respectively, and <span class="math notranslate nohighlight">\(\alpha\)</span> is a control parameter (the lesser value,
-the more anomalies or the more false positives).</p>
-<p>(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a> and <a class="reference external" href="../api/api_code.html#runstats">RunStats</a>).</p>
-</div>
-<div class="section" id="advanced-anomaly-analysis">
-<h3>Advanced anomaly analysis<a class="headerlink" href="#advanced-anomaly-analysis" title="Permalink to this headline">¶</a></h3>
-<p>TBD</p>
-</div>
-</div>
-<div class="section" id="stream-local-viz-data">
-<h2>Stream local viz data<a class="headerlink" href="#stream-local-viz-data" title="Permalink to this headline">¶</a></h2>
-<p>Once anmalies are identified, statistics related those anomalies (e.g. mean and standard deviation
-of the number of anomalies per rank) is sent to the Parameter Server. Then the Parameter Server will
-stream the aggregated statistics to the Visualization Server so that users can evaluate the overall performance
-of the running applications in real time.
-(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>).</p>
-</div>
-<div class="section" id="post-processing">
-<h2>Post-processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h2>
-<p>Currently, in the post-processing step, the evaluated function calls are trimed out from
-the call stack tree (See <a class="reference external" href="../api/api_code.html#adevent">ADEvent</a>) and the trimed function calls
-are sent to the visualization server or stored in the database according to users’ configuration
-(See <a class="reference external" href="../api/api_code.html#adio">ADio</a>)</p>
-</div>
-</div>
-<div class="section" id="parameter-server">
-<h1>Parameter Server<a class="headerlink" href="#parameter-server" title="Permalink to this headline">¶</a></h1>
-<p>The parameter server (PS) provides two services:</p>
-<ul class="simple">
-<li><p>Maintain global parameters to provide consistent and robust anomaly detection power over on-node AD modules</p></li>
-<li><p>Keep a global view of workflow-level performance trace analysis results and stream to visualization server</p></li>
-</ul>
-<div class="section" id="simple-parameter-server">
-<h2>Simple Parameter Server<a class="headerlink" href="#simple-parameter-server" title="Permalink to this headline">¶</a></h2>
-<div class="figure align-center" id="id2">
-<a class="reference internal image-reference" href="../_images/ps.png"><img alt="Simple parameter server architecture" src="../_images/ps.png" style="width: 470.0px; height: 462.0px;" /></a>
-<p class="caption"><span class="caption-text">Simple parameter server architecture</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
-</div>
-<p>(<strong>C</strong>)lients (i.e. on-node AD modules) send requests with thier local parameters to be updated
-and to get global parameters. The requests goes to the <strong>Frontend</strong> router and distributed thread (<strong>W</strong>)orkers
-via the <strong>Backend</strong> router in round-robin fashion. For the task of updating parameters, workers first
-acquire a global lock, and update the <strong>in-mem DB</strong>, and return the latest parameters at the momemnt.
-Similrary, for the task of streaming global anomaly statistics, it will stored in a queue and the (<strong>S</strong>)treaming thread,
-which is dedicated to stream the anomaly statistics to a visualization server periodically.</p>
-<ul class="simple">
-<li><p>For network layer, see <a class="reference internal" href="../api/api_code.html#zmqnet"><span class="std std-ref">ZMQNet</span></a></p></li>
-<li><p>For in-Mem DB, see <a class="reference internal" href="../api/api_code.html#sstdparam"><span class="std std-ref">SstdParam</span></a></p></li>
-</ul>
-<p>This simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing.
-In the following subsection, we will describe the scalable parameter server.</p>
-</div>
-<div class="section" id="scalable-parameter-server">
-<h2>Scalable Parameter Server<a class="headerlink" href="#scalable-parameter-server" title="Permalink to this headline">¶</a></h2>
-<p>TBD</p>
-</div>
-</div>
-<div class="section" id="provenance-database">
+  <div class="section" id="provenance-database">
 <h1>Provenance Database<a class="headerlink" href="#provenance-database" title="Permalink to this headline">¶</a></h1>
 <p>The role of the provenance database is to store detailed information about anomalous events. For comparison, samples of normal executions are also stored. Additionally, a wealth of metadata regarding the characteristics of the devices upon which the application is runnig are stored within.</p>
 <p>The database is implemented using <a class="reference external" href="https://xgitlab.cels.anl.gov/sds/sonata">Sonata</a> which implements a remote database built on top of <a class="reference external" href="https://unqlite.org/">UnQLite</a>, a server-less JSON document store database. Sonata is capable of furnishing many clients and allows for arbitrarily complex document retrieval via <a class="reference external" href="https://unqlite.org/jx9.html">jx9 queries</a>.</p>
@@ -424,15 +295,6 @@ In the following subsection, we will describe the scalable parameter server.</p>
            
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="install.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="../index.html" class="btn btn-neutral float-left" title="Chimbuko: Performance Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
