@@ -7,9 +7,7 @@ inline nlohmann::json getCallStackEntry(const ExecData_t &call){
   return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry_time",call.get_entry()} };
 };
 
-
-ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
-					 const ADCounter &counters, const ADMetadataParser &metadata): m_call(call), m_is_gpu_event(false){
+void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEvent &event_man){
   //Get stack information
   m_callstack.push_back(getCallStackEntry(call));
   std::string parent = call.get_parent();
@@ -18,10 +16,9 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
     m_callstack.push_back(getCallStackEntry(*call_it));
     parent = call_it->get_parent();
   }
+}
 
-  //Get the function statistics
-  m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();
-
+void ADAnomalyProvenance::getWindowCounters(const ExecData_t &call){
   //Get the counters that appeared during the execution window on this p/r/t
   const std::deque<CounterData_t> &win_count = call.get_counters();
 
@@ -30,8 +27,10 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   for(auto &e : win_count){
     m_counters[i++] = e.get_json();
   }
-  
-  //Determine if it is a GPU event, and if so get the context
+}
+
+void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent &event_man, const ADMetadataParser &metadata){
+ //Determine if it is a GPU event, and if so get the context
   m_is_gpu_event = metadata.isGPUthread(call.get_tid());
   if(m_is_gpu_event){
     VERBOSE(std::cout << "Call is a GPU event" << std::endl);
@@ -58,7 +57,16 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
       m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
     }
   }
+}
 
+
+ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
+					 const ADCounter &counters, const ADMetadataParser &metadata): m_call(call), m_is_gpu_event(false){
+  getStackInformation(call, event_man); //get call stack
+  m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();   //Get the function statistics
+  getWindowCounters(call); //counters in window 
+  getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
+ 
   //Verbose output
   if(Verbose::on()){
     std::cout << "Anomaly:" << this->get_json() << std::endl;

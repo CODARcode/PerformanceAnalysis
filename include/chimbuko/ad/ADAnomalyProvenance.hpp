@@ -25,6 +25,21 @@ namespace chimbuko{
     nlohmann::json get_json() const;
     
   private:
+    /**
+     * @brief Get the call stack
+     */
+    void getStackInformation(const ExecData_t &call, const ADEvent &event_man);
+    
+    /**
+     * @brief Get counters in execution window
+     */
+    void getWindowCounters(const ExecData_t &call);
+
+    /**
+     * @brief Determine if it is a GPU event, and if so get the context
+     */
+    void getGPUeventInfo(const ExecData_t &call, const ADEvent &event_man, const ADMetadataParser &metadata);
+
     ExecData_t m_call; /**< The anomalous event*/
     std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
     nlohmann::json m_func_stats; /**< JSON object containing run statistics of the anomalous function */
