@@ -92,6 +92,9 @@ namespace chimbuko {
      */
     void push(double x);
 
+    /**
+     * @brief Get the number of values added to the statistics
+     */
     double count() const;
     double minimum() const;
     double maximum() const;
@@ -101,7 +104,10 @@ namespace chimbuko {
     double stddev(double ddof=1.0) const;
     double skewness() const;
     double kurtosis() const;
-    
+
+    /**
+     * @brief Set whether the sum of all values is to be maintained
+     */
     void set_do_accumulate(bool do_accumulate) { m_do_accumulate = do_accumulate; }
 
     nlohmann::json get_json() const;
