@@ -27,7 +27,7 @@ public:
         m_metrics[name].push(val);
     }
 
-    void dump(std::string path, std::string filename="metric.json")
+    void dump(std::string path, std::string filename="metric.json") const
     {
         std::ofstream f;
         f.open(path + "/" + filename);

@@ -2,25 +2,32 @@
 #include <mpi.h>
 #include <adios2.h>
 #include <unordered_map>
-#include "chimbuko/ad/ADDefine.hpp"
+#include <unordered_set>
+#include "ExecData.hpp"
 #include "ADDefine.hpp"
+#include "ADglobalFunctionIndexMap.hpp"
+#include <chimbuko/util/PerfStats.hpp>
 
 namespace chimbuko {
 
-/**
- * @brief parsing performance trace data streamed via ADIOS2
- * 
- */
-class ADParser {
+  /**
+   * @brief parsing performance trace data streamed via ADIOS2
+   *
+   * Note: The "function index" assigned to each function by Tau is not necessarily the same for every node as it depends on the order in which the function
+   *       is encountered. To deal with this, if the parameter server is running it maintains a global mapping of function name to an index, which is 
+   *       synchronized to the parser (providing the net client is linked) and the local index is replaced by the global index in the incoming data stream.
+   */
+  class ADParser {
 
-public:
+  public:
     /**
      * @brief Construct a new ADParser object
      * 
      * @param inputFile ADIOS2 BP filename
      * @param engineType BPFile or SST
+     * @param openTimeoutSeconds Timeout for opening ADIOS2 stream
      */
-    ADParser(std::string inputFile, std::string engineType="BPFile");
+    ADParser(std::string inputFile, std::string engineType="BPFile", int openTimeoutSeconds = 60);
     /**
      * @brief Destroy the ADParser object
      * 
@@ -28,12 +35,24 @@ public:
     ~ADParser();
 
     /**
+     * @brief Link the net client to the object that maintains a mapping of local function index to global index
+     *
+     * If this is performed, the parser will replace the local with global index in the incoming data stream
+     */
+    void linkNetClient(ADNetClient *net_client){ m_global_func_idx_map.linkNetClient(net_client); }
+
+    /**
+     * @brief If linked, performance information will be gathered
+     */
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
+
+    /**
      * @brief Get the function hash map (function id --> function name)
      * 
      * @return const std::unordered_map<int, std::string>* function hash map 
      */
     const std::unordered_map<int, std::string>* getFuncMap() const {
-        return &m_funcMap;
+      return &m_funcMap;
     }
     /**
      * @brief Get the event type hash map (event type id --> event name)
@@ -41,8 +60,17 @@ public:
      * @return const std::unordered_map<int, std::string>* event type hash map
      */
     const std::unordered_map<int, std::string>* getEventType() const {
-        return &m_eventType;
+      return &m_eventType;
     }
+    /**
+     * @brief Get the counter hash map (counter id --> counter description)
+     * 
+     * @return const std::unordered_map<int, std::string>* event type hash map
+     */
+    const std::unordered_map<int, std::string>* getCounterMap() const {
+      return &m_counterMap;
+    }
+    
 
     /**
      * @brief Get the status of this parser
@@ -78,27 +106,34 @@ public:
      */
     void update_attributes();
     /**
-     * @brief fetching function (timer) data
+     * @brief fetching function (timer) data. Results stored internally and extracted using ADParser::getFuncData
      * 
      * @return ParserError error code
      */
     ParserError fetchFuncData();
     /**
-     * @brief fetching communication data
+     * @brief fetching communication data. Results stored internally and extracted using ADParser::getCommData
      * 
      * @return ParserError error code
      */
     ParserError fetchCommData();
 
     /**
+     * @brief fetching counter data. Results stored internally and extracted using ADParser::getCounterData
+     * 
+     * @return ParserError error code
+     */
+    ParserError fetchCounterData();
+    
+    /**
      * @brief get pointer to an array of a function event specified by `idx`
      * 
      * @param idx index of a function event
-     * @return const unsigned* getFuncData pointer to a function event array
+     * @return pointer to a function event array
      */
     const unsigned long* getFuncData(size_t idx) const {
-        if (idx >= m_timer_event_count) return nullptr;
-        return &m_event_timestamps[idx * FUNC_EVENT_DIM];
+      if (idx >= m_timer_event_count) return nullptr;
+      return &m_event_timestamps[idx * FUNC_EVENT_DIM];
     }
     /**
      * @brief Get the number of function events in the current step
@@ -111,11 +146,11 @@ public:
      * @brief get pointer to a communication event array specified by `idx`
      * 
      * @param idx index of a communication event
-     * @return const unsigned* getCommData pointer to a communication event array
+     * @return pointer to a communication event array
      */
     const unsigned long* getCommData(size_t idx) const {
-        if (idx >= m_comm_count) return nullptr;
-        return &m_comm_timestamps[idx * COMM_EVENT_DIM];
+      if (idx >= m_comm_count) return nullptr;
+      return &m_comm_timestamps[idx * COMM_EVENT_DIM];
     }
     /**
      * @brief Get the number of communication events in the current step
@@ -124,7 +159,119 @@ public:
      */
     size_t getNumCommData() const { return m_comm_count; }
 
-private:
+
+    /**
+     * @brief get pointer to a counter event array specified by `idx`
+     * 
+     * @param idx index of a counter event
+     * @return pointer to a counter event array
+     */
+    const unsigned long* getCounterData(size_t idx) const {
+      if (idx >= m_counter_count) return nullptr;
+      return &m_counter_timestamps[idx * COUNTER_EVENT_DIM];
+    }
+    
+    /**
+     * @brief Get the number of counter events in the current step
+     * 
+     * @return size_t the number of counter events
+     */
+    size_t getNumCounterData() const { return m_counter_count; }
+
+    
+    /**
+     * @brief Get metadata parsed for the first time during the current step
+     */
+    const std::vector<MetaData_t> & getNewMetaData() const{ return m_new_metadata; }
+
+    
+    /**
+     * @brief Get all the events (func, comm and counter) occuring in the IO step ordered by their timestamp
+     * @param rank The MPI rank of the AD process
+     */
+    std::vector<Event_t> getEvents(const int rank) const;
+
+
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_event_timestamps array
+     * @param d An array of length FUNC_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addFuncData(unsigned long const* d);
+    
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_counter_timestamps array
+     * @param d An array of length COUNTER_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addCounterData(unsigned long const* d);
+
+    /**
+     * @brief For testing purposes, add the data in the array d to the internal m_comm_timestamps array
+     * @param d An array of length COMM_EVENT_DIM
+     *
+     * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
+     */
+    void addCommData(unsigned long const* d);
+
+    
+    /**
+     * @brief Set the m_event_timestamps vector capacity in units of FUNC_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setFuncDataCapacity(size_t cap){ m_event_timestamps.reserve(cap*FUNC_EVENT_DIM); }
+
+    /**
+     * @brief Set the m_comm_timestamps vector capacity in units of COMM_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setCommDataCapacity(size_t cap){ m_comm_timestamps.reserve(cap*COMM_EVENT_DIM); }
+
+    /**
+     * @brief Set the m_counter_timestamp vector capacity in units of COUNTER_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
+     */
+    void setCounterDataCapacity(size_t cap){ m_counter_timestamps.reserve(cap*COUNTER_EVENT_DIM); }
+
+    /**
+     * @brief Set the function index->name map for testing
+     */
+    void setFuncMap(const std::unordered_map<int, std::string> &m){ m_funcMap = m; }
+
+    /**
+     * @brief Set the function event index -> event type  map for testing
+     */
+    void setEventTypeMap(const std::unordered_map<int, std::string> &m){ m_eventType = m; }
+
+    /**
+     * @brief Set the counter index->name map for testing
+     */
+    void setCounterMap(const std::unordered_map<int, std::string> &m){ m_counterMap = m; }
+
+
+    /**
+     * @brief Get the global index corresponding to a given local function index. 1<->1 mapping if pserver not connected
+     */
+    unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
+
+  private:
+    /**
+     * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest
+     * @param arrays A vector of array pointers
+     * @param ts_offsets The elements of the arrays that correspond to the timestamp
+     *
+     * Some (but not all) arrays can be nullptr
+     * If there is a tie between two entries, the array that enters first (lowest index) in the input vectors is chosen
+     */
+    static const unsigned long* getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets);
+
+    /**
+     * @brief Create an Event_t instance from the data at the provided pointer and run simple validation
+     */
+    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
+						   int rank) const;
+
+
+
     adios2::ADIOS   m_ad;                               /**< adios2 handler */
     adios2::IO      m_io;                               /**< adios2 I/O handler */
     adios2::Engine  m_reader;                           /**< adios2 engine handler */
@@ -137,14 +284,25 @@ private:
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
 
+    std::unordered_set<std::string> m_metadata_seen;    /**< Metadata descriptions that have been seen */
+    std::vector<MetaData_t> m_new_metadata;             /**< New metadata that appeared on this step */
+    
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
-
+    std::unordered_map<int, std::string> m_counterMap;  /**< counter hash map (counter id --> counter name) */
+    
     size_t m_timer_event_count;                         /**< the number of function events in current step */
     std::vector<unsigned long> m_event_timestamps;      /**< array of all function events in the current step */
 
     size_t m_comm_count;                                /**< the number of communication events in current step */
     std::vector<unsigned long> m_comm_timestamps;       /**< array of all communication events in the current step */
-};
+
+    size_t m_counter_count;                             /**< the number of counter events in the current step */
+    std::vector<unsigned long> m_counter_timestamps;    /**< array of all counter events in the current step */
+
+    ADglobalFunctionIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
+
+    PerfStats* m_perf;                                  /**< Performance monitoring */
+  };
 
 } // end of AD namespace

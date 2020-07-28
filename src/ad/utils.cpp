@@ -4,6 +4,9 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <chimbuko/ad/utils.hpp>
+
+namespace chimbuko{
 
 unsigned char random_char() {
     static std::random_device rd;
@@ -32,4 +35,7 @@ std::string generate_event_id(int rank, int step, size_t idx) {
 std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid) {
     return std::to_string(rank) + "-" + std::to_string(eid) + ":" + std::to_string(step) + ":" + std::to_string(idx);
     // return generate_event_id(rank, step, idx) + "_" + std::to_string(eid);
+}
+
+
 }

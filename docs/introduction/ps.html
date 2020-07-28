@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Paramter Server &mdash; Performance Analysis 3.0.0 documentation</title>
+  <title>Parameter Server &mdash; Performance Analysis 3.0.0 documentation</title>
   
 
   
@@ -17,34 +17,35 @@
   
 
   
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Installation" href="install.html" />
-    <link rel="prev" title="On-node AD Module" href="ad.html" /> 
-
-  
-  <script src="../_static/js/modernizr.min.js"></script>
-
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -79,21 +80,16 @@
             
             
               <p class="caption"><span class="caption-text">Introduction</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overview.html#on-node-ad-module">On-node AD Module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html#paramter-server">Paramter Server</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ad.html">On-node AD Module</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Paramter Server</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#simple-parameter-server">Simple Parameter Server</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#scalable-parameter-server">Scalable Parameter Server</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#parameter-server">Parameter Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#provenance-database">Provenance Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API For Developers</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../api/api.html">Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/api.html">Full API Listing</a></li>
 </ul>
 
             
@@ -139,7 +135,7 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Paramter Server</li>
+      <li>Parameter Server</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -158,8 +154,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="paramter-server">
-<h1>Paramter Server<a class="headerlink" href="#paramter-server" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="parameter-server">
+<h1>Parameter Server<a class="headerlink" href="#parameter-server" title="Permalink to this headline">¶</a></h1>
 <p>The parameter server (PS) provides two services:</p>
 <ul class="simple">
 <li><p>Maintain global parameters to provide consistent and robust anomaly detection power over on-node AD modules</p></li>
@@ -178,8 +174,8 @@ acquire a global lock, and update the <strong>in-mem DB</strong>, and return the
 Similrary, for the task of streaming global anomaly statistics, it will stored in a queue and the (<strong>S</strong>)treaming thread,
 which is dedicated to stream the anomaly statistics to a visualization server periodically.</p>
 <ul class="simple">
-<li><p>For network layer, see <a class="reference external" href="../api/api_code.html#zmqnet">ZMQNet</a></p></li>
-<li><p>For in-Mem DB, see <a class="reference external" href="../api/api_code.html#sstdparam">SSTDParam</a></p></li>
+<li><p>For network layer, see <a class="reference internal" href="../api/api_code.html#zmqnet"><span class="std std-ref">ZMQNet</span></a></p></li>
+<li><p>For in-Mem DB, see <a class="reference internal" href="../api/api_code.html#sstdparam"><span class="std std-ref">SstdParam</span></a></p></li>
 </ul>
 <p>This simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing.
 In the following subsection, we will describe the scalable parameter server.</p>
@@ -196,21 +192,12 @@ In the following subsection, we will describe the scalable parameter server.</p>
           </div>
           <footer>
   
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="install.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="ad.html" class="btn btn-neutral" title="On-node AD Module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Brookhaven National Laboratory.
+        &copy; Copyright 2019, Brookhaven National Laboratory
 
     </p>
   </div>
@@ -227,34 +214,16 @@ In the following subsection, we will describe the scalable parameter server.</p>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../',
-            VERSION:'3.0.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="../_static/jquery.js"></script>
-      <script type="text/javascript" src="../_static/underscore.js"></script>
-      <script type="text/javascript" src="../_static/doctools.js"></script>
-      <script type="text/javascript" src="../_static/language_data.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  <script type="text/javascript" src="../_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>

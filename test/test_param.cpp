@@ -1,4 +1,5 @@
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/pserver/global_anomaly_stats.hpp"
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
@@ -68,13 +69,13 @@ TEST_F(ParamTest, MessageTest)
     Message::Header c_head;
     std::string dummy{"Hello World!"}, dummy2;
 
-    msg.set_info(0, 1, MessageType::REQ_ADD, MessageKind::SSTD, 10);
+    msg.set_info(0, 1, MessageType::REQ_ADD, MessageKind::PARAMETERS, 10);
     msg.set_msg(dummy, false);
 
     EXPECT_EQ(0, msg.src());
     EXPECT_EQ(1, msg.dst());
     EXPECT_EQ(MessageType::REQ_ADD, msg.type());
-    EXPECT_EQ(MessageKind::SSTD, msg.kind());
+    EXPECT_EQ(MessageKind::PARAMETERS, msg.kind());
     EXPECT_EQ(10, msg.frame());
     EXPECT_EQ((int)dummy.size(), msg.size());
  
@@ -83,7 +84,7 @@ TEST_F(ParamTest, MessageTest)
     EXPECT_EQ(1, c_msg.src());
     EXPECT_EQ(0, c_msg.dst());
     EXPECT_EQ(MessageType::REP_ADD, c_msg.type());
-    EXPECT_EQ(MessageKind::SSTD, c_msg.kind());
+    EXPECT_EQ(MessageKind::PARAMETERS, c_msg.kind());
     EXPECT_EQ(10, c_msg.frame());
 
     dummy2 = msg.buf();
@@ -120,13 +121,13 @@ TEST_F(ParamTest, SstdMessageTest)
         // set message
         msg.set_info(1, 2, 
             (int)chimbuko::MessageType::REQ_ADD, 
-            (int)chimbuko::MessageKind::SSTD, iFrame);
+            (int)chimbuko::MessageKind::PARAMETERS, iFrame);
         msg.set_msg(l_param.serialize(), false);
         
         EXPECT_EQ(1, msg.src());
         EXPECT_EQ(2, msg.dst());
         EXPECT_EQ(chimbuko::MessageType::REQ_ADD, msg.type());
-        EXPECT_EQ(chimbuko::MessageKind::SSTD, msg.kind());
+        EXPECT_EQ(chimbuko::MessageKind::PARAMETERS, msg.kind());
         EXPECT_EQ((int)l_param.serialize().size(), msg.size());
         EXPECT_EQ(iFrame, msg.frame());
 
@@ -148,13 +149,13 @@ TEST_F(ParamTest, SstdMessageTest)
     }
 }
 
-TEST_F(ParamTest, AnomalyStatTest1)
+TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
     using namespace chimbuko;
 
     const std::vector<int> N_RANKS = {2, 1};
 
-    SstdParam param(N_RANKS);
+    GlobalAnomalyStats param(N_RANKS);
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
@@ -272,13 +273,13 @@ TEST_F(ParamTest, AnomalyStatTest1)
     }
 }
 
-TEST_F(ParamTest, AnomalyStatTest2)
+TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 {
     using namespace chimbuko;
 
     const std::vector<int> N_RANKS = {2};
 
-    SstdParam param(N_RANKS);
+    GlobalAnomalyStats param(N_RANKS);
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());

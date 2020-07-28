@@ -1,6 +1,13 @@
 #pragma once
 #include <climits>
 
+/*! \file ADDefine.hpp
+    \brief 
+    
+    Details.
+*/
+
+
 /*!
   \def IDX_P
   index of program id
@@ -76,6 +83,35 @@
 #define COMM_IDX_BYTES   6  // size in bytes
 #define COMM_IDX_TS      7  // timestamp
 
+
+
+/*!
+  \def COUNTER_EVENT_DIM
+  dimension of a counter event vector
+*/
+
+/*!
+  \def COUNTER_IDX_ID
+  index of counter idx
+*/
+
+/*!
+  \def COUNTER_IDX_VALUE
+  index of counter value
+*/
+
+/*!
+  \def COUNTER_IDX_TS
+  index of counter timestamp
+*/
+
+
+#define COUNTER_EVENT_DIM 6 //counter event vector dimension
+#define COUNTER_IDX_ID 3   //counter index (maps to a counter name using metadata collected by parser)
+#define COUNTER_IDX_VALUE 4 //value (integer)
+#define COUNTER_IDX_TS 5    //timestamp
+
+
 /*!
   \def MAX_RUNTIME
   maximum execution time of a function (or a timer)
@@ -97,7 +133,8 @@ enum class ParserError
 {
     OK = 0,          /**< OK (no error) */
     NoFuncData = 1,  /**< Failed to fetch function data */
-    NoCommData = 2   /**< Failed to fetch communication data */
+    NoCommData = 2,  /**< Failed to fetch communication data */
+    NoCountData = 3  /**< Failed to fetch counter data */
 };
 
 /**
@@ -156,4 +193,26 @@ enum class EventDataType {
     COUNT = 3     /**< counters */
 };
 
+
+/**
+ * @brief Which end of a list/deque
+ * 
+ */
+enum class ListEnd {
+    Back = 0,
+    Front = 1
+};
+
+
+
+/**
+ * @brief Macro to generate a 3-level map of unsigned long to objects of type BASE. The naming convention for the map levels are ${NAME}_p_t, ${NAME}_r_t, ${NAME}_t_t
+ */
+#define DEF_MAP3UL(NAME, BASE) \
+  typedef std::unordered_map<unsigned long, BASE> NAME##_t_t;	\
+  typedef std::unordered_map<unsigned long, NAME##_t_t> NAME##_r_t;	\
+  typedef std::unordered_map<unsigned long, NAME##_r_t> NAME##_p_t
+
+  
+  
 } // end of AD namespace

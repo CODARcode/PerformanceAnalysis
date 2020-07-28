@@ -1,25 +1,67 @@
 #pragma once
 #include "chimbuko/util/threadPool.hpp"
-#include "chimbuko/param.hpp"
+#include "chimbuko/message.hpp"
 #include <string>
 #include <thread>
 
 namespace chimbuko {
 
-/**
- * @brief enum network thread level (for MPI)
- * 
- */
-enum class NetThreadLevel {
+  /**
+   * @brief enum network thread level (for MPI)
+   * 
+   */
+  enum class NetThreadLevel {
     THREAD_MULTIPLE = 3
-};
+  };
 
-/**
- * @brief Network interface class
- * 
- */
-class NetInterface {
-public:
+
+  class NetPayloadBase{
+  public:
+    /**
+     * @brief The message kind to which the payload is to be bound
+     */
+    virtual MessageKind kind() const = 0;
+
+    /**
+     * @brief The message type to which the payload is to be bound
+     */
+    virtual MessageType type() const = 0;
+    
+    /**
+     * @brief Act on the message and formulate a response
+     */
+    virtual void action(Message &response, const Message &message) = 0;
+
+    /**
+     * @brief Helper function to ensure the message is of the correct kind/type
+     */
+    void check(const Message &msg) const{
+      if(msg.kind() != kind()) throw std::runtime_error("Message has the wrong kind");
+      if(msg.type() != type()) throw std::runtime_error("Message has the wrong kind");
+    }
+
+    virtual ~NetPayloadBase(){}
+  };
+  /**
+   * @brief Default handshake response; this is bound automatically to the network
+   */
+  class NetPayloadHandShake: public NetPayloadBase{
+  public:
+    MessageKind kind() const{ return MessageKind::DEFAULT; }
+    MessageType type() const{ return MessageType::REQ_ECHO; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      response.set_msg(std::string("Hello!I am NET!"), false);
+    };
+  };
+
+
+  /**
+   * @brief Network interface class
+   * 
+   */
+  class NetInterface {
+  public:
     /**
      * @brief Construct a new Net Interface object
      * 
@@ -69,20 +111,15 @@ public:
      */
     virtual std::string name() const = 0;
 
+
     /**
-     * @brief set parameter (local) storage (i.e. only for this server) 
-     * 
-     * @param param pointer to parameter storage
-     * @param kind parameter kind
+     * @brief Add a payload to the receiver bound to particular message kind/type specified internally
+     *
+     * Assumes ownership of the NetPayloadBase object and deletes in constructor
      */
-    void set_parameter(ParamInterface* param);
+    void add_payload(NetPayloadBase* payload);
 
-    ParamInterface* get_parameter() { return m_param; } 
-
-    void run_stat_sender(std::string url, bool bTest=false);
-    void stop_stat_sender(int wait_msec=0);
-
-protected:
+  protected:
     /**
      * @brief initialize thread pool 
      * 
@@ -90,24 +127,22 @@ protected:
      */
     virtual void init_thread_pool(int nt) = 0;
 
-protected:
-    int              m_nt;    // the number of threads in the pool
-    ParamInterface * m_param; // pointer to parameter (storage)
+  protected:
+    int              m_nt;    /**< The number of threads in the pool */
+    
+    std::unordered_map<MessageKind,
+		       std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
+		       > m_payloads;
+  };
 
-    // thread workder to periodically send anomaly statistics to web server
-    // , if it is available.
-    std::thread     * m_stat_sender; 
-    std::atomic_bool  m_stop_sender;
-};
-
-namespace DefaultNetInterface
-{
+  namespace DefaultNetInterface
+  {
     /**
      * @brief get default network interface for easy usages
      * 
      * @return NetInterface& default network 
      */
     NetInterface& get();
-}
+  }
 
 } // end of chimbuko namespace

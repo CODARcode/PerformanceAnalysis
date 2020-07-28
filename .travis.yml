@@ -2,8 +2,8 @@ language: cpp
 services:
   - docker
 before_install:
-  - docker build -f docker/Dockerfile.ad -t chimbuko/ad .
-script: docker run -it chimbuko/ad
+  - docker build -f docker/ubuntu18.04/openmpi4.0.4/Dockerfile.ad.provdb -t chimbuko/ad:ubuntu18.04-provdb .
+script: docker run -it chimbuko/ad:ubuntu18.04-provdb
 addons:
   apt:
     packages:

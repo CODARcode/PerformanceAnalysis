@@ -5,10 +5,15 @@
 #endif
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyStat.hpp"
+#include "chimbuko/pserver/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
 #include <chrono>
+
+
+using namespace chimbuko;
 
 class NetTest : public ::testing::Test
 {
@@ -26,11 +31,11 @@ protected:
 TEST_F(NetTest, NetEnvTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
     ASSERT_EQ(MPI_THREAD_MULTIPLE, net.thread_level());
     ASSERT_EQ(1, net.size());
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
     SUCCEED();
 #endif
 }
@@ -38,14 +43,16 @@ TEST_F(NetTest, NetEnvTest)
 TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
 
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    //net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
 
     net.init(nullptr, nullptr, 10);
     net.run();
@@ -73,14 +80,14 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
-
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
     net.init(nullptr, nullptr, 10);
     net.run();
 
@@ -107,14 +114,14 @@ TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 {
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
 
-    chimbuko::SstdParam param;
-
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    SstdParam param;
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
     net.init(nullptr, nullptr, 1);
     net.run();
 
@@ -140,18 +147,18 @@ TEST_F(NetTest, NetSendRecvSingleThreadMultiClientTest)
 
 TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 {
-    using namespace chimbuko;
-
 #ifdef _USE_MPINET
-    chimbuko::MPINet net;
+    MPINet net;
 #else
-    chimbuko::ZMQNet net;
+    ZMQNet net;
 #endif
     const int N_MPI_PROCESSORS = 10;
 
-    chimbuko::SstdParam param({N_MPI_PROCESSORS});
-
-    net.set_parameter( dynamic_cast<chimbuko::ParamInterface*>(&param) );
+    SstdParam param;
+    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
     net.init(nullptr, nullptr, 10);
     net.run();
 
@@ -173,11 +180,11 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
         std::string stat_id = "0:" + std::to_string(rank);
         // std::cout << stat_id << std::endl;
 
-        std::string strstats = param.get_anomaly_stat(stat_id);
+        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
         // std::cout << strstats << std::endl;
         ASSERT_GT(strstats.size(), 0);
         
-        size_t n = param.get_n_anomaly_data(stat_id);
+        size_t n = glob_stats.get_n_anomaly_data(stat_id);
         // std::cout << n << std::endl;
         EXPECT_EQ(MAX_STEPS, (int)n);
 
@@ -195,8 +202,7 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 
 TEST_F(NetTest, NetStatSenderTest)
 {
-    using namespace chimbuko;
-
+    PSstatSender stat_sender;
 #ifdef _USE_MPINET
     MPINet net;
 #else
@@ -204,19 +210,24 @@ TEST_F(NetTest, NetStatSenderTest)
 #endif
     const int N_MPI_PROCESSORS = 10;
 
-    SstdParam param({N_MPI_PROCESSORS});
+    SstdParam param;
+    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
     nlohmann::json resp;
 
-    net.set_parameter(dynamic_cast<ParamInterface*>(&param));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));
+    stat_sender.run_stat_sender("http://0.0.0.0:5000/post");
+
+    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
     net.init(nullptr, nullptr, 10);
-    net.run_stat_sender("http://0.0.0.0:5000/post", false);
     net.run();
 
     // at this point, all pseudo AD modules finished sending 
     // anomaly statistics data.
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    net.stop_stat_sender(1000);
+    stat_sender.stop_stat_sender(1000);
     
     // check results (see pclient_stats.cpp)
     const std::vector<double> means = {
@@ -229,18 +240,18 @@ TEST_F(NetTest, NetStatSenderTest)
     };
     // const int MAX_STEPS = 1000;    
 
-    EXPECT_EQ(0, param.collect_stat_data().size());
+    EXPECT_EQ(0, glob_stats.collect_stat_data().size());
 
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {
         std::string stat_id = "0:" + std::to_string(rank);
 
-        std::string strstats = param.get_anomaly_stat(stat_id);
+        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
         ASSERT_GT(strstats.size(), 0);
         
         // As we send all anomaly data to the web server, 
         // it should be zero!
-        size_t n = param.get_n_anomaly_data(stat_id);
+        size_t n = glob_stats.get_n_anomaly_data(stat_id);
         EXPECT_EQ(0, (int)n);
 
         nlohmann::json j = nlohmann::json::parse(strstats);
@@ -252,34 +263,3 @@ TEST_F(NetTest, NetStatSenderTest)
     net.finalize();
 #endif
 }
-
-// todo: function stat
-
-// TEST_F(NetTest, NetStatSenderPseudoTest)
-// {
-//     using namespace chimbuko;
-// #ifdef _USE_MPINET
-//     MPINet net;
-// #else
-//     ZMQNet net;
-// #endif
-
-//     std::string url = "http://0.0.0.0:5000/post";
-
-//     try
-//     {
-//         net.run_stat_sender(url, true);
-//         std::this_thread::sleep_for(std::chrono::seconds(10));    
-//         net.stop_stat_sender();
-//     }
-//     catch(const std::exception& e)
-//     {
-//         std::cerr << e.what() << '\n';
-//     }
-    
-//     SUCCEED();
-
-// #ifdef _USE_ZMQNET
-//     net.finalize();
-// #endif
-// }

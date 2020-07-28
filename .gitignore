@@ -7,7 +7,21 @@
 nwchem/
 streaming/
 doc/
+*~
 
+# Automake files
+*.in
+m4/
+autom4te.cache/
+aclocal.m4
+ar-lib
+compile
+config.*
+configure
+depcomp
+install-sh
+ltmain.sh
+missing
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

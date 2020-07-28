@@ -1,26 +1,22 @@
 #pragma once
+#include<array>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
-#ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
-#else
-#include "chimbuko/net/zmq_net.hpp"
-#endif
-#ifdef _PERF_METRIC
-#include "chimbuko/util/RunMetric.hpp"
-#endif
+#include "chimbuko/util/hash.hpp"
+#include "chimbuko/ad/ADNetClient.hpp"
+#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/util/Anomalies.hpp"
 
-namespace chimbuko {
+namespace chimbuko {  
+  /**
+   * @brief abstract class for anomaly detection algorithms
+   * 
+   */
+  class ADOutlier {
 
-/**
- * @brief abstract class for anomaly detection algorithms
- * 
- */
-class ADOutlier {
-
-public:
+  public:
     /**
      * @brief Construct a new ADOutlier object
      * 
@@ -33,6 +29,14 @@ public:
     virtual ~ADOutlier();
 
     /**
+     * @brief check if the parameter server is in use
+     * 
+     * @return true if the parameter server is in use
+     * @return false if the parameter server is not in use
+     */
+    bool use_ps() const { return m_use_ps; }
+    
+    /**
      * @brief copy a pointer to execution data map 
      * 
      * @param m 
@@ -41,99 +45,69 @@ public:
     void linkExecDataMap(const ExecDataMap_t* m) { m_execDataMap = m; }
 
     /**
-     * @brief check if the parameter server is in use
-     * 
-     * @return true if the parameter server is in use
-     * @return false if the parameter server is not in use
+     * @brief Link the interface for communicating with the parameter server
      */
-    bool use_ps() const { return m_use_ps; }
-    /**
-     * @brief connect to the parameter server
-     * 
-     * @param rank this process rank
-     * @param srank server process rank
-     * @param sname server name
-     */
-    void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
-    /**
-     * @brief disconnect from the connected parameter server
-     * 
-     */
-    void disconnect_ps();
+    void linkNetworkClient(ADNetClient *client);
+    
     /**
      * @brief abstract method to run the implemented anomaly detection algorithm
      * 
      * @param step step (or frame) number
-     * @return unsigned long the number of detected anomalies
+     * @return data structure containing information on captured anomalies
      */
-    virtual unsigned long run(int step=0) = 0;
+    virtual Anomalies run(int step=0) = 0;
 
-#ifdef _PERF_METRIC
-    void dump_perf(std::string path, std::string filename="metric.json"){
-        m_perf.dump(path, filename);
-    }
-#endif
+    /**
+     * @brief If linked, performance information on the sync_param routine will be gathered
+     */
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
 
-protected:
+    /**
+     * @brief Get the local copy of the global parameters
+     * @return Pointer to a ParamInterface object
+     */
+    ParamInterface const* get_global_parameters() const{ return m_param; }
+  
+  protected:
     /**
      * @brief abstract method to compute outliers (or anomalies)
      * 
+     * @param[out] outliers data structure containing captured anomalies
      * @param func_id function id
-     * @param data a list of function calls to inspect
-     * @param min_ts the minimum timestamp of the list of function calls
-     * @param max_ts the maximum timestamp of the list of function calls
+     * @param[in,out] data a list of function calls to inspect. Entries will be tagged as outliers
      * @return unsigned long the number of outliers (or anomalies)
      */
-    virtual unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        long& min_ts, long& max_ts) = 0;
+    virtual unsigned long compute_outliers(Anomalies &outliers,
+					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
      * @brief abstract method to update local parameters and get global ones
      * 
-     * @param param local parameters
+     * @param[in] param local parameters
      * @return std::pair<size_t, size_t> [sent, recv] message size 
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface* param) = 0;
-    /**
-     * @brief update local anomaly statistics to the connected parameter server
-     * 
-     * @param l_stats local statistics
-     * @param step step (or frame) number
-     * @return std::pair<size_t, size_t> [sent, recv] message size
-     */
-    std::pair<size_t, size_t> update_local_statistics(std::string l_stats, int step);
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
 
-protected:
-    bool m_use_ps;                           /**< true if the parameter server is in use */
+  protected:
     int m_rank;                              /**< this process rank                      */
-    int m_srank;                             /**< server process rank                    */
-#ifdef _USE_MPINET
-    MPI_Comm m_comm;
-#else
-    void* m_context;                         /**< ZeroMQ context */
-    void* m_socket;                          /**< ZeroMQ socket */
-#endif
-
+    bool m_use_ps;                           /**< true if the parameter server is in use */
+    ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
+    
+    std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
+    
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
-    ParamInterface * m_param;                /**< parameters */
+    ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
-#ifdef _PERF_METRIC
-    RunMetric m_perf;
-#endif
-    // number of outliers per function: func id -> # outliers
-    // std::unordered_map<unsigned long, unsigned long> m_outliers;
-    // inclusive runtime statistics per fucntion: func id -> run stats
-    // exclusive runtime statistics per function: func id -> run stats
-};
+    PerfStats *m_perf;
+  };
 
-/**
- * @brief statistic analysis based anomaly detection algorithm
- * 
- */
-class ADOutlierSSTD : public ADOutlier {
+  /**
+   * @brief statistic analysis based anomaly detection algorithm
+   * 
+   */
+  class ADOutlierSSTD : public ADOutlier {
 
-public:
+  public:
     /**
      * @brief Construct a new ADOutlierSSTD object
      * 
@@ -156,27 +130,27 @@ public:
      * @brief run this anomaly detection algorithm
      * 
      * @param step step (or frame) number
-     * @return unsigned long the number of anomalies
+     * @return data structure containing captured anomalies
      */
-    unsigned long run(int step=0) override;
+    Anomalies run(int step=0) override;
 
-protected:
+  protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
      * 
+     * @param[out] outliers Array of function calls that were tagged as outliers
      * @param func_id function id
-     * @param data a list of function calls to inspect
-     * @param min_ts the minimum timestamp of the list of function calls
-     * @param max_ts the maximum timestamp of the list of function calls
+     * @param data[in,out] a list of function calls to inspect
      * @return unsigned long the number of outliers (or anomalies)
      */
-    unsigned long compute_outliers(
-        const unsigned long func_id, std::vector<CallListIterator_t>& data,
-        long& min_ts, long& max_ts) override;
-    std::pair<size_t, size_t> sync_param(ParamInterface* param) override;
+    unsigned long compute_outliers(Anomalies &outliers,
+				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
-private:
+
+    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
+    
+  private:
     double m_sigma; /**< sigma */
-};
+  };
 
 } // end of AD namespace

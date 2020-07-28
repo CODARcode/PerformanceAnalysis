@@ -1,0 +1,5 @@
+FROM chimbuko/base:ubuntu18.04-openmpi3.0.1
+
+WORKDIR /work
+COPY main.C Makefile /work/
+RUN make main_notau

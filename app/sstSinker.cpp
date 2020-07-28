@@ -1,3 +1,4 @@
+//A program for connecting to tau2 adios2 output and running the parser routines for timing purposes
 #include "chimbuko/AD.hpp"
 #include <chrono>
 

@@ -9,24 +9,18 @@ SstdParam::SstdParam()
     clear();
 }
 
-SstdParam::SstdParam(const std::vector<int>& n_ranks)
-: ParamInterface(n_ranks)
-{
-    clear();
-}
-
 SstdParam::~SstdParam()
 {
 
 }
 
-std::string SstdParam::serialize()  
+std::string SstdParam::serialize() const
 {
     std::lock_guard<std::mutex> _{m_mutex};
     return serialize(m_runstats);
 }
 
-std::string SstdParam::serialize(std::unordered_map<unsigned long, RunStats>& runstats) 
+std::string SstdParam::serialize(const std::unordered_map<unsigned long, RunStats>& runstats) 
 {
     nlohmann::json j;
     for (auto& pair: runstats)
@@ -53,11 +47,11 @@ std::string SstdParam::update(const std::string& parameters, bool return_update)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
     deserialize(parameters, runstats);
-    update(runstats);
+    update_and_return(runstats); //update runstats to reflect changes
     return (return_update) ? serialize(runstats): "";
 }
 
-void SstdParam::assign(std::unordered_map<unsigned long, RunStats>& runstats)
+void SstdParam::assign(const std::unordered_map<unsigned long, RunStats>& runstats)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     for (auto& pair: runstats) {
@@ -77,7 +71,17 @@ void SstdParam::clear()
     m_runstats.clear();
 }
 
-void SstdParam::update(std::unordered_map<unsigned long, RunStats>& runstats)
+
+void SstdParam::update(const std::unordered_map<unsigned long, RunStats>& runstats)
+{
+    std::lock_guard<std::mutex> _(m_mutex);
+    for (auto& pair: runstats) {
+        m_runstats[pair.first] += pair.second;
+    }    
+}
+
+
+void SstdParam::update_and_return(std::unordered_map<unsigned long, RunStats>& runstats)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     for (auto& pair: runstats) {
@@ -98,4 +102,11 @@ void SstdParam::show(std::ostream& os) const
     }
 
     os << std::endl;
+}
+
+
+const RunStats & SstdParam::get_function_stats(const unsigned long func_id) const{
+  auto it = m_runstats.find(func_id);
+  if(it == m_runstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
+  return it->second;
 }

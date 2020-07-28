@@ -1,0 +1,64 @@
+FROM chimbuko/tau2:ubuntu18.04 AS nwchem-build
+
+ENV PATH=${PATH}:/opt/tau2/x86_64/bin
+ENV PATH=${PATH}:/opt/adios2/bin
+
+# libfabric, blosc, pdt-3.25, papi-5.6.0, sz-1.4.13, adios2, tau2
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/pdt/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
+
+# -----------------------------------------------------------------------------
+# NWCHEM installation
+# - pretauadio2: adios part was taken away in this version
+# -----------------------------------------------------------------------------
+RUN mkdir -p /Codar
+WORKDIR /Codar
+RUN git clone https://github.com/hjjvandam/nwchem-1.git
+WORKDIR /Codar/nwchem-1
+RUN git checkout pretauadio2
+
+WORKDIR /Codar/nwchem-1/src/space
+RUN sed -i "3731s|^|c|" sp_init.F
+RUN sed -i "3732s|^|c|" sp_init.F
+RUN sed -i "3733s|^|c|" sp_init.F
+RUN sed -i "3734s|^|c|" sp_init.F
+RUN sed -i "3735s|^|c|" sp_init.F
+RUN sed -i "3736s|^|c|" sp_init.F
+RUN sed -i "3737s|^|c|" sp_init.F
+RUN sed -i "3738s|^|c|" sp_init.F
+
+RUN sed -i "3740s|^|c|" sp_init.F
+RUN sed -i "3741s|^|c|" sp_init.F
+RUN sed -i "3742s|^|c|" sp_init.F
+
+RUN sed -i "3744s|^|c|" sp_init.F
+RUN sed -i "3745s|^|c|" sp_init.F
+RUN sed -i "3746s|^|c|" sp_init.F
+
+WORKDIR /Codar/nwchem-1
+# to enable tau compiler for nwchem
+ENV USE_TAU="source"
+ENV ARMCI_NETWORK=MPI-TS
+ENV BLASOPT="-lopenblas `adios2-config -c -f`"
+ENV NWCHEM_MODULES=md
+RUN ./contrib/distro-tools/build_nwchem 2>&1 | tee build_nwchem.log
+
+FROM chimbuko/tau2:ubuntu18.04
+WORKDIR /
+COPY --from=nwchem-build /Codar /Codar
+# create .nwchemrc file using /Codar/nwchem-1/QA/domknwchemrc
+# The script must run in the QA folder!!!!!!!!!!!!!!!!!!
+RUN cd /Codar/nwchem-1/QA && ./domknwchemrc
+
+WORKDIR /Codar/nwchem-1
+# Check point if it doesn't work
+# check environment variable
+# - PATH, LD_LIBRARY_PATH, 
+# - USE_TAU
+# - ~/.nwchemrc (must run in the QA folder! ./QA/domknwchemrc)

@@ -1,0 +1,61 @@
+FROM ubuntu:18.04
+
+RUN mkdir -p /Downloads
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+                        autoconf gfortran pkg-config \
+                        python-cheetah python-yaml \
+                        python3 python3-dev python3-pip python3-tk \
+                        libzmq5 libzmq3-dev \
+                        bzip2 libbz2-dev zlib1g zlib1g-dev \ 
+                        curl libcurl4-openssl-dev libgtest-dev zip unzip \
+                        libopenblas-base libopenblas-dev && \
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/* 
+
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y vim emacs-nox libevent-dev flex && \
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/* 
+
+RUN cd /tmp/ && wget https://github.com/openpmix/openpmix/archive/v2.2.4.tar.gz && tar -xvzf v2.2.4.tar.gz && \
+    cd /tmp/openpmix-2.2.4/ && ./autogen.sh && ./configure --prefix=/opt/pmix && make -j 16 install && rm -rf /tmp/*
+
+
+#Install openmpi3.0.1
+RUN cd /tmp/ && \
+    wget https://download.open-mpi.org/release/open-mpi/v3.0/openmpi-3.0.1.tar.gz && \
+    tar -xvzf openmpi-3.0.1.tar.gz &&  cd openmpi-3.0.1 && \
+   ./configure --prefix=/opt/openmpi3.0.1 --with-slurm --with-pmi=/opt/pmix CFLAGS="-I/opt/pmix/include" LDFLAGS="-L/opt/pmix/lib" && \
+   make -j 16 install && rm -rf /tmp/openmpi3.0.1
+ENV PATH=/opt/openmpi3.0.1/bin/:${PATH}
+ENV LD_LIBRARY_PATH=/opt/openmpi3.0.1/lib/:${LD_LIBRARY_PATH}
+
+#Get openmpi paths for all shells
+RUN mv /etc/bash.bashrc tmprc && \
+   echo 'export PATH=/opt/openmpi3.0.1/bin/:${PATH}' >> /etc/bash.bashrc && \
+   echo 'export LD_LIBRARY_PATH=/opt/openmpi3.0.1/lib/:${LD_LIBRARY_PATH}' >> /etc/bash.bashrc && \
+   cat tmprc >> /etc/bash.bashrc && rm tmprc
+
+#Python requirements
+RUN pip3 install numpy mpi4py flask
+COPY requirements.txt /
+RUN cd / && pip3 install -r requirements.txt 
+
+#Cmake
+WORKDIR /Downloads
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
+   tar xvfz cmake-3.17.0-Linux-x86_64.tar.gz -C /opt && \
+   rm cmake-3.17.0-Linux-x86_64.tar.gz
+
+ENV PATH=${PATH}:/opt/cmake-3.17.0-Linux-x86_64/bin
+
+RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp *.a /usr/lib
+

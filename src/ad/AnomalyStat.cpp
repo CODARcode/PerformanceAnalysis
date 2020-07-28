@@ -126,7 +126,7 @@ std::list<std::string>* AnomalyStat::get_data() {
     return m_data;
 }
 
-size_t AnomalyStat::get_n_data() {
+size_t AnomalyStat::get_n_data() const{
     std::lock_guard<std::mutex> _(m_mutex);
     if (m_data == nullptr) 
         return 0;

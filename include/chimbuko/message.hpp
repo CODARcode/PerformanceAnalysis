@@ -21,8 +21,10 @@ enum MessageType {
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
-    SSTD    = 2,
-    ANOMALY_STATS = 3
+    PARAMETERS    = 2,
+    ANOMALY_STATS = 3,
+    COUNTER_STATS = 4,
+    FUNCTION_INDEX = 5
 };
 
 enum MessageCmd {
@@ -131,10 +133,27 @@ public:
      */
     void set_info(int src, int dst, int type, int kind, int frame = 0, int size = 0);
 
+    /** 
+     * @brief Set the message contents. 
+     *
+     * If 'include_head' is true, the string 'msg' will be interpreted as a JSON object and the 'Header' field will be used to fill the header portion of the message
+     * and the 'Buffer' field as the contents
+     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry
+     */
     void set_msg(const std::string& msg, bool include_head=false); 
+  
+    /**
+     * @brief Set the message contents to an integer; equivalent to set_msg(int_as_string, false)
+     */
     void set_msg(int cmd);
 
-    std::string buf() const { return m_buf; }; 
+    /**
+     * @brief Return the message contents as a stringized JSON object containing the 'Header' and 'Buffer' fields corresponding to the header and message contents, resp.
+     */
+    const std::string& buf() const { return m_buf; }; 
+    /**
+     * @brief Return the message as a stringized JSON object containing the header and contents
+     */
     std::string data() const;
 
     int src() const { return m_head.src(); }
@@ -148,11 +167,13 @@ public:
     std::string kind_str() const {
         switch(m_head.kind())
         {
-            case 0: return "DEFAULT";
-            case 1: return "CMD";
-            case 2: return "SSTD";
-            case 3: return "ANOMALY_STATS";
-            default: return "UNKNOWN";
+	case 0: return "DEFAULT";
+	case 1: return "CMD";
+	case 2: return "PARAMETERS";
+	case 3: return "ANOMALY_STATS";
+	case 4: return "COUNTER_STATS";
+	case 5: return "FUNCTION_INDEX";
+	default: return "UNKNOWN";
         }
     }
 
