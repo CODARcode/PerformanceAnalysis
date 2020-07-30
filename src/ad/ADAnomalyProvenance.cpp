@@ -82,7 +82,12 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
-					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size): m_call(call), m_is_gpu_event(false){
+					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size,
+					 const int io_step, 
+					 const unsigned long io_step_tstart, const unsigned long io_step_tend): 
+  m_call(call), m_is_gpu_event(false), 
+  m_io_step(io_step), m_io_step_tstart(io_step_tstart), m_io_step_tend(io_step_tend)
+{
   getStackInformation(call, event_man); //get call stack
   m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();   //Get the function statistics
   getWindowCounters(call); //counters in window 
@@ -114,7 +119,11 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 				{"is_gpu_event", m_is_gpu_event},
 				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() },
 				    {"gpu_parent", m_is_gpu_event ? m_gpu_event_parent_info : nlohmann::json() },
-				      {"event_window", m_exec_window}
+				      {"event_window", m_exec_window},
+					{"io_step", m_io_step},
+					  {"io_step_tstart", m_io_step_tstart},
+					    {"io_step_tend", m_io_step_tend}
+					    
 
   };
 }

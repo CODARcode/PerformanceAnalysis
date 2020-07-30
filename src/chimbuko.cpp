@@ -210,7 +210,9 @@ bool Chimbuko::parseInputStep(int &step,
 
 
 //Extract parsed events and insert into the event manager
-void Chimbuko::extractEvents(int rank, int step){
+void Chimbuko::extractEvents(unsigned long &first_event_ts,
+			     unsigned long &last_event_ts,
+			     int rank, int step){
   PerfTimer timer;
   std::vector<Event_t> events = m_parser->getEvents(rank);
   m_perf.add("parser_event_extract_us", timer.elapsed_us());
@@ -219,6 +221,8 @@ void Chimbuko::extractEvents(int rank, int step){
     m_event->addEvent(e);
   m_perf.add("parser_event_register_us", timer.elapsed_us());
   m_perf.add("parser_event_count", events.size());
+  first_event_ts = events.front().ts();
+  last_event_ts = events.back().ts();
 }
   
 void Chimbuko::extractCounters(int rank, int step){
@@ -237,7 +241,10 @@ void Chimbuko::extractCounters(int rank, int step){
 
 #ifdef ENABLE_PROVDB
 
-void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
+void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies, 
+					const int step,
+					const unsigned long first_event_ts,
+					const unsigned long last_event_ts) const{
   //Gather provenance data on anomalies and send to provenance database
   if(m_provdb_client->isConnected()){
     PerfTimer timer,timer2;
@@ -251,7 +258,9 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
       size_t i=0;
       for(auto anom_it : anomalies.allEvents(event_types[typeidx])){
 	timer2.start();
-	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser, m_params.viz_anom_winSize);
+	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), 
+					 *m_counter, *m_metadata_parser, m_params.viz_anom_winSize,
+					 step, first_event_ts, last_event_ts);
 	anomaly_prov[i++] = extract_prov.get_json();
 	m_perf.add("provdb_" + descr[typeidx] + "_generation_per_anom_us", timer2.elapsed_us());
       }
@@ -295,6 +304,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
   if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
 
   int step = 0; 
+  unsigned long first_event_ts, last_event_ts; //earliest and latest timestamps in io frame
 
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
@@ -309,7 +319,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     extractCounters(m_params.rank, step);
 
     //Extract parsed events into event manager
-    extractEvents(m_params.rank, step);
+    extractEvents(first_event_ts, last_event_ts, m_params.rank, step);
 
     //Run the outlier detection algorithm on the events
     PerfTimer anom_timer;
@@ -322,7 +332,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
 #ifdef ENABLE_PROVDB
     //Generate anomaly provenance for detected anomalies and send to DB
-    extractAndSendProvenance(anomalies);
+    extractAndSendProvenance(anomalies, step, first_event_ts, last_event_ts);
     
     //Send any new metadata to the DB
     sendNewMetadataToProvDB();

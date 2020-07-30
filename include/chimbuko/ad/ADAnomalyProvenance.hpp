@@ -20,13 +20,18 @@ namespace chimbuko{
      * @param counters The counter manager
      * @param metadata The metadata manager
      * @param window_size The number of events (on this process/rank/thread) either side of the anomalous event that are captured in the window field
+     * @param io_step Index of io step
+     * @param io_step_tstart Timestamp of beginning of io frame
+     * @param io_step_tend Timestamp of end of io frame
      */     
     ADAnomalyProvenance(const ExecData_t &call,
 			const ADEvent &event_man, //for stack trace
 			const ParamInterface &func_stats, //for func stats
 			const ADCounter &counters, //for counters
 			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
-			const int window_size);
+			const int window_size,
+			const int io_step, 
+			const unsigned long io_step_tstart, const unsigned long io_step_tend);
 
     /**
      * @brief Serialize anomaly data into JSON construct
@@ -66,6 +71,9 @@ namespace chimbuko{
     nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
     nlohmann::json m_gpu_event_parent_info; /**< If a GPU event, info related to CPU event spawned it (name, thread, callstack) */
     nlohmann::json m_exec_window; /**< Window of function executions and MPI commuinications around anomalous execution*/
+    int m_io_step; /**< IO step*/
+    unsigned long m_io_step_tstart; /**< Timestamp of start of io step*/
+    unsigned long m_io_step_tend; /**< Timestamp of end of io step*/
   };
 
 

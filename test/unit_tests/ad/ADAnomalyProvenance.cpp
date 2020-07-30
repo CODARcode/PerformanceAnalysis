@@ -32,10 +32,15 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   ADCounter counter;
   ADMetadataParser metadata;
 
+  int step = 11;
+  unsigned long step_start = 0;
+  unsigned long step_end = 2000;
+
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata, 0);
+			   counter, metadata, 0,
+			   step, step_start, step_end);
     
   nlohmann::json output = prov.get_json();
   //Test pid,rid,tid,runtime
@@ -53,6 +58,10 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   //Test statistics
   EXPECT_EQ(output["func_stats"], stats.get_json());
   
+  //Check step info
+  EXPECT_EQ(output["io_step"], step);
+  EXPECT_EQ(output["io_step_tstart"], step_start);
+  EXPECT_EQ(output["io_step_tend"], step_end);
 }
 
 
@@ -102,7 +111,8 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata, 0);
+			   counter, metadata, 0,
+			   11,900,1200);
     
   nlohmann::json output = prov.get_json();
   
@@ -164,7 +174,8 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADAnomalyProvenance prov_gpu(*exec1_it,
 			       event_man,
 			       param,
-			       counter, metadata, 0);
+			       counter, metadata, 0,
+			       11,900,1200);
     
   nlohmann::json output = prov_gpu.get_json();
   std::cout << "For GPU event, got: " << output.dump() << std::endl;
@@ -175,9 +186,10 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_EQ(output["gpu_location"]["stream"], 1);
 
   ADAnomalyProvenance prov_nongpu(*exec2_it,
-			       event_man,
-			       param,
-				  counter, metadata, 0);
+				  event_man,
+				  param,
+				  counter, metadata, 0,
+				  11,900,1200);
   output = prov_nongpu.get_json();
   std::cout << "For CPU event, got: " << output.dump() << std::endl;
   EXPECT_EQ(output["is_gpu_event"], false);
@@ -226,7 +238,8 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
 			   event_man,
 			   param,
 			   counter, metadata,
-			   2);
+			   2,
+			   8,800,1200);
     
   nlohmann::json output = prov.get_json();
 

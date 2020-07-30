@@ -169,10 +169,14 @@ namespace chimbuko {
 
     /**
      * @brief Extract parsed events and insert into the event manager
+     * @param[out] first_event_ts Earliest timestamp in io frame
+     * @param[out] last_event_ts Latest timestamp in io frame
      * @param rank The MPI rank of the process
      * @param step The adios2 stream step index
      */
-    void extractEvents(int rank, int step);
+    void extractEvents(unsigned long &first_event_ts,
+		       unsigned long &last_event_ts,
+		       int rank, int step);
 
     /**
      * @brief Extract parsed counters and insert into counter manager
@@ -186,7 +190,10 @@ namespace chimbuko {
     /**
      * @brief Extract provenance information about anomalies and communicate to provenance DB
      */
-    void extractAndSendProvenance(const Anomalies &anomalies) const;
+    void extractAndSendProvenance(const Anomalies &anomalies,
+				  const int step,
+				  const unsigned long first_event_ts,
+				  const unsigned long last_event_ts) const;
 
     
     /**
