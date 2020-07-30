@@ -4,7 +4,7 @@
 using namespace chimbuko;
 
 inline nlohmann::json getCallStackEntry(const ExecData_t &call){
-  return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry_time",call.get_entry()} };
+  return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry",call.get_entry()}, {"exit", call.get_exit()}, {"event_id", call.get_id()} };
 };
 
 void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEvent &event_man){
@@ -71,7 +71,7 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 	  {"func", it->get_funcname() }, 
 	    {"event_id", it->get_id()}, 
 	      {"entry", it->get_entry()},
-		{"exit", it->get_exit() == 0 ? -1 : it->get_exit()}
+		{"exit", it->get_exit()}    //is 0 if function has not exited
       });
     for(CommData_t const &comm : it->get_messages())
       m_exec_window["comm_window"].push_back(comm.get_json());    

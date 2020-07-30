@@ -40,19 +40,22 @@ namespace chimbuko{
 
   /**
    * @brief Create an ExecData_t from the inputs provided
+   * If runtime == 0, no exit event will be generated
    */
   ExecData_t createFuncExecData_t(unsigned long pid,
-					    unsigned long rid,
-					    unsigned long tid,
-					    unsigned long func_id,
-					    const std::string &func_name,
-					    long start,
-					    long runtime){
+				  unsigned long rid,
+				  unsigned long tid,
+				  unsigned long func_id,
+				  const std::string &func_name,
+				  unsigned long start,
+				  unsigned long runtime){
     Event_t entry = createFuncEvent_t(pid, rid, tid, 0, func_id, start);
-    Event_t exit = createFuncEvent_t(pid, rid, tid, 1, func_id, start + runtime);
-
     ExecData_t exec(entry);
-    exec.update_exit(exit);
+
+    if(runtime > 0){
+      Event_t exit = createFuncEvent_t(pid, rid, tid, 1, func_id, start + runtime);
+      exec.update_exit(exit);
+    }
     exec.set_funcname(func_name);
     return exec;
   }

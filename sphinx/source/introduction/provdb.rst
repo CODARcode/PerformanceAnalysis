@@ -2,7 +2,7 @@
 Provenance Database
 *******************
 
-The role of the provenance database is to store detailed information about anomalous events. For comparison, samples of normal executions are also stored. Additionally, a wealth of metadata regarding the characteristics of the devices upon which the application is runnig are stored within.
+The role of the provenance database is to store detailed information about anomalous function executions. For comparison, samples of normal executions are also stored. Additionally, a wealth of metadata regarding the characteristics of the devices upon which the application is runnig are stored within.
 
 The database is implemented using `Sonata <https://xgitlab.cels.anl.gov/sds/sonata>`_ which implements a remote database built on top of `UnQLite <https://unqlite.org/>`_, a server-less JSON document store database. Sonata is capable of furnishing many clients and allows for arbitrarily complex document retrieval via `jx9 queries <https://unqlite.org/jx9.html>`_.
 
@@ -21,14 +21,16 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 
 ----------
 
-| {
+| { *start of schema*
 |    **"__id"**: *Record index assigned by Sonata*,
-|    **"call_stack"**:    *Function call stack*,
+|    **"call_stack"**:    *Function execution call stack (starting with anomalous function execution)*,
 |    [
 |        {
-|            **"entry_time"**: *timestamp of function entry* ,
+|            **"entry"**: *timestamp of function execution entry* ,
+|            **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |            **"fid"**: *Global function index (can be used as a key instead of function name)*,
-|            **"func"**: *function name*
+|            **"func"**: *function name*,
+|            **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
 |        },
 |        ....
 |    ],
@@ -44,8 +46,8 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 |        },
 |        ...
 |    ],
-|    **"entry"**: *Timestamp of function entry*,
-|    **"exit"**: *Timestamp of function exit*,
+|    **"entry"**: *Timestamp of function execution entry*,
+|    **"exit"**: *Timestamp of function execution exit*,
 |    **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
 |    **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |    **"func"**: *function name*,
@@ -66,9 +68,42 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 |    **"pid"**: *process index*,
 |    **"rid"**: *process rank*,
 |    **"tid"**: *thread index*
-|    **"runtime_exclusive"**: *Function runtime exclusive of children*,
-|    **"runtime_total"**: *Function total runtime*,
-| }
+|    **"runtime_exclusive"**: *Function execution time exclusive of children*,
+|    **"runtime_total"**: *Function total execution time*,
+|    **"io_step"**: *IO step index*,
+|    **"io_step_tstart"**: *Time of start of IO step*,
+|    **"io_step_tend"**:  *Time of end of IO step*,
+|    **"event_window"**: *Capture of function executions and MPI comms events occuring in window around anomaly on same thread (object)*
+|    {
+|      **"exec_window"**: *The function executions in the window (array)*
+|         [
+|           {
+|             **"entry"**: *timestamp of function execution entry* ,
+|             **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
+|             **"fid"**: *Global function index (can be used as a key instead of function name)*,
+|             **"func"**: *function name*,
+|             **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
+|           },
+|           ...
+|        ],
+|      **"comm_window"**: *The MPI communications in the window (array)*
+|        [
+|           {
+|             **type**: *SEND or RECV*,
+|             **pid**: *process index*,
+|             **rid**: *rank of current process*,
+|             **tid**: *thread idx*,
+|             **src**: *message origin rank*,
+|             **tar**: *message target rank*,
+|             **bytes**: *message size*,
+|             **tag**: *an integer tag associated with the message*,
+|             **timestamp**: *time MPI function executed*,
+|             **execdata_key**: *the ID label of the parent function*
+|           },
+|           ...
+|       ]
+|    } *end of* **event_window** *object*      
+| } *end of schema*
 
 ----------
 
@@ -92,12 +127,14 @@ and for the **gpu_parent** field:
 | {
 |    **"event_id"**: *The event index string (format "<PROCESS:RANK:INDEX>") describing the parent function execution*,
 |    **"tid"**: *Thread index for CPU parent function*,
-|    **"call_stack"**:    *Parent function call stack*,
+|    **"call_stack"**:    *Parent function call stack (starting with parent function execution)*,
 |    [
 |        {
-|            **"entry_time"**: *timestamp of function entry* ,
+|            **"entry"**: *timestamp of function execution entry* ,
+|            **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |            **"fid"**: *Global function index (can be used as a key instead of function name)*,
-|            **"func"**: *function name*
+|            **"func"**: *function name*,
+|            **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
 |        },
 |        ....
 |    ]

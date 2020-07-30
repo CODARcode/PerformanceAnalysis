@@ -6,14 +6,12 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-  : m_runtime(0), m_label(1), m_parent("-1"), m_can_delete(true), m_gpu_correlation_id_partner("")
-{
-    m_exclusive = 0;
-    m_n_children = 0;
-    m_n_messages = 0;
-}
-ExecData_t::ExecData_t(const Event_t& ev)
-  : m_can_delete(true), m_gpu_correlation_id_partner("")
+  : m_id(""), m_pid(0), m_rid(0), m_tid(0), m_fid(0), 
+    m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
+    m_n_children(0), m_n_messages(0),
+    m_label(1), m_parent("-1"), m_can_delete(true), m_gpu_correlation_id_partner(""){}
+
+ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
     m_id = ev.id();
     m_pid = ev.pid();
@@ -21,13 +19,7 @@ ExecData_t::ExecData_t(const Event_t& ev)
     m_tid = ev.tid();
     m_fid = ev.fid();
     m_entry = (long)ev.ts();
-    m_exit = 0;
-    m_runtime = 0;
-    m_exclusive = 0;
-    m_label = 1;
     m_parent = "root";
-    m_n_children = 0;
-    m_n_messages = 0;    
 }
 
 ExecData_t::~ExecData_t() {
