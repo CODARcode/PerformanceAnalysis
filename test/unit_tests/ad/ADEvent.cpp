@@ -1,4 +1,5 @@
 #include<chimbuko/ad/ADEvent.hpp>
+#include<chimbuko/util/map.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -473,5 +474,42 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   delete event_man.trimCallList();
   EXPECT_EQ( calls_p_r_t_cpu.size(), 0);
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
+}
+  
+
+
+
+
+TEST(ADEvent, testIteratorWindowDetermination){
+  ADEvent event_man;
+  int pid=0, rid=0, tid_func=0, tid_other=1;
+
+  std::vector<ExecData_t> execs;
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 1, "func1", 100, 200)); //0
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 2, "func2", 200, 300)); //1
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 3, "func3", 400, 500)); //2
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 4, "func4", 500, 600)); //3  this will be the window center
+  execs.push_back(createFuncExecData_t(pid, rid, tid_other, 5, "func5", 600, 700)); //different thread, shouldn't be in window
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 6, "func6", 700, 800)); //4
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 7, "func7", 800, 900)); //5
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 8, "func8", 900, 1000)); //6
+  
+  for(int i=0;i<execs.size();i++)
+    event_man.addCall(execs[i]);
+  
+  CallList_t* call_list = getElemPRT(pid,rid,tid_func, event_man.getCallListMap());
+  EXPECT_NE(call_list, nullptr);
+  EXPECT_EQ(call_list->size(), execs.size()-1); //one event on different thread
+
+  CallListIterator_t begin = call_list->begin();
+  CallListIterator_t end = call_list->end();
+
+  std::pair<CallListIterator_t, CallListIterator_t> it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 3);
+  EXPECT_EQ(it_p.first, begin);
+  EXPECT_EQ(it_p.second, end); //second iterator is *one past the end* of the window
+
+  it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 4); //should stop at edge of map
+  EXPECT_EQ(it_p.first, begin); 
+  EXPECT_EQ(it_p.second, end); 
 }
   

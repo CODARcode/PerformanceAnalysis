@@ -1,5 +1,6 @@
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
+#include "chimbuko/util/map.hpp"
 #include <iostream>
 
 using namespace chimbuko;
@@ -276,6 +277,27 @@ CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{
   if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id + " not present in map");
   else return it->second;
 }
+
+std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd(const std::string &event_id, const int win_size) const{
+  CallListIterator_t it = getCallData(event_id);
+  CallList_t* cl = getElemPRT(it->get_pid(), it->get_rid(), it->get_tid(), const_cast<CallListMap_p_t&>(m_callList)); //need non-const iterator
+  if(cl == nullptr)  throw std::runtime_error("ADEvent::getCallWindowStartEnd event has unknown pid/rid/tid");
+    
+  CallListIterator_t beg = cl->begin();
+  CallListIterator_t end = cl->end();
+
+  CallListIterator_t prev_n = it;
+  for (unsigned int i = 0; i < win_size && prev_n != beg; i++)
+    prev_n = std::prev(prev_n);
+  
+  CallListIterator_t next_n = it;
+  for (unsigned int i = 0; i < win_size + 1 && next_n != end; i++)
+    next_n = std::next(next_n);
+  
+  return {prev_n, next_n};
+}
+
+
 
 
 void ADEvent::show_status(bool verbose) const {

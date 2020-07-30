@@ -165,6 +165,12 @@ namespace chimbuko {
      * throws a runtime error if the call is not present in the call-list
      */
     CallListIterator_t getCallData(const std::string &event_id) const;     
+
+    /**
+     * @brief Get a pair of iterators marking the start and one-past-the-end of a window of size (up to) win_size events
+     *        on either size around the given event occurring on the same thread
+     */
+    std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const std::string &event_id, const int win_size) const;
     
     /**
      * @brief clear 
