@@ -59,13 +59,35 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
   }
 }
 
+void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
+					     const ADEvent &event_man,
+					     const int window_size){
+  std::pair<CallListIterator_t, CallListIterator_t> win = event_man.getCallWindowStartEnd(call.get_id(), window_size);
+  m_exec_window["exec_window"] = nlohmann::json::array();
+  m_exec_window["comm_window"] = nlohmann::json::array();
+  for(auto it = win.first; it != win.second; it++){
+    m_exec_window["exec_window"].push_back( { 
+	{"fid", it->get_fid()}, 
+	  {"func", it->get_funcname() }, 
+	    {"event_id", it->get_id()}, 
+	      {"entry", it->get_entry()},
+		{"exit", it->get_exit() == 0 ? -1 : it->get_exit()}
+      });
+    for(CommData_t const &comm : it->get_messages())
+      m_exec_window["comm_window"].push_back(comm.get_json());    
+  }
+}
+
+
+
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
-					 const ADCounter &counters, const ADMetadataParser &metadata): m_call(call), m_is_gpu_event(false){
+					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size): m_call(call), m_is_gpu_event(false){
   getStackInformation(call, event_man); //get call stack
   m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();   //Get the function statistics
   getWindowCounters(call); //counters in window 
   getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
+  getExecutionWindow(call, event_man, window_size);
  
   //Verbose output
   if(Verbose::on()){
@@ -91,7 +113,8 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 			      {"counter_events", m_counters},
 				{"is_gpu_event", m_is_gpu_event},
 				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() },
-				    {"gpu_parent", m_is_gpu_event ? m_gpu_event_parent_info : nlohmann::json() }
+				    {"gpu_parent", m_is_gpu_event ? m_gpu_event_parent_info : nlohmann::json() },
+				      {"event_window", m_exec_window}
 
   };
 }

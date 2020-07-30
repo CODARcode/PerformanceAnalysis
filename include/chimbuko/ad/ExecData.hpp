@@ -197,6 +197,11 @@ public:
     unsigned long tar() const { return m_tar; }
 
     /**
+     * @brief Get the integer tag associated with this comm event
+     */
+    unsigned long tag() const{ return m_tag; }
+
+    /**
      * @brief Set the execution key id (i.e. where this communication event occurs). This is equal to the "id" string associated with a parent ExecData_t object
      * 
      * @param key execution id

@@ -35,7 +35,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata);
+			   counter, metadata, 0);
     
   nlohmann::json output = prov.get_json();
   //Test pid,rid,tid,runtime
@@ -102,7 +102,7 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata);
+			   counter, metadata, 0);
     
   nlohmann::json output = prov.get_json();
   
@@ -164,7 +164,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADAnomalyProvenance prov_gpu(*exec1_it,
 			       event_man,
 			       param,
-			       counter, metadata);
+			       counter, metadata, 0);
     
   nlohmann::json output = prov_gpu.get_json();
   std::cout << "For GPU event, got: " << output.dump() << std::endl;
@@ -177,8 +177,67 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADAnomalyProvenance prov_nongpu(*exec2_it,
 			       event_man,
 			       param,
-			       counter, metadata);
+				  counter, metadata, 0);
   output = prov_nongpu.get_json();
   std::cout << "For CPU event, got: " << output.dump() << std::endl;
   EXPECT_EQ(output["is_gpu_event"], false);
+}
+
+
+
+
+TEST(TestADAnomalyProvenance, extractsExecWindow){
+  ExecData_t exec0 = createFuncExecData_t(1,2,3, 33, "theonebefore", 900, 100);
+  ExecData_t exec1 = createFuncExecData_t(1,2,3, 55, "theparent", 1000, 100);
+  ExecData_t exec2 = createFuncExecData_t(1,2,3, 77, "thechild", 1050, 50); //going to be the anomalous one
+  ExecData_t exec3 = createFuncExecData_t(1,2,3, 88, "theoneafter", 1100, 100);
+  exec2.set_parent(exec1.get_id());
+  exec1.inc_n_children();
+  exec1.update_exclusive(exec2.get_runtime());
+
+  ExecData_t* execs[] = {&exec0, &exec1, &exec2, &exec3};
+
+  //Add some comms
+  CommData_t comm1 = createCommData_t(1,2,3, 0, 111, 2, 1024, 933, "SEND");
+  CommData_t comm2 = createCommData_t(1,2,3, 1, 112, 2, 1024, 1133, "RECV");
+
+  CommData_t* comms[] = {&comm1, &comm2};
+  
+  exec0.add_message(comm1);
+  exec3.add_message(comm2);
+ 
+  ADEvent event_man;
+  event_man.addCall(exec0);
+  event_man.addCall(exec1);
+  event_man.addCall(exec2);
+  event_man.addCall(exec3);
+
+  RunStats stats; //doesn't matter
+  for(int i=0;i<50;i++)
+    stats.push(double(i));
+
+  SstdParam param;
+  param[77] = stats;
+
+  ADCounter counter;
+  ADMetadataParser metadata;
+
+  ADAnomalyProvenance prov(exec2,
+			   event_man,
+			   param,
+			   counter, metadata,
+			   2);
+    
+  nlohmann::json output = prov.get_json();
+
+  const nlohmann::json &win = output["event_window"];
+  const nlohmann::json &ewin = win["exec_window"];
+  const nlohmann::json &cwin = win["comm_window"];
+  EXPECT_EQ(ewin.size(), 4);
+  EXPECT_EQ(cwin.size(), 2);
+  for(int i=0;i<4;i++)
+    EXPECT_EQ(ewin[i]["event_id"], execs[i]->get_id());
+
+  for(int i=0;i<2;i++)
+    EXPECT_EQ(cwin[i]["tag"], comms[i]->tag());
 }

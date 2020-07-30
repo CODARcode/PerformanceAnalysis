@@ -130,6 +130,21 @@ namespace chimbuko{
     return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, ss.str());
   }
 
+  /**
+   * @brief Create a Commdata_t object
+   * @param commType SEND or RECV
+   */
+  CommData_t createCommData_t(unsigned long pid,
+			      unsigned long rid,
+			      unsigned long tid,
+			      unsigned long eid,
+			      unsigned long comm_tag,
+			      unsigned long comm_partner,
+			      unsigned long comm_bytes,
+			      unsigned long ts,
+			      std::string commType){
+    return CommData_t(createCommEvent_t(pid,rid,tid,eid,comm_tag,comm_partner,comm_bytes,ts), commType);
+  }
 
 
   //A mock class that acts as the parameter server

@@ -251,7 +251,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies) const{
       size_t i=0;
       for(auto anom_it : anomalies.allEvents(event_types[typeidx])){
 	timer2.start();
-	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser);
+	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), *m_counter, *m_metadata_parser, m_params.viz_anom_winSize);
 	anomaly_prov[i++] = extract_prov.get_json();
 	m_perf.add("provdb_" + descr[typeidx] + "_generation_per_anom_us", timer2.elapsed_us());
       }
