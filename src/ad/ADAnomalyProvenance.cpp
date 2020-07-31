@@ -38,8 +38,12 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
 
     //Find out information about the CPU event that spawned it
     if(call.has_GPU_correlationID_partner()){
-      VERBOSE(std::cout << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner() << std::endl);
-      std::string gpu_event_parent = call.get_GPU_correlationID_partner();
+      //Note a GPU event can only be partnered to one CPU event but a CPU event can be partnered to multiple GPU events
+      if(call.n_GPU_correlationID_partner() != 1) throw std::runtime_error("ADAnomalyProvenance::getGPUeventInfo GPU event has multiple correlation ID partners??");
+
+      VERBOSE(std::cout << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0) << std::endl);
+
+      std::string gpu_event_parent = call.get_GPU_correlationID_partner(0);
       CallListIterator_t pit = event_man.getCallData(gpu_event_parent);
       m_gpu_event_parent_info["event_id"] = gpu_event_parent;
       m_gpu_event_parent_info["tid"] = pit->get_tid();

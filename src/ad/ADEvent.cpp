@@ -32,12 +32,8 @@ EventError ADEvent::addEvent(const Event_t& event) {
 void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
   //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
   //event with a correlation ID
-  bool found_cid = false;
   for(auto const &c : it->get_counters()){
     if(c.get_countername() == "Correlation ID"){
-      if(found_cid) throw std::runtime_error("Event has more than 1 Correlation ID event associated with it?!?");
-      found_cid = true;
-
       unsigned long cid = c.get_value();
 	
       //Does a partner already exist?
@@ -47,12 +43,20 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	std::string partner_event_id = m->second->get_id();
 	it->set_GPU_correlationID_partner(partner_event_id);
 	m->second->set_GPU_correlationID_partner(current_event_id);
-	m->second->can_delete(true); //allow partner event to be purged at end of io step
+
+	size_t rem = --m_unmatchedCorrelationID_count[partner_event_id];
+	if(rem == 0){
+	  m->second->can_delete(true); //allow partner event to be purged at end of io step
+	  m_unmatchedCorrelationID_count.erase(partner_event_id); //no need to keep this around now
+	}
+	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
+
 	VERBOSE(std::cout << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl);
       }else{
 	//Ensure the event can't be deleted and put it in the map of unmatched events
 	it->can_delete(false);
 	m_unmatchedCorrelationID[cid] = it;
+	++m_unmatchedCorrelationID_count[it->get_id()];
 	VERBOSE(std::cout << "Found as-yet unpartnered event with correlation ID " << cid << std::endl);
       }
     }

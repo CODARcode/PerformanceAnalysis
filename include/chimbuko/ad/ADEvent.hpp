@@ -302,6 +302,11 @@ namespace chimbuko {
      * counters that allow us to match the CPU thread that launched them to the GPU kernel event
      */
     std::unordered_map<unsigned long, CallListIterator_t> m_unmatchedCorrelationID; 
+
+    /**
+     * @brief Map of event index to the number of unmatched correlation IDs
+     */
+    std::unordered_map<std::string,size_t> m_unmatchedCorrelationID_count; 
     
     /**
      * @brief verbose

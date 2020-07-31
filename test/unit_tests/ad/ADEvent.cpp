@@ -425,50 +425,76 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   int tid_gpu = 4;
 
   int func_id[] = {4,5};
-  int counter_id = 13;
+  int counter_id = 13; //index of "Correlation ID" counter
   std::string func_name[] = {"cpu_launch_kernel", "gpu_kernel"};
 
-  int corrid = 1995;
+  int corrid[] = {1995,2020};
 
-  //Add 2 events and check added properly
+  //Have the CPU function execute 2 GPU kernels
   ExecData_t c1 = createFuncExecData_t(pid, rid, tid_cpu, func_id[0], func_name[0], 100, 200);
-  CounterData_t corrid_init = createCounterData_t(pid,rid,tid_cpu,counter_id, corrid, 100, "Correlation ID");  
+  CounterData_t corrid_init = createCounterData_t(pid,rid,tid_cpu,counter_id, corrid[0], 100, "Correlation ID");  
+  CounterData_t corrid_init2 = createCounterData_t(pid,rid,tid_cpu,counter_id, corrid[1], 150, "Correlation ID");  
   c1.add_counter(corrid_init);
+  c1.add_counter(corrid_init2);
 
-  ExecData_t c2 = createFuncExecData_t(pid, rid, tid_gpu, func_id[1], func_name[1], 300, 400);
-  CounterData_t corrid_kern = createCounterData_t(pid,rid,tid_gpu,counter_id, corrid, 400, "Correlation ID");  
+  ExecData_t c2 = createFuncExecData_t(pid, rid, tid_gpu, func_id[1], func_name[1], 400, 100);
+  CounterData_t corrid_kern = createCounterData_t(pid,rid,tid_gpu,counter_id, corrid[0], 500, "Correlation ID");  
   c2.add_counter(corrid_kern);
+
+  ExecData_t c3 = createFuncExecData_t(pid, rid, tid_gpu, func_id[1], func_name[1], 500, 100);
+  CounterData_t corrid_kern2 = createCounterData_t(pid,rid,tid_gpu,counter_id, corrid[1], 600, "Correlation ID"); 
+  c3.add_counter(corrid_kern2);
+
 
   event_man.addCall(c1);
 
-  //Ensure the correlation ID got picked up
-  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+  //Ensure the correlation IDs got picked up
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 2 );
 
   //Ensure the unmatched event doesn't get deleted by trimming
   delete event_man.trimCallList();
 
   const CallListMap_p_t &calls = event_man.getCallListMap();
-  auto p = calls.find(pid);
-  EXPECT_EQ(p != calls.end(), true);
-  auto r = p->second.find(rid);
-  EXPECT_EQ(r != p->second.end(), true);
-  auto t = r->second.find(tid_cpu);
-  EXPECT_EQ(t != r->second.end(), true);  
-  const CallList_t &calls_p_r_t_cpu = t->second;
+  CallList_t const* calls_p_r_t_cpu_ptr = getElemPRT(pid,rid,tid_cpu, calls);
+  EXPECT_NE(calls_p_r_t_cpu_ptr, nullptr);
+  const CallList_t &calls_p_r_t_cpu = *calls_p_r_t_cpu_ptr;
 
   EXPECT_EQ( calls_p_r_t_cpu.size(), 1);
 
   event_man.addCall(c2);
 
-  t = r->second.find(tid_gpu);
-  EXPECT_EQ(t != r->second.end(), true);  
-  const CallList_t &calls_p_r_t_gpu = t->second;
+  CallList_t const* calls_p_r_t_gpu_ptr = getElemPRT(pid,rid,tid_gpu,calls);
+  EXPECT_NE(calls_p_r_t_gpu_ptr, nullptr);
+  const CallList_t &calls_p_r_t_gpu = *calls_p_r_t_gpu_ptr;
 
-  EXPECT_EQ( calls_p_r_t_gpu.size(), 1);
+  EXPECT_EQ( calls_p_r_t_gpu.size(), 1); //only first event present niow
   
-  EXPECT_EQ( calls_p_r_t_cpu.begin()->get_GPU_correlationID_partner(), c2.get_id() );
-  EXPECT_EQ( calls_p_r_t_gpu.begin()->get_GPU_correlationID_partner(), c1.get_id() );
+  auto cpu_parent = calls_p_r_t_cpu.begin();
+  auto gpu_child1 = calls_p_r_t_gpu.begin();
 
+
+  EXPECT_EQ( cpu_parent->n_GPU_correlationID_partner(), 1); //only 1 matched at this point
+  EXPECT_EQ( cpu_parent->get_GPU_correlationID_partner(0), c2.get_id() );
+  EXPECT_EQ( gpu_child1->n_GPU_correlationID_partner(), 1);
+  EXPECT_EQ( gpu_child1->get_GPU_correlationID_partner(0), c1.get_id() );
+
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+
+  //Make sure gpu event trimmed but not cpu event
+  delete event_man.trimCallList();
+  EXPECT_EQ( calls_p_r_t_cpu.size(), 1);
+  EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
+
+  event_man.addCall(c3);
+  EXPECT_EQ( calls_p_r_t_gpu.size(), 1);
+
+  auto gpu_child2 = calls_p_r_t_gpu.begin();
+  EXPECT_EQ( cpu_parent->n_GPU_correlationID_partner(), 2); //both now matched
+  EXPECT_EQ( cpu_parent->get_GPU_correlationID_partner(1), c3.get_id() );
+  EXPECT_EQ( gpu_child2->n_GPU_correlationID_partner(), 1);
+  EXPECT_EQ( gpu_child2->get_GPU_correlationID_partner(0), c1.get_id() );
+  
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
 
   //Ensure both events are now trimmed out
   delete event_man.trimCallList();
