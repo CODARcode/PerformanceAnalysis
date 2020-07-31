@@ -1,4 +1,7 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
     #Connect via tcp

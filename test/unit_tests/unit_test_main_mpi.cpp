@@ -11,4 +11,5 @@ int main(int argc, char **argv) {
   int ret = RUN_ALL_TESTS();
   
   assert(MPI_Finalize() == MPI_SUCCESS );
+  return ret;
 }

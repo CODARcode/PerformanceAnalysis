@@ -1,4 +1,7 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 appdir=../app
 if [ ! -f "${appdir}/pserver" ]; then
