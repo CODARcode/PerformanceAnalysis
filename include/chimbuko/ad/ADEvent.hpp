@@ -321,6 +321,18 @@ namespace chimbuko {
      */
     void checkAndMatchCorrelationID(CallListIterator_t it);
 
+    /**
+     * @brief Flag the call and all it's parental line such that they are protected from deletion by the garbage collection
+     */
+    void stackProtectGC(CallListIterator_t it);
+
+    /**
+     * @brief Flag the call and all it's parental line such that they are not protected from deletion by the garbage collection,
+     *        stopping if a call with an unmatched correlation ID is encountered
+     */
+    void stackUnProtectGC(CallListIterator_t it);
+
+    
   };
 
 } // end of AD namespace

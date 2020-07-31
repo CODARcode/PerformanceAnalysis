@@ -28,6 +28,39 @@ EventError ADEvent::addEvent(const Event_t& event) {
     }
 }
 
+void ADEvent::stackProtectGC(CallListIterator_t it){
+  it->can_delete(false);
+
+  std::string parent = it->get_parent();
+  while(parent != "root"){
+    auto pit = getCallData(parent);
+    pit->can_delete(false);
+    parent = pit->get_parent();
+  }
+}
+
+void ADEvent::stackUnProtectGC(CallListIterator_t it){
+  //Check if has unmatched correlation iD
+  auto umit = m_unmatchedCorrelationID_count.find(it->get_id());
+  if(umit == m_unmatchedCorrelationID_count.end() || umit->second == 0)
+    it->can_delete(true);
+  else return; //stop here, the stack will be needed
+
+  std::string parent = it->get_parent();
+  while(parent != "root"){
+    auto pit = getCallData(parent);
+
+    umit = m_unmatchedCorrelationID_count.find(pit->get_id());
+    if(umit == m_unmatchedCorrelationID_count.end() || umit->second == 0)
+      pit->can_delete(true);
+    else return; //stop here, the stack will be needed
+
+    parent = pit->get_parent();
+  }
+}
+
+
+
 
 void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
   //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
@@ -46,15 +79,15 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 
 	size_t rem = --m_unmatchedCorrelationID_count[partner_event_id];
 	if(rem == 0){
-	  m->second->can_delete(true); //allow partner event to be purged at end of io step
 	  m_unmatchedCorrelationID_count.erase(partner_event_id); //no need to keep this around now
+	  stackUnProtectGC(m->second);
 	}
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
 
 	VERBOSE(std::cout << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl);
       }else{
-	//Ensure the event can't be deleted and put it in the map of unmatched events
-	it->can_delete(false);
+	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
+	stackProtectGC(it);
 	m_unmatchedCorrelationID[cid] = it;
 	++m_unmatchedCorrelationID_count[it->get_id()];
 	VERBOSE(std::cout << "Found as-yet unpartnered event with correlation ID " << cid << std::endl);

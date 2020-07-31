@@ -60,6 +60,15 @@ namespace chimbuko{
     return exec;
   }
 
+  
+  /**
+   * @brief Setup parent <-> child relationship between events
+   */
+  void bindParentChild(ExecData_t &parent, ExecData_t &child){
+    child.set_parent(parent.get_id());
+    parent.update_exclusive(child.get_runtime());
+    parent.inc_n_children();
+  }
 
 
   /**

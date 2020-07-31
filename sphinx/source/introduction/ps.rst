@@ -44,11 +44,11 @@ The parameter server optionally sends data to an external webserver as JSON-form
 
 | {
 |    **'anomaly_stats'**: *Statistics of anomalies. Note this field will not appear if no anomalies have been detected (object with schema given below)*
-|    **'counter_stats'**: *Statistics of counters aggregated over all ranks (array)*
+|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array)*
 |        [
 |	    {
 |	      **'counter'**: *Counter description*,
-|	      **'stats'**:   *Global aggregated statistics on counter since start of run*,
+|	      **'stats'**:   *Global aggregated statistics on counter values since start of run*,
 |	         {
 |                    **'accumulate'**: *Unused*,
 |                    **'count'**: *Number of times counter appeared*,

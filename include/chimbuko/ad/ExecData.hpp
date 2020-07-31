@@ -355,11 +355,11 @@ public:
     /**
      * @brief Get the id of this execution data
      */
-    std::string get_id() const { return m_id; }
+    const std::string &get_id() const { return m_id; }
     /**
      * @brief Get the function name of this execution data
      */
-    std::string get_funcname() const { return m_funcname; }
+    const std::string &get_funcname() const { return m_funcname; }
     /**
      * @brief Get the program id of this execution data
      */
