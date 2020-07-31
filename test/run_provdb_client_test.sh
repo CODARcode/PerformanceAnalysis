@@ -5,7 +5,7 @@ set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
     #Connect via tcp
-    rm provdb.unqlite  provider.address
+    rm -f provdb.unqlite  provider.address
 
     ip=$(hostname -i)
     port=1234
@@ -19,7 +19,7 @@ if [ -f "../bin/provdb_admin" ]; then
     kill $admin
 
     #Connect via na+sm
-    rm provdb.unqlite  provider.address
+    rm -f provdb.unqlite  provider.address
 
     ../bin/provdb_admin "" -engine "na+sm" &
     admin=$!
