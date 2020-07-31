@@ -17,7 +17,9 @@ Below we describe the JSON schema for the **anomalies** and **normalexecs** coll
 Function event schema
 ---------------------
 
-This section describes the JSON schema for the **anomalies** and **normalexecs** collections. The fields of the JSON object are bolded, and a brief description follows the colon (:).
+This section describes the JSON schema for the **anomalies** and **normalexecs** collections. The fields of the JSON object are bolded, and a brief description follows the colon (:). 
+
+Function execution "events" in Chimbuko are labeled by a unique (for each process) string of following form "$RANK:$IO_STEP:$IDX" (eg "0:12:225"), where RANK, IO_STEP and IDX are the MPI rank, the io step and an integer index, respectively, and $VAL indicates the numerical value of the variable VAL. We will refer to such a string as an "event label" below.
 
 ----------
 
@@ -30,7 +32,7 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 |            **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |            **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |            **"func"**: *function name*,
-|            **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
+|            **"event_id"**: *Event label (see above)*,
 |        },
 |        ....
 |    ],
@@ -48,7 +50,7 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 |    ],
 |    **"entry"**: *Timestamp of function execution entry*,
 |    **"exit"**: *Timestamp of function execution exit*,
-|    **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
+|    **"event_id"**: *Event label (see above)*,
 |    **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |    **"func"**: *function name*,
 |    **"func_stats"**:   *Statistics of function execution time*
@@ -82,7 +84,7 @@ This section describes the JSON schema for the **anomalies** and **normalexecs**
 |             **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |             **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |             **"func"**: *function name*,
-|             **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
+|             **"event_id"**: *Event label (see above)*
 |           },
 |           ...
 |        ],
@@ -125,7 +127,7 @@ and for the **gpu_parent** field:
 ----------
 
 | {
-|    **"event_id"**: *The event index string (format "<PROCESS:RANK:INDEX>") describing the parent function execution*,
+|    **"event_id"**: *The event label (see above) of the parent function execution*,
 |    **"tid"**: *Thread index for CPU parent function*,
 |    **"call_stack"**:    *Parent function call stack (starting with parent function execution)*,
 |    [
@@ -134,7 +136,7 @@ and for the **gpu_parent** field:
 |            **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |            **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |            **"func"**: *function name*,
-|            **"event_id"**: *A unique string of format "<PROCESS:RANK:INDEX>" associated with the event*,
+|            **"event_id"**: *The event label*
 |        },
 |        ....
 |    ]
