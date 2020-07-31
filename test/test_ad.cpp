@@ -124,25 +124,49 @@ TEST_F(ADTest, BpfileWithNetTest)
     using namespace chimbuko;
 
     //const int N_RANKS = 4;
-    const std::vector<int> N_STEPS{6, 6, 6, 6};
+    const std::vector<int> N_STEPS{7, 7, 7, 7};
+
+
+    /*
+      Original values before global indexing fix
     const std::vector<std::vector<size_t>> N_FUNC{
         {57077, 51845, 60561, 63278, 64628, 66484, 42233},
         {41215, 51375, 56620, 57683, 58940, 61010, 41963},
         {41108, 50820, 57237, 56590, 63458, 63931, 42486},
         {40581, 51127, 59175, 58158, 60465, 62516, 41238}
-    }; 
+    };  //[rank][step]
     const std::vector<std::vector<size_t>> N_COMM{
         {89349, 107207, 121558, 123381, 128682, 131611, 83326},
         {78250, 94855 , 106301, 107222, 111581, 114273, 77817},
         {77020, 93355 , 105238, 106608, 114192, 118530, 79135},
         {77332, 93027 , 107856, 107628, 112019, 116468, 74517}
-    };
+    };  //[rank][step]
     const std::vector<std::vector<unsigned long>> N_OUTLIERS{
         {134, 50, 65, 54, 62, 54, 31},
         { 75, 20, 33, 42, 32, 47, 45},
         { 72, 34, 27, 25, 28, 28, 36},
         { 76, 32, 47, 26, 26, 32, 27}
-    };
+    }; //[rank][step]
+    */
+
+    const std::vector<std::vector<size_t>> N_FUNC{
+      {57077, 51845, 60561, 63278, 64628, 66484, 42233},
+	{41215, 51375, 56620, 57683, 58940, 61010, 41963},
+	  {41108, 50820, 57237, 56590, 63458, 63931, 42486},
+	      {40581, 51127, 59175, 58158, 60465, 62516, 41238}
+    };  //[rank][step]
+    const std::vector<std::vector<size_t>> N_COMM{
+      {89349, 107207, 121558, 123381, 128682, 131611, 83326},
+	{78250, 94855, 106301, 107222, 111581, 114273, 77817},
+	  {77020, 93355, 105238, 106608, 114192, 118530, 79135},
+	    {77332, 93027, 107856, 107628, 112019, 116468, 74517}
+    };  //[rank][step]
+    const std::vector<std::vector<unsigned long>> N_OUTLIERS{
+      {134, 65, 83, 73, 77, 68, 34},
+	{89, 44, 62, 58, 54, 47, 39},
+	  {99, 56, 59, 64, 66, 58, 43},
+	    {106, 58, 79, 49, 54, 66, 48}
+    };  //[rank][step]
 
     ChimbukoParams params;
     params.rank = world_rank;
@@ -180,6 +204,10 @@ TEST_F(ADTest, BpfileWithNetTest)
       throw e;
     }
 
+    std::vector<std::vector<unsigned long> > N_FUNC_ACTUAL(4);
+    std::vector<std::vector<unsigned long> > N_COMM_ACTUAL(4);
+    std::vector<std::vector<unsigned long> > N_OUTLIERS_ACTUAL(4);
+
     step = -1;
     while ( driver.get_status() )
     {
@@ -212,16 +240,75 @@ TEST_F(ADTest, BpfileWithNetTest)
         if (driver.get_step() >= 0)
         {
             step = driver.get_step();
+	    if(!world_rank) std::cout << "Checking data for step " << step << std::endl;
 
 	    //FIXME: Add expect for counter events
             EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
             EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
             EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
+
+	    N_FUNC_ACTUAL[world_rank].push_back(n_func_events);
+	    N_COMM_ACTUAL[world_rank].push_back(n_comm_events);
+	    N_OUTLIERS_ACTUAL[world_rank].push_back(n_outliers);
         }
     }
-    EXPECT_EQ(N_STEPS[world_rank], step);
+    int nstep = step+1;
+    EXPECT_EQ(N_STEPS[world_rank], nstep);
+    if(!world_rank) std::cout << "Steps performed: " << nstep << std::endl;
 
     MPI_Barrier(MPI_COMM_WORLD);
+
+    //For gathering actual event counts, check 
+    int nsteps_check[4] = {0,0,0,0};
+    nsteps_check[world_rank] = nstep;
+    
+    MPI_Allreduce(MPI_IN_PLACE, nsteps_check, 4, MPI_INT, MPI_SUM, MPI_COMM_WORLD);    
+
+    bool fail = false;
+    for(int i=0;i<4;i++)
+      if(nsteps_check[i] != nstep){
+	fail = true;
+	break;
+      }
+    
+    if(!fail){
+      //Fill in zeroes for other ranks
+      for(int i=0;i<4;i++){
+	if(i!=world_rank){
+	  N_FUNC_ACTUAL[i].resize(nstep, 0);
+	  N_COMM_ACTUAL[i].resize(nstep, 0);	  
+	  N_OUTLIERS_ACTUAL[i].resize(nstep, 0);
+	}
+      }
+      //Use global sum to sync all data to root
+      for(int i=0;i<4;i++){
+        MPI_Allreduce(MPI_IN_PLACE, N_FUNC_ACTUAL[i].data(), nstep, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);    
+	MPI_Allreduce(MPI_IN_PLACE, N_COMM_ACTUAL[i].data(), nstep, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);    
+	MPI_Allreduce(MPI_IN_PLACE, N_OUTLIERS_ACTUAL[i].data(), nstep, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);    
+      }
+
+      if(world_rank == 0){
+	std::cout << "Actual value tables:" << std::endl;
+	std::cout << "FUNC:" << std::endl;
+	for(int i=0;i<4;i++){
+	  for(int j=0;j<nstep;j++)
+	    std::cout << N_FUNC_ACTUAL[i][j] << (j==nstep-1 ? "" :", ");
+	  std::cout << std::endl;
+	}
+	std::cout << "COMM:" << std::endl;
+	for(int i=0;i<4;i++){
+	  for(int j=0;j<nstep;j++)
+	    std::cout << N_COMM_ACTUAL[i][j] << (j==nstep-1 ? "" :", ");
+	  std::cout << std::endl;
+	}
+	std::cout << "OUTLIERS:" << std::endl;
+	for(int i=0;i<4;i++){
+	  for(int j=0;j<nstep;j++)
+	    std::cout << N_OUTLIERS_ACTUAL[i][j] << (j==nstep-1 ? "" :", ");
+	  std::cout << std::endl;
+	}
+      }
+    }
 }
 
 TEST_F(ADTest, ReadExecDataTest)
@@ -231,12 +318,23 @@ TEST_F(ADTest, ReadExecDataTest)
     //const int N_RANKS = 4;
     const std::vector<int> N_STEPS{6, 6, 6, 6};
 
+    /*
+      Old values before global func id fix
     const std::vector<std::vector<unsigned long>> N_OUTLIERS{
         {134, 50, 65, 54, 62, 54, 31},
         { 75, 20, 33, 42, 32, 47, 45},
         { 72, 34, 27, 25, 28, 28, 36},
         { 76, 32, 47, 26, 26, 32, 27}
     };
+    */
+
+    const std::vector<std::vector<unsigned long>> N_OUTLIERS{
+      {134, 65, 83, 73, 77, 68, 34},
+	{89, 44, 62, 58, 54, 47, 39},
+	  {99, 56, 59, 64, 66, 58, 43},
+	    {106, 58, 79, 49, 54, 66, 48}
+    };  //[rank][step]
+
 
     std::string execOutput = "temp/0/" + std::to_string(world_rank);
 
