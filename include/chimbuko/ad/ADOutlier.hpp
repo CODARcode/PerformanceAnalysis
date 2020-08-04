@@ -147,6 +147,10 @@ namespace chimbuko {
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
 
+    /**
+     * @brief Send the local statistics to the parameter server and update the stored global parameters with the resulting updated statistics
+     * @param param The local statistics
+     */
     std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
     
   private:

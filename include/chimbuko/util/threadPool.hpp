@@ -13,9 +13,15 @@
 #include <utility>
 #include <vector>
 
+/**
+ * @brief A class maintaining a queue of tasks that are performed by a pool of threads
+ */
 class threadPool
 {
 private:
+    /**
+     * @brief Base class of thread tasks
+     */
     class IThreadTask
     {
     public:
@@ -28,9 +34,15 @@ private:
         IThreadTask(IThreadTask&& other) = default;
         IThreadTask& operator=(IThreadTask&& other) = default;
 
+        /**
+	 * @brief Perform the task (executed by thread)
+	 */
         virtual void execute() = 0;
     };
 
+    /**
+     * @brief A thread task executing a functional object
+     */
     template <typename Func>
     class ThreadTask: public IThreadTask
     {
@@ -129,6 +141,9 @@ public:
         destroy();
     }
 
+    /**
+     * @brief Submit a function object and its arguments to the queue
+     */
     template <typename Func, typename... Args>
     auto sumit(Func&& func, Args&&... args)
     {
@@ -143,10 +158,16 @@ public:
         return result;
     }
 
+    /**
+     * @brief Return the number of threads in the pool
+     */
     size_t pool_size() const {
         return m_threads.size();
     }
 
+    /**
+     * @brief Return the number of tasks in the queue
+     */
     size_t queue_size() const {
         return m_workQueue.size();
     }

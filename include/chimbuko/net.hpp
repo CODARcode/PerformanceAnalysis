@@ -89,13 +89,15 @@ namespace chimbuko {
      */
     virtual void finalize() = 0;
 
-    /**
-     * @brief (virtual) run network server
-     * 
-     */
 #ifdef _PERF_METRIC
+    /**
+     * @brief (virtual) Run network server with performance logging to provided directory
+     */
     virtual void run(std::string logdir="./") = 0;
 #else
+    /**
+     * @brief (virtual) Run network server
+     */    
     virtual void run() = 0;
 #endif
     /**

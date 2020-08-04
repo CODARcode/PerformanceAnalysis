@@ -5,6 +5,9 @@
 
 namespace chimbuko {
 
+  /**
+   * @brief A class containing a map of a string to its aggregated statistics, used for performance logging
+   */
 class RunMetric {
 public:
     RunMetric()
@@ -16,6 +19,11 @@ public:
 
     }
 
+    /**
+     * @brief Add a value to the statistics tagged by the provided name
+     *
+     * A new entry in the map is created if the name has not been provided previously
+     */
     void add(std::string name, double val)
     {
         if (m_metrics.count(name) == 0)
@@ -27,6 +35,9 @@ public:
         m_metrics[name].push(val);
     }
 
+    /**
+     * @brief Write the data to disk in JSON form
+     */
     void dump(std::string path, std::string filename="metric.json") const
     {
         std::ofstream f;
@@ -46,7 +57,7 @@ public:
     }
 
 private:
-    std::unordered_map<std::string, RunStats> m_metrics;
+  std::unordered_map<std::string, RunStats> m_metrics; /**< Map of tag to statistics object */
 };
 
 };

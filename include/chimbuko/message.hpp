@@ -5,6 +5,9 @@
 
 namespace chimbuko {
 
+/**
+  * @brief Enum of the message "type" or action
+  */
 enum MessageType {
     REQ_ADD  =  1,
     REQ_GET  =  2,
@@ -18,6 +21,9 @@ enum MessageType {
     REP_ECHO = 50
 };
 
+/**
+ * @brief Enum of the message "kind" describing the context of the action
+ */
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
@@ -32,6 +38,9 @@ enum MessageCmd {
     ECHO = 1
 };
 
+/**
+ * @brief A class containing a message and header that can be serialized in JSON form for communication
+ */
 class Message {
 public:
     class Header {
@@ -156,14 +165,29 @@ public:
      */
     std::string data() const;
 
+    /**
+     * @brief Get the origin rank
+     */
     int src() const { return m_head.src(); }
 
+    /**
+     * @brief Get the destination rank
+     */
     int dst() const { return m_head.dst(); }
 
+    /**
+     * @brief Get the message type
+     */
     int type() const { return m_head.type(); }
 
+    /**
+     * @brief Get the message kind
+     */
     int kind() const { return m_head.kind(); }
 
+    /**
+     * @brief Get the message kind in string form
+     */
     std::string kind_str() const {
         switch(m_head.kind())
         {
@@ -177,8 +201,14 @@ public:
         }
     }
 
+   /**
+    * @brief Get the message size in bytes
+    */
     int size() const { return m_head.size(); }
 
+    /**
+     * @brief Get the message io frame (step)
+     */
     int frame() const { return m_head.frame(); } 
 
     /**
@@ -187,15 +217,21 @@ public:
      */
     void clear() { m_buf.clear(); }
 
+    /**
+     * @brief Create a message reply with the source, destination, type and kind appropriately filled
+     */
     Message createReply() const;
 
+    /**
+     * @brief Write the message to the output stream in JSON form
+     */
     void show(std::ostream& os) const {
         os << m_head.get_json().dump();
     }
 
 private:
-    Header m_head;
-    std::string m_buf;
+    Header m_head; /**< Message header*/
+    std::string m_buf; /**< Message content*/
 };
 
 } // end of namespace chimbuko

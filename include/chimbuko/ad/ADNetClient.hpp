@@ -58,10 +58,10 @@ namespace chimbuko{
     
   private:
     bool m_use_ps;                           /**< true if the parameter server is in use */
-    int m_rank;
+    int m_rank;                              /**< MPI rank of current process */
     int m_srank;                             /**< server process rank                    */
 #ifdef _USE_MPINET
-    MPI_Comm m_comm;
+    MPI_Comm m_comm;                         /**< Instance of the MPI communicator */
 #else
     void* m_context;                         /**< ZeroMQ context */
     void* m_socket;                          /**< ZeroMQ socket */

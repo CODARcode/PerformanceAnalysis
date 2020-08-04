@@ -21,6 +21,9 @@ namespace chimbuko{
       mGeneration(0) {
     }
 
+    /**
+     * @brief Wait for all threads to reach the barrier
+     */
     void wait() {
       std::unique_lock<std::mutex> lLock{mMutex};
       auto lGen = mGeneration;

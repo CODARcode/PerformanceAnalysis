@@ -24,19 +24,51 @@ namespace chimbuko {
      * @param nt the number of threads for a thread pool
      */
     void init(int* argc, char*** argv, int nt) override;
+
+    /**
+     * @brief Finalize network
+     */
     void finalize() override;
 #ifdef _PERF_METRIC
+    /**
+     * @brief Run network server with performance logging to provided directory
+     */
     void run(std::string logdir="./") override;
 #else
+    /**
+     * @brief (virtual) Run network server
+     */    
     void run() override;
 #endif
+    /**
+     * @brief Stop network server
+     * 
+     */
     void stop() override;
+
+
+    /**
+     * @brief Name of network server
+     * @return std::string name of network server
+     */
     std::string name() const override { return "ZMQNET"; }
 
+    /**
+     * @brief Send the data packet to the server on the provided socket
+     */
     static int send(void* socket, const std::string& strmsg);
+
+    /**
+     * @brief Receive the data packet to the server from the provided socket
+     */
     static int recv(void* socket, std::string& strmsg);
 
   protected:
+    /**
+     * @brief initialize thread pool 
+     * 
+     * @param nt the number threads in the pool
+     */
     void init_thread_pool(int nt) override;
 
   private:
@@ -47,7 +79,7 @@ namespace chimbuko {
 
   private:
     void* m_context; /**< ZeroMQ context pointer */
-    long long m_n_requests;
+    long long m_n_requests; /**< Accumulated number of RPC requests */
     std::vector<std::thread> m_threads; /**< The pool of thread workers */
   };
 
