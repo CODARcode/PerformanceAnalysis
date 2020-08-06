@@ -115,3 +115,45 @@ Analysis using Singularity Containers
 
 Interacting with the Provenance Database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The provenance database is stored in a single file, **provdb.unqlite** in the job's run directory. From this directory the user can interact with the provenance database via the visualization module. A more general command line interface to the database is also provided via the **provdb_query** tool that allows the user to execute arbitrary jx9 queries on the database.
+
+The **provdb_query** tool has two modes of operation: **filter** and **execute**.
+
+Filter mode
+-----------
+
+**filter** mode allows the user to provide a jx9 filter function that is applied to filter out entries in a particular collection. It can be used as follows:
+
+.. code:: bash
+
+	  provdb_query filter ${COLLECTION} ${QUERY}
+
+Where the variables are as follows:
+
+- **COLLECTION** : One of the three collections in the database, **anomalies**, **normalexecs**, **metadata** (cf :ref:`introduction/provdb:Provenance Database`).
+- **QUERY**: The query, format described below.
+ 
+The **QUERY** argument should be a jx9 function returning a bool and enclosed in quotation marks. It should be of the format
+
+.. code:: bash
+
+	  QUERY="function(\$entry){ return \$entry['some_field'] == ${SOME_VALUE}; }"
+
+The function is applied sequentially to each element of the collection. Inside the function the entry is described by the variable **$entry**. Note that the backslash-dollar (\\$) is necessary to prevent the shell from trying to expand the variable. Fields of **$entry** can be queried using the square-bracket notation with the field name inside. In the sketch above the field "some_field" is compared to a value **${SOME_VALUE}** (here representing a numerical value or a value expanded by the shell, *not* a jx9 variable!). 
+
+Execute mode
+------------
+
+**execute** mode allows running a complete jx9 script on the database as a whole, allowing for more complex queries that collect different outputs and span collections.
+
+.. code:: bash
+
+	  provdb_query execute ${CODE} ${VARIABLES}
+
+Where the variables are as follows:
+
+- **CODE** : The jx9 script
+- **VARIABLES** : a comma-separated list (without spaces) of the variables assigned by the script
+
+The **CODE** argument is a complete jx9 script. 
