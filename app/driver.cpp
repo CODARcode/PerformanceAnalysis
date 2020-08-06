@@ -16,16 +16,16 @@ optionalArgsParser & getOptionalArgsParser(){
   static bool initialized = false;
   static optionalArgsParser p;
   if(!initialized){
-    addCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
-    addCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
-    addCommandLineArg(p, viz_anom_winSize, "When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent (default 0)");
-    addCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
+    addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
+    addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
+    addOptionalCommandLineArg(p, viz_anom_winSize, "When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent (default 0)");
+    addOptionalCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
 #ifdef ENABLE_PROVDB
-    addCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+    addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
 #endif    
 #ifdef _PERF_METRIC
-    addCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
-    addCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
+    addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
+    addOptionalCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
 #endif
     initialized = true;
   }
@@ -40,7 +40,7 @@ void printHelp(){
 	    << "      <Output location>   : Where the data intended for the visualization module is sent.\n"
 	    << "                            If a url (starts with http) it is sent to the url,\n"
 	    << "                            otherwise if a non-empty string it is output to disk at that location\n"
-	    << "Options:\n";
+	    << "      <Options>           : Optional arguments as described below.\n";
   getOptionalArgsParser().help(std::cout);
 }
 

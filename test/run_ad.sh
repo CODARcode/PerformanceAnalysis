@@ -21,7 +21,7 @@ mkdir -p temp perf
 
 export CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND=1
 
-mpirun --allow-run-as-root --oversubscribe -n 1 ${appdir}/pserver 4 "./perf/" &
+mpirun --allow-run-as-root --oversubscribe -n 1 ${appdir}/pserver 4 -logdir "./perf/" &
 ps_wid=$!
 
 sleep 5

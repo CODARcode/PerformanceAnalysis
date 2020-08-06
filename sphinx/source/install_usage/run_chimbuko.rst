@@ -38,15 +38,17 @@ The second step is to start the parameter server:
 
 .. code:: bash
 
-	  pserver ${PSERVER_NT} ${PSERVER_LOGDIR} ${RANKS} ${VIZ_ADDRESS} &
+	  pserver ${RANKS} -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} &
 	  sleep 2
 
 Where the variables are as follows:
 
+- **RANKS** : The number of MPI ranks that the application will be run on
 - **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
 - **PSERVER_LOGDIR** : A directory for logging output
-- **RANKS** : The number of MPI ranks that the application will be run on
 - **VIZ_ADDRESS** : Address of the visualization module (see above).
+
+Note that all but the number of ranks are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
   
