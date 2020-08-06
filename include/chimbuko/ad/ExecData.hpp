@@ -355,11 +355,11 @@ public:
     /**
      * @brief Get the id of this execution data
      */
-    std::string get_id() const { return m_id; }
+    const std::string &get_id() const { return m_id; }
     /**
      * @brief Get the function name of this execution data
      */
-    std::string get_funcname() const { return m_funcname; }
+    const std::string &get_funcname() const { return m_funcname; }
     /**
      * @brief Get the program id of this execution data
      */
@@ -521,7 +521,7 @@ public:
     /**
      * @brief Set the partner event linked by a GPU correlation ID
      */
-    void set_GPU_correlationID_partner(const std::string event_id){ m_gpu_correlation_id_partner = event_id; }
+    void set_GPU_correlationID_partner(const std::string event_id){ m_gpu_correlation_id_partner.push_back(event_id); }
 
     /**
      * @brief Return true if this event has been matched to a partner event by a GPU correlation ID
@@ -529,9 +529,17 @@ public:
     bool has_GPU_correlationID_partner() const{ return m_gpu_correlation_id_partner.size() > 0; }
 
     /**
-     * @brief Get the partner event linked by a GPU correlation ID (empty string if none)
+     * @brief Get the number of events linked by GPU correlation ID
+     */
+    size_t n_GPU_correlationID_partner() const{ return m_gpu_correlation_id_partner.size(); }
+
+    /**
+     * @brief Get the partner event linked by a GPU correlation ID
+     * @param i index in array of partners
+     *
+     * Throws error if index out of range
      */  
-    const std::string & get_GPU_correlationID_partner() const{ return m_gpu_correlation_id_partner; }
+    const std::string & get_GPU_correlationID_partner(const size_t i) const;
 
 private:
     std::string m_id;                    /**< execution id */                           
@@ -553,7 +561,7 @@ private:
     std::deque<CommData_t> m_messages;  /**< a vector of all messages */
     std::deque<CounterData_t> m_counters; /**< a vector of all counters */
     bool m_can_delete; /**< Flag indicating that the event is deletable by the garbage collection */
-    std::string m_gpu_correlation_id_partner;  /**< The event id of a partner event linked by a correlation ID, either the launching CPU event or the GPU kernel event */
+    std::vector<std::string> m_gpu_correlation_id_partner;  /**< The event ids partner events linked by a correlation ID, either the launching CPU event or the GPU kernel event */
 };
 
 

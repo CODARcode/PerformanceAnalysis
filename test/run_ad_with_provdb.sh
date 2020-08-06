@@ -1,7 +1,10 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
-    rm provdb.unqlite  provider.address
+    rm -f provdb.unqlite  provider.address
 
     ip=$(hostname -i)
     port=1234

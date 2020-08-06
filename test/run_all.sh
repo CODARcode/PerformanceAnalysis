@@ -1,4 +1,7 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 #In the docker images we must load the MOCHI libraries using spack
 if [[ $# == 1 && $1 == "DOCKER_SETUP_MOCHI" ]]; then

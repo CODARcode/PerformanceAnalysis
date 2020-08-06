@@ -302,6 +302,11 @@ namespace chimbuko {
      * counters that allow us to match the CPU thread that launched them to the GPU kernel event
      */
     std::unordered_map<unsigned long, CallListIterator_t> m_unmatchedCorrelationID; 
+
+    /**
+     * @brief Map of event index to the number of unmatched correlation IDs
+     */
+    std::unordered_map<std::string,size_t> m_unmatchedCorrelationID_count; 
     
     /**
      * @brief verbose
@@ -316,6 +321,18 @@ namespace chimbuko {
      */
     void checkAndMatchCorrelationID(CallListIterator_t it);
 
+    /**
+     * @brief Flag the call and all it's parental line such that they are protected from deletion by the garbage collection
+     */
+    void stackProtectGC(CallListIterator_t it);
+
+    /**
+     * @brief Flag the call and all it's parental line such that they are not protected from deletion by the garbage collection,
+     *        stopping if a call with an unmatched correlation ID is encountered
+     */
+    void stackUnProtectGC(CallListIterator_t it);
+
+    
   };
 
 } // end of AD namespace

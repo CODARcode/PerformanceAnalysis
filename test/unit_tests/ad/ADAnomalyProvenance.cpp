@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADAnomalyProvenance.hpp>
 #include<chimbuko/param/sstd_param.hpp>
+#include<chimbuko/util/map.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -150,16 +151,28 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   int gpu_thr = 9;
   int corridx = 1234;
   int corrid_cid = 22;
-  ExecData_t exec1 = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
-  exec1.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx, 1000, "Correlation ID"));
+  ExecData_t exec_gpu = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
+  exec_gpu.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx, 1000, "Correlation ID"));
   
-  ExecData_t exec2 = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
-  exec2.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx, 1000, "Correlation ID"));
+  ExecData_t exec_cpu = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
+  exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx, 1000, "Correlation ID"));
+
+  ExecData_t exec_cpu_parent = createFuncExecData_t(0,1, 0, 11, "thecpufunctions_parent", 1000, 100); //not on gpu
+  bindParentChild(exec_cpu_parent, exec_cpu);
 
   ADEvent event_man;
-  CallListIterator_t exec1_it = event_man.addCall(exec1);
-  CallListIterator_t exec2_it = event_man.addCall(exec2);
+  CallListIterator_t exec_cpu_parent_it = event_man.addCall(exec_cpu_parent);
+  CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
+  
+  //Check both CPU calls picked up
+  const CallListMap_p_t &calls = event_man.getCallListMap();
+  CallList_t const* calls_p_r_t_cpu_ptr = getElemPRT(0,1,0, calls);
+  EXPECT_NE(calls_p_r_t_cpu_ptr, nullptr);
+  const CallList_t &calls_p_r_t_cpu = *calls_p_r_t_cpu_ptr;
 
+  EXPECT_EQ(calls_p_r_t_cpu.size(), 2);
+
+  //Populate all the other stuff required to generate anomaly data
   RunStats stats;
   for(int i=0;i<50;i++)
     stats.push(double(i));
@@ -167,6 +180,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   SstdParam param;
   param[44] = stats;
   param[55] = stats;
+  param[11] = stats;
 
   ADCounter counter;
     
@@ -189,28 +203,42 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_NE( pit, it->second.end() );
   EXPECT_EQ( pit->second, "Fake GPU" );
 
-  ADAnomalyProvenance prov_gpu(*exec1_it,
-			       event_man,
-			       param,
-			       counter, metadata, 0,
-			       11,900,1200);
-    
-  nlohmann::json output = prov_gpu.get_json();
-  std::cout << "For GPU event, got: " << output.dump() << std::endl;
 
-  EXPECT_EQ(output["is_gpu_event"], true);
-  EXPECT_EQ(output["gpu_location"]["context"], 8);
-  EXPECT_EQ(output["gpu_location"]["device"], 7);
-  EXPECT_EQ(output["gpu_location"]["stream"], 1);
-
-  ADAnomalyProvenance prov_nongpu(*exec2_it,
+  ADAnomalyProvenance prov_nongpu(*exec_cpu_it,
 				  event_man,
 				  param,
 				  counter, metadata, 0,
 				  11,900,1200);
-  output = prov_nongpu.get_json();
-  std::cout << "For CPU event, got: " << output.dump() << std::endl;
-  EXPECT_EQ(output["is_gpu_event"], false);
+  {
+    nlohmann::json output = prov_nongpu.get_json();
+    std::cout << "For CPU event, got: " << output.dump() << std::endl;
+    EXPECT_EQ(output["is_gpu_event"], false);
+    EXPECT_EQ(output["call_stack"].size(), 2);
+  }
+  
+  //Parent function exec should not be trimmed out even though it is not the immediate partner event
+  delete event_man.trimCallList();
+  EXPECT_EQ(calls_p_r_t_cpu.size(), 2);
+
+  CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
+
+  ADAnomalyProvenance prov_gpu(*exec_gpu_it,
+			       event_man,
+			       param,
+			       counter, metadata, 0,
+			       11,900,1200);
+  {
+    nlohmann::json output = prov_gpu.get_json();
+    std::cout << "For GPU event, got: " << output.dump() << std::endl;
+
+    EXPECT_EQ(output["is_gpu_event"], true);
+    EXPECT_EQ(output["gpu_location"]["context"], 8);
+    EXPECT_EQ(output["gpu_location"]["device"], 7);
+    EXPECT_EQ(output["gpu_location"]["stream"], 1);
+  }
+
+  delete event_man.trimCallList();
+  EXPECT_EQ(calls_p_r_t_cpu.size(), 0);
 }
 
 

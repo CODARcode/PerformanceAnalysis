@@ -8,11 +8,11 @@ The parameter server optionally sends data to an external webserver as JSON-form
 
 | {
 |    **'anomaly_stats'**: *Statistics of anomalies. Note this field will not appear if no anomalies have been detected (object with schema given below)*
-|    **'counter_stats'**: *Statistics of counters aggregated over all ranks (array)*
+|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array)*
 |        [
 |	    {
 |	      **'counter'**: *Counter description*,
-|	      **'stats'**:   *Global aggregated statistics on counter since start of run*,
+|	      **'stats'**:   *Global aggregated statistics on counter values since start of run*,
 |	         {
 |                    **'accumulate'**: *Unused*,
 |                    **'count'**: *Number of times counter appeared*,
@@ -49,12 +49,12 @@ The schema for the **'anomaly_stats'** object is as follows:
 |                      **'min_timestamp'**: *Earliest time of anomaly in io step*,
 |                      **'n_anomalies'**: *Number of anomalies in io step*,
 |     		       **'rank'**: *Process rank*,
-|   		       **'stat_id'**: *A string label of the form "<PROCESS ID>:<RANK>"*,
+|   		       **'stat_id'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
 |                      **'step'**: *io step index*
 |		    },
 |                   ...
 |                ],
-|           **'key'**: *A string label of the form "<PROCESS ID>:<RANK>"*,
+|           **'key'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
 |           **'stats'**:   *Statistics on anomalies on this process/rank over the steps broken down above (object)*
 |                {
 |	           **'accumulate'**: *Total anomalies*,
