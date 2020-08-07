@@ -85,6 +85,19 @@ int main(int argc, char** argv) {
 
   //Initialize provider engine
   tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
+
+#ifdef _PERF_METRIC
+  //Get Margo to output profiling information
+  //A .diag and .csv file will be produced in the run directory
+  //Description can be found at https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
+  //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
+  //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
+  //Generate a profile plot automatically by running margo-gen-profile in the run directory
+  auto margo_instance = engine.get_margo_instance();
+  margo_diag_start(margo_instance);
+  margo_profile_start(margo_instance);
+#endif
+
   engine.enable_remote_shutdown();
   engine.push_finalize_callback([]() { engine_is_finalized = true; stop_wait_loop = true; });
 

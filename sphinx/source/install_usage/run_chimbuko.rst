@@ -144,6 +144,20 @@ The **QUERY** argument should be a jx9 function returning a bool and enclosed in
 
 The function is applied sequentially to each element of the collection. Inside the function the entry is described by the variable **$entry**. Note that the backslash-dollar (\\$) is necessary to prevent the shell from trying to expand the variable. Fields of **$entry** can be queried using the square-bracket notation with the field name inside. In the sketch above the field "some_field" is compared to a value **${SOME_VALUE}** (here representing a numerical value or a value expanded by the shell, *not* a jx9 variable!). 
 
+Some examples:
+
+- Find every anomaly whose function contains the substring "Kokkos":
+
+.. code:: bash
+
+	  provdb_query filter anomalies "function(\$a){ return substr_count(\$a['func'],'Kokkos') > 0; }"
+
+- Find all events that occured on a GPU:
+
+.. code:: bash
+
+	  provdb_query filter anomalies "function(\$a){ return \$a['is_gpu_event']; }"
+
 Execute mode
 ------------
 
