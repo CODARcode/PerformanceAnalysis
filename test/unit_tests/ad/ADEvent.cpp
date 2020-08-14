@@ -220,10 +220,14 @@ TEST(ADEventTestaddComm, eventisRECV){
 TEST(ADEventTesttrimCallList, trimsCorrectly){
   ADFuncEventContainer ad;
   long time = 100;
-  
-  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC",1,1,0));
-  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC",2,1,time));
-  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",3,2)); //different function
+
+  int event_idx = 0;
+  int fid1=0;
+  int fid2=1;
+
+  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,event_idx++,fid1,  0    ));
+  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,event_idx++,fid1,  time ));
+  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",event_idx++,fid2,  time+50   )); //different function
   ad.initializeAD();
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
@@ -249,8 +253,8 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
   EXPECT_EQ( list.size(), 1 );
 
   const ExecData_t &data = *list.begin();
-
   EXPECT_EQ( data.get_runtime(), time );
+  EXPECT_EQ( data.get_fid(), fid1 );
   
 }
 
@@ -340,8 +344,6 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
 
 TEST(ADEvent, trimsCallListCorrectly){
   ADEvent event_man;
-  //std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"} };
-  //event_man.linkFuncMap(&func_names);
   
   int pid = 1;
   int tid = 2;
@@ -355,66 +357,64 @@ TEST(ADEvent, trimsCallListCorrectly){
   event_man.addCall(c1);
   event_man.addCall(c2);
   
-  const CallListMap_p_t &calls = event_man.getCallListMap();
-  auto p = calls.find(pid);
-  EXPECT_EQ(p != calls.end(), true);
-  auto r = p->second.find(rid);
-  EXPECT_EQ(r != p->second.end(), true);
-  auto t = r->second.find(tid);
-  EXPECT_EQ(t != r->second.end(), true);
-  
-  const CallList_t &calls_p_r_t = t->second;
+  auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
+  EXPECT_NE(calls_p_r_t_ptr, nullptr);
+  const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
   EXPECT_EQ(calls_p_r_t.size(), 2);
 
   //Check purged events are correct
-  {
-    CallListMap_p_t* purged = event_man.trimCallList();
-    EXPECT_EQ(calls_p_r_t.size(), 0);
+  CallListMap_p_t* purged = event_man.trimCallList();
+  EXPECT_EQ(calls_p_r_t.size(), 0);
+
+  auto const* purged_calls_p_r_t_ptr = getElemPRT(pid,rid,tid,*purged);
+  EXPECT_NE(purged_calls_p_r_t_ptr, nullptr);
+
+  const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
+  EXPECT_EQ(purged_calls_p_r_t.size(), 2);
     
-    auto zp = purged->find(pid);
-    EXPECT_EQ(zp != purged->end(), true);
-    auto zr = zp->second.find(rid);
-    EXPECT_EQ(zr != zp->second.end(), true);
-    auto zt = zr->second.find(tid);
-    EXPECT_EQ(zt != zr->second.end(), true);
-    
-    const CallList_t &purged_calls_p_r_t = zt->second;
-    EXPECT_EQ(purged_calls_p_r_t.size(), 2);
-    
-    EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
-    EXPECT_EQ(std::next(purged_calls_p_r_t.begin(),1)->get_funcname(), func_name[1]);
-    delete purged;
-  }
+  EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
+  EXPECT_EQ(std::next(purged_calls_p_r_t.begin(),1)->get_funcname(), func_name[1]);
+  delete purged;  
+}
+
+
+TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
+  ADEvent event_man;
   
+  int pid = 1;
+  int tid = 2;
+  int rid = 3;
+  int func_id[] = {4,5};
+  std::string func_name[] = {"hello_world", "goodbye_world"};
+  
+  //Add 2 events and check added properly
+  ExecData_t c1 = createFuncExecData_t(pid, rid, tid, func_id[0], func_name[0], 100, 200);
+  ExecData_t c2 = createFuncExecData_t(pid, rid, tid, func_id[1], func_name[1], 300, 400);
+
   //Add 2 events but mark 1 to be undeletable
   event_man.addCall(c1);
   c2.can_delete(false);
   event_man.addCall(c2);
-  EXPECT_EQ(calls_p_r_t.size(), 2);
   
+  auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
+  EXPECT_NE(calls_p_r_t_ptr, nullptr);
+  const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
+  EXPECT_EQ(calls_p_r_t.size(), 2);
+
+
   //Check purged events are correct
-  {
-    CallListMap_p_t* purged = event_man.trimCallList();
-    EXPECT_EQ(calls_p_r_t.size(), 1);
+  CallListMap_p_t* purged = event_man.trimCallList();
+  EXPECT_EQ(calls_p_r_t.size(), 1);
     
-    auto zp = purged->find(pid);
-    EXPECT_EQ(zp != purged->end(), true);
-    auto zr = zp->second.find(rid);
-    EXPECT_EQ(zr != zp->second.end(), true);
-    auto zt = zr->second.find(tid);
-    EXPECT_EQ(zt != zr->second.end(), true);
-    
-    const CallList_t &purged_calls_p_r_t = zt->second;
-    EXPECT_EQ(purged_calls_p_r_t.size(), 1);
-    
-    EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
-    delete purged;
-  }
+  auto const* purged_calls_p_r_t_ptr = getElemPRT(pid,rid,tid,*purged);
+  EXPECT_NE(purged_calls_p_r_t_ptr, nullptr);
 
-
+  const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
+  EXPECT_EQ(purged_calls_p_r_t.size(), 1);
+    
+  EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
+  delete purged;
 }
-
-
 
 TEST(ADEvent, matchesEventsByCorrelationID){
   ADEvent event_man;
@@ -425,27 +425,27 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   int counter_id = 13; //index of "Correlation ID" counter
 
   //Have the CPU function execute 2 GPU kernels
-  ExecData_t c_cpu = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel", 100, 200);
+  ExecData_t c_cpu = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel", 100, 200); //100-200
   c_cpu.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1995, 100, "Correlation ID"));
   c_cpu.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 2020, 150, "Correlation ID"));
 
-  ExecData_t c_cpu_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 5, "gpu_kernel", 400, 100);
+  ExecData_t c_cpu_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 5, "gpu_kernel", 400, 100); //400-500
   c_cpu_gpu1.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1995, 500, "Correlation ID"));
 
-  ExecData_t c_cpu_gpu2 = createFuncExecData_t(pid, rid, tid_gpu, 6, "gpu_kernel2", 500, 100);
+  ExecData_t c_cpu_gpu2 = createFuncExecData_t(pid, rid, tid_gpu, 6, "gpu_kernel2", 500, 100); //500-600
   c_cpu_gpu2.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 2020, 600, "Correlation ID"));
 
   //Have a CPU parent call that also executes a GPU kernel, but the matching occurs after the child function has been matched
   //Need to test that the GC doesn't erase the parent event when the child event is matched but the parent has not yet been matched
-  ExecData_t c_cpu_p1 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_parent", 50, 250);
+  ExecData_t c_cpu_p1 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_parent", 50, 250); //50-250
   bindParentChild(c_cpu_p1, c_cpu);
   c_cpu_p1.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1885, 150, "Correlation ID"));
 
-  ExecData_t c_cpu_p1_gpu = createFuncExecData_t(pid, rid, tid_gpu, 8, "gpu_kernel_of_parent", 400, 100);
+  ExecData_t c_cpu_p1_gpu = createFuncExecData_t(pid, rid, tid_gpu, 8, "gpu_kernel_of_parent", 400, 100); //400-500
   c_cpu_p1_gpu.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1885, 500, "Correlation ID"));
 
   //A grandparent with no gpu kernels
-  ExecData_t c_cpu_p2 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_grandparent", 0, 300);
+  ExecData_t c_cpu_p2 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_grandparent", 0, 300); //0-300
   bindParentChild(c_cpu_p2, c_cpu_p1);
   
 
@@ -534,14 +534,14 @@ TEST(ADEvent, testIteratorWindowDetermination){
   int pid=0, rid=0, tid_func=0, tid_other=1;
 
   std::vector<ExecData_t> execs;
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 1, "func1", 100, 200)); //0
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 2, "func2", 200, 300)); //1
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 3, "func3", 400, 500)); //2
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 4, "func4", 500, 600)); //3  this will be the window center
-  execs.push_back(createFuncExecData_t(pid, rid, tid_other, 5, "func5", 600, 700)); //different thread, shouldn't be in window
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 6, "func6", 700, 800)); //4
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 7, "func7", 800, 900)); //5
-  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 8, "func8", 900, 1000)); //6
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 1, "func1", 100, 100)); //0
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 2, "func2", 200, 100)); //1
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 3, "func3", 400, 100)); //2
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 4, "func4", 500, 100)); //3  this will be the window center
+  execs.push_back(createFuncExecData_t(pid, rid, tid_other, 5, "func5", 600, 100)); //different thread, shouldn't be in window
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 6, "func6", 700, 100)); //4
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 7, "func7", 800, 100)); //5
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 8, "func8", 900, 100)); //6
   
   for(int i=0;i<execs.size();i++)
     event_man.addCall(execs[i]);

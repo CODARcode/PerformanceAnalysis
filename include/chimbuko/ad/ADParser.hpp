@@ -24,10 +24,11 @@ namespace chimbuko {
      * @brief Construct a new ADParser object
      * 
      * @param inputFile ADIOS2 BP filename
+     * @param rank Rank of current process
      * @param engineType BPFile or SST
      * @param openTimeoutSeconds Timeout for opening ADIOS2 stream
      */
-    ADParser(std::string inputFile, std::string engineType="BPFile", int openTimeoutSeconds = 60);
+    ADParser(std::string inputFile, int rank, std::string engineType="BPFile", int openTimeoutSeconds = 60);
     /**
      * @brief Destroy the ADParser object
      * 
@@ -107,7 +108,6 @@ namespace chimbuko {
     void update_attributes();
     /**
      * @brief fetching function (timer) data. Results stored internally and extracted using ADParser::getFuncData
-     * 
      * @return ParserError error code
      */
     ParserError fetchFuncData();
@@ -187,9 +187,8 @@ namespace chimbuko {
     
     /**
      * @brief Get all the events (func, comm and counter) occuring in the IO step ordered by their timestamp
-     * @param rank The MPI rank of the AD process
      */
-    std::vector<Event_t> getEvents(const int rank) const;
+    std::vector<Event_t> getEvents() const;
 
 
     /**
@@ -254,6 +253,14 @@ namespace chimbuko {
     unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
 
   private:
+    
+    /**
+     * @brief Scan the data and check the events are in order
+     * @param exit_on_fail Throw an error if the check fails
+     */
+    void checkEventOrder(const EventDataType type, bool exit_on_fail) const;
+
+
     /**
      * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest
      * @param arrays A vector of array pointers
@@ -264,11 +271,17 @@ namespace chimbuko {
      */
     static const unsigned long* getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets);
 
+
+    /**
+     * @brief Validate an event to bypass corrupted input data (any event type)
+     * @param e Pointer to event data
+     */
+    bool validateEvent(const unsigned long* e) const;
+
     /**
      * @brief Create an Event_t instance from the data at the provided pointer and run simple validation
      */
-    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
-						   int rank) const;
+    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id) const;
 
 
 
@@ -283,11 +296,12 @@ namespace chimbuko {
     bool m_opened;                                      /**< true if connected to a writer or a BP file */
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
+    int  m_rank;                                        /**< Rank of current process */
 
     std::unordered_set<std::string> m_metadata_seen;    /**< Metadata descriptions that have been seen */
     std::vector<MetaData_t> m_new_metadata;             /**< New metadata that appeared on this step */
     
-    std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (function id --> function name) */
+    std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (global function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
     std::unordered_map<int, std::string> m_counterMap;  /**< counter hash map (counter id --> counter name) */
     

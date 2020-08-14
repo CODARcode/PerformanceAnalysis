@@ -1,11 +1,14 @@
 #pragma once
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/util/map.hpp"
 #include <string>
 #include <vector>
 #include <list>
 #include <stack>
 #include <unordered_map>
+#include <tuple>
+#include <sstream>
 
 namespace chimbuko {    
   /**
@@ -59,11 +62,9 @@ namespace chimbuko {
   typedef std::stack<CallListIterator_t> CallStack_t;
 
   /**
-   * @brief map of process, rank, thread -> CallListIterator_t
+   * @brief map of process, rank, thread -> CallStack_t
    */
   DEF_MAP3UL(CallStackMap, CallStack_t);
-
-
 
   /**
    * @brief hash map of a collection of ExecData_t per function
@@ -72,6 +73,57 @@ namespace chimbuko {
    * 
    */
   typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
+
+  /**
+   * @brief A type that stores some information about an event whose data may have been deleted
+   */
+  struct EventInfo{
+    std::string id;
+    EventDataType type;
+    unsigned long ts;
+
+    EventInfo(){}
+
+    /**
+     * @brief Create from an Event_t
+     */
+    EventInfo(const Event_t &e){
+      id = e.id();
+      ts = e.ts();
+      type = e.type();
+    }
+
+    /**
+     * @brief Create from an Event_t
+     * @param entry_or_exit 0:entry 1:exit
+     */    
+    EventInfo(const ExecData_t &e, int entry_or_exit){
+      id = e.get_id();
+      ts = entry_or_exit == 0 ? e.get_entry() : e.get_exit();
+      type = EventDataType::FUNC; 
+    }
+
+    std::string print() const{
+      std::stringstream os;
+      os << "{";
+      switch(type){
+      case EventDataType::FUNC:
+	os << "FUNC, "; break;
+      case EventDataType::COMM:
+	os << "COMM, "; break;
+      case EventDataType::COUNT:
+	os << "COUNT, "; break;
+      }
+      os << id << ", " << ts << "}";
+      return os.str();
+    }
+
+
+
+  };
+    
+    
+
 
   /**
    * @brief Event manager whose role is to correlate function entry and exit events and associate other counters with the function call
@@ -313,7 +365,6 @@ namespace chimbuko {
      * 
      */
     bool m_verbose;
-
     
     /**
      * @brief  Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
@@ -331,8 +382,6 @@ namespace chimbuko {
      *        stopping if a call with an unmatched correlation ID is encountered
      */
     void stackUnProtectGC(CallListIterator_t it);
-
-    
   };
 
 } // end of AD namespace

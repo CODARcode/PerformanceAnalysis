@@ -81,8 +81,8 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
-    m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.trace_engineType);
-    m_parser->linkPerf(&m_perf);  
+  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.rank, m_params.trace_engineType);
+  m_parser->linkPerf(&m_perf);  
 }
 
 void Chimbuko::init_event(){
@@ -212,9 +212,9 @@ bool Chimbuko::parseInputStep(int &step,
 //Extract parsed events and insert into the event manager
 void Chimbuko::extractEvents(unsigned long &first_event_ts,
 			     unsigned long &last_event_ts,
-			     int rank, int step){
+			     int step){
   PerfTimer timer;
-  std::vector<Event_t> events = m_parser->getEvents(rank);
+  std::vector<Event_t> events = m_parser->getEvents();
   m_perf.add("parser_event_extract_us", timer.elapsed_us());
   timer.start();
   for(auto &e : events)
@@ -319,7 +319,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     extractCounters(m_params.rank, step);
 
     //Extract parsed events into event manager
-    extractEvents(first_event_ts, last_event_ts, m_params.rank, step);
+    extractEvents(first_event_ts, last_event_ts, step);
 
     //Run the outlier detection algorithm on the events
     PerfTimer anom_timer;

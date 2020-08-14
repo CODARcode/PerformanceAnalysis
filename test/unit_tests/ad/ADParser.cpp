@@ -15,7 +15,7 @@ TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
   std::string filename = "commfile";
   bool got_err= false;
   try{
-    ADParser parser(filename, "SST",1); //2 second timeout
+    ADParser parser(filename, 0, "SST",1); //2 second timeout
   }catch(const std::runtime_error& error){
     std::cout << "\nADParser (by design) threw the following error:\n" << error.what() << std::endl;
     got_err = true;
@@ -76,7 +76,7 @@ struct SSTrw{
     std::cout << "Parse thread initializing" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
     
-    parser = new ADParser(filename, "SST");
+    parser = new ADParser(filename, 0, "SST");
     std::cout << "Parser initialized" << std::endl;
     
     barrier.wait();
@@ -464,7 +464,7 @@ TEST(ADParserTest, eventsOrderedCorrectly){
     createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180)
   };
 
-  ADParser parser("","BPFile");
+  ADParser parser("",rid,"BPFile");
   parser.setFuncDataCapacity(100);
   parser.setCommDataCapacity(100);
   parser.setCounterDataCapacity(100);
@@ -487,7 +487,7 @@ TEST(ADParserTest, eventsOrderedCorrectly){
   EXPECT_EQ(parser.getNumCommData(), 4);
   EXPECT_EQ(parser.getNumCounterData(), 4);
 
-  std::vector<Event_t> events_out = parser.getEvents(rid);
+  std::vector<Event_t> events_out = parser.getEvents();
   
   EXPECT_EQ(events_out.size(), events.size());
 

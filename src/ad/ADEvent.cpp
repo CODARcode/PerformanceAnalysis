@@ -2,11 +2,12 @@
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/util/map.hpp"
 #include <iostream>
+#include <sstream> 
 
 using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose) 
-  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose) 
+  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose)
 {
 
 }
@@ -97,7 +98,6 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 }
 
 
-
 CallListIterator_t ADEvent::addCall(const ExecData_t &exec){
   CallList_t& cl = m_callList[exec.get_pid()][exec.get_rid()][exec.get_tid()];
   CallListIterator_t it = cl.emplace(cl.end(),exec);
@@ -131,19 +131,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     return EventError::UnknownFunc;
   }
 
-  // if ( m_funcMap->find(event.fid())->second.find("pthread") != std::string::npos ) {
-  // //    std::cerr << "Skip: " << m_funcMap->find(event.fid())->second << std::endl;
-  //     return EventError::OK;
-  // }
-
   eventType = m_eventType->find(eid)->second;
-
-  //if (m_verbose)
-  //    std::cerr << event << ": "
-  //                    << m_eventType->find(event.eid())->second << ": "
-  //                    << m_funcMap->find(event.fid())->second << std::endl;
-  //return EventError::OK;
-
 
   if (eventType.compare("ENTRY") == 0){
     //Create a new ExecData_t object with function entry information and push onto the call list
@@ -162,7 +150,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
 
     //Add the new call to the map of call index string
     m_callIDMap[it->get_id()] = it;
-    
+
     return EventError::OK;
   }else if (eventType.compare("EXIT") == 0){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
@@ -195,20 +183,40 @@ EventError ADEvent::addFunc(const Event_t& event) {
       cs.top()->update_exclusive(it->get_runtime());
     }
 
-    //Associate all comms events on the stack with the call object
-    CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
-    while (!comm.empty()) {
-      if (!it->add_message(comm.top(), ListEnd::Front))    //stack access is reverse time order!
-	break;
-      comm.pop();
+    {
+      //Associate all comms events on the stack with the call object
+      //Sometimes Tau sends comm events out of order with the func events on io step boundaries
+      //Prevent this by reinserting onto the stack comm events with a timestamp larger than the exit event
+      std::vector<CommData_t> reinsert;
+      
+      //Flush the entire comm stack including events that occurred before the func entry (these can no longer be used)
+      CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
+      while (!comm.empty()) {
+	if(comm.top().ts() > event.ts()) reinsert.push_back(comm.top());
+	it->add_message(comm.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	comm.pop();
+      }
+      for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
+	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto comm stack (Tau likely provided this event out of order)" << std::endl);
+	comm.push(*rit); //reinsert in reverse order (oldest first)
+      }
     }
 
     //Associate all counter events on the stack with the call object
-    CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
-    while (!count.empty()) {
-      if (!it->add_counter(count.top(), ListEnd::Front))
-	break;
-      count.pop();
+    {
+      //Treat the same as the comm events above
+      std::vector<CounterData_t> reinsert;
+      
+      CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
+      while (!count.empty()) {
+	if(count.top().get_ts() > event.ts()) reinsert.push_back(count.top());
+	it->add_counter(count.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	count.pop();
+      }
+      for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
+	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto counter stack (Tau likely provided this event out of order)" << std::endl);
+	count.push(*rit); //reinsert in reverse order (oldest first)
+      }
     }
 
     //Add the now complete event to the map
@@ -238,11 +246,8 @@ EventError ADEvent::addComm(const Event_t& event) {
     CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
     cs.push(CommData_t(event, eventType));
   }
-  else {
-    // std::cout << eventType << std::endl;
-    return EventError::UnknownEvent;
-  }
-    
+  else return EventError::UnknownEvent;
+
   return EventError::OK;
 }
 
@@ -260,6 +265,8 @@ EventError ADEvent::addCounter(const Event_t& event){
   std::string counterName = it->second;
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
+
+  return EventError::OK;  
 }
 
 

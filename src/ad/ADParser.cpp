@@ -1,16 +1,20 @@
 #include "chimbuko/ad/ADParser.hpp"
 #include "chimbuko/ad/utils.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/map.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <regex>
+#include <sstream>
+#include <map>
+#include <cstring>
 
 using namespace chimbuko;
 
-ADParser::ADParser(std::string inputFile, std::string engineType, int openTimeoutSeconds)
+ADParser::ADParser(std::string inputFile, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
-    m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr)
+    m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -185,6 +189,67 @@ void ADParser::update_attributes() {
   m_attr_once = true;
 }
 
+void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) const{
+  size_t DIM_OFF, TS_OFF, count;
+  std::string descr, descr_plural;
+  unsigned long const*data;
+  switch(type){
+  case EventDataType::FUNC:
+    DIM_OFF = FUNC_EVENT_DIM;
+    TS_OFF = FUNC_IDX_TS;
+    descr = "func"; descr_plural = "Funcs";
+    data = m_event_timestamps.data();
+    count = m_timer_event_count;
+    break;
+  case EventDataType::COMM:
+    DIM_OFF = COMM_EVENT_DIM;
+    TS_OFF = COMM_IDX_TS;
+    descr = "comm"; descr_plural = "Comms";
+    data = m_comm_timestamps.data();
+    count = m_comm_count;
+    break;
+  case EventDataType::COUNT:
+    DIM_OFF = COUNTER_EVENT_DIM;
+    TS_OFF = COUNTER_IDX_TS;
+    descr = "counter"; descr_plural = "Counters";
+    data = m_counter_timestamps.data();
+    count = m_counter_count;
+    break;
+  }
+
+  unsigned long pid; //should be only one pid
+  std::unordered_map<unsigned long, unsigned long> thr_last_ts;
+  bool first = true;
+  for(size_t i=0;i<count;i++){
+    if(validateEvent(data)){
+      unsigned long thr = data[IDX_T];
+      unsigned long ts = data[TS_OFF];
+      unsigned long pidi = data[IDX_P];
+      unsigned long ridi = data[IDX_R];
+
+      bool skip = false;
+
+      if(first){ pid=pidi; first = false; }
+      else if(pidi != pid) skip = true; //need a better way of flagging invalid events as some still get through validateEvent
+	//throw std::runtime_error("For event " + Event_t(data,type,0).get_json().dump() + " PIDs differ in " + descr + " data ordering validation " + anyToStr(pidi) + ":" + anyToStr(pid)  );
+      
+      if(!skip){     	  
+	if(thr_last_ts.count(thr) && ts < thr_last_ts[thr]){
+	  std::stringstream ss; 
+	  std::ostream &os = exit_on_fail ? ss : std::cerr;
+	  if(!exit_on_fail) os << "Warning: ";
+	  os << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
+	  if(exit_on_fail) throw std::runtime_error(ss.str());
+	}
+	thr_last_ts[thr] = ts;
+      }
+    }
+    data += DIM_OFF;
+  }
+}
+
+
+
 ParserError ADParser::fetchFuncData() {
   adios2::Variable<size_t> in_timer_event_count;
   adios2::Variable<unsigned long> in_event_timestamps;
@@ -219,8 +284,7 @@ ParserError ADParser::fetchFuncData() {
 	  }catch(const std::exception &e){
 	    //Sometimes tau gives us malformed (nonsense) data entries, and this can cause the lookup to fail
 	    //We need to work around that here
-	    int rank = m_global_func_idx_map.getNetClient()->get_client_rank();
-	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", rank);
+	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
 	    if(!ev.second){
 	      VERBOSE(std::cout << "ADParser::fetchFuncData caught local index lookup error but appears to be associated with malformed event: " << ev.first.get_json().dump() << std::endl);
 	      fidx_p += FUNC_EVENT_DIM;
@@ -235,6 +299,30 @@ ParserError ADParser::fetchFuncData() {
 	  fidx_p += FUNC_EVENT_DIM;
 	}
       }
+
+      //Sometimes Tau gives us data that is out of order, we need to fix this
+#define DO_SORT
+#ifdef DO_SORT
+      {
+	std::map<unsigned long, std::vector<size_t> > data_sorted_idx; //preserve ordering of events that have the same timestamp
+	unsigned long* data = m_event_timestamps.data();
+	for(size_t i=0;i<m_timer_event_count;i++){
+	  data_sorted_idx[ data[FUNC_IDX_TS] ].push_back(i);
+	  data += FUNC_EVENT_DIM;
+	}
+	std::vector<unsigned long> data_sorted(m_timer_event_count * FUNC_EVENT_DIM);
+	unsigned long* to = data_sorted.data();
+	for(const auto &d : data_sorted_idx){
+	  for(const size_t e : d.second){
+	    memcpy(to, m_event_timestamps.data() + e*FUNC_EVENT_DIM, FUNC_EVENT_DIM*sizeof(unsigned long));
+	    to += FUNC_EVENT_DIM;
+	  }
+	}
+	m_event_timestamps.swap(data_sorted);
+      }
+#else      
+      checkEventOrder(EventDataType::FUNC, false);
+#endif
 
       return ParserError::OK;
     }
@@ -263,6 +351,9 @@ ParserError ADParser::fetchCommData() {
 
       in_comm_timestamps.SetSelection({{0, 0}, {m_comm_count, COMM_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_comm_timestamps, m_comm_timestamps.data(), adios2::Mode::Sync);
+
+      checkEventOrder(EventDataType::COMM, false);
+
       return ParserError::OK;
     }
   return ParserError::NoCommData;
@@ -289,7 +380,7 @@ ParserError ADParser::fetchCounterData() {
       in_counter_values.SetSelection({{0, 0}, {m_counter_count, COUNTER_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_counter_values, m_counter_timestamps.data(), adios2::Mode::Sync);
 
-      //std::cout << "Read " << m_counter_count << " counters" << std::endl;
+      checkEventOrder(EventDataType::COUNT, false);
       
       return ParserError::OK;
     }
@@ -312,8 +403,12 @@ const unsigned long* ADParser::getEarliest(const std::vector<const unsigned long
   return arrays[earliest];  
 }
 
-std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id,
-							 int rank) const{
+bool ADParser::validateEvent(const unsigned long* e) const{
+  return !( e == nullptr || e[IDX_P] > 1000000 || (int)e[IDX_R] != m_rank || e[IDX_T] >= 1000000 );
+}
+
+
+std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id) const{
   // Create event
   Event_t ev(data, t, idx, id);
 
@@ -325,7 +420,7 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   // adios team later
   bool good = true;
 
-  if (!ev.valid() || ev.pid() > 1000000 || (int)ev.rid() != rank || ev.tid() >= 1000000){
+  if (!validateEvent(ev.get_ptr())){
     std::cerr << "\n***** Invalid event detected *****\n";
     //std::cout << "[" << rank << "] " << ev << std::endl;
     if(ev.valid()){
@@ -354,7 +449,7 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   return {ev, good};
 }
 
-std::vector<Event_t> ADParser::getEvents(const int rank) const{
+std::vector<Event_t> ADParser::getEvents() const{
   std::vector<Event_t> out;
 
   //During the timestep a number of function and perhaps also comm and counter events occurred
@@ -369,6 +464,10 @@ std::vector<Event_t> ADParser::getEvents(const int rank) const{
   funcData = this->getFuncData(idx_funcData);
   commData = this->getCommData(idx_commData);
   counterData = this->getCounterData(idx_counterData);
+
+  //Maintain latest timestamps to check ordering is correct
+  typedef std::unordered_map<unsigned long, std::unordered_map< unsigned long, std::unordered_map< unsigned long, unsigned long> > > TSmap;
+  TSmap latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts;
 
   while (funcData != nullptr || commData != nullptr || counterData != nullptr){
     // Determine event to handle
@@ -387,28 +486,66 @@ std::vector<Event_t> ADParser::getEvents(const int rank) const{
     }
 
     const unsigned long *data;
-    //For entry event, funcData takes highest priority
+    //When timestamps are equal we need to decide on a priority for the ordering
+    //For entry event, funcData takes highest priority so comm and counter events are included in the function execution
     if(func_event_type == ENTRY){
       data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
     }else{    
-      //Otherwise funcData takes lowest priority
+      //Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
       data = getEarliest( {commData, counterData, funcData}, {COMM_IDX_TS, COUNTER_IDX_TS, FUNC_IDX_TS} );
     }
 
     //Create and insert the event
     if(data == funcData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
-							   generate_event_id(rank, step, idx_funcData), rank);
-      if(evp.second) out.push_back(evp.first);
+							   generate_event_id(m_rank, step, idx_funcData));
+      if(evp.second){
+	unsigned long* latest_func_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_func_ts);
+	if(latest_func_ts_val != nullptr && evp.first.ts() < *latest_func_ts_val){
+	  std::stringstream ss;
+	  ss << "ADParser::getEvents parsed function data is not in time order: Event " << evp.first.get_json().dump() 
+	     << " for function \"" << m_funcMap.find(evp.first.fid())->second
+	     << "\" has timestamp " << evp.first.ts() << " < " << *latest_func_ts_val << " of previous func insertion\n";
+	  
+	  auto rit = out.rbegin();
+	  while(rit != out.rend()){
+	    if(rit->type() == EventDataType::FUNC){
+	      ss << "Previous insertion: " << rit->get_json().dump() << " for function \"" << m_funcMap.find(rit->fid())->second << "\"";
+	      break;
+	    }
+	  }
+	  //throw std::runtime_error(ss.str());
+	}
+	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [func]");
+	out.push_back(evp.first);
+	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_func_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+      }
       funcData = this->getFuncData(++idx_funcData);
     }else if(data == commData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, "event_id", rank);
-      if(evp.second) out.push_back(evp.first);
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, 
+							   generate_event_id(m_rank, step, idx_commData));
+
+      if(evp.second){
+	unsigned long* latest_comm_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_comm_ts);
+	if(latest_comm_ts_val != nullptr && evp.first.ts() < *latest_comm_ts_val) throw std::runtime_error("ADParser::getEvents parsed comm data is not in time order");
+	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [comm]");
+	out.push_back(evp.first);
+	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_comm_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+      }
       commData = this->getCommData(++idx_commData);
     }else if(data == counterData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, 
-							   generate_event_id(rank, step, idx_counterData), rank);
-      if(evp.second) out.push_back(evp.first);
+							   generate_event_id(m_rank, step, idx_counterData));
+      if(evp.second){
+	unsigned long* latest_count_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_count_ts);
+	if(latest_count_ts_val != nullptr && evp.first.ts() < *latest_count_ts_val) throw std::runtime_error("ADParser::getEvents parsed counter data is not in time order");
+	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [counter]");
+	out.push_back(evp.first);
+	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_count_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+      }
       counterData = this->getCounterData(++idx_counterData);
     }else{
       throw std::runtime_error("Unexpected pointer");

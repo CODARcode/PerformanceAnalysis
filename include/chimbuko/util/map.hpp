@@ -5,6 +5,12 @@
 namespace chimbuko{
 
   /**
+   * @brief Define a mapping of process/rank/thread to a data type
+   */
+  template<typename T>
+  using mapPRT = std::unordered_map<unsigned long, std::unordered_map<unsigned long, std::unordered_map<unsigned long, T> > >;
+
+  /**
    * @brief Get an element from the commonly-occuring triple-depth map of process/rank/thread to element (non-const)
    * @param pid The process index
    * @param rid The rank index
