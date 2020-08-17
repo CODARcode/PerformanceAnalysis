@@ -242,6 +242,8 @@ public:
   }
 
   void operator()(){
+    if(m_counterList == nullptr) return;
+
     nlohmann::json jCount = nlohmann::json::array();
     for(auto &pit : *m_counterList)
       for(auto &rit : pit.second)

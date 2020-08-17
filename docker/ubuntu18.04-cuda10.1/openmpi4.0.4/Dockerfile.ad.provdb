@@ -1,0 +1,23 @@
+FROM chimbuko/mochi:ubuntu18.04-cuda10.1 AS build
+
+COPY --from=chimbuko/adios2:ubuntu18.04-cuda10.1 /opt /opt
+
+WORKDIR /Downloads
+
+RUN echo "FORCE UPDATE 8_7_20_14_52" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN cd PerformanceAnalysis/ && ./autogen.sh
+
+WORKDIR /build
+
+SHELL ["/bin/bash", "-c"]
+
+RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
+    CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad && \
+    make -j 4 install && cd /opt/chimbuko/ad/test && ./run_all.sh DOCKER_SETUP_MOCHI
+
+FROM chimbuko/mochi:ubuntu18.04-cuda10.1
+
+COPY --from=build /opt /opt
+
+WORKDIR /opt/chimbuko/ad/test
+ENTRYPOINT [ "./run_all.sh", "DOCKER_SETUP_MOCHI" ]

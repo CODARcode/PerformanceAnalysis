@@ -11,11 +11,11 @@ namespace chimbuko{
    */
   struct GPUvirtualThreadInfo{
     unsigned long thread; /**<The virtual thread index assigned by Tau*/
-    int device; /**<The device index (assigned by the CUDA runtime)*/
-    int context; /**<The device context*/
-    int stream; /**<Stream index if multiple streams are in use. Defaults to 0 if only one stream*/
+    unsigned long device; /**<The device index (assigned by the CUDA runtime)*/
+    unsigned long context; /**<The device context*/
+    unsigned long stream; /**<Stream index if multiple streams are in use. Defaults to 0 if only one stream*/
 
-    GPUvirtualThreadInfo(unsigned long _thread, int _device, int _context, int _stream = 0): thread(_thread), device(_device), context(_context), stream(_stream){}
+    GPUvirtualThreadInfo(unsigned long _thread, unsigned long _device, unsigned long _context, unsigned long _stream = 0): thread(_thread), device(_device), context(_context), stream(_stream){}
     
     /**
      * @brief Get the data as a JSON object

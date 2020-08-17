@@ -17,13 +17,13 @@ void ADMetadataParser::parseMetadata(const MetaData_t &m){
   std::smatch match;
   if(m.get_descr() == "CUDA Context"){
     unsigned long virtual_thread = m.get_tid();
-    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).context = strToAny<int>(m.get_value());
+    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).context = strToAny<unsigned long>(m.get_value());
     VERBOSE(std::cout << "ADMetadataParser mapped thread " << m.get_tid() << " to CUDA context " << getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).context << std::endl);
   }else if(m.get_descr() == "CUDA Stream"){
-    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).stream = strToAny<int>(m.get_value());
+    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).stream = strToAny<unsigned long>(m.get_value());
     VERBOSE(std::cout << "ADMetadataParser mapped thread " << m.get_tid() << " to CUDA stream " << getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).stream << std::endl);
   }else if(m.get_descr() == "CUDA Device"){
-    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).device = strToAny<int>(m.get_value());
+    getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).device = strToAny<unsigned long>(m.get_value());
     VERBOSE(std::cout << "ADMetadataParser mapped thread " << m.get_tid() << " to CUDA device " << getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).device << std::endl);
   }else if(std::regex_match(m.get_descr(), match, std::regex(R"(GPU\[(\d+)\]\s(.*))")) ){
     int device = strToAny<int>(match[1]);
