@@ -15,3 +15,4 @@ set -o pipefail
 ./ad/ADglobalFunctionIndexMap
 ./util/DispatchQueue
 ./util/commandLineParser
+./pserver/PSglobalFunctionIndexMap
