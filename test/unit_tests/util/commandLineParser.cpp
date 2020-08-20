@@ -9,21 +9,29 @@ TEST(commandLineParserTest, Works){
     int a;
     std::string b;
     double cman;
+
+    std::string d;
+    bool d_set;
+    
+    test(): d_set(false){}
   };
   
   commandLineParser<test> parser;
   parser.addMandatoryArg<double, &test::cman>("Provide the value for cman");
   parser.addOptionalArg<int, &test::a>("-a", "Provide the value of a");
   parser.addOptionalArg<std::string, &test::b>("-b", "Provide the value of b");
+  parser.addOptionalArgWithFlag<std::string, &test::d, &test::d_set>("-d", "Provide the value of d");
   
-
-  int narg = 5;
-  const char* args[] = { "3.14", "-a", "21", "-b", "Hello World" };
+  int narg = 7;
+  const char* args[] = { "3.14", "-a", "21", "-b", "Hello World", "-d", "MyD" };
   
   test t;
   parser.parse(t, narg, args);
+  EXPECT_EQ(t.cman, 3.14);
   EXPECT_EQ(t.a, 21);
   EXPECT_EQ(t.b, "Hello World");
+  EXPECT_EQ(t.d, "MyD");
+  EXPECT_EQ(t.d_set, true);
 }
 TEST(commandLineParserTest, FailsIfCannotParse){
   struct test{

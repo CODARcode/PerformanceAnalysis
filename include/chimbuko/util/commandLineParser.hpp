@@ -59,6 +59,43 @@ namespace chimbuko{
     }
   };
 
+  /**
+   * @brief A class that parses an argument of a given type into the struct and sets a bool flag argument to true
+   */
+  template<typename ArgsStruct, typename T, T ArgsStruct::* P, bool ArgsStruct::* Flag>
+  class optionalCommandLineArgWithFlag: public optionalCommandLineArgBase<ArgsStruct>{
+  private:
+    std::string m_arg; /**< The argument, format "-a" */
+    std::string m_help_str; /**< The help string */
+  public:
+    /**
+     * @brief Create an instance with the provided argument and help string
+     */
+    optionalCommandLineArgWithFlag(const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str){}
+    
+    bool parse(ArgsStruct &into, const std::string &arg, const std::string &val) override{
+      if(arg == m_arg){
+	T v;
+	try{
+	  v = strToAny<T>(val);
+	}catch(const std::exception &exc){
+	  return false;
+	}
+	into.*P = std::move(v);	
+	into.*Flag = true;
+	return true;
+      }
+      return false;
+    }
+    void help(std::ostream &os) const override{
+      os << m_arg << " : " << m_help_str;
+    }
+  };
+
+
+
+
+
 
 
   /**
@@ -129,6 +166,15 @@ namespace chimbuko{
       m_opt_args.emplace_back(new optionalCommandLineArg<ArgsStruct,T,P>(arg, help_str));
     }
 
+
+    /**
+     * @brief Add an optional argument with the given type, member pointer (eg &ArgsStruct::a), a bool flag member pointer (eg &ArgsStruct::got_value), with provided argument (eg "-a") and help string
+     */
+    template<typename T, T ArgsStruct::* P, bool ArgsStruct::* Flag>
+    void addOptionalArgWithFlag(const std::string &arg, const std::string &help_str){
+      m_opt_args.emplace_back(new optionalCommandLineArgWithFlag<ArgsStruct,T,P,Flag>(arg, help_str));
+    }
+
     /**
      * @brief Add an mandatory argument with the given type, member pointer (eg &ArgsStruct::a) and help string
      */
@@ -195,6 +241,13 @@ namespace chimbuko{
 										 , &std::decay<decltype(PARSER)>::type::StructType ::NAME>("-" #NAME, HELP_STR)
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and default help string "Provide the value for NAME" */
 #define addOptionalCommandLineArgDefaultHelpString(PARSER, NAME) addOptionalCommandLineArg(PARSER, NAME, "Provide the value for " #NAME)
+
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-NAME" on command line. A bool field FLAGNAME will be set to true if parsed */
+#define addOptionalCommandLineArgWithFlag(PARSER, NAME, FLAGNAME, HELP_STR) PARSER.addOptionalArgWithFlag< decltype(std::decay<decltype(PARSER)>::type::StructType ::NAME), \
+													   &std::decay<decltype(PARSER)>::type::StructType ::NAME, \
+													   &std::decay<decltype(PARSER)>::type::StructType ::FLAGNAME \
+													>("-" #NAME, HELP_STR)
+
 
   /**@brief Helper macro to add a mandatory command line arg to the parser PARSER with given name NAME and help string HELP_STR */
 #define addMandatoryCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addMandatoryArg< decltype(std::decay<decltype(PARSER)>::type::StructType ::NAME) \

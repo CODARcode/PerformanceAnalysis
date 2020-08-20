@@ -18,7 +18,15 @@ struct pserverArgs{
   std::string logdir;
   std::string ws_addr;
 
-  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""){}
+  std::string load_params;
+  bool load_params_set;
+
+  std::string save_params;
+  bool save_params_set;
+
+  bool freeze_params;
+  
+  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false){}
 
   static commandLineParser<pserverArgs> &getParser(){
     static bool init = false;
@@ -29,6 +37,9 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
+      addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
+      addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
+      addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
       init = true;
     }
     return p;
@@ -49,6 +60,16 @@ int main (int argc, char ** argv){
   GlobalCounterStats global_counter_stats; //global counter statistics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
     
+  if(args.load_params_set){
+    std::cout << "Loading parameters from input file " << args.load_params << std::endl;
+    std::ifstream in(args.load_params);
+    if(!in.good()) throw std::runtime_error("Could not load anomaly algorithm parameters from the file provided");
+    nlohmann::json in_p;
+    in >> in_p;
+    global_func_index_map.deserialize(in_p["func_index_map"]);
+    param.assign(in_p["alg_params"].dump());
+  }
+
 #ifdef _USE_MPINET
   int provided;
   MPINet net;
@@ -75,7 +96,7 @@ int main (int argc, char ** argv){
       global_func_stats.reset_anomaly_stat({args.n_ad_modules});
     }
 
-    net.add_payload(new NetPayloadUpdateParams(&param));
+    net.add_payload(new NetPayloadUpdateParams(&param, args.freeze_params));
     net.add_payload(new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
@@ -131,6 +152,17 @@ int main (int argc, char ** argv){
 #ifdef _USE_ZMQNET
   MPI_Finalize();
 #endif
+
+  if(args.save_params_set){
+    std::cout << "Saving parameters to output file " << args.save_params << std::endl;   
+    std::ofstream out(args.save_params);
+    if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
+    nlohmann::json out_p;
+    out_p["func_index_map"] = global_func_index_map.serialize();
+    out_p["alg_params"] = nlohmann::json::parse(param.serialize());
+    out << out_p;
+  }
+
   std::cout << "Pserver finished" << std::endl;
   return 0;
 }
