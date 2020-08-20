@@ -1,6 +1,6 @@
 //The "admin" task that creates the provenance database
 
-#include <config.h>
+#include <chimbuko_config.h>
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif

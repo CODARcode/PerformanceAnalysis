@@ -1,5 +1,5 @@
 #pragma once
-#include<config.h>
+#include<chimbuko_config.h>
 
 #ifdef ENABLE_PROVDB
 

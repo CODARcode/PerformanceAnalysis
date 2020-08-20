@@ -1,6 +1,6 @@
 #pragma once
 
-#include <config.h>
+#include <chimbuko_config.h>
 #include "chimbuko/ad/ADParser.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ADOutlier.hpp"

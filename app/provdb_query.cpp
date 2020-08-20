@@ -1,6 +1,6 @@
 //A self-contained tool for offline querying the provenance database from the command line
 //Todo: allow connection to active provider
-#include <config.h>
+#include <chimbuko_config.h>
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif
