@@ -106,6 +106,8 @@ namespace chimbuko {
 
     /**
      * @brief Get the statistical distribution associated with a given function
+     * 
+     * Functionality is identical to operator[] only it will throw an error if the function does not exist
      */
     const RunStats & get_function_stats(const unsigned long func_id) const override;
 

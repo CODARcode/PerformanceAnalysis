@@ -176,6 +176,20 @@ void ZMQNet::run()
 #endif
     }
 
+    //Force perf output when exiting
+#ifdef _PERF_METRIC
+      t_end = Clock::now();
+      duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
+      if (f.is_open()) {
+	elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
+	f << elapsed.count() << " " 
+	  << n_requests << " " 
+	  << n_replies << " " 
+	  << duration.count() 
+	  << std::endl;
+      }
+#endif
+
     //Close the sockets
     zmq_close(frontend);
     zmq_close(backend);

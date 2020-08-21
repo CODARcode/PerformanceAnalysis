@@ -13,6 +13,10 @@ ADNetClient::ADNetClient()
 #endif
 }
 
+ADNetClient::~ADNetClient(){
+  disconnect_ps();
+}
+
 void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     m_rank = rank;
     m_srank = srank;

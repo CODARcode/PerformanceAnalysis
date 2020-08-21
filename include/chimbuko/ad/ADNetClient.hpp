@@ -16,6 +16,8 @@ namespace chimbuko{
   class ADNetClient{
   public:
     ADNetClient();
+
+    ~ADNetClient();
     
     /**
      * @brief check if the parameter server is in use
@@ -36,6 +38,7 @@ namespace chimbuko{
     /**
      * @brief disconnect from the connected parameter server
      * 
+     * Called automatically by destructor if not previously called
      */
     void disconnect_ps();
 
