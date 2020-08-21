@@ -3,6 +3,7 @@
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/string.hpp"
 #include <iostream>
 #include <string.h>
 
@@ -11,6 +12,7 @@
 #include <fstream>
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds MilliSec;
+typedef std::chrono::microseconds MicroSec;
 #endif
 
 using namespace chimbuko;
@@ -32,26 +34,34 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 void doWork(void* context,     
 	    std::unordered_map<MessageKind,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
-	    > &payloads)
+	    > &payloads,
+	    PerfStats &perf, int thr_idx)
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
     
   zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
  
+  std::string perf_prefix = "worker" + anyToStr(thr_idx) + "_";
+  PerfTimer timer;
+
   while(true){
 
     //Poll the socket to check for incoming messages. If an error is returned, exit the loop
     //Errors typically mean the context has been terminated
     constexpr int nitems = 1; //size of items array
     constexpr long timeout = -1; //poll forever until error or success
+    timer.start();
     if(zmq_poll(items, nitems, timeout) < 1){
       break;
     }
-
+    perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+    
     //Receive the message into a json-formatted string
+    timer.start();
     std::string strmsg;
     ZMQNet::recv(socket, strmsg);
+    perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
 
     VERBOSE(std::cout << "ZMQ worker received message: " << strmsg << std::endl);
     
@@ -67,24 +77,29 @@ void doWork(void* context,
     if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided (did you add the payload to the server?)");
 
     //Apply the payload
+    timer.start();
     pit->second->action(msg_reply, msg);
     VERBOSE(std::cout << "Worker sending response: " << msg_reply.data() << std::endl);
-    
+    perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
+
     //Send the reply
+    timer.start();
     ZMQNet::send(socket, msg_reply.data());
-    
+    perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());
+
   }//while(<receiving messages>)
   
   zmq_close(socket);
 }
 
-void ZMQNet::init_thread_pool(int nt)
-{
-    for (int i = 0; i < nt; i++) {
-        m_threads.push_back(
-			    std::thread(&doWork, std::ref(m_context), std::ref(m_payloads) )
-			    );
-    }
+void ZMQNet::init_thread_pool(int nt){
+  m_perf_thr.resize(nt);
+
+  for (int i = 0; i < nt; i++) {
+    m_threads.push_back(
+			std::thread(&doWork, std::ref(m_context), std::ref(m_payloads), std::ref(m_perf_thr[i]), i )
+			);
+  }
 }
 
 void ZMQNet::finalize()
@@ -115,35 +130,46 @@ void ZMQNet::run()
         { backend , 0, ZMQ_POLLIN, 0 }
     };
 
+    std::string perf_prefix = "router_";
+    PerfTimer timer;
+
 #ifdef _PERF_METRIC
+    m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
+
     unsigned int n_requests = 0, n_replies = 0;
-    Clock::time_point t_start, t_end, t_init;
-    MilliSec duration, elapsed;
+    double duration, elapsed;
     std::ofstream f;
 
     f.open(logdir + "/ps_perf.txt", std::fstream::out | std::fstream::app);
     if (f.is_open())
         f << "# PS PERFORMANCE MEASURE" << std::endl;
-    t_init = Clock::now();
-    t_start = Clock::now();  
+    Clock::time_point t_init = Clock::now();
+    Clock::time_point t_start = Clock::now();  
+    Clock::time_point t_end;
 #endif
 
     VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
     m_n_requests = 0;
     while(true){
+      timer.start();
       int err = zmq_poll(items, NR_ITEMS, -1);  //wait (indefinitely) for comms on both sockets
       if(err == -1){
 	std::string error = std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n";
 	throw std::runtime_error(error);
       }
+      m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+
       VERBOSE(std::cout << "ZMQnet received message" << std::endl);
       
       //If the message was received from the AD, route the message to a worker thread
       if(items[0].revents & ZMQ_POLLIN) { 
+	timer.start();
 	if (recvAndSend(frontend, backend)) {
+	  m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
 	  stop();
 	  break;
 	}
+	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
 	m_n_requests++;
 #ifdef _PERF_METRIC
 	n_requests++;
@@ -152,7 +178,9 @@ void ZMQNet::run()
 
       //If the message was received from a worker thread, route to the AD
       if(items[1].revents & ZMQ_POLLIN) {
+	timer.start();
 	recvAndSend(backend, frontend);
+	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
 	m_n_requests--;
 #ifdef _PERF_METRIC
 	n_replies++;
@@ -161,33 +189,44 @@ void ZMQNet::run()
 
 #ifdef _PERF_METRIC
       t_end = Clock::now();
-      duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
-      if (duration.count() >= 10000 && f.is_open()) {
-	elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
-	f << elapsed.count() << " " 
+      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
+      if (duration >= 10000. && f.is_open()) {
+	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+	f << elapsed << " " 
 	  << n_requests << " " 
 	  << n_replies << " " 
-	  << duration.count() 
+	  << duration 
 	  << std::endl;
 	t_start = t_end;
 	n_requests = 0;
 	n_replies = 0;
       }
+
+      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(n_requests)/duration );
+      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(n_replies)/duration );
 #endif
     }
 
     //Force perf output when exiting
 #ifdef _PERF_METRIC
       t_end = Clock::now();
-      duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
+      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
       if (f.is_open()) {
-	elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
-	f << elapsed.count() << " " 
+	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+	f << elapsed << " " 
 	  << n_requests << " " 
 	  << n_replies << " " 
-	  << duration.count() 
+	  << duration
 	  << std::endl;
       }
+
+      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(n_requests)/duration );
+      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(n_replies)/duration );
+
+      //Combine and write out statistics
+      for(auto const &t : m_perf_thr)
+	m_perf += t;
+      m_perf.write();
 #endif
 
     //Close the sockets

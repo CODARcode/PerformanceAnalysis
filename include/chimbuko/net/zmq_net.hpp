@@ -1,7 +1,8 @@
 #pragma once
 #ifdef _USE_ZMQNET
 
-#include "chimbuko/net.hpp"
+#include <chimbuko/net.hpp>
+#include <chimbuko/util/PerfStats.hpp>
 #include <zmq.h>
 #include <vector>
 #include <thread>
@@ -73,7 +74,8 @@ namespace chimbuko {
 
   private:
     /**
-       @brief Route a message to/from worker thread pool
+     * @brief Route a message to/from worker thread pool
+     * @return true if a zero-length message is received (we use this to indicate that an AD has disconnected)
     */
     bool recvAndSend(void* skFrom, void* skTo);
 
@@ -81,6 +83,8 @@ namespace chimbuko {
     void* m_context; /**< ZeroMQ context pointer */
     long long m_n_requests; /**< Accumulated number of RPC requests */
     std::vector<std::thread> m_threads; /**< The pool of thread workers */
+    PerfStats m_perf; /**< Performance monitoring */
+    std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
   };
 
 } // end of chimbuko namespace

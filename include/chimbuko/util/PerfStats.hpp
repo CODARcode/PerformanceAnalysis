@@ -50,7 +50,7 @@ namespace chimbuko{
     double elapsed_ms() const{
 #ifdef _PERF_METRIC
       Clock::time_point now = Clock::now();
-      return std::chrono::duration_cast<MilliSec>(now - m_start).count();
+      return double(std::chrono::duration_cast<MicroSec>(now - m_start).count())/1000.;
 #else 
       return 0;
 #endif
@@ -109,6 +109,16 @@ namespace chimbuko{
       if(m_outputpath.length() > 0 && m_filename.length() > 0)
 	m_perf.dump(m_outputpath, m_filename);
 #endif
+    }
+
+    /**
+     * @brief Combine the statistics with another
+     */
+    PerfStats & operator+=(const PerfStats &r){
+#ifdef _PERF_METRIC
+      m_perf += r.m_perf;
+#endif
+      return *this;
     }
 
     
