@@ -70,11 +70,13 @@ void doWork(void* context,
     msg.set_msg(strmsg, true);
 
     msg_reply = msg.createReply();
-
+   
+    timer.start();
     auto kit = payloads.find((MessageKind)msg.kind());
     if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided (did you add the payload to the server?)");
     auto pit = kit->second.find((MessageType)msg.type());
     if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided (did you add the payload to the server?)");
+    perf.add(perf_prefix + "message_kind_type_lookup_ms", timer.elapsed_ms());
 
     //Apply the payload
     timer.start();
@@ -131,7 +133,7 @@ void ZMQNet::run()
     };
 
     std::string perf_prefix = "router_";
-    PerfTimer timer;
+    PerfTimer timer, freq_timer;
 
 #ifdef _PERF_METRIC
     m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
@@ -147,6 +149,10 @@ void ZMQNet::run()
     Clock::time_point t_start = Clock::now();  
     Clock::time_point t_end;
 #endif
+    
+    //For measuring receive/response frequency
+    freq_timer.start();
+    size_t freq_n_req = 0, freq_n_reply = 0;
 
     VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
     m_n_requests = 0;
@@ -172,6 +178,7 @@ void ZMQNet::run()
 	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
 	m_n_requests++;
 #ifdef _PERF_METRIC
+	freq_n_req++;
 	n_requests++;
 #endif
       }
@@ -183,6 +190,7 @@ void ZMQNet::run()
 	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
 	m_n_requests--;
 #ifdef _PERF_METRIC
+	freq_n_reply++;
 	n_replies++;
 #endif
       } 
@@ -202,8 +210,12 @@ void ZMQNet::run()
 	n_replies = 0;
       }
 
-      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(n_requests)/duration );
-      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(n_replies)/duration );
+      double freq_elapsed = freq_timer.elapsed_ms();
+      if(freq_elapsed > 1000){
+	m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
+	m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
+	freq_n_req = freq_n_reply = 0; freq_timer.start();
+      }
 #endif
     }
 
@@ -220,8 +232,9 @@ void ZMQNet::run()
 	  << std::endl;
       }
 
-      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(n_requests)/duration );
-      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(n_replies)/duration );
+      double freq_elapsed = freq_timer.elapsed_ms();
+      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
+      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
 
       //Combine and write out statistics
       for(auto const &t : m_perf_thr)
