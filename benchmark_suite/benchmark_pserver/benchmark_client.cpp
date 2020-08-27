@@ -1,4 +1,5 @@
 //A fake AD that sends data to the pserver at a regular cadence
+#define _PERF_METRIC
 #include<mpi.h>
 #include<chimbuko/ad/ADNetClient.hpp>
 #include<chimbuko/util/commandLineParser.hpp>
@@ -98,8 +99,11 @@ int main(int argc, char **argv){
     counter_stats["counter"+anyToStr(i)] = stats;
   }
 
+  PerfTimer cyc_timer;
+  RunStats cyc_time_stats;
 
   for(int c=0;c<args.cycles;c++){
+    cyc_timer.start();
     std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
     //Send a parameters object
     {
@@ -123,8 +127,18 @@ int main(int argc, char **argv){
       count_stats.updateGlobalStatistics(net_client);
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(args.cycle_time_ms));
+    cyc_time_stats.push(cyc_timer.elapsed_ms());
   }//cycle loop
- 
+  
+  if(rank==0){
+    {
+      std::ofstream of("rank0_cycle_timings.dat");
+      of << cyc_time_stats.get_json().dump();
+    }
+    std::cout << "Actual cycle timings" << std::endl;
+    std::cout << cyc_time_stats.get_json().dump() << std::endl;
+  }
+
   }
   MPI_Finalize();
   return 0;
