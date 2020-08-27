@@ -96,6 +96,7 @@ void Chimbuko::init_event(){
 void Chimbuko::init_net_client(){
   if(m_params.pserver_addr.length() > 0){
     m_net_client = new ADNetClient;
+    m_net_client->linkPerf(&m_perf);
 #ifdef _USE_MPINET
     m_net_client->connect_ps(m_params.rank);
 #else

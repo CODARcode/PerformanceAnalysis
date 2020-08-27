@@ -6,6 +6,7 @@
 #include "chimbuko/net/zmq_net.hpp"
 #endif
 #include "chimbuko/message.hpp"
+#include "chimbuko/util/PerfStats.hpp"
 
 namespace chimbuko{
 
@@ -58,6 +59,13 @@ namespace chimbuko{
      * @return The response message in string format. This is a JSON object with 'Header' and 'Buffer' fields
      */       
     std::string send_and_receive(const Message &msg);
+
+
+    /**
+     * @brief If linked timing and packet size information will be gathered
+     */
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
+
     
   private:
     bool m_use_ps;                           /**< true if the parameter server is in use */
@@ -69,6 +77,7 @@ namespace chimbuko{
     void* m_context;                         /**< ZeroMQ context */
     void* m_socket;                          /**< ZeroMQ socket */
 #endif
+    PerfStats * m_perf;                      /**< Performance monitoring */
   };
 
   

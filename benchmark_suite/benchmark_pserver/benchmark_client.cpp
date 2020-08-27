@@ -54,8 +54,11 @@ int main(int argc, char **argv){
   Args args;
   cmdline.parse(args, argc-1, (const char**)(argv+1));
 
+  PerfStats stats;
+
   ADNetClient net_client;
   net_client.connect_ps(rank, 0, args.pserver_addr);
+  net_client.linkPerf(&stats);  
 
   //Set up a params object with the required number of params
   SstdParam params;
@@ -100,7 +103,6 @@ int main(int argc, char **argv){
   }
 
   PerfTimer cyc_timer;
-  RunStats cyc_time_stats;
 
   for(int c=0;c<args.cycles;c++){
     cyc_timer.start();
@@ -127,16 +129,12 @@ int main(int argc, char **argv){
       count_stats.updateGlobalStatistics(net_client);
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(args.cycle_time_ms));
-    cyc_time_stats.push(cyc_timer.elapsed_ms());
+    stats.add("benchmark_cycle_time_ms", cyc_timer.elapsed_ms());
   }//cycle loop
   
   if(rank==0){
-    {
-      std::ofstream of("rank0_cycle_timings.dat");
-      of << cyc_time_stats.get_json().dump();
-    }
-    std::cout << "Actual cycle timings" << std::endl;
-    std::cout << cyc_time_stats.get_json().dump() << std::endl;
+    stats.setWriteLocation(".","client_stats.json");
+    stats.write();
   }
 
   }

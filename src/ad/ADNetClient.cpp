@@ -5,7 +5,7 @@
 using namespace chimbuko;
 
 ADNetClient::ADNetClient() 
-: m_use_ps(false)
+  : m_use_ps(false), m_perf(nullptr)
 {
 #ifdef _USE_ZMQNET
     m_context = nullptr;
@@ -118,6 +118,7 @@ void ADNetClient::disconnect_ps() {
 }
 
 std::string ADNetClient::send_and_receive(const Message &msg){  
+  PerfTimer timer;
   std::string strmsg;
 #ifdef _USE_MPINET
   MessageType req_type = MessageType(msg.type());
@@ -152,6 +153,16 @@ std::string ADNetClient::send_and_receive(const Message &msg){
   //Receive global parameters from PS
   ZMQNet::recv(m_socket, strmsg);   
 #endif
+
+#ifdef _PERF_METRIC
+  if(m_perf){
+    m_perf->add("net_client_send_recv_time_ms", timer.elapsed_ms());
+    m_perf->add("net_client_send_bytes", msg.size());
+    Message recv_msg;
+    recv_msg.set_msg(strmsg, true); //is a JSON object including header
+    m_perf->add("net_client_recv_bytes", recv_msg.size());
+  }
+#endif  
 
   return strmsg;
 }
