@@ -188,6 +188,44 @@ TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)
   EXPECT_EQ(calls,6); //one immediately then 5 more
 }
 
+TEST(PSstatSenderTest, DiskWriteWorks)
+{
+  std::string outdir = ".";
+
+  std::string counter = "mYcOuNtEr";
+
+  std::unordered_set<std::string> which_counters = {counter};
+
+  ADLocalCounterStatistics cs(77, &which_counters);
+  
+  RunStats stats;
+  for(int i=0;i<100;i++) stats.push(double(i));
+
+  cs.setStats(counter, stats);
+  
+  GlobalCounterStats glob;
+  glob.add_data(cs.get_json_state().dump());
+
+  PSstatSenderGlobalCounterStatsPayload *payload = new PSstatSenderGlobalCounterStatsPayload(&glob);
+  PSstatSender stat_sender(1000);
+  stat_sender.add_payload(payload);
+  
+  stat_sender.run_stat_sender("",outdir);
+  std::this_thread::sleep_for(std::chrono::milliseconds(5500));    
+  stat_sender.stop_stat_sender();  
+  EXPECT_EQ(stat_sender.bad(), false);
+
+  std::ifstream in("pserver_output_stats_5.json");
+  EXPECT_EQ(in.good(), true);
+  nlohmann::json rd_data;
+  in >> rd_data;
+
+  nlohmann::json expect;
+  payload->add_json(expect);
+  
+  EXPECT_EQ(rd_data , expect);
+}
+
 
 
 

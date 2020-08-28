@@ -73,6 +73,8 @@ TEST_F(ADTest, BpfileTest)
     params.outlier_sigma = 6.0;
     params.only_one_frame = true; //just analyze first IO frame
     
+    params.anom_win_size = 0;
+
     Chimbuko driver;
     int step;
     unsigned long n_outliers = 0, frames = 0;
@@ -179,6 +181,8 @@ TEST_F(ADTest, BpfileWithNetTest)
     params.viz_iomode = IOMode::Both;
     params.viz_datadump_outputPath = "./temp";
     params.viz_addr = "";
+
+    params.anom_win_size = 0;
 
     params.pserver_addr = "tcp://localhost:5559"; //connect to the pserver
 

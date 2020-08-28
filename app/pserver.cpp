@@ -25,8 +25,12 @@ struct pserverArgs{
   bool save_params_set;
 
   bool freeze_params;
+
+  int stat_send_freq;
+
+  std::string stat_outputdir;
   
-  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false){}
+  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""){}
 
   static commandLineParser<pserverArgs> &getParser(){
     static bool init = false;
@@ -37,9 +41,11 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
+      addOptionalCommandLineArg(p, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
       addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
       addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
       addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
+      addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
       init = true;
     }
     return p;
@@ -79,7 +85,7 @@ int main (int argc, char ** argv){
   MPI_Init(&argc, &argv);
 #endif
 
-  PSstatSender stat_sender;
+  PSstatSender stat_sender(args.stat_send_freq);
 
   try {
     if (args.nt <= 0) {
@@ -91,8 +97,10 @@ int main (int argc, char ** argv){
 
     //nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
     std::cout << "Run parameter server with " << args.nt << " threads" << std::endl;
-    if (args.ws_addr.size() && args.n_ad_modules){
-      std::cout << "Run anomaly statistics sender (ws @ " << args.ws_addr << ")." << std::endl;
+    if ( ( args.ws_addr.size() || args.stat_outputdir.size() ) && args.n_ad_modules){
+      std::cout << "Run anomaly statistics sender ";
+      if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
+      if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
       global_func_stats.reset_anomaly_stat({args.n_ad_modules});
     }
 
@@ -106,7 +114,7 @@ int main (int argc, char ** argv){
     //Start sending anomaly statistics to viz
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats));
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
-    stat_sender.run_stat_sender(args.ws_addr);
+    stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Start communicating with the AD instances
 #ifdef _PERF_METRIC
