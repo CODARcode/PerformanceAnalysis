@@ -23,6 +23,7 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |            **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |            **"func"**: *function name*,
 |            **"event_id"**: *Event label (see above)*,
+|            **"is_anomaly"**: *True/false depending on whether event is anomalous (applies only to executions that have exited by time of write)*
 |        },
 |        ....
 |    ],
@@ -67,14 +68,16 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |    **"io_step_tend"**:  *Time of end of IO step*,
 |    **"event_window"**: *Capture of function executions and MPI comms events occuring in window around anomaly on same thread (object)*
 |    {
-|      **"exec_window"**: *The function executions in the window (array)*
+|      **"exec_window"**: *The function executions in the window arranged in order of their entry time (array)*
 |         [
 |           {
 |             **"entry"**: *timestamp of function execution entry* ,
 |             **"exit"**: *timestamp of function execution exit (0 if has not exited at time of write)* ,
 |             **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |             **"func"**: *function name*,
-|             **"event_id"**: *Event label (see above)*
+|             **"event_id"**: *Event label (see above)*,
+|             **"parent_event_id"**: *Event label of parent function execution*,
+|             **"is_anomaly"**: *True/false depending on whether event is anomalous (applies only to executions that have exited by time of write)*
 |           },
 |           ...
 |        ],
@@ -135,7 +138,6 @@ and for the **gpu_parent** field:
 ----------
 
 Note that Tau considers a GPU device/context/stream much in the same way as a CPU thread, and assigns it a unique index. This index is the "thread index" for GPU events.
-
 
 Metadata schema
 ---------------------

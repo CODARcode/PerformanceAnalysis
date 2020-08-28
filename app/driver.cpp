@@ -18,8 +18,8 @@ optionalArgsParser & getOptionalArgsParser(){
   if(!initialized){
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
     addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
-    addOptionalCommandLineArg(p, viz_anom_winSize, "When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent (default 0)");
     addOptionalCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
+    addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
 #ifdef ENABLE_PROVDB
     addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
 #endif    
@@ -78,7 +78,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
 
   params.pserver_addr = "";  //address of parameter server
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
-  params.viz_anom_winSize = 0; // size of window of events captured around anomaly
+  params.anom_win_size = 10; // size of window of events captured around anomaly
   params.interval_msec = 0; //pause at end of each io step
   params.perf_outputpath = ""; // performance output path
   params.perf_step = 10;   // make output every 10 steps

@@ -399,7 +399,7 @@ public:
     /**
      * @brief Get the label of this execution data
      * 
-     * @return int 1 of normal and -1 os anomaly
+     * @return int 1 of normal and -1 if anomaly
      */
     int get_label() const { return m_label; }
     /**

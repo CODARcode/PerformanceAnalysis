@@ -22,8 +22,9 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   exec1.set_parent(exec0.get_id());
   exec0.inc_n_children();
   exec0.update_exclusive(exec1.get_runtime());
-  
 
+  exec2.set_label(-1); //tag it as an anomaly
+  
   ADEvent event_man;
   event_man.addCall(exec0);
   event_man.addCall(exec1);
@@ -62,16 +63,20 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   EXPECT_EQ(output["call_stack"][0]["func"], "thechild");
   EXPECT_EQ(output["call_stack"][0]["entry"], 1050);
   EXPECT_EQ(output["call_stack"][0]["exit"], 1100);
+  EXPECT_EQ(output["call_stack"][0]["is_anomaly"], true);
+
 
   EXPECT_EQ(output["call_stack"][1]["event_id"], exec1.get_id());
   EXPECT_EQ(output["call_stack"][1]["func"], "theparent");
   EXPECT_EQ(output["call_stack"][1]["entry"], 1000);
   EXPECT_EQ(output["call_stack"][1]["exit"], 1100);
+  EXPECT_EQ(output["call_stack"][1]["is_anomaly"], false);
 
   EXPECT_EQ(output["call_stack"][2]["event_id"], exec0.get_id());
   EXPECT_EQ(output["call_stack"][2]["func"], "theroot");
   EXPECT_EQ(output["call_stack"][2]["entry"], 100);
   EXPECT_EQ(output["call_stack"][2]["exit"], 0);
+  EXPECT_EQ(output["call_stack"][2]["is_anomaly"], false);
 
 
   //Test statistics
@@ -253,6 +258,8 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
   exec1.inc_n_children();
   exec1.update_exclusive(exec2.get_runtime());
 
+  exec2.set_label(-1);
+
   ExecData_t* execs[] = {&exec0, &exec1, &exec2, &exec3};
 
   //Add some comms
@@ -298,6 +305,8 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
     EXPECT_EQ(ewin[i]["event_id"], execs[i]->get_id());
     EXPECT_EQ(ewin[i]["entry"], execs[i]->get_entry());
     EXPECT_EQ(ewin[i]["exit"], execs[i]->get_exit());
+    EXPECT_EQ(ewin[i]["is_anomaly"], execs[i]->get_label() == -1);
+    EXPECT_EQ(ewin[i]["parent_event_id"], execs[i]->get_parent());
   }
 
   for(int i=0;i<2;i++)

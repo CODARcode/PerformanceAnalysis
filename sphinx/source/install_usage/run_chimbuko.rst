@@ -75,7 +75,7 @@ The **${ADIOS2_FILE_DIR}** and **${ADIOS2_FILE_PREFIX}** arguments can be obtain
 The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
 
 - **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
-- **-viz_anom_winSize** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database (default 0)
+- **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
 
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
   

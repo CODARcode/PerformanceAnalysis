@@ -15,7 +15,7 @@ void ChimbukoParams::print() const{
 #endif
 	    << "\nVIS Addr   : " << viz_addr
 	    << "\nsigma      : " << outlier_sigma
-	    << "\nwindow size: " << viz_anom_winSize
+	    << "\nwindow size: " << anom_win_size
 	  
 	    << "\nInterval   : " << interval_msec << " msec\n"
 #ifdef ENABLE_PROVDB
@@ -70,7 +70,7 @@ void Chimbuko::init_io(){
     m_io = new ADio();
     m_io->setRank(m_params.rank);
     m_io->setDispatcher();
-    m_io->setWinSize(m_params.viz_anom_winSize);
+    m_io->setWinSize(m_params.anom_win_size);
     if ((m_params.viz_iomode == IOMode::Online || m_params.viz_iomode == IOMode::Both) && m_params.viz_addr.size()){
       m_io->open_curl(m_params.viz_addr);
     }
@@ -260,7 +260,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       for(auto anom_it : anomalies.allEvents(event_types[typeidx])){
 	timer2.start();
 	ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), 
-					 *m_counter, *m_metadata_parser, m_params.viz_anom_winSize,
+					 *m_counter, *m_metadata_parser, m_params.anom_win_size,
 					 step, first_event_ts, last_event_ts);
 	anomaly_prov[i++] = extract_prov.get_json();
 	m_perf.add("provdb_" + descr[typeidx] + "_generation_per_anom_us", timer2.elapsed_us());

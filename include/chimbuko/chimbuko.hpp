@@ -30,13 +30,14 @@ namespace chimbuko {
     IOMode viz_iomode; /**< Set to IOMode::Online to send to viz module, IOMode::Offline to dump to disk, or IOMode::Both for both */
     std::string viz_datadump_outputPath; /**< If writing to disk, write to this directory */
     std::string viz_addr; /**< If sending to the viz module, this is the web address (expected http://....) */
-    unsigned int viz_anom_winSize; /**< When anomaly data are written, a window of this size (in units of events) around the anomalous event are also sent */
 
 #ifdef ENABLE_PROVDB
     //Parameters associated with the provenance database
     std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
 				< Has format "ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}". Should also accept "tcp://${IP_ADDR}:${PORT}" */
 #endif
+
+    unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
 
     //Parameters associated with performance analysis of AD module
     std::string perf_outputpath; /**< Output path for AD performance monitoring data. If an empty string no output is written.*/
@@ -53,7 +54,7 @@ namespace chimbuko {
 		      outlier_sigma(6.),
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 		      pserver_addr(""),
-		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), viz_anom_winSize(0),
+		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), anom_win_size(10),
 #ifdef ENABLE_PROVDB
 		      provdb_addr(""),
 #endif
