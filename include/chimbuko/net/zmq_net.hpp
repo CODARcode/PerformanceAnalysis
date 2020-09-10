@@ -64,6 +64,11 @@ namespace chimbuko {
      */
     static int recv(void* socket, std::string& strmsg);
 
+    /**
+     * @brief Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle
+     */
+    void setMaxMsgPerPollCycle(const int max_msg){ m_max_pollcyc_msg = max_msg; }
+
   protected:
     /**
      * @brief initialize thread pool 
@@ -90,6 +95,7 @@ namespace chimbuko {
     std::vector<std::thread> m_threads; /**< The pool of thread workers */
     PerfStats m_perf; /**< Performance monitoring */
     std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
+    int m_max_pollcyc_msg; /**< Maximum number of front->back and back->front messages that will be routed per poll cycle. Too many and we risk starving a socket, too few and might hit perf issues*/
   };
 
 } // end of chimbuko namespace

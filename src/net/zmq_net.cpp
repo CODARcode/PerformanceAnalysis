@@ -17,7 +17,7 @@ typedef std::chrono::microseconds MicroSec;
 
 using namespace chimbuko;
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10)
 {
 }
 
@@ -119,8 +119,6 @@ void ZMQNet::run(std::string logdir)
 void ZMQNet::run()
 #endif
 {    
-    int max_msg = 10; //how many messages should we try to drain from the queue each poll cycle? Too many and we risk starving a socket, too few and might hit perf issues
-
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
 
@@ -173,7 +171,7 @@ void ZMQNet::run()
       //Drain the outgoing queue first to free resources
       if(items[1].revents & ZMQ_POLLIN) {
 	timer.start();
-	auto rs = recvAndSend(backend, frontend, max_msg);
+	auto rs = recvAndSend(backend, frontend, m_max_pollcyc_msg);
 	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
 	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from back to front\n");
 	m_n_requests -= rs.first; //decrement number of outstanding requests
@@ -186,7 +184,7 @@ void ZMQNet::run()
       //If the message was received from the AD, route the message to a worker thread
       if(items[0].revents & ZMQ_POLLIN) { 
 	timer.start();
-	auto rs = recvAndSend(frontend, backend, max_msg);
+	auto rs = recvAndSend(frontend, backend, m_max_pollcyc_msg);
 	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
 	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from front to back" << (rs.second ? " (a stop message was received)\n" : "\n") );
 	m_n_requests += rs.first;

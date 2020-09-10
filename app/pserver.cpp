@@ -29,8 +29,16 @@ struct pserverArgs{
   int stat_send_freq;
 
   std::string stat_outputdir;
+
+#ifdef _USE_ZMQNET
+  int max_pollcyc_msg;
+#endif
   
-  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""){}
+  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
+#ifdef _USE_ZMQNET
+	       , max_pollcyc_msg(10)
+#endif  
+  {}
 
   static commandLineParser<pserverArgs> &getParser(){
     static bool init = false;
@@ -46,6 +54,9 @@ struct pserverArgs{
       addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
       addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
       addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
+#ifdef _USE_ZMQNET
+      addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
+#endif
       init = true;
     }
     return p;
@@ -82,6 +93,7 @@ int main (int argc, char ** argv){
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 #else
   ZMQNet net;
+  net.setMaxMsgPerPollCycle(args.max_pollcyc_msg);
   MPI_Init(&argc, &argv);
 #endif
 
