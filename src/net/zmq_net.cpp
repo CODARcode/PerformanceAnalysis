@@ -17,7 +17,7 @@ typedef std::chrono::microseconds MicroSec;
 
 using namespace chimbuko;
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1)
 {
 }
 
@@ -28,6 +28,9 @@ ZMQNet::~ZMQNet()
 void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 {
     m_context  = zmq_ctx_new();
+    if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
+      throw std::runtime_error("ZMQNet::init couldn't set number of io threads to requested amount");   
+
     init_thread_pool(nt);
 }
 

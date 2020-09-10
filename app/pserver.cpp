@@ -32,11 +32,12 @@ struct pserverArgs{
 
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
+  int zmq_io_thr;
 #endif
   
   pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
 #ifdef _USE_ZMQNET
-	       , max_pollcyc_msg(10)
+	       , max_pollcyc_msg(10), zmq_io_thr(1)
 #endif  
   {}
 
@@ -56,6 +57,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
 #ifdef _USE_ZMQNET
       addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
+      addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
 #endif
       init = true;
     }
@@ -94,6 +96,7 @@ int main (int argc, char ** argv){
 #else
   ZMQNet net;
   net.setMaxMsgPerPollCycle(args.max_pollcyc_msg);
+  net.setIOthreads(args.zmq_io_thr);
   MPI_Init(&argc, &argv);
 #endif
 

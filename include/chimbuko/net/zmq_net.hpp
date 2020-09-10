@@ -69,6 +69,12 @@ namespace chimbuko {
      */
     void setMaxMsgPerPollCycle(const int max_msg){ m_max_pollcyc_msg = max_msg; }
 
+    /**
+     * @brief Set the number of IO threads used by ZeroMQ (default 1). Must be called prior to init(...)
+     */
+    void setIOthreads(const int nt){ m_io_threads = nt; }
+
+
   protected:
     /**
      * @brief initialize thread pool 
@@ -96,6 +102,7 @@ namespace chimbuko {
     PerfStats m_perf; /**< Performance monitoring */
     std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
     int m_max_pollcyc_msg; /**< Maximum number of front->back and back->front messages that will be routed per poll cycle. Too many and we risk starving a socket, too few and might hit perf issues*/
+    int m_io_threads; /**< Set the number of IO threads used by ZeroMQ (default 1)*/
   };
 
 } // end of chimbuko namespace
