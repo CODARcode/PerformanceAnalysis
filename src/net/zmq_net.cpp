@@ -176,6 +176,7 @@ void ZMQNet::run()
 	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from back to front\n");
 	m_n_requests -= rs.first; //decrement number of outstanding requests
 #ifdef _PERF_METRIC
+	m_perf.add(perf_prefix + "route_front_to_back_msg_per_cyc", rs.first);
 	freq_n_reply += rs.first;
 	n_replies += rs.first;
 #endif
@@ -189,6 +190,7 @@ void ZMQNet::run()
 	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from front to back" << (rs.second ? " (a stop message was received)\n" : "\n") );
 	m_n_requests += rs.first;
 #ifdef _PERF_METRIC
+	m_perf.add(perf_prefix + "route_back_to_front_msg_per_cyc", rs.first);
 	freq_n_req += rs.first;
 	n_requests += rs.first;
 #endif
