@@ -119,6 +119,8 @@ void ZMQNet::run(std::string logdir)
 void ZMQNet::run()
 #endif
 {    
+    int max_msg = 10; //how many messages should we try to drain from the queue each poll cycle? Too many and we risk starving a socket, too few and might hit perf issues
+
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
 
@@ -166,34 +168,39 @@ void ZMQNet::run()
       m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
 
       VERBOSE(std::cout << "ZMQnet received message" << std::endl);
+
+      //If the message was received from a worker thread, route to the AD
+      //Drain the outgoing queue first to free resources
+      if(items[1].revents & ZMQ_POLLIN) {
+	timer.start();
+	auto rs = recvAndSend(backend, frontend, max_msg);
+	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
+	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from back to front\n");
+	m_n_requests -= rs.first; //decrement number of outstanding requests
+#ifdef _PERF_METRIC
+	freq_n_reply += rs.first;
+	n_replies += rs.first;
+#endif
+      } 
       
       //If the message was received from the AD, route the message to a worker thread
       if(items[0].revents & ZMQ_POLLIN) { 
 	timer.start();
-	if (recvAndSend(frontend, backend)) {
-	  m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
+	auto rs = recvAndSend(frontend, backend, max_msg);
+	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
+	VERBOSE(std::cout << "ZMQnet routed " << rs.first << " messages from front to back" << (rs.second ? " (a stop message was received)\n" : "\n") );
+	m_n_requests += rs.first;
+#ifdef _PERF_METRIC
+	freq_n_req += rs.first;
+	n_requests += rs.first;
+#endif
+	if(rs.second){ //stop signal received
+	  VERBOSE(std::cout << "ZMQnet received stop message with " << m_n_requests << " outstanding messages\n");
 	  stop();
 	  break;
-	}
-	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
-	m_n_requests++;
-#ifdef _PERF_METRIC
-	freq_n_req++;
-	n_requests++;
-#endif
+	}	
       }
 
-      //If the message was received from a worker thread, route to the AD
-      if(items[1].revents & ZMQ_POLLIN) {
-	timer.start();
-	recvAndSend(backend, frontend);
-	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
-	m_n_requests--;
-#ifdef _PERF_METRIC
-	freq_n_reply++;
-	n_replies++;
-#endif
-      } 
 
 #ifdef _PERF_METRIC
       t_end = Clock::now();
@@ -252,27 +259,45 @@ void ZMQNet::run()
 #endif
 }
 
-bool ZMQNet::recvAndSend(void* skFrom, void* skTo)
-{
-    int more, len;
-    size_t more_size = sizeof(int);
 
-    do {
-        zmq_msg_t msg;
-        zmq_msg_init(&msg);
+std::pair<int,bool> ZMQNet::recvAndSend(void* skFrom, void* skTo, int max_msg){
+  //First element of return is number of messages routed (i.e. excluding disconnect message)
+  //Second element of return is true if it receives a 0-length message which is used as a stop signal
 
-        len = zmq_msg_recv(&msg, skFrom, 0);
-        zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size);
-        if (more == 0 && len == 0)
-        {
-            return true;
-        }
-        zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
-        zmq_msg_close(&msg);
-    } while (more);
+  size_t more_size = sizeof(int);
+  int msg_count = 0; //actual messages received, regardless of whether routed
 
-    return false;
+  bool stop_command_received = false; //received a disconnect message
+
+  while(msg_count < max_msg){
+    zmq_msg_t msg;
+    zmq_msg_init(&msg);
+
+    int len = zmq_msg_recv(&msg, skFrom, ZMQ_DONTWAIT); //non-blocking receive
+    if(len == -1 && errno == EAGAIN){ //no more messages on queue
+      zmq_msg_close(&msg);
+      return {msg_count - (int)stop_command_received, stop_command_received}; //don't count the stop command as a message
+    }
+    int more;
+    zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size); //check whether message is part of a multi-part message
+
+    if(!more)
+      ++msg_count; //don't count multi-part messages as distinct messages to avoid exiting too early
+
+    //Check if this (single-part) message is a disconnect message
+    if(!more && !len)
+      stop_command_received = true;
+
+    //Only forward if message is not a disconnect message
+    if(more || len)
+      zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
+
+    zmq_msg_close(&msg);
+  }
+
+  return {msg_count - (int)stop_command_received, stop_command_received}; //don't count the stop command as a message
 }
+
 
 void ZMQNet::stop()
 {

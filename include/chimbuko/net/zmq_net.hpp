@@ -75,9 +75,14 @@ namespace chimbuko {
   private:
     /**
      * @brief Route a message to/from worker thread pool
-     * @return true if a zero-length message is received (we use this to indicate that an AD has disconnected)
-    */
-    bool recvAndSend(void* skFrom, void* skTo);
+     *
+     * @param skFrom ZMQ origin socket 
+     * @param skTo ZMQ destination socket
+     * @param max_msg The maximum number of messages this function will attempt to drain from the queue (including disconnect message)
+     * @return first (int) element is the number of messages routed (i.e. excluding disconnect message which are not routed),
+     *         second (bool) element indicates if a disconnect message was received
+     */
+    std::pair<int,bool> recvAndSend(void* skFrom, void* skTo, int max_msg);
 
   private:
     void* m_context; /**< ZeroMQ context pointer */
