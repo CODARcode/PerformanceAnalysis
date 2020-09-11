@@ -103,32 +103,66 @@ int main(int argc, char **argv){
   }
 
   PerfTimer cyc_timer;
+  PerfTimer timer;
+
+  //To make the benchmark as lightweight as possible, precompute the messages and send the same each cycle
+  std::string params_msg = params.serialize();
+
+  ADLocalFuncStatistics prof_stats(0);
+  prof_stats.gatherStatistics(&fake_exec_map);
+  prof_stats.gatherAnomalies(anomalies);
+  std::string prof_stats_msg = prof_stats.get_json_state(net_client.get_client_rank()).dump();
+
+  ADLocalCounterStatistics count_stats(0, nullptr); //currently collect all counters
+  for(auto const &e : counter_stats)
+    count_stats.setStats(e.first,e.second);
+  std::string count_stats_msg = count_stats.get_json_state().dump();
+
 
   for(int c=0;c<args.cycles;c++){
     cyc_timer.start();
     std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
     //Send a parameters object
     {
+      timer.start();
       Message msg;
       msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
-      msg.set_msg(params.serialize(), false);
+      msg.set_msg(params_msg, false);
+      stats.add("param_update_msg_format_ms", timer.elapsed_ms());
+
+      timer.start();
       net_client.send_and_receive(msg);
+      stats.add("param_update_comms_ms", timer.elapsed_ms());
     }
 
-   
     //Send fake function and counter statistics
-    {    
-      ADLocalFuncStatistics prof_stats(c);
-      prof_stats.gatherStatistics(&fake_exec_map);
-      prof_stats.gatherAnomalies(anomalies);
-      prof_stats.updateGlobalStatistics(net_client);
-      
-      ADLocalCounterStatistics count_stats(c, nullptr); //currently collect all counters
-      for(auto const &e : counter_stats)
-	count_stats.setStats(e.first,e.second);
-      count_stats.updateGlobalStatistics(net_client);
+    {
+      timer.start();
+      Message msg;
+      msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, c);
+      msg.set_msg(prof_stats_msg);
+      stats.add("funcstats_msg_format_ms", timer.elapsed_ms());
+     
+      timer.start();
+      std::string strmsg = net_client.send_and_receive(msg);
+      stats.add("funcstats_update_comms_ms", timer.elapsed_ms());
     }
+    {
+      timer.start();
+      Message msg;
+      msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::COUNTER_STATS, c);
+      msg.set_msg(count_stats_msg);
+      stats.add("countstats_msg_format_ms", timer.elapsed_ms());
+     
+      timer.start();
+      std::string strmsg = net_client.send_and_receive(msg);
+      stats.add("countstats_update_comms_ms", timer.elapsed_ms());
+    }
+
+    timer.start();
     std::this_thread::sleep_for(std::chrono::milliseconds(args.cycle_time_ms));
+    stats.add("sleep_ms", timer.elapsed_ms());
+
     stats.add("benchmark_cycle_time_ms", cyc_timer.elapsed_ms());
   }//cycle loop
   

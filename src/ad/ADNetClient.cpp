@@ -119,7 +119,7 @@ void ADNetClient::disconnect_ps() {
 
 std::string ADNetClient::send_and_receive(const Message &msg){  
   PerfTimer timer;
-  std::string strmsg;
+  std::string send_msg = msg.data(), recv_msg;
 #ifdef _USE_MPINET
   MessageType req_type = MessageType(msg.type());
   MessageType rep_type;
@@ -138,31 +138,29 @@ std::string ADNetClient::send_and_receive(const Message &msg){
     throw std::runtime_error("Invalid request type");
   }
   
-  MPINet::send(m_comm, msg.data(), m_srank, req_type, msg.count());
+  MPINet::send(m_comm, send_msg, m_srank, req_type, msg.count());
   
   MPI_Status status;
   int count;
   MPI_Probe(m_srank, rep_type, m_comm, &status);
   MPI_Get_count(&status, MPI_BYTE, &count);
   
-  strmsg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
+  recv_msg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
 #else
   //Send local parameters to PS
-  ZMQNet::send(m_socket, msg.data());
+  ZMQNet::send(m_socket, send_msg);
   
   //Receive global parameters from PS
-  ZMQNet::recv(m_socket, strmsg);   
+  ZMQNet::recv(m_socket, recv_msg);   
 #endif
 
 #ifdef _PERF_METRIC
   if(m_perf){
     m_perf->add("net_client_send_recv_time_ms", timer.elapsed_ms());
-    m_perf->add("net_client_send_bytes", msg.size());
-    Message recv_msg;
-    recv_msg.set_msg(strmsg, true); //is a JSON object including header
+    m_perf->add("net_client_send_bytes", send_msg.size()); //1 char = 1 byte
     m_perf->add("net_client_recv_bytes", recv_msg.size());
   }
 #endif  
 
-  return strmsg;
+  return recv_msg;
 }
