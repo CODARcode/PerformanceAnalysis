@@ -16,3 +16,4 @@ set -o pipefail
 ./util/DispatchQueue
 ./util/commandLineParser
 ./pserver/PSglobalFunctionIndexMap
+./net/ZMQMENet

@@ -60,7 +60,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     m_socket = zmq_socket(m_context, ZMQ_REQ);
     if(zmq_connect(m_socket, sname.c_str()) == -1){
       std::string err = strerror(errno);      
-      throw std::runtime_error("ZMQ failed to connect, with error: " + err);
+      throw std::runtime_error("ZMQ failed to connect to socket at address " + sname + ", due to error: " + err);
     }
 
     // test connection

@@ -19,6 +19,7 @@ using namespace chimbuko;
 
 ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1)
 {
+  add_payload(new NetPayloadHandShake());
 }
 
 ZMQNet::~ZMQNet()
@@ -30,6 +31,10 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
     m_context  = zmq_ctx_new();
     if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
       throw std::runtime_error("ZMQNet::init couldn't set number of io threads to requested amount");   
+
+    //Check worker_idx = 0 for all payloads
+    for(auto const &e : m_payloads)
+      if(e.first != 0) throw std::runtime_error("ZMQNet all payloads must have worker_idx=0");
 
     init_thread_pool(nt);
 }
@@ -102,7 +107,7 @@ void ZMQNet::init_thread_pool(int nt){
 
   for (int i = 0; i < nt; i++) {
     m_threads.push_back(
-			std::thread(&doWork, std::ref(m_context), std::ref(m_payloads), std::ref(m_perf_thr[i]), i )
+			std::thread(&doWork, std::ref(m_context), std::ref(m_payloads.begin()->second), std::ref(m_perf_thr[i]), i )
 			);
   }
 }

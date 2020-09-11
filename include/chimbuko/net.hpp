@@ -116,10 +116,16 @@ namespace chimbuko {
 
     /**
      * @brief Add a payload to the receiver bound to particular message kind/type specified internally
+     * @param payload The payload
+     * @param worker_idx The worker index to which the payload is bound (implementation defined, see below)
      *
      * Assumes ownership of the NetPayloadBase object and deletes in constructor
+     * worker_idx:
+     *     ZMQNet - use 0 always
+     *     MPINet - use 0 always
+     *     ZMQMENet - worker_idx corresponds to the endpoint thread
      */
-    void add_payload(NetPayloadBase* payload);
+    void add_payload(NetPayloadBase* payload, int worker_idx = 0);
 
   protected:
     /**
@@ -132,9 +138,11 @@ namespace chimbuko {
   protected:
     int              m_nt;    /**< The number of threads in the pool */
     
-    std::unordered_map<MessageKind,
-		       std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
-		       > m_payloads;
+    std::unordered_map<int,
+		       std::unordered_map<MessageKind,
+					  std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
+					  >
+		       > m_payloads; /**< Map of worker index (implementation defined), message kind and message type to a payload*/
   };
 
   namespace DefaultNetInterface

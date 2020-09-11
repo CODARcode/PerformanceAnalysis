@@ -24,14 +24,13 @@ NetInterface& DefaultNetInterface::get()
 NetInterface::NetInterface() 
   : m_nt(0)
 {
-  add_payload(new NetPayloadHandShake());
 }
 
 NetInterface::~NetInterface()
 {
 }
 
-void NetInterface::add_payload(NetPayloadBase* payload){
-  m_payloads[payload->kind()][payload->type()].reset(payload);
+void NetInterface::add_payload(NetPayloadBase* payload, int worker_idx){
+  m_payloads[worker_idx][payload->kind()][payload->type()].reset(payload);
 }
 
