@@ -55,7 +55,6 @@ namespace chimbuko {
     };
   };
 
-
   /**
    * @brief Network interface class
    * 
@@ -126,6 +125,11 @@ namespace chimbuko {
      *     ZMQMENet - worker_idx corresponds to the endpoint thread
      */
     void add_payload(NetPayloadBase* payload, int worker_idx = 0);
+
+    /**
+     * @brief Print information on the payloads
+     */
+    void list_payloads(std::ostream &os) const;
 
   protected:
     /**

@@ -38,7 +38,7 @@ TEST(ADLocalFuncStatisticsTestUpdateGlobaltatisticsWithPS, Works){
 		       std::cout << "PS thread waiting for stat update" << std::endl;
 		       ps.receive_statistics(barrier2,"test");
 		       barrier2.wait();
-		       
+		       ps.waitForDisconnect();
 
 		       barrier2.wait();		       
 		       std::cout << "PS thread terminating connection" << std::endl;

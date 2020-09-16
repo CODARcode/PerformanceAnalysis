@@ -55,6 +55,52 @@ TEST(TestZMQMENet, CanConnect){
 }
 
 
+TEST(TestZMQMENet, CanConnectMultiClientsPerEndpoint){  
+  int argc; char** argv = nullptr;
+    
+  Barrier barrier3(3);
+  
+  std::string sname =  "tcp://localhost:5559" ;
+		
+  std::thread server([&]{
+      ZMQMENet net;
+      net.init(&argc, &argv, 1);
+      net.run(".");
+      std::cout << "Net thread waiting at barrier" << std::endl;
+      barrier3.wait();
+      std::cout << "Net thread terminating connection" << std::endl;
+      net.finalize();
+    });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::vector<std::thread> clients(2);
+  for(int c=0;c<2;c++){
+    std::cout << "Creating AD thread " << c << std::endl;
+    clients[c] = std::thread([&,c]{
+	try{
+	  ADNetClient net_client;
+	  net_client.connect_ps(0, 0, sname);
+	  std::cout << "AD thread " << c << " connected" << std::endl;
+	  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	  std::cout << "AD thread " << c << " terminating connection" << std::endl;
+	  net_client.disconnect_ps();
+	  std::cout << "AD thread " << c << " waiting at barrier" << std::endl;
+	  barrier3.wait();
+	}catch(const std::exception &e){
+	  std::cerr << "AD thread " << c << " caught an error: " << e.what() << std::endl;
+	  barrier3.wait();
+	}
+	std::cout << "AD thread " << c << " has finished" << std::endl;
+      });
+  }
+  
+  server.join();
+  for(int c=0;c<2;c++)
+    clients[c].join();
+}
+
+
+
 class NetPayloadIncrement: public NetPayloadBase{
 public:
   int &i;

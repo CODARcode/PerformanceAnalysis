@@ -22,5 +22,14 @@ namespace chimbuko{
    * @brief Generate an event_id string of form ${rank}-${eid}:${step}:${idx}
    */
   std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid);
+
+
+  /*
+   * @brief Get the IP of the hierarchical pserver endpoint that this rank should connect to. Ports are offset round-robin by the MPI rank of the process
+   * @param base_ip The base IP of the server
+   * @param hpserver_nthr The number of endpoints/threads the HPserver has
+   * @param rank MPI rank of the client
+   */
+  std::string getHPserverIP(const std::string &base_ip, const int hpserver_nthr, const int rank);
 };
 

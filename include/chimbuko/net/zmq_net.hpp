@@ -90,10 +90,9 @@ namespace chimbuko {
      * @param skFrom ZMQ origin socket 
      * @param skTo ZMQ destination socket
      * @param max_msg The maximum number of messages this function will attempt to drain from the queue (including disconnect message)
-     * @return first (int) element is the number of messages routed (i.e. excluding disconnect message which are not routed),
-     *         second (bool) element indicates if a disconnect message was received
+     * @return the number of messages routed
      */
-    std::pair<int,bool> recvAndSend(void* skFrom, void* skTo, int max_msg);
+    int recvAndSend(void* skFrom, void* skTo, int max_msg);
 
   private:
     void* m_context; /**< ZeroMQ context pointer */
@@ -103,6 +102,9 @@ namespace chimbuko {
     std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
     int m_max_pollcyc_msg; /**< Maximum number of front->back and back->front messages that will be routed per poll cycle. Too many and we risk starving a socket, too few and might hit perf issues*/
     int m_io_threads; /**< Set the number of IO threads used by ZeroMQ (default 1)*/
+    mutable std::mutex m_mutex;
+    int m_clients; /**< Number of connected clients*/
+    bool m_client_has_connected; /**< At least one client has connected previously*/
   };
 
 } // end of chimbuko namespace

@@ -281,7 +281,8 @@ namespace chimbuko{
       //Send a response back to the AD
       {
 	Message msg_t;
-	msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
+	msg_t.set_info(0,0,REP_ECHO,DEFAULT);
+	msg_t.set_msg(std::string(""), false);
 	strmsg = msg_t.data();
 			 
 	zmq_msg_t msg;
@@ -293,7 +294,38 @@ namespace chimbuko{
       }
     }
 
-    void end(){
+    void waitForDisconnect(){
+      std::cout << "Mock PS is waiting for disconnect message" << std::endl;
+      std::string strmsg;
+      {
+	zmq_msg_t msg;
+	zmq_msg_init(&msg);
+	int len = zmq_msg_recv(&msg, socket, 0);
+	strmsg.assign((char*)zmq_msg_data(&msg), len);
+	zmq_msg_close(&msg);
+      }
+
+      EXPECT_EQ(strmsg, "{\"Buffer\":\"\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":0,\"size\":0,\"src\":0,\"type\":4}}");
+      
+      std::cout << "Mock PS received disconnect message, sending response" << std::endl;
+      {
+	Message msg_t;
+	msg_t.set_info(0,0,REP_QUIT,DEFAULT);
+	msg_t.set_msg(std::string(""), false);
+	strmsg = msg_t.data();
+			 
+	zmq_msg_t msg;
+	int ret;
+	zmq_msg_init_size(&msg, strmsg.size());
+	memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
+	ret = zmq_msg_send(&msg, socket, 0);
+	zmq_msg_close(&msg);
+      }
+    }
+
+      
+    void end(){     
+      std::cout << "Mock PS is finalizing" << std::endl;
       zmq_close(socket);
       zmq_ctx_term(context);
     }

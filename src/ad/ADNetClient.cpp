@@ -86,7 +86,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
       throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
     } 
     m_use_ps = true;
-    std::cout << "ADNetClient successfully connected to server" << std::endl;
+    std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
 #endif
     //MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -94,26 +94,26 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
 void ADNetClient::disconnect_ps() {
     if (!m_use_ps) return;
 
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnecting from PS" << std::endl);
+#ifdef _USE_MPINET
     MPI_Barrier(MPI_COMM_WORLD);
     if (m_rank == 0)
     {
-#ifdef _USE_MPINET
         Message msg;
         msg.set_info(m_rank, m_srank, MessageType::REQ_QUIT, MessageKind::CMD);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_QUIT, msg.count());
-#else
-        zmq_send(m_socket, nullptr, 0, 0);
-#endif
     }
     MPI_Barrier(MPI_COMM_WORLD);
-
-#ifdef _USE_MPINET
     MPI_Comm_disconnect(&m_comm);
 #else
-    zmq_close(m_socket);
-    zmq_ctx_term(m_context);
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl);
+    Message msg;
+    msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::DEFAULT);
+    msg.set_msg("");
+    send_and_receive(msg);
 #endif
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl);
     m_use_ps = false;
 }
 

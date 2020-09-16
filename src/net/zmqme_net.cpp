@@ -19,17 +19,60 @@ typedef std::chrono::microseconds MicroSec;
 
 using namespace chimbuko;
 
-ZMQMENet::ZMQMENet() : m_base_port(5559), m_exit(false), m_finalized(true){
+ZMQMENet::ZMQMENet() : m_base_port(5559), m_finalized(true){
 }
 
 ZMQMENet::~ZMQMENet()
 {
 }
 
+class NetPayloadHandShakeWithCountME: public NetPayloadBase{
+public:
+  int &clients;
+  int &client_has_connected;
+  int thr_idx;
+
+  NetPayloadHandShakeWithCountME(int thr_idx, int &clients, int &client_has_connected): clients(clients), thr_idx(thr_idx), client_has_connected(client_has_connected){}
+  
+  MessageKind kind() const{ return MessageKind::DEFAULT; }
+  MessageType type() const{ return MessageType::REQ_ECHO; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg(std::string("Hello!I am NET!"), false);
+    clients++;
+    client_has_connected = 1;
+    VERBOSE(std::cout << "ZMQMENet thread " << thr_idx << " received handshake, #clients is now " << clients << std::endl);
+  };
+};
+
+class NetPayloadClientDisconnectWithCountME: public NetPayloadBase{
+public:
+  int &clients;
+  int thr_idx;
+  NetPayloadClientDisconnectWithCountME(int thr_idx, int &clients): clients(clients), thr_idx(thr_idx){}
+  
+  MessageKind kind() const{ return MessageKind::DEFAULT; }
+  MessageType type() const{ return MessageType::REQ_QUIT; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg("", false);
+    clients--;
+    if(clients < 0) throw std::runtime_error("ZMQMENet registered clients < 0! Likely a client did not perform a handshake");
+    VERBOSE(std::cout << "ZMQMENet thread " << thr_idx << " received disconnect notification, #clients is now " << clients << std::endl);
+  };
+};
+
+
+
 void ZMQMENet::init(int* /*argc*/, char*** /*argv*/, int nt){
   m_nt = nt;
-  for(int t=0;t<m_nt;t++)
-    add_payload(new NetPayloadHandShake, t);
+  m_clients_thr = std::vector<int>(m_nt,0);
+  m_client_has_connected = std::vector<int>(m_nt, 0);
+
+  for(int t=0;t<m_nt;t++){
+    add_payload(new NetPayloadHandShakeWithCountME(t, m_clients_thr[t], m_client_has_connected[t]), t);
+    add_payload(new NetPayloadClientDisconnectWithCountME(t, m_clients_thr[t]), t);
+  }
 }
 
 void doWork(std::unordered_map<int,
@@ -37,7 +80,7 @@ void doWork(std::unordered_map<int,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> > 
 	    >
 	    > &payloads,
-	    PerfStats &perf, int thr_idx, int port, std::atomic<bool> &exit)
+	    PerfStats &perf, int thr_idx, int port, int &clients, int &client_has_connected)
 {
   auto it = payloads.find(thr_idx);
   if(it == payloads.end()) return; //thread has no work to do
@@ -55,25 +98,25 @@ void doWork(std::unordered_map<int,
   zmq_bind(socket, addr.str().c_str()); //create a socket for communication with the AD
 
   constexpr int nitems = 1; //size of items array
-  constexpr long timeout = -1; //poll forever until error or success
   zmq_pollitem_t items[nitems] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
  
   std::string perf_prefix = "worker" + anyToStr(thr_idx) + "_";
   PerfTimer timer;
 
-  bool exit_signal_received = false; //breakout flag, client has indicated that the worker should terminate
-
   while(true){
-    timer.start();
-
     //Check if the exit flag has been set either by the client or by the server, if so exit now
-    if(exit.load() || exit_signal_received)
-      break;
-
-    //Poll the socket to check for incoming messages
-    if(zmq_poll(items, nitems, timeout) < 1){ //because we block indefinitely zmq_poll return value of <= 0 is an error
+    if(client_has_connected && clients == 0){
+      VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " exiting poll loop because all clients disconnected" << std::endl);    
       break;
     }
+
+    timer.start();
+
+    //Poll the socket to check for incoming messages
+    int poll_ret = zmq_poll(items, nitems, -1);
+    if(poll_ret == 0) throw std::runtime_error("ZMQMENet worker thread " + anyToStr(thr_idx) + " poll returned 0 despite indefinite timeout!");
+    else if(poll_ret == -1) throw std::runtime_error("ZMQMENet worker thread " + anyToStr(thr_idx) + " poll received error " + zmq_strerror(errno));
+
     perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
 
     while(true){
@@ -84,14 +127,8 @@ void doWork(std::unordered_map<int,
       if(ret == -1) 
 	break; //no messages on queue
       perf.add(perf_prefix + "receive_ms", timer.elapsed_ms());
-
-      if(ret == 0){ //zero-length message used as terminate signal
-	VERBOSE(std::cout << "ZMQME worker thread " << thr_idx << " received exit signal\n");
-	exit_signal_received = true;
-	break;
-      }
-      
-      VERBOSE(std::cout << "ZMQME worker thread " << thr_idx << " received message: " << strmsg << std::endl);
+     
+      VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl);
     
       //Parse the message and instantiate a reply message with appropriate sender
       Message msg, msg_reply;
@@ -109,7 +146,7 @@ void doWork(std::unordered_map<int,
       //Apply the payload
       timer.start();
       pit->second->action(msg_reply, msg);
-      VERBOSE(std::cout << "ZMQMENet Worker thread " << thr_idx << " sending response: " << msg_reply.data() << std::endl);
+      VERBOSE(std::cout << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << msg_reply.data().size() << std::endl);
       perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
 
       //Send the reply
@@ -119,9 +156,11 @@ void doWork(std::unordered_map<int,
     } //while(<work in queue>)
 
   }//while(<receiving messages>)
-  
+
+  VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " is exiting" << std::endl);
   zmq_close(socket);
   zmq_ctx_term(context);
+  VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " has finished" << std::endl);
 }
 
 void ZMQMENet::finalize()
@@ -129,12 +168,17 @@ void ZMQMENet::finalize()
   if(m_finalized) 
     return;
 
-  //Signal the threads to exit
-  m_exit.store(true);
   //Join threads once they have terminated
-  for (auto& t: m_threads)
-    if (t.joinable())
+  int tidx=0;
+  for(auto& t: m_threads){
+    if (t.joinable()){
+      VERBOSE(std::cout << "ZMQMENet joining thread " << tidx << std::endl);
       t.join();
+      VERBOSE(std::cout << "ZMQMENet joined thread " << tidx << std::endl);
+    }
+    ++tidx;
+  }
+
   m_threads.clear();
 
 #ifdef _PERF_METRIC
@@ -154,7 +198,7 @@ void ZMQMENet::init_thread_pool(int nt){
   m_perf_thr.resize(m_nt);
   for (int i = 0; i < m_nt; i++) {
     m_threads.push_back(
-			std::thread(&doWork, std::ref(m_payloads), std::ref(m_perf_thr[i]), i, m_base_port + i, std::ref(m_exit))
+			std::thread(&doWork, std::ref(m_payloads), std::ref(m_perf_thr[i]), i, m_base_port + i, std::ref(m_clients_thr[i]), std::ref(m_client_has_connected[i]) )
 			);
   }
   m_finalized = false; //threads need to be joined
@@ -167,6 +211,9 @@ void ZMQMENet::run()
 #endif
 {      
   if(m_nt == 0) throw std::runtime_error("ZMQMENet run called prior to initialization!");
+#ifdef _PERF_METRIC
+    m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
+#endif
   init_thread_pool(m_nt);
 }
 

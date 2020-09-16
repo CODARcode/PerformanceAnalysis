@@ -28,7 +28,7 @@ namespace chimbuko {
     void init(int* argc, char*** argv, int nt) override;
 
     /**
-     * @brief Finalize network
+     * @brief Finalize network; blocking wait for worker threads to finish
      */
     void finalize() override;
 
@@ -78,7 +78,8 @@ namespace chimbuko {
     std::vector<std::thread> m_threads; /**< The pool of thread workers */
     PerfStats m_perf; /**< Performance monitoring */
     std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
-    std::atomic<bool> m_exit; /**< Signal threads to exit prematurely*/
+    std::vector<int> m_clients_thr; /**< Tracker of number of connected clients, used to determine when a thread exits*/
+    std::vector<int> m_client_has_connected; /**< Has a client previously connected to this worker?*/
     bool m_finalized; /**< Has previously been finalized */
   };
 

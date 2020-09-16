@@ -41,6 +41,16 @@ int main (int argc, char** argv)
     context = zmq_ctx_new();
     socket = zmq_socket(context, ZMQ_REQ);
     zmq_connect(socket, argv[1]);
+
+    //Handshake
+    {
+      Message msg;
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
+      msg.set_msg("");
+      std::string strmsg;
+      ZMQNet::send(socket, msg.data());
+      ZMQNet::recv(socket, strmsg);
+    }
 #endif
 
     const std::vector<double> means = {
@@ -91,16 +101,22 @@ int main (int argc, char** argv)
     MPI_Barrier(MPI_COMM_WORLD);
     
     // terminate parameter server
-    if (rank == 0) {
 #ifdef _USE_MPINET
-      throw std::runtime_error("Not implemented yet.");
+    throw std::runtime_error("Not implemented yet.");
 #else
-        zmq_send(socket, nullptr, 0, 0);
+    msg.clear();
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+    msg.set_msg("");
+    std::cout << "pclient_stats rank " << rank << " sending disconnect notification" << std::endl;
+    ZMQNet::send(socket, msg.data());
+    std::cout << "pclient_stats rank " << rank << " waiting for disconnect notification response" << std::endl;
+    ZMQNet::recv(socket, strmsg);
+    std::cout << "pclient_stats rank " << rank << " exiting" << std::endl;
 #endif
-    }
+
 
 #ifdef _USE_MPINET
-    thow "Not implemented yet."
+    throw "Not implemented yet."
 #else
     zmq_close(socket);
     zmq_ctx_term(context);

@@ -1,7 +1,7 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = ../src/libchimbuko.la -lstdc++fs 
 
-bin_PROGRAMS = driver pclient pclient_stats pserver pshutdown sstSinker sst_view bpfile_replay
+bin_PROGRAMS = driver pclient pclient_stats hpserver pserver pshutdown sstSinker sst_view bpfile_replay
 
 driver_SOURCES = driver.cpp
 driver_LDADD = $(LDADD)
@@ -14,6 +14,9 @@ pclient_stats_LDADD = $(LDADD)
 
 pserver_SOURCES = pserver.cpp
 pserver_LDADD = $(LDADD)
+
+hpserver_SOURCES = hpserver.cpp
+hpserver_LDADD = $(LDADD)
 
 pshutdown_SOURCES = pshutdown.cpp
 pshutdown_LDADD = $(LDADD)

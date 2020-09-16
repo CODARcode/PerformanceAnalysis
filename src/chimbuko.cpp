@@ -95,6 +95,14 @@ void Chimbuko::init_event(){
 
 void Chimbuko::init_net_client(){
   if(m_params.pserver_addr.length() > 0){
+    //If using the hierarchical PS we need to choose the appropriate port to connect to as an offset of the base port
+    if(m_params.hpserver_nthr <= 0) throw std::runtime_error("Chimbuko::init_net_client Input parameter hpserver_nthr cannot be <1");
+    else if(m_params.hpserver_nthr > 1){
+      std::string orig = m_params.pserver_addr;
+      m_params.pserver_addr = getHPserverIP(m_params.pserver_addr, m_params.hpserver_nthr, m_params.rank);
+      VERBOSE(std::cout << "AD rank " << m_params.rank << " connecting to endpoint " << m_params.pserver_addr << " (base " << orig << ")" << std::endl);
+    }
+
     m_net_client = new ADNetClient;
     m_net_client->linkPerf(&m_perf);
 #ifdef _USE_MPINET

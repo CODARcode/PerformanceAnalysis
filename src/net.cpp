@@ -34,3 +34,12 @@ void NetInterface::add_payload(NetPayloadBase* payload, int worker_idx){
   m_payloads[worker_idx][payload->kind()][payload->type()].reset(payload);
 }
 
+void NetInterface::list_payloads(std::ostream &os) const{
+  for(auto const &w : m_payloads){
+    for(auto const &k : w.second){      
+      for(auto const &t : k.second){
+	os << "worker:" << w.first << " kind:" << k.first << " type:" << t.first << std::endl;
+      }
+    }
+  }
+}

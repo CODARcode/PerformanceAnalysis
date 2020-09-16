@@ -24,7 +24,7 @@ namespace chimbuko {
 				 < If no parameter server is in use, this string should be empty (length zero)
 				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}" 
 			      */
-
+    int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
     //Parameters associated with communicating with the visualization (viz) module
     IOMode viz_iomode; /**< Set to IOMode::Online to send to viz module, IOMode::Offline to dump to disk, or IOMode::Both for both */
@@ -53,7 +53,7 @@ namespace chimbuko {
 		      verbose(true),
 		      outlier_sigma(6.),
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
-		      pserver_addr(""),
+		      pserver_addr(""), hpserver_nthr(1),
 		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), anom_win_size(10),
 #ifdef ENABLE_PROVDB
 		      provdb_addr(""),

@@ -25,6 +25,7 @@ TEST(ADNetClientTestConnectPS, ConnectsMock){
   std::thread ps_thr([&]{
 		       MockParameterServer ps;
 		       ps.start(barrier2, sinterface);
+		       ps.waitForDisconnect();
 		       std::cout << "PS thread waiting at barrier" << std::endl;
 		       barrier2.wait();
 		       std::cout << "PS thread terminating connection" << std::endl;

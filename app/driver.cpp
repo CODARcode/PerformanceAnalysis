@@ -18,6 +18,7 @@ optionalArgsParser & getOptionalArgsParser(){
   if(!initialized){
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
     addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
+    addOptionalCommandLineArg(p, hpserver_nthr, "Set the number of threads used by the hierarchical PS. This parameter is used to compute a port offset for the particular endpoint that this AD rank connects to (default 1)");
     addOptionalCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
     addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
 #ifdef ENABLE_PROVDB
@@ -77,6 +78,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   //The remainder are optional arguments. Enable using the appropriate command line switch
 
   params.pserver_addr = "";  //address of parameter server
+  params.hpserver_nthr = 1;
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
   params.anom_win_size = 10; // size of window of events captured around anomaly
   params.interval_msec = 0; //pause at end of each io step

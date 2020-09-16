@@ -2,12 +2,14 @@
 #define _PERF_METRIC
 #include<mpi.h>
 #include<chimbuko/ad/ADNetClient.hpp>
+#include<chimbuko/ad/utils.hpp>
 #include<chimbuko/util/commandLineParser.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include<chimbuko/ad/ADLocalCounterStatistics.hpp>
+#include<chimbuko/verbose.hpp>
 #include "gtest/gtest.h"
 #include<unit_test_common.hpp>
 
@@ -20,17 +22,24 @@ struct Args{
   int ncounters;
   int nanomalies_per_func;
   size_t cycle_time_ms;
-  
+  int hpserver_nthr;
+
   Args(){
     cycles = 10;
     nfuncs = 100;
     ncounters = 100;
     nanomalies_per_func = 2;
     cycle_time_ms = 1000;
+    hpserver_nthr = 1;
   }
 };
 
 int main(int argc, char **argv){
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+    std::cout << "Enabling verbose debug output" << std::endl;
+    Verbose::set_verbose(true);
+  }       
+
   MPI_Init(&argc, &argv);
   {
 
@@ -44,6 +53,8 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, ncounters);
   addOptionalCommandLineArgDefaultHelpString(cmdline, nanomalies_per_func);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, hpserver_nthr);
+
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
     cmdline.help();
@@ -53,6 +64,12 @@ int main(int argc, char **argv){
 
   Args args;
   cmdline.parse(args, argc-1, (const char**)(argv+1));
+
+  if(args.hpserver_nthr > 1){
+    std::string orig = args.pserver_addr;
+    args.pserver_addr = getHPserverIP(args.pserver_addr, args.hpserver_nthr, rank);
+    std::cout << "Client rank " << rank << " connecting to endpoint " << args.pserver_addr << " (base " << orig << ")" << std::endl;
+  }
 
   PerfStats stats;
 

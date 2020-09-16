@@ -52,6 +52,9 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
     net.add_payload(new NetPayloadUpdateParams(&param));
     net.add_payload(new NetPayloadGetParams(&param));
 
+    std::cout << "NetSendRecvMultiThreadSingleClientTest payloads are:" << std::endl;
+    net.list_payloads(std::cout);
+
     //net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
 
     net.init(nullptr, nullptr, 10);
