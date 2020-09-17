@@ -1,3 +1,11 @@
+# osx
+.DS_Store
+# vs code
+.vscode
+# jupyter
+.ipynb_checkpoints/
+
+
 # Custom
 *.csv
 *.df
