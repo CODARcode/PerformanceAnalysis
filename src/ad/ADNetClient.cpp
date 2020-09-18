@@ -81,9 +81,9 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     
     msg.set_msg(strmsg, true);
 
-    if (msg.buf().compare("\"Hello!I am NET!\"") != 0)
+    if (msg.buf().compare("Hello!I am NET!") != 0)
     {
-      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
+      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
     } 
     m_use_ps = true;
     std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;

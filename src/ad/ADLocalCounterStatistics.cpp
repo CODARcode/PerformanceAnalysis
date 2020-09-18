@@ -1,6 +1,28 @@
 #include <chimbuko/ad/ADLocalCounterStatistics.hpp>
 
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/types/string.hpp>
+
 using namespace chimbuko;
+
+std::string ADLocalCounterStatistics::State::serialize_cerealpb() const{
+  std::stringstream ss;
+  {    
+    cereal::PortableBinaryOutputArchive wr(ss);
+    wr(*this);    
+  }
+  return ss.str();
+}
+
+void ADLocalCounterStatistics::State::deserialize_cerealpb(const std::string &strstate){
+  std::stringstream ss; ss << strstate;;
+  {    
+    cereal::PortableBinaryInputArchive rd(ss);
+    rd(*this);    
+  }
+}
+
 
 void ADLocalCounterStatistics::gatherStatistics(const CountersByIndex_t &cntrs_by_idx){
   for(auto it : cntrs_by_idx){
@@ -32,11 +54,27 @@ nlohmann::json ADLocalCounterStatistics::get_json_state() const{
 }
 
 
+ADLocalCounterStatistics::State ADLocalCounterStatistics::get_state() const{
+  ADLocalCounterStatistics::State g_info;
+  for (auto it : m_stats) { //loop over counter name
+    const std::string &name = it.first;
+
+    State::CounterData obj;
+    obj.name = name;
+    obj.stats = it.second.get_state();
+    g_info.counters.push_back(obj);
+  }
+  return g_info;
+}
+
+
 std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
-  nlohmann::json state = get_json_state();
+  //nlohmann::json state = get_json_state();
+  State state = get_state();
   PerfTimer timer;
   timer.start();
-  auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
+  //auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
+  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
   
   if(m_perf != nullptr){
     m_perf->add("counter_stats_stream_update_us", timer.elapsed_us());

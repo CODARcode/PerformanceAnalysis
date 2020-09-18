@@ -1,10 +1,15 @@
-FROM chimbuko/mochi:ubuntu18.04 AS build
+FROM chimbuko/mochi:ubuntu18.04 AS build_base
 
 COPY --from=chimbuko/adios2:ubuntu18.04 /opt /opt
 
+RUN apt-get update && apt-get install -y libcereal-dev &&  rm -rf /var/lib/apt/lists/* 
+
+#################
+FROM build_base AS build
+
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 9_10_20_12_17" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 9_16_20_10_23" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
@@ -18,9 +23,11 @@ RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
 
 RUN cd /Downloads/PerformanceAnalysis && git log | head -1 > /opt/chimbuko/ad/git_version
 
-FROM chimbuko/mochi:ubuntu18.04
 
-COPY --from=build /opt /opt
+################
+FROM build_base
+
+COPY --from=build /opt/chimbuko/ad /opt/chimbuko/ad
 
 WORKDIR /opt/chimbuko/ad/test
 ENTRYPOINT [ "./run_all.sh", "DOCKER_SETUP_MOCHI" ]

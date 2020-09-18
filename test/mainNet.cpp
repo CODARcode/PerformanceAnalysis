@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv)
 {
-  chimbuko::Verbose::set_verbose(true);
+  //chimbuko::Verbose::set_verbose(true);
   int result = 0;
   int provided;
   ::testing::InitGoogleTest(&argc, argv);

@@ -36,7 +36,12 @@ namespace chimbuko{
     /**
      * @brief Merge internal statistics with those contained within the JSON-formatted string 'data'
      */
-    void add_anomaly_data(const std::string& data);
+    void add_anomaly_data_json(const std::string& data);
+
+    /**
+     * @brief Merge internal statistics with those contained within the Cereal portable binary  formatted string 'data'
+     */
+    void add_anomaly_data_cerealpb(const std::string& data);
 
     /**
      * @brief Get the JSON-formatted string corresponding to the anomaly statistics for a given program/rank
@@ -45,7 +50,13 @@ namespace chimbuko{
     std::string get_anomaly_stat(const std::string& stat_id) const;
 
     /**
-     * @brief Get the number of anomalies detected for a given program/rank
+     * @brief Get the RunStats object corresponding to the anomaly statistics for a given program/rank (throw error if not present)
+     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     */
+    RunStats get_anomaly_stat_obj(const std::string& stat_id) const;
+
+    /**
+     * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
      * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
      */
     size_t get_n_anomaly_data(const std::string& stat_id) const;
@@ -103,7 +114,7 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-      m_global_anom_stats->add_anomaly_data(message.buf());
+      m_global_anom_stats->add_anomaly_data_cerealpb(message.buf());
       response.set_msg("", false);
     }
   };

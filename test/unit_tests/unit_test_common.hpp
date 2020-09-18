@@ -189,7 +189,9 @@ namespace chimbuko{
 	strmsg.assign((char*)zmq_msg_data(&msg), ret);
 	zmq_msg_close(&msg);
       }
-      EXPECT_EQ(strmsg, R"({"Buffer":"Hello!","Header":{"dst":0,"frame":0,"kind":0,"size":6,"src":0,"type":5}})");
+      Message rmsg;
+      rmsg.set_msg(strmsg,true);
+      EXPECT_EQ(rmsg.buf(), "Hello!");
 
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
@@ -273,10 +275,12 @@ namespace chimbuko{
       }
       std::cout << "Mock PS received string: " << strmsg << std::endl;
 
-      std::stringstream ss;
-      ss << "{\"Buffer\":\"" << test_msg << "\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":4,\"size\":" << test_msg.size() << ",\"src\":0,\"type\":1}}";
-      EXPECT_EQ(strmsg, ss.str());
-    
+      Message rmsg;
+      rmsg.set_msg(strmsg, true);
+      EXPECT_EQ(rmsg.buf(), test_msg);
+      EXPECT_EQ(rmsg.type(), REQ_ADD);
+      EXPECT_EQ(rmsg.kind(), COUNTER_STATS);
+
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
       {
@@ -304,9 +308,11 @@ namespace chimbuko{
 	strmsg.assign((char*)zmq_msg_data(&msg), len);
 	zmq_msg_close(&msg);
       }
+      Message rmsg;
+      rmsg.set_msg(strmsg, true);
+      EXPECT_EQ(rmsg.buf(), "");
+      EXPECT_EQ(rmsg.type(), REQ_QUIT);
 
-      EXPECT_EQ(strmsg, "{\"Buffer\":\"\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":0,\"size\":0,\"src\":0,\"type\":4}}");
-      
       std::cout << "Mock PS received disconnect message, sending response" << std::endl;
       {
 	Message msg_t;

@@ -49,18 +49,34 @@ namespace chimbuko {
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Convert a run statistics mapping into a string
+     * @brief Convert a run statistics mapping into a JSON string
      * @param The run stats mapping
      * @return Run statistics in string format
      */
-    static std::string serialize(const std::unordered_map<unsigned long, RunStats>& runstats);
+    static std::string serialize_json(const std::unordered_map<unsigned long, RunStats>& runstats);
 
     /**
-     * @brief Convert a run statistics string into a map
+     * @brief Convert a run statistics JSON string into a map
      * @param[in] parameters The parameter string
      * @param[out] runstats The run stats map
      */
-    static void deserialize(const std::string& parameters,
+    static void deserialize_json(const std::string& parameters,
+			    std::unordered_map<unsigned long, RunStats>& runstats);
+
+
+    /**
+     * @brief Convert a run statistics mapping into a Cereal portable binary representration
+     * @param The run stats mapping
+     * @return Run statistics in string format
+     */
+    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, RunStats>& runstats);
+
+    /**
+     * @brief Convert a run statistics Cereal portable binary representation string into a map
+     * @param[in] parameters The parameter string
+     * @param[out] runstats The run stats map
+     */
+    static void deserialize_cerealpb(const std::string& parameters,
 			    std::unordered_map<unsigned long, RunStats>& runstats);
 
 
@@ -111,6 +127,12 @@ namespace chimbuko {
      */
     const RunStats & get_function_stats(const unsigned long func_id) const override;
 
+
+  protected:
+    /**
+     * @brief Get the internal map
+     */
+    std::unordered_map<unsigned long, RunStats> & access_runstats(){ return m_runstats; }    
     
   private:
     std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of function index to statistics*/

@@ -3,6 +3,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/ad/AnomalyStat.hpp"
+#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
@@ -73,11 +74,15 @@ int main (int argc, char** argv)
         int n_anomalies = std::max(0, (int)dist(generator));
         AnomalyData d(0, rank, step, 0, 0, n_anomalies);
 
+	ADLocalFuncStatistics::State state;
+	state.anomaly = d;
+
         // create message
         msg.clear();
         msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
         msg.set_msg(
-            nlohmann::json::object({{"anomaly", d.get_json()}}).dump(), false
+		    state.serialize_cerealpb(), false
+		    //nlohmann::json::object({{"anomaly", d.get_json()}}).dump(), false
         );
 
 #ifdef _USE_MPINET

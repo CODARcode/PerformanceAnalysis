@@ -1,6 +1,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include <sstream>
-
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/types/unordered_map.hpp>
 
 using namespace chimbuko;
 
@@ -17,10 +18,11 @@ SstdParam::~SstdParam()
 std::string SstdParam::serialize() const
 {
     std::lock_guard<std::mutex> _{m_mutex};
-    return serialize(m_runstats);
+    //return serialize_json(m_runstats);
+    return serialize_cerealpb(m_runstats);
 }
 
-std::string SstdParam::serialize(const std::unordered_map<unsigned long, RunStats>& runstats) 
+std::string SstdParam::serialize_json(const std::unordered_map<unsigned long, RunStats>& runstats) 
 {
     nlohmann::json j;
     for (auto& pair: runstats)
@@ -30,7 +32,7 @@ std::string SstdParam::serialize(const std::unordered_map<unsigned long, RunStat
     return j.dump();
 }
 
-void SstdParam::deserialize(
+void SstdParam::deserialize_json(
     const std::string& parameters,
     std::unordered_map<unsigned long, RunStats>& runstats) 
 {
@@ -43,12 +45,38 @@ void SstdParam::deserialize(
     }
 }
 
+std::string SstdParam::serialize_cerealpb(const std::unordered_map<unsigned long, RunStats>& runstats){
+  std::unordered_map<unsigned long, RunStats::State> state;
+  for(auto const& e : runstats)
+    state[e.first] = e.second.get_state();
+  std::stringstream ss;
+  {    
+    cereal::PortableBinaryOutputArchive wr(ss);
+    wr(state);    
+  }
+  return ss.str();
+}
+
+void SstdParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, RunStats>& runstats){
+  std::stringstream ss; ss << parameters;
+  std::unordered_map<unsigned long, RunStats::State> state;
+  {    
+    cereal::PortableBinaryInputArchive rd(ss);
+    rd(state);    
+  }
+  for(auto const& e : state)
+    runstats[e.first] = RunStats::from_state(e.second);
+}
+
+
 std::string SstdParam::update(const std::string& parameters, bool return_update)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
-    deserialize(parameters, runstats);
+    //deserialize_json(parameters, runstats);
+    deserialize_cerealpb(parameters, runstats);
     update_and_return(runstats); //update runstats to reflect changes
-    return (return_update) ? serialize(runstats): "";
+    //return (return_update) ? serialize_json(runstats): "";
+    return (return_update) ? serialize_cerealpb(runstats): "";
 }
 
 void SstdParam::assign(const std::unordered_map<unsigned long, RunStats>& runstats)
@@ -62,7 +90,8 @@ void SstdParam::assign(const std::unordered_map<unsigned long, RunStats>& runsta
 void SstdParam::assign(const std::string& parameters)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
-    deserialize(parameters, runstats);
+    //deserialize_json(parameters, runstats);    
+    deserialize_cerealpb(parameters, runstats);
     assign(runstats);
 }
 

@@ -16,13 +16,49 @@ namespace chimbuko{
    */
   class ADLocalCounterStatistics{
   public:
+    /**
+     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
+     */
+    struct State{
+      struct CounterData{
+	std::string name; /**< Counter name*/
+	RunStats::State stats; /**< Counter value statistics */
+	
+	/**
+	 * @brief Serialize using cereal
+	 */
+	template<class Archive>
+	void serialize(Archive & archive){
+	  archive(name,stats);
+	}
+      };
+      std::vector<CounterData> counters; /**< Statistics for all counters */
+      
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+	archive(counters);
+      }
+
+      /**
+       * Serialize into Cereal portable binary format
+       */
+      std::string serialize_cerealpb() const;
+      
+      /**
+       * Serialize from Cereal portable binary format
+       */     
+      void deserialize_cerealpb(const std::string &strstate);
+    };     
+
+
     ADLocalCounterStatistics(const int step,
 			     const std::unordered_set<std::string> *which_counters, PerfStats *perf = nullptr):
       m_step(step), m_which_counter(which_counters), m_perf(perf)
     {}
 				
-
-
     /**
      * @brief Add counters to internal statistics
      */
@@ -54,6 +90,13 @@ namespace chimbuko{
      * The string form of this object is sent to the pserver using updateGlobalStatistics
      */
     nlohmann::json get_json_state() const;
+
+    /**
+     * @brief Get the State object that is sent to the parameter server
+     *
+     * The string form of this object is sent to the pserver using updateGlobalStatistics
+     */
+    State get_state() const;  
 
     /**
      * @brief Set the statistics for a particular counter (must be in the list of counters being collected). Primarily used for testing.

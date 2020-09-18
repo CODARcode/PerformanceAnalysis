@@ -2,6 +2,7 @@
 
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
+#include <chimbuko/ad/AnomalyStat.hpp>
 #include <chimbuko/util/Anomalies.hpp>
 #include "chimbuko/util/PerfStats.hpp"
 
@@ -12,7 +13,49 @@ namespace chimbuko{
    */
   class ADLocalFuncStatistics{
   public:
-    ADLocalFuncStatistics(const int step, PerfStats* perf = nullptr): m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf){}
+    /**
+     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
+     */
+    struct State{
+      struct FuncData{
+	unsigned long id; /**< Function index*/
+	std::string name; /**< Function name*/
+	unsigned long n_anomaly; /**< Number of anomalies*/
+	RunStats::State inclusive; /**< Inclusive runtime stats*/
+	RunStats::State exclusive; /**< Exclusive runtime stats*/
+      
+	/**
+	 * @brief Serialize using cereal
+	 */
+	template<class Archive>
+	void serialize(Archive & archive){
+	  archive(id,name,n_anomaly,inclusive,exclusive);
+	}
+      };
+      std::vector<FuncData> func; /** Function stats for each function*/
+      AnomalyData anomaly; /** Statistics on overall anomalies */
+    
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+	archive(func , anomaly);
+      }
+
+      /**
+       * Serialize into Cereal portable binary format
+       */
+      std::string serialize_cerealpb() const;
+      
+      /**
+       * Serialize from Cereal portable binary format
+       */     
+      void deserialize_cerealpb(const std::string &strstate);
+    };    
+
+
+    ADLocalFuncStatistics(const int step, PerfStats* perf = nullptr);
 
     /**
      * @brief Add function executions to internal statistics
@@ -42,6 +85,13 @@ namespace chimbuko{
      */
     nlohmann::json get_json_state(const int rank) const;
 
+    /**
+     * @brief Get the current state as a state object
+     * @param rank The rank of this AD instance
+     *
+     * The string dump of this object is the serialized form sent to the parameter server
+     */    
+    State get_state(const int rank) const;
 
     /**
      * @brief Attach a RunMetric object into which performance metrics are accumulated

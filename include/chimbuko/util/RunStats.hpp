@@ -24,7 +24,7 @@ namespace chimbuko {
      * @brief Internal state of RunStats object
      * 
      */
-    typedef struct State {
+    struct State {
       double count; /**< count of instances */
       double eta; /**< mean */
       double rho;
@@ -56,7 +56,46 @@ namespace chimbuko {
 	min = std::numeric_limits<double>::max();
 	max = std::numeric_limits<double>::min();
       }
-    } State;
+
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+	archive(count, eta, rho, tau, phi, min, max, acc);
+      }
+
+      /**
+       * @brief Equivalence operator
+       */
+      bool operator==(const State &r) const{
+	return count == r.count && eta == r.eta && rho == r.rho && tau == r.tau  && phi == r.phi && min == r.min && max == r.max && acc == r.acc;
+      }
+    };
+      
+    /**
+     * @brief A serializable object containing the stats values
+     * 
+     */
+    struct RunStatsValues {
+      double count;
+      double minimum;
+      double maximum;
+      double accumulate;
+      double mean;
+      double stddev;
+      double skewness;
+      double kurtosis;
+
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+	archive(count, minimum, maximum, accumulate, mean, stddev, skewness, kurtosis);
+      }
+    };
+
 
   public:
     /**
@@ -74,7 +113,7 @@ namespace chimbuko {
     /**
      * @brief Return the current set of internal variables (state) as an instance of State
      */
-    State get_state() { return m_state; }
+    const State &get_state() const{ return m_state; }
 
     /**
      * @brief Set the internal variables from an instance of State
@@ -162,6 +201,12 @@ namespace chimbuko {
      * @brief Get the current statistics as a JSON object
      */
     nlohmann::json get_json() const;
+
+    /**
+     * @brief Get the current statistics as a RunStatsValues object
+     */
+    RunStatsValues get_stat_values() const;
+   
 
     /**
      * @brief Combine two RunStats instances such that the resulting statistics are the union of the two

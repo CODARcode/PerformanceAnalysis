@@ -61,14 +61,14 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   GlobalCounterStats glob;
 
   cs.setStats(nm, a);
-  glob.add_data(cs.get_json_state().dump());
+  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
   
   auto stats = glob.get_stats();
   EXPECT_EQ( stats.count(nm), 1 );
   EXPECT_EQ( stats[nm], a );
   
   cs.setStats(nm, b);
-  glob.add_data(cs.get_json_state().dump());
+  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
 
   stats = glob.get_stats();
   EXPECT_EQ( stats.count(nm), 1 );
@@ -136,7 +136,6 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
-
 
 TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){  
 #ifdef _USE_MPINET

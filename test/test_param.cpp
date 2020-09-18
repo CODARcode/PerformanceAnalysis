@@ -160,9 +160,9 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
 
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 0,  0, 10, 10).get_json()}}).dump());
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 1, 11, 20, 20).get_json()}}).dump());
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 2, 21, 30, 30).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 0,  0, 10, 10).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 1, 11, 20, 20).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 2, 21, 30, 30).get_json()}}).dump());
 
     nlohmann::json j = param.collect_stat_data();
     ASSERT_EQ(1, j.size());
@@ -201,9 +201,9 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     EXPECT_NEAR(0.0, j["stats"]["skewness"], 1e-3);
     EXPECT_NEAR(10.0, j["stats"]["stddev"], 1e-3);
 
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 3, 31, 40, 40).get_json()}}).dump());
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(0, 1, 0,  0, 10, 10).get_json()}}).dump());
-    param.add_anomaly_data(nlohmann::json::object({{"anomaly", AnomalyData(1, 0, 1, 11, 20, 20).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 3, 31, 40, 40).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 1, 0,  0, 10, 10).get_json()}}).dump());
+    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(1, 0, 1, 11, 20, 20).get_json()}}).dump());
 
     j = param.collect_stat_data();
     EXPECT_EQ(3, j.size());
@@ -298,7 +298,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
-    param.add_anomaly_data(
+    param.add_anomaly_data_json(
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
@@ -320,7 +320,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
-    param.add_anomaly_data(
+    param.add_anomaly_data_json(
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
@@ -341,7 +341,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
-    param.add_anomaly_data(
+    param.add_anomaly_data_json(
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
@@ -362,7 +362,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
-    param.add_anomaly_data(
+    param.add_anomaly_data_json(
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {

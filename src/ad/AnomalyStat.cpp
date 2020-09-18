@@ -95,7 +95,7 @@ AnomalyStat::~AnomalyStat()
     if (m_data) delete m_data;
 }
 
-void AnomalyStat::add(AnomalyData& d, bool bStore)
+void AnomalyStat::add(const AnomalyData& d, bool bStore)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     m_stats.push(d.get_n_anomalies());

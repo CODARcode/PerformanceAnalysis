@@ -102,6 +102,13 @@ public:
         void set_header(const nlohmann::json& j);
         void set_header(const std::string& s);
 
+        /**
+	 * @brief Serialize using cereal
+	 */
+        template<class Archive>
+	void serialize(Archive & archive){
+	  archive(m_h);
+	}
     private:
         /**
          * @brief header information
@@ -227,6 +234,14 @@ public:
      */
     void show(std::ostream& os) const {
         os << m_head.get_json().dump();
+    }
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_head, m_buf);
     }
 
 private:

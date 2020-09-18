@@ -1,5 +1,6 @@
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 
 using namespace chimbuko;
 
@@ -37,26 +38,50 @@ GlobalAnomalyStats::~GlobalAnomalyStats()
         delete pair.second;
 }
 
-void GlobalAnomalyStats::add_anomaly_data(const std::string& data)
+void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data)
 {
-    nlohmann::json j = nlohmann::json::parse(data);
-    if (j.count("anomaly"))
+  nlohmann::json j = nlohmann::json::parse(data);
+  if (j.count("anomaly"))
     {
-        AnomalyData d(j["anomaly"].dump());
-        if (m_anomaly_stats.count(d.get_stat_id()))
-            m_anomaly_stats[d.get_stat_id()]->add(d);
+      AnomalyData d(j["anomaly"].dump());
+      if (m_anomaly_stats.count(d.get_stat_id()))
+	m_anomaly_stats[d.get_stat_id()]->add(d);
     }
 
-    if (j.count("func"))
+  if (j.count("func"))
     {
-        for (auto f: j["func"]) {
-            update_func_stat(
-                f["id"], f["name"], f["n_anomaly"],
-                RunStats::from_strstate(f["inclusive"].dump()), 
-                RunStats::from_strstate(f["exclusive"].dump())
-            );
-        }
+      for (auto f: j["func"]) {
+	update_func_stat(
+			 f["id"], f["name"], f["n_anomaly"],
+			 RunStats::from_strstate(f["inclusive"].dump()), 
+			 RunStats::from_strstate(f["exclusive"].dump())
+			 );
+      }
+    } 
+}
+
+
+
+void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
+{
+  ADLocalFuncStatistics::State j;
+  j.deserialize_cerealpb(data);
+
+  {
+    const AnomalyData &d = j.anomaly;
+    if (m_anomaly_stats.count(d.get_stat_id()))
+      m_anomaly_stats[d.get_stat_id()]->add(d);
+  }
+
+  {
+    for (auto f: j.func) {
+      update_func_stat(
+		       f.id, f.name, f.n_anomaly,
+		       RunStats::from_state(f.inclusive), 
+		       RunStats::from_state(f.exclusive)
+		       );
     }
+  } 
 }
 
 std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
@@ -67,6 +92,15 @@ std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) con
   RunStats stat = m_anomaly_stats.find(stat_id)->second->get_stats();
   return stat.get_json().dump();
 }
+
+RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) const
+{
+  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+    throw std::runtime_error("GlobalAnomalyStats::get_anomaly_stat_obj stat_id " + stat_id + " does not exist");
+  return m_anomaly_stats.find(stat_id)->second->get_stats();
+}
+
+
 
 size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
 {

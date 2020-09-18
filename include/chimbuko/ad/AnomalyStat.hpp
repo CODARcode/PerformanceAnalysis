@@ -105,6 +105,14 @@ namespace chimbuko {
      */
     nlohmann::json get_json() const;
 
+    /*
+     * @brief Serialize this instance in Cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_app, m_rank, m_step, m_min_timestamp, m_max_timestamp, m_n_anomalies, m_stat_id);
+    }
+
   private:
     unsigned long m_app; /**< The application index*/
     unsigned long m_rank; /**< The MPI rank of the process */
@@ -132,7 +140,7 @@ namespace chimbuko {
      * @param d The AnomalyData instance
      * @param bStore If true the AnomalyData instance dumped to a JSON-formatted string will be added to the "data list"
      */
-    void add(AnomalyData& d, bool bStore = true);
+    void add(const AnomalyData& d, bool bStore = true);
 
     /**
      * @brief Add the anomaly count from the input string, a JSON-formatted dump of an AnomalyData instance, to the internal statistics
@@ -172,6 +180,10 @@ namespace chimbuko {
      * @return std::list<std::string>* 
      */
     std::list<std::string>* get_data();
+
+    /**
+     * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
+     */
     size_t get_n_data() const;
 
   private:

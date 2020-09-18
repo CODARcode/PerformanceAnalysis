@@ -120,7 +120,7 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   loc.gatherAnomalies(anom);
 
   GlobalAnomalyStats glob(std::vector<int>(1,2)); //so rid=1 makes sense
-  glob.add_anomaly_data(loc.get_json_state(rid).dump());
+  glob.add_anomaly_data_json(loc.get_json_state(rid).dump());
 
   PSstatSender stat_sender;
   int calls = 0;
@@ -175,7 +175,7 @@ TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)
   cs.setStats(counter, stats);
   
   GlobalCounterStats glob;
-  glob.add_data(cs.get_json_state().dump());
+  glob.add_data_json(cs.get_json_state().dump());
 
   PSstatSender stat_sender(1000);
   int calls = 0;
@@ -204,7 +204,7 @@ TEST(PSstatSenderTest, DiskWriteWorks)
   cs.setStats(counter, stats);
   
   GlobalCounterStats glob;
-  glob.add_data(cs.get_json_state().dump());
+  glob.add_data_json(cs.get_json_state().dump());
 
   PSstatSenderGlobalCounterStatsPayload *payload = new PSstatSenderGlobalCounterStatsPayload(&glob);
   PSstatSender stat_sender(1000);
