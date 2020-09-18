@@ -50,6 +50,7 @@ class AnomalyDetector(object, metaclass=abc.ABCMeta):
 
     self.inputMin = self.dataSet.data["value"].min()
     self.inputMax = self.dataSet.data["value"].max()
+    self.results = None
     
 
   def initialize(self):
@@ -128,8 +129,8 @@ class AnomalyDetector(object, metaclass=abc.ABCMeta):
     #     print(".", end=' ')
     #     sys.stdout.flush()
 
-    ans = pandas.DataFrame(rows, columns=headers)
-    return ans
+    self.results = pandas.DataFrame(rows, columns=headers)
+    return self.results
 
 
 def detectDataSet(args):
