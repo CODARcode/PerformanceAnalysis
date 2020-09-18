@@ -128,12 +128,12 @@ int main(int argc, char **argv){
   ADLocalFuncStatistics prof_stats(0);
   prof_stats.gatherStatistics(&fake_exec_map);
   prof_stats.gatherAnomalies(anomalies);
-  std::string prof_stats_msg = prof_stats.get_json_state(net_client.get_client_rank()).dump();
+  std::string prof_stats_msg = prof_stats.get_state(net_client.get_client_rank()).serialize_cerealpb();
 
   ADLocalCounterStatistics count_stats(0, nullptr); //currently collect all counters
   for(auto const &e : counter_stats)
     count_stats.setStats(e.first,e.second);
-  std::string count_stats_msg = count_stats.get_json_state().dump();
+  std::string count_stats_msg = count_stats.get_state().serialize_cerealpb();
 
 
   for(int c=0;c<args.cycles;c++){

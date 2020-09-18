@@ -119,11 +119,13 @@ void doWork(void* context,
     VERBOSE(std::cout << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl);
     
     //Parse the message and instantiate a reply message with appropriate sender
+    timer.start();
     Message msg, msg_reply;
     msg.set_msg(strmsg, true);
 
     msg_reply = msg.createReply();
-   
+    perf.add(perf_prefix + "message_parse_reply_create_ms", timer.elapsed_ms());
+
     timer.start();
     auto kit = payloads.find((MessageKind)msg.kind());
     if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided. Message: " + strmsg + " (did you add the payload to the server?)");
