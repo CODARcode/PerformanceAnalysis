@@ -63,8 +63,8 @@ class RelativeEntropyDetector(AnomalyDetector):
 
     # Threshold against which the test statistic is compared. It is set to
     # the point in the chi-squared cdf with N-bins -1 degrees of freedom that
-    #  corresponds to 0.99.
-    self.T = stats.chi2.isf(0.01, self.N_bins - 1)
+    #  corresponds to 0.95.
+    self.T = stats.chi2.isf(0.05, self.N_bins - 1)
 
     # Threshold to determine if hypothesis has occured frequently enough
     self.c_th = 1
