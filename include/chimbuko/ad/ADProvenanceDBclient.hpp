@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <queue>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
+#include <chimbuko/util/PerfStats.hpp>
 
 namespace chimbuko{
 
@@ -83,8 +84,10 @@ namespace chimbuko{
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+
+    PerfStats *m_stats; /**< Performance data gathering*/
   public:
-    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr){}
+    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr){}
 
     ~ADProvenanceDBclient();
     
@@ -197,6 +200,11 @@ namespace chimbuko{
      * @return A map between the variables and their values
      */
     std::unordered_map<std::string,std::string> execute(const std::string &code, const std::unordered_set<std::string>& vars) const;
+
+    /**
+     * @brief Link a PerfStats instance to monitor performance
+     */
+    void linkPerf(PerfStats *stats){ m_stats = stats; }
 
   };
 
