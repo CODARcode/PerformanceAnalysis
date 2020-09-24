@@ -13,6 +13,7 @@
 #include "chimbuko/ad/ADProvenanceDBclient.hpp"
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADglobalFunctionIndexMap.hpp"
+#include "chimbuko/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/ad/utils.hpp"
 #include <queue>
 

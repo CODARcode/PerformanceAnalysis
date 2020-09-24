@@ -212,6 +212,7 @@ namespace chimbuko {
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
+    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
 #endif
     mutable PerfStats m_perf; /**< Performance data */
     

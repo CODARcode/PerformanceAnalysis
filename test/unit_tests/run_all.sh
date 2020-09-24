@@ -13,6 +13,7 @@ set -o pipefail
 ./ad/ADMetadataParser
 ./ad/ADCounter
 ./ad/ADglobalFunctionIndexMap
+./ad/ADNormalEventProvenance
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

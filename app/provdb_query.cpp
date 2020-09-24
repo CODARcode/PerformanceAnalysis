@@ -5,6 +5,7 @@
 #error "Provenance DB build is not enabled"
 #endif
 
+#include<nlohmann/json.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>
@@ -65,9 +66,15 @@ void filter(ADProvenanceDBclient &client,
 
   std::vector<std::string> result = client.filterData(coll, query);
 
+  std::cout << "[" << std::endl;
+
   for(size_t i=0;i<result.size();i++){
-    std::cout << result[i] << std::endl;
+    nlohmann::json entry = nlohmann::json::parse(result[i]);
+    std::cout << entry.dump(4) << std::endl;
+    if(i!=result.size() -1)
+      std::cout << "," << std::endl;    
   }
+  std::cout << "]" << std::endl;
 }
 
 void execute(ADProvenanceDBclient &client,
