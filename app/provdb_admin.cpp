@@ -93,9 +93,11 @@ int main(int argc, char** argv) {
   //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
   //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
   //Generate a profile plot automatically by running margo-gen-profile in the run directory
-  auto margo_instance = engine.get_margo_instance();
-  margo_diag_start(margo_instance);
-  margo_profile_start(margo_instance);
+  // auto margo_instance = engine.get_margo_instance();
+  // margo_diag_start(margo_instance);
+  // margo_profile_start(margo_instance);
+
+  //Edit: This doesn't seem very reliable, often not outputing all the data. Use the MARGO_ENABLE_PROFILING for more reliable output
 #endif
 
   engine.enable_remote_shutdown();
