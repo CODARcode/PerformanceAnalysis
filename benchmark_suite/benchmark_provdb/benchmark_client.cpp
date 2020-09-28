@@ -35,7 +35,7 @@ struct Args{
     winsize=10;
     comm_messages_per_winevent = 2;
     anomalies_per_cycle = 10;
-    normal_events_per_cycle = 100; //capture max 1 event per function per cycle (this should be changed!)
+    normal_events_per_cycle = 10; //capture max 1 normal event per anomaly
     cycle_time_ms = 1000;
   }
 };
@@ -148,7 +148,7 @@ int main(int argc, char **argv){
     stats.add("anomaly_prov_send_ms", timer.elapsed_ms());
 
     timer.start();
-    provdb_client.sendMultipleData(normalevent_prov, ProvenanceDataType::AnomalyData);
+    provdb_client.sendMultipleData(normalevent_prov, ProvenanceDataType::NormalExecData);
     stats.add("normalevent_prov_send_ms", timer.elapsed_ms());
     
     timer.start();
