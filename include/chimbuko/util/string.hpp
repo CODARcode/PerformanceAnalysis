@@ -10,24 +10,40 @@ namespace chimbuko{
 template<typename T>
 T strToAny(const std::string &s){
   T out;
-  std::stringstream ss; ss << s; ss >> out;
+  std::istringstream ss(s); ss >> out;
   if(ss.fail()) throw std::runtime_error("Failed to parse \"" + s + "\"");
   return out;
 }
 template<>
 inline std::string strToAny<std::string>(const std::string &s){ return s; }
 
+template<>
+inline bool strToAny<bool>(const std::string &s){
+  bool out;
+  std::istringstream ss(s); ss >> std::boolalpha >> out;
+  if(ss.fail()){
+    std::istringstream ss2(s); ss2 >> out;
+    if(ss2.fail()) throw std::runtime_error("Failed to parse \"" + s + "\"");
+  }
+  return out;
+}
+
 /**
  * @brief Convert any type to string
  */
 template<typename T>
 std::string anyToStr(const T &v){
-  std::string out;
-  std::stringstream ss; ss << v; ss >> out;
-  return out;
+  std::stringstream ss; ss << v;
+  return ss.str();
 }
 template<>
 inline std::string anyToStr<std::string>(const std::string &s){ return s; }
+
+template<>
+inline std::string anyToStr<bool>(const bool &v){ 
+  std::stringstream ss; ss << std::boolalpha << v;
+  return ss.str();
+}
 
   
 /**

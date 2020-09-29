@@ -4,7 +4,7 @@
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif
-
+#include "chimbuko/util/commandLineParser.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -43,44 +43,36 @@ void client_goodbye(const tl::request& req, const int rank) {
   std::cout << "Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
 }
 
+struct ProvdbArgs{
+  std::string ip;
+  std::string engine;
+  bool autoshutdown;
+
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true){}
+};
+
 
 
 int main(int argc, char** argv) {
-  if(argc < 2){
-    std::cout << "Usage: provdb_admin <ip:port> <options>\n"
-	      << "ip:port should specify the ip address and port. Using an empty string will cause it to default to Mochi's default ip/port.\n"
-	      << "Options:\n"
-	      << "-engine Specify the Thallium/Margo engine type (default \"ofi+tcp\""
-	      << "-autoshutdown If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected\n"
-	      << std::endl;
-    return 0;
-  }
-
   //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
   //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
   //Using an empty string will cause it to default to Mochi's default ip/port
+  chimbuko::commandLineParser<ProvdbArgs> parser;
+  addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
+  addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
+  addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
   
-  std::string ip = argv[1];
-
-  std::string eng_opt = "ofi+tcp";
-  bool autoshutdown = false;
-
-  int arg=2;
-  while(arg < argc){
-    std::string sarg = argv[arg];
-    if(sarg == "-engine"){
-      eng_opt = argv[arg+1];
-      arg+=2;
-    }else if(sarg == "-autoshutdown"){
-      autoshutdown = true;
-      arg++;
-    }else{
-      throw std::runtime_error("Unknown option: " + sarg);
-    }
+  if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+    parser.help(std::cout);
+    return 0;
   }
-  
-  if(ip.size() > 0){
-    eng_opt += std::string("://") + argv[1];
+
+  ProvdbArgs args;
+  parser.parseCmdLineArgs(args, argc, argv);
+ 
+  std::string eng_opt = args.engine;
+  if(args.ip.size() > 0){
+    eng_opt += std::string("://") + args.ip;
   }
 
   //Initialize provider engine
@@ -144,7 +136,7 @@ int main(int argc, char** argv) {
       tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
       
       //If at least one client has previously connected but none are now connected, shutdown the server
-      if(autoshutdown && a_client_has_connected && connected.size() == 0) break;
+      if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
     }
 
     std::cout << "Admin detaching database" << std::endl;

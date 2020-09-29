@@ -1,6 +1,6 @@
 /** @file */
 #pragma once
-
+#include<iostream>
 #include<vector>
 #include<memory>
 #include<string>
@@ -214,6 +214,16 @@ namespace chimbuko{
 	if(!success) throw std::runtime_error("Could not parse argument pair:" + arg + " " + val);
       }
     }
+
+    /**
+     * @brief Parse the command line arguments into the structure
+     *
+     * Parsing will commence with second entry of argv
+     */
+    void parseCmdLineArgs(ArgsStruct &into, int argc, char** argv){
+      parse(into, argc-1, (const char**)(argv+1));
+    }
+
     /**
      * @brief Print the help information for all the args that can be parsed
      */
