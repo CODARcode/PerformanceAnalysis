@@ -35,6 +35,7 @@ namespace chimbuko {
     //Parameters associated with the provenance database
     std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
 				< Has format "ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}". Should also accept "tcp://${IP_ADDR}:${PORT}" */
+    int nprovdb_shards; /**< Number of database shards*/
 #endif
 
     unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
@@ -56,7 +57,7 @@ namespace chimbuko {
 		      pserver_addr(""), hpserver_nthr(1),
 		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), anom_win_size(10),
 #ifdef ENABLE_PROVDB
-		      provdb_addr(""),
+		      provdb_addr(""), nprovdb_shards(1),
 #endif
 		      perf_outputpath(""), perf_step(10),
 		      only_one_frame(false), interval_msec(0)		      

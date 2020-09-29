@@ -1,6 +1,7 @@
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/util/string.hpp>
 #include <mpi.h>
 #include <chrono>
 #include <thread>
@@ -12,9 +13,11 @@ using namespace chimbuko;
 int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
   Verbose::set_verbose(true);
-  assert(argc >= 2);
+  assert(argc >= 3);
   std::string addr = argv[1];
 
+  int shards = strToAny<int>(argv[2]);
+  
   std::cout << "Provenance DB admin is on address: " << addr << std::endl;
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -22,7 +25,7 @@ int main(int argc, char** argv) {
 
   ADProvenanceDBclient client(rank);
   std::cout << "Client with rank " << rank << " attempting connection" << std::endl;
-  client.connect(addr);
+  client.connect(addr, shards);
 
   std::this_thread::sleep_for( std::chrono::seconds(5));
 

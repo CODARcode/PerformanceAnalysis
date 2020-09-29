@@ -5,6 +5,7 @@
 #error "Provenance DB build is not enabled"
 #endif
 #include "chimbuko/util/commandLineParser.hpp"
+#include "chimbuko/util/string.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -47,8 +48,9 @@ struct ProvdbArgs{
   std::string ip;
   std::string engine;
   bool autoshutdown;
+  int nshards;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1){}
 };
 
 
@@ -61,7 +63,8 @@ int main(int argc, char** argv) {
   addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
   addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
   addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
-  
+  addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
+
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
     return 0;
@@ -69,7 +72,9 @@ int main(int argc, char** argv) {
 
   ProvdbArgs args;
   parser.parseCmdLineArgs(args, argc, argv);
- 
+
+  if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
+
   std::string eng_opt = args.engine;
   if(args.ip.size() > 0){
     eng_opt += std::string("://") + args.ip;
@@ -112,20 +117,29 @@ int main(int argc, char** argv) {
 
   std::cout << "Provider is running on " << addr << std::endl;
 
-  {
-    std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
+  std::vector<std::string> db_shard_names(args.nshards);
 
+  {
     sonata::Admin admin(engine);
-    std::cout << "Admin creating database" << std::endl;
-    admin.createDatabase(addr, 0, "provdb", "unqlite", config);
+    std::cout << "Admin creating " << args.nshards << " database shards" << std::endl;
+    
+    for(int s=0;s<args.nshards;s++){
+      std::string db_name = chimbuko::stringize("provdb.%d",s);
+      std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+      std::cout << "Shard " << s << ": " << db_name << " " << config << std::endl;
+      admin.createDatabase(addr, 0, db_name, "unqlite", config);
+      db_shard_names[s] = db_name;
+    }
 
     //Create the collections
     {
       sonata::Client client(engine);
-      sonata::Database db = client.open(addr, 0, "provdb");
-      db.create("anomalies");
-      db.create("metadata");
-      db.create("normalexecs");
+      for(int s=0;s<args.nshards;s++){
+	sonata::Database db = client.open(addr, 0, db_shard_names[s]);
+	db.create("anomalies");
+	db.create("metadata");
+	db.create("normalexecs");
+      }
       std::cout << "Admin initialized collections" << std::endl;
     }
 
@@ -139,8 +153,10 @@ int main(int argc, char** argv) {
       if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
     }
 
-    std::cout << "Admin detaching database" << std::endl;
-    admin.detachDatabase(addr, 0, "provdb");
+    std::cout << "Admin detaching database shards" << std::endl;
+    for(int s=0;s<args.nshards;s++){
+      admin.detachDatabase(addr, 0, db_shard_names[s]);
+    }
 
     std::cout << "Admin shutting down server" << std::endl;
     if(!engine_is_finalized)

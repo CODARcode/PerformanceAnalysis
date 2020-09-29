@@ -94,8 +94,9 @@ namespace chimbuko{
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
+     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
      */
-    void connect(const std::string &addr);
+    void connect(const std::string &addr, const int nshards);
 
     /**
      * @brief Check if connnection has been established to provider
