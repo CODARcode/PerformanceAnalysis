@@ -13,7 +13,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port} -autoshutdown true -nshards ${shards} &
     admin=$!
-    sleep 1
+    sleep 4
 
     mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address) ${shards}
 

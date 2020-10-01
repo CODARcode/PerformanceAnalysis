@@ -14,7 +14,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port}  -autoshutdown false -nshards ${shards} &
     admin=$!
-    sleep 1
+    sleep 4
 
     mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address) ${shards}
 
@@ -28,7 +28,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port}  -autoshutdown false -nshards ${shards}  &
     admin=$!
-    sleep 1
+    sleep 4
 
     mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address) ${shards}
 
@@ -43,7 +43,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
     admin=$!
-    sleep 1
+    sleep 4
 
     ./mainProvDBclient $(cat provider.address) ${shards}
 
