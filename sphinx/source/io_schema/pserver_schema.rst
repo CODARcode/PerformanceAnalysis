@@ -72,8 +72,9 @@ The schema for the **'anomaly_stats'** object is as follows:
 |  **'func'**:    *Statistics on anomalies broken down by function, collected over entire run to-date (array)*
 |      [
 |        {
-|          **'name'**: *function name*,
+|          **'app'**: *program index*,
 |          **'fid'**: *global function index*,
+|          **'name'**: *function name*,
 |          **'exclusive'**:  *Statistics of runtime exclusive of children*
 |                 {
 |                   **'accumulate'**: *unused*,

@@ -115,12 +115,12 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   dmap[func_id].push_back(it1);
   dmap[func_id].push_back(it2);
 
-  ADLocalFuncStatistics loc(0);
+  ADLocalFuncStatistics loc(pid,rid,0);
   loc.gatherStatistics(&dmap);
   loc.gatherAnomalies(anom);
 
   GlobalAnomalyStats glob(std::vector<int>(1,2)); //so rid=1 makes sense
-  glob.add_anomaly_data_json(loc.get_json_state(rid).dump());
+  glob.add_anomaly_data_json(loc.get_json_state().dump());
 
   PSstatSender stat_sender;
   int calls = 0;

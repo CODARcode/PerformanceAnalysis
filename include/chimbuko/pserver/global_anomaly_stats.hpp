@@ -17,6 +17,14 @@ namespace chimbuko{
    */
   class GlobalAnomalyStats{
   public:
+    /**< A struct holding statistics information on a function*/
+    struct FuncStats{
+      std::string func; /**< Func name */
+      RunStats func_anomaly; /**< Statistics on number of anomalies*/
+      RunStats inclusive; /**< Statistics on number of function timings inclusive of children*/
+      RunStats exclusive; /**< Statistics on number of function timings exclusive of children*/
+    };
+
     GlobalAnomalyStats(){}
     ~GlobalAnomalyStats();
 
@@ -63,13 +71,15 @@ namespace chimbuko{
 
     /**
      * @brief Update internal data to include additional information
+     * @param pid Program index
      * @param id Function index
      * @param name Function name
      * @param n_anomaly The number of anomalies detected
      * @param inclusive Statistics on inclusive timings
      * @param exclusive Statistics on exclusive timings
      */
-    void update_func_stat(unsigned long id, 
+    void update_func_stat(int pid,
+			  unsigned long id, 
 			  const std::string& name, 
 			  unsigned long n_anomaly,
 			  const RunStats& inclusive, 
@@ -91,15 +101,13 @@ namespace chimbuko{
      */
     nlohmann::json collect();
 
-  protected:
+  protected:    
+    int m_nprograms; /**< Number of programs in workflow*/
     // for global anomaly statistics
     std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
     // for global function statistics
     mutable std::mutex m_mutex_func;
-    std::unordered_map<unsigned long, std::string> m_func; /**< Map of index to function name */
-    std::unordered_map<unsigned long, RunStats> m_func_anomaly; /**< Map of index to statistics on number of anomalies */
-    std::unordered_map<unsigned long, RunStats> m_inclusive; /**< Map of index to statistics on function timings inclusive of children */
-    std::unordered_map<unsigned long, RunStats> m_exclusive; /**< Map of index to statistics on function timings exclusive of children */
+    std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to statistics on the function*/
   };
 
   /**

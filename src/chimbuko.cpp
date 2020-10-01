@@ -380,7 +380,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     
     if(m_net_client && m_net_client->use_ps()){
       //Gather function profile and anomaly statistics and send to the pserver
-      ADLocalFuncStatistics prof_stats(step, &m_perf);
+      ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
       prof_stats.updateGlobalStatistics(*m_net_client);

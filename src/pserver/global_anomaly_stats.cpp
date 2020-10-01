@@ -11,38 +11,38 @@ GlobalAnomalyStats::GlobalAnomalyStats(const std::vector<int>& n_ranks)
 
 void GlobalAnomalyStats::reset_anomaly_stat(const std::vector<int>& n_ranks)
 {
-    if (n_ranks.size() == 0)
-        return;
+  m_nprograms = n_ranks.size();
 
-    if (m_anomaly_stats.size())
-    {
-        for (auto item: m_anomaly_stats)
-        {
-            delete item.second;
-        }
-        m_anomaly_stats.clear();
+  if (m_nprograms == 0)
+    return;
+  
+  if (m_anomaly_stats.size()){
+    for (auto item: m_anomaly_stats){
+      delete item.second;
     }
+    m_anomaly_stats.clear();
+  }
 
-    // pre-allocate AnomalyStat to avoid race-condition
-    for (int app_id = 0; app_id < (int)n_ranks.size(); app_id++) {
-        for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++){
-            std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
-            m_anomaly_stats[stat_id] = new AnomalyStat(true);
-        }
+  // pre-allocate AnomalyStat to avoid race-condition
+  for (int app_id = 0; app_id < m_nprograms; app_id++) {
+    for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++){
+      std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
+      m_anomaly_stats[stat_id] = new AnomalyStat(true);
     }
+  }
 }
 
 GlobalAnomalyStats::~GlobalAnomalyStats()
 {
-    for (auto pair: m_anomaly_stats)
-        delete pair.second;
+  for (auto pair: m_anomaly_stats)
+    delete pair.second;
 }
 
 void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data)
 {
   nlohmann::json j = nlohmann::json::parse(data);
   if (j.count("anomaly"))
-    {
+    { //no need for lock here as data is kept separately for each rank
       AnomalyData d(j["anomaly"].dump());
       if (m_anomaly_stats.count(d.get_stat_id()))
 	m_anomaly_stats[d.get_stat_id()]->add(d);
@@ -51,11 +51,10 @@ void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data)
   if (j.count("func"))
     {
       for (auto f: j["func"]) {
-	update_func_stat(
-			 f["id"], f["name"], f["n_anomaly"],
+	update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
 			 RunStats::from_strstate(f["inclusive"].dump()), 
 			 RunStats::from_strstate(f["exclusive"].dump())
-			 );
+			 ); //locks
       }
     } 
 }
@@ -67,7 +66,7 @@ void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
   ADLocalFuncStatistics::State j;
   j.deserialize_cerealpb(data);
 
-  {
+  {//no need for lock here as data is kept separately for each rank
     const AnomalyData &d = j.anomaly;
     if (m_anomaly_stats.count(d.get_stat_id()))
       m_anomaly_stats[d.get_stat_id()]->add(d);
@@ -75,11 +74,10 @@ void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
 
   {
     for (auto f: j.func) {
-      update_func_stat(
-		       f.id, f.name, f.n_anomaly,
+      update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
 		       RunStats::from_state(f.inclusive), 
 		       RunStats::from_state(f.exclusive)
-		       );
+		       ); //locks
     }
   } 
 }
@@ -142,27 +140,31 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data()
     return jsonObjects;
 }
 
-nlohmann::json GlobalAnomalyStats::collect_func_data() const
-{
-    nlohmann::json jsonObjects = nlohmann::json::array();
-    {
-        std::lock_guard<std::mutex> _(m_mutex_func);
-        for (auto pair: m_func)
-        {
-            nlohmann::json object;
-            object["fid"] = pair.first;
-            object["name"] = pair.second;
-            object["stats"] = m_func_anomaly.find(pair.first)->second.get_json();
-            object["inclusive"] = m_inclusive.find(pair.first)->second.get_json();
-            object["exclusive"] = m_exclusive.find(pair.first)->second.get_json();
-            jsonObjects.push_back(object);
-        }
+nlohmann::json GlobalAnomalyStats::collect_func_data() const{
+  nlohmann::json jsonObjects = nlohmann::json::array();
+  {
+    std::lock_guard<std::mutex> _(m_mutex_func);
+    for(const auto &p : m_funcstats){
+      unsigned long pid = p.first;
+      for(const auto &f : p.second){
+	unsigned long fid = f.first;
+	const FuncStats &fstat = f.second;
+
+	nlohmann::json object;
+	object["app"] = pid;
+	object["fid"] = fid;
+	object["name"] = fstat.func;
+	object["stats"] = fstat.func_anomaly.get_json();
+	object["inclusive"] = fstat.inclusive.get_json();
+	object["exclusive"] = fstat.exclusive.get_json();
+	jsonObjects.push_back(object);
+      }
     }
-    return jsonObjects;
+  }
+  return jsonObjects;
 }
 
-nlohmann::json GlobalAnomalyStats::collect()
-{
+nlohmann::json GlobalAnomalyStats::collect(){
     nlohmann::json object;
     object["anomaly"] = collect_stat_data();
     if (object["anomaly"].size() == 0)
@@ -174,15 +176,24 @@ nlohmann::json GlobalAnomalyStats::collect()
 }
 
 
-void GlobalAnomalyStats::update_func_stat(unsigned long id, const std::string& name, 
-    unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive)
-{
-    std::lock_guard<std::mutex> _(m_mutex_func);   
-    m_func[id] = name;
-    if (m_func_anomaly.count(id) == 0) {
-        m_func_anomaly[id].set_do_accumulate(true);
-    }
-    m_func_anomaly[id].push(n_anomaly);
-    m_inclusive[id] += inclusive;
-    m_exclusive[id] += exclusive;
+void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::string& name, 
+					  unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
+  std::lock_guard<std::mutex> _(m_mutex_func);
+  //Determine if previously seen
+  bool first_encounter = false;
+  auto pit = m_funcstats.find(pid);
+  if(pit == m_funcstats.end() || pit->second.count(id) == 0) 
+    first_encounter = true;
+
+  //Get stats struct (will create entries if needed)
+  FuncStats &fstats = m_funcstats[pid][id];   
+
+  if(first_encounter){
+    fstats.func = name;
+    fstats.func_anomaly.set_do_accumulate(true);
+  }
+
+  fstats.func_anomaly.push(n_anomaly);
+  fstats.inclusive += inclusive;
+  fstats.exclusive += exclusive;
 }
