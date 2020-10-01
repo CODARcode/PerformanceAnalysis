@@ -61,7 +61,7 @@ int main(int argc, char ** argv)
         // Init. AD module
         // First, init io to make sure file (or connection) handler
         // -----------------------------------------------------------------------
-        parser = new ADParser(data_dir + "/" + inputFile, world_rank, engineType);
+        parser = new ADParser(data_dir + "/" + inputFile, 0, world_rank, engineType);
 
         // -----------------------------------------------------------------------
         // Start analysis

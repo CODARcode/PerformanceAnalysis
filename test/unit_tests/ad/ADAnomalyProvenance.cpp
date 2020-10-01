@@ -191,10 +191,10 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
     
   ADMetadataParser metadata;
   std::vector<MetaData_t> mdata = {
-    MetaData_t(0, gpu_thr, "CUDA Context", "8"),
-    MetaData_t(0, gpu_thr, "CUDA Stream", "1"),
-    MetaData_t(0, gpu_thr, "CUDA Device", "7"),
-    MetaData_t(0, gpu_thr, "GPU[7] Device Name", "Fake GPU")
+    MetaData_t(0,0, gpu_thr, "CUDA Context", "8"),
+    MetaData_t(0,0, gpu_thr, "CUDA Stream", "1"),
+    MetaData_t(0,0, gpu_thr, "CUDA Device", "7"),
+    MetaData_t(0,0, gpu_thr, "GPU[7] Device Name", "Fake GPU")
   };
   metadata.addData(mdata);
   EXPECT_EQ( metadata.isGPUthread(gpu_thr), true );

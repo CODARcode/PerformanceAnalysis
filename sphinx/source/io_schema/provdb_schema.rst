@@ -149,6 +149,7 @@ Metadata are stored in the metadata collection in the following JSON schema:
 
 | {
 |    **"descr"**: *String description (key) of metadata entry*
+|    **"pid"**: *Program index from which metadata originated*,
 |    **"rid"**: *Process rank from which metadata originated*,
 |    **"tid"**: *Process thread associated with metadata*,
 |    **"value"**: *Value of the metadata entry*,

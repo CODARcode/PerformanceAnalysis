@@ -6,7 +6,8 @@ using namespace chimbuko;
 
 void ChimbukoParams::print() const{
   std::cout << "\n" 
-	    << "rank       : " << rank << "\n"
+	    << "Program Idx: " << program_idx << "\n"
+	    << "Rank       : " << rank << "\n"
 	    << "Engine     : " << trace_engineType << "\n"
 	    << "BP in dir  : " << trace_data_dir << "\n"
 	    << "BP file    : " << trace_inputFile << "\n"
@@ -14,15 +15,15 @@ void ChimbukoParams::print() const{
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nVIS Addr   : " << viz_addr
-	    << "\nsigma      : " << outlier_sigma
-	    << "\nwindow size: " << anom_win_size
+	    << "\nSigma      : " << outlier_sigma
+	    << "\nWindow size: " << anom_win_size
 	  
 	    << "\nInterval   : " << interval_msec << " msec\n"
 #ifdef ENABLE_PROVDB
 	    << "\nProvDB addr: " << provdb_addr << "\n"
 #endif
-	    << "perf. metric outpath : " << perf_outputpath << "\n"
-	    << "perf. step   : " << perf_step << "\n"
+	    << "Perf. metric outpath : " << perf_outputpath << "\n"
+	    << "Perf. step   : " << perf_step << "\n"
 	    << std::endl;
 }
 
@@ -82,7 +83,7 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
-  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.rank, m_params.trace_engineType);
+  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType);
   m_parser->linkPerf(&m_perf);  
 }
 

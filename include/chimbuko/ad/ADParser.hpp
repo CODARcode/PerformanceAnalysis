@@ -16,6 +16,8 @@ namespace chimbuko {
    * Note: The "function index" assigned to each function by Tau is not necessarily the same for every node as it depends on the order in which the function
    *       is encountered. To deal with this, if the parameter server is running it maintains a global mapping of function name to an index, which is 
    *       synchronized to the parser (providing the net client is linked) and the local index is replaced by the global index in the incoming data stream.
+   *
+   * Note2: The "program index" assigned by Tau is defunct (always 0). We must therefore replace it manually with a correct index to support workflows
    */
   class ADParser {
 
@@ -24,11 +26,12 @@ namespace chimbuko {
      * @brief Construct a new ADParser object
      * 
      * @param inputFile ADIOS2 BP filename
+     * @param program_index The index to assign to the program whose trace data is being parsed
      * @param rank Rank of current process
      * @param engineType BPFile or SST
      * @param openTimeoutSeconds Timeout for opening ADIOS2 stream
      */
-    ADParser(std::string inputFile, int rank, std::string engineType="BPFile", int openTimeoutSeconds = 60);
+    ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType="BPFile", int openTimeoutSeconds = 60);
     /**
      * @brief Destroy the ADParser object
      * 
@@ -297,6 +300,7 @@ namespace chimbuko {
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
     int  m_rank;                                        /**< Rank of current process */
+    unsigned long m_program_idx;                        /**< Program index*/
 
     std::unordered_set<std::string> m_metadata_seen;    /**< Metadata descriptions that have been seen */
     std::vector<MetaData_t> m_new_metadata;             /**< New metadata that appeared on this step */

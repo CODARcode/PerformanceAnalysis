@@ -306,15 +306,16 @@ nlohmann::json CommData_t::get_json() const
     };
 }
 
-MetaData_t::MetaData_t(unsigned long rank, unsigned long tid, const std::string &descr, const std::string &value):
-  m_rank(rank), m_tid(tid), m_descr(descr), m_value(value){}
+MetaData_t::MetaData_t(unsigned long pid, unsigned long rid, unsigned long tid, const std::string &descr, const std::string &value):
+  m_pid(pid), m_rid(rid), m_tid(tid), m_descr(descr), m_value(value){}
 
 nlohmann::json MetaData_t::get_json() const{
   return {
-	  {"rid",m_rank},
-	  {"tid",m_tid},
+    {"pid", m_pid}, 
+      {"rid",m_rid},
+	{"tid",m_tid},
 	  {"descr",m_descr},
-	  {"value",m_value}
+	    {"value",m_value}
   };
 }
 
