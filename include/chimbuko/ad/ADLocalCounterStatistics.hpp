@@ -10,9 +10,6 @@ namespace chimbuko{
 
   /**
    * @brief A class that gathers local counter statistics and communicates them to the parameter server
-   * @param step The current io step
-   * @param which_counters The set of counters we are interested in (not all might appear in any given run). If nullptr all counters are accepted.
-   * @param perf A pointer to a PerfStats instance for performance data monitoring
    */
   class ADLocalCounterStatistics{
   public:
@@ -21,6 +18,7 @@ namespace chimbuko{
      */
     struct State{
       struct CounterData{
+	unsigned long pid; /**< Program idx*/
 	std::string name; /**< Counter name*/
 	RunStats::State stats; /**< Counter value statistics */
 	
@@ -29,7 +27,7 @@ namespace chimbuko{
 	 */
 	template<class Archive>
 	void serialize(Archive & archive){
-	  archive(name,stats);
+	  archive(pid,name,stats);
 	}
       };
       std::vector<CounterData> counters; /**< Statistics for all counters */
@@ -53,10 +51,16 @@ namespace chimbuko{
       void deserialize_cerealpb(const std::string &strstate);
     };     
 
-
-    ADLocalCounterStatistics(const int step,
+    /**
+     * @brief Constructor
+     * @param program_idx The program index
+     * @param step The io step
+     * @param which_counters Pointer to a set of counters that will be collected (not all might appear in any given run). Use nullptr to collect all.
+     * @param perf Attach a PerfStats object into which performance metrics are accumulated
+     */
+    ADLocalCounterStatistics(const unsigned long program_idx, const int step,
 			     const std::unordered_set<std::string> *which_counters, PerfStats *perf = nullptr):
-      m_step(step), m_which_counter(which_counters), m_perf(perf)
+      m_program_idx(program_idx), m_step(step), m_which_counter(which_counters), m_perf(perf)
     {}
 				
     /**
@@ -114,6 +118,7 @@ namespace chimbuko{
      */
     static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step);
 
+    unsigned long m_program_idx; /**< Program idx*/
     int m_step; /**< io step */
     const std::unordered_set<std::string> *m_which_counter; /** The set of counters whose statistics we are accumulating */
     std::unordered_map<std::string , RunStats> m_stats; /**< map of counter to statistics */

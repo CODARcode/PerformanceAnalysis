@@ -386,7 +386,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
       prof_stats.updateGlobalStatistics(*m_net_client);
 
       //Gather counter statistics and send to pserver
-      ADLocalCounterStatistics count_stats(step, nullptr, &m_perf); //currently collect all counters
+      ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
       count_stats.gatherStatistics(m_counter->getCountersByIndex());
       count_stats.updateGlobalStatistics(*m_net_client);
     }

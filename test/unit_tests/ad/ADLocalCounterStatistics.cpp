@@ -32,7 +32,7 @@ TEST(ADLocalCounterStatisticsTest, GathersCorrectly){
   for(auto it = counters.begin(); it != counters.end(); it++)
     cntrs[counter_id].push_back(it);
   
-  ADLocalCounterStatistics cs(77, &which_counters);
+  ADLocalCounterStatistics cs(pid, 77, &which_counters);
   
   cs.gatherStatistics(cntrs);
   
@@ -52,7 +52,9 @@ TEST(ADLocalCounterStatisticsTest, GathersCorrectly){
 TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   std::string nm = "MyCounter1";
   std::unordered_set<std::string> which_counters = {nm};
-  ADLocalCounterStatistics cs(0, &which_counters);
+
+  unsigned long pid = 33;
+  ADLocalCounterStatistics cs(pid, 0, &which_counters);
 
   RunStats a,b, sum;
   for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); }
@@ -63,16 +65,20 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   cs.setStats(nm, a);
   glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
   
-  auto stats = glob.get_stats();
-  EXPECT_EQ( stats.count(nm), 1 );
-  EXPECT_EQ( stats[nm], a );
+  auto gstats = glob.get_stats();
+  auto pit = gstats.find(pid);
+  EXPECT_NE( pit, gstats.end() );
+  EXPECT_EQ( pit->second.count(nm), 1 );
+  EXPECT_EQ( pit->second[nm], a );
   
   cs.setStats(nm, b);
   glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
 
-  stats = glob.get_stats();
-  EXPECT_EQ( stats.count(nm), 1 );
-  EXPECT_EQ( stats[nm], sum );
+  gstats = glob.get_stats();
+  pit = gstats.find(pid);
+  EXPECT_NE( pit, gstats.end() );
+  EXPECT_EQ( pit->second.count(nm), 1 );
+  EXPECT_EQ( pit->second[nm], sum );
 }
 
 
@@ -145,7 +151,9 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
 
   std::string nm = "MyCounter1";
   std::unordered_set<std::string> which_counters = {nm};
-  ADLocalCounterStatistics cs(0, &which_counters);
+
+  unsigned long pid = 33;
+  ADLocalCounterStatistics cs(pid, 0, &which_counters);
 
   RunStats a,b, sum;
   for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); }
@@ -196,10 +204,11 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
   ps_thr.join();
   out_thr.join();
   
-  auto stats = glob.get_stats();
-  EXPECT_EQ( stats.count(nm), 1 );
-  EXPECT_EQ( stats[nm], sum );
-
+  auto gstats = glob.get_stats();
+  auto pit = gstats.find(pid);
+  EXPECT_NE( pit, gstats.end() );
+  EXPECT_EQ( pit->second.count(nm), 1 );
+  EXPECT_EQ( pit->second[nm], sum );
 		         
 #else
 #error "Requires compiling with MPI or ZMQ net"

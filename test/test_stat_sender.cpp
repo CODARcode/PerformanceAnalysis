@@ -167,7 +167,7 @@ TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)
 
   std::unordered_set<std::string> which_counters = {counter};
 
-  ADLocalCounterStatistics cs(77, &which_counters);
+  ADLocalCounterStatistics cs(33,77, &which_counters);
   
   RunStats stats;
   for(int i=0;i<100;i++) stats.push(double(i));
@@ -196,7 +196,7 @@ TEST(PSstatSenderTest, DiskWriteWorks)
 
   std::unordered_set<std::string> which_counters = {counter};
 
-  ADLocalCounterStatistics cs(77, &which_counters);
+  ADLocalCounterStatistics cs(33, 77, &which_counters);
   
   RunStats stats;
   for(int i=0;i<100;i++) stats.push(double(i));

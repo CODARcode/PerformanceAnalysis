@@ -11,6 +11,7 @@ The parameter server optionally sends data to an external webserver as JSON-form
 |    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array)*
 |        [
 |	    {
+|	      **'app'**: *Program index*,
 |	      **'counter'**: *Counter description*,
 |	      **'stats'**:   *Global aggregated statistics on counter values since start of run*,
 |	         {
