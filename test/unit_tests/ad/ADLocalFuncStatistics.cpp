@@ -58,7 +58,7 @@ TEST(ADLocalFuncStatisticsTestUpdateGlobalStatisticsWithPS, Works){
   std::cout << "Binary size " << loc.get_state().serialize_cerealpb().size() << std::endl;
 
 
-  GlobalAnomalyStats glob({0,0,2}); //expect 2 ranks for program 2
+  GlobalAnomalyStats glob;
 
   std::thread ps_thr([&]{
       int argc; char** argv;

@@ -119,7 +119,7 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   loc.gatherStatistics(&dmap);
   loc.gatherAnomalies(anom);
 
-  GlobalAnomalyStats glob(std::vector<int>(1,2)); //so rid=1 makes sense
+  GlobalAnomalyStats glob;
   glob.add_anomaly_data_json(loc.get_json_state().dump());
 
   PSstatSender stat_sender;

@@ -22,7 +22,6 @@ using namespace chimbuko;
 
 struct hpserverArgs{
   int nt;
-  int n_ad_modules;
   std::string logdir;
   std::string ws_addr;
 
@@ -38,15 +37,13 @@ struct hpserverArgs{
 
   std::string stat_outputdir;
 
-  hpserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
+  hpserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
   {}
 
   static commandLineParser<hpserverArgs> &getParser(){
     static bool init = false;
     static commandLineParser<hpserverArgs> p;
     if(!init){
-      addMandatoryCommandLineArg(p, n_ad_modules, "Set the number of AD modules (ranks)");      
-
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
@@ -91,8 +88,6 @@ int main (int argc, char ** argv){
   std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
   
-  for(int t=0;t<args.nt;t++) global_func_stats[t].reset_anomaly_stat({args.n_ad_modules});
-
   if(args.load_params_set){
     std::cout << "Loading parameters from input file " << args.load_params << std::endl;
     std::ifstream in(args.load_params);
@@ -112,7 +107,7 @@ int main (int argc, char ** argv){
   try {
     std::cout << "Run hparameter server with " << args.nt << " threads" << std::endl;
 
-    if ( ( args.ws_addr.size() || args.stat_outputdir.size() ) && args.n_ad_modules){
+    if (args.ws_addr.size() || args.stat_outputdir.size()){
       std::cout << "Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";

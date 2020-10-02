@@ -10,7 +10,7 @@ if [ -f "../bin/provdb_admin" ]; then
     ip=$(hostname -i)
     port=1234
 
-    ../bin/provdb_admin ${ip}:${port} &
+    ../bin/provdb_admin ${ip}:${port} -autoshutdown false &
     admin=$!
     sleep 1
 
@@ -21,7 +21,7 @@ if [ -f "../bin/provdb_admin" ]; then
     #Connect via na+sm
     rm -f provdb.unqlite  provider.address
 
-    ../bin/provdb_admin "" -engine "na+sm" &
+    ../bin/provdb_admin "" -engine "na+sm"  -autoshutdown false  &
     admin=$!
     sleep 1
 

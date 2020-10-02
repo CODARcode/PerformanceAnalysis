@@ -135,6 +135,17 @@ namespace chimbuko {
     AnomalyStat(bool do_accumulate=false);
     ~AnomalyStat();
 
+    AnomalyStat(const AnomalyStat &r);
+    AnomalyStat(AnomalyStat &&r);
+
+    AnomalyStat & operator=(const AnomalyStat &r);
+    AnomalyStat & operator=(AnomalyStat &&r);
+
+    /**
+     * @brief Set the stats object to accumulate the sum total
+     */
+    void set_do_accumulate(const bool v){ m_stats.set_do_accumulate(v); }
+
     /**
      * @brief Add the anomaly count from the input AnomalyData instance to the internal statistics
      * @param d The AnomalyData instance
@@ -168,7 +179,7 @@ namespace chimbuko {
      * Note: this function does not return a reference because the internal state is constantly changing. 
      *       Here we temporarily lock the state while generating the copy
      */
-    RunStats get_stats();
+    RunStats get_stats() const;
 
     /**
      * @brief Get the pointer to the data list

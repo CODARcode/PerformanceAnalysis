@@ -26,20 +26,6 @@ namespace chimbuko{
     };
 
     GlobalAnomalyStats(){}
-    ~GlobalAnomalyStats();
-
-
-    /**
-     * @brief Initialize global anomaly stats for a job spanning the given number of MPI ranks
-     * @param n_ranks A vector of integers where each entry i gives the number of ranks for program index i
-     */
-    GlobalAnomalyStats(const std::vector<int>& n_ranks);
-    
-    /**
-     * @brief Clear all collected anomaly statistics and revert to initial stat
-     * @param n_ranks A vector of integers where each entry i gives the number of ranks for program index i
-     */
-    void reset_anomaly_stat(const std::vector<int>& n_ranks);
 
     /**
      * @brief Merge internal statistics with those contained within the JSON-formatted string 'data'
@@ -68,6 +54,12 @@ namespace chimbuko{
      * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
      */
     size_t get_n_anomaly_data(const std::string& stat_id) const;
+
+    /**
+     * @brief Update internal data to include additional information
+     * @parag anom The anomaly data
+     */
+    void update_anomaly_stat(const AnomalyData &anom);
 
     /**
      * @brief Update internal data to include additional information
@@ -102,9 +94,9 @@ namespace chimbuko{
     nlohmann::json collect();
 
   protected:    
-    int m_nprograms; /**< Number of programs in workflow*/
     // for global anomaly statistics
-    std::unordered_map<std::string, AnomalyStat*> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
+    mutable std::mutex m_mutex_anom;
+    std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
     // for global function statistics
     mutable std::mutex m_mutex_func;
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to statistics on the function*/

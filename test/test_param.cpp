@@ -153,9 +153,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
     using namespace chimbuko;
 
-    const std::vector<int> N_RANKS = {2, 1};
-
-    GlobalAnomalyStats param(N_RANKS);
+    GlobalAnomalyStats param;
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
@@ -277,9 +275,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 {
     using namespace chimbuko;
 
-    const std::vector<int> N_RANKS = {2};
-
-    GlobalAnomalyStats param(N_RANKS);
+    GlobalAnomalyStats param;
 
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
@@ -302,7 +298,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
-                    {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
+		    {"pid",0}, {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
                     {"inclusive", l_inclusive.get_json_state()}, 
                     {"exclusive", l_exclusive.get_json_state()}
                 }
@@ -324,7 +320,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
-                    {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
+                    {"pid",0}, {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
                     {"inclusive", l_inclusive.get_json_state()}, 
                     {"exclusive", l_exclusive.get_json_state()}
                 }
@@ -345,7 +341,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
-                    {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
+                    {"pid",0}, {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
                     {"inclusive", l_inclusive.get_json_state()}, 
                     {"exclusive", l_exclusive.get_json_state()}
                 }
@@ -366,7 +362,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
         nlohmann::json::object({
             {"func", nlohmann::json::array({
                 {
-                    {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
+                    {"pid",0}, {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
                     {"inclusive", l_inclusive.get_json_state()}, 
                     {"exclusive", l_exclusive.get_json_state()}
                 }

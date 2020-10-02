@@ -4,59 +4,31 @@
 
 using namespace chimbuko;
 
-GlobalAnomalyStats::GlobalAnomalyStats(const std::vector<int>& n_ranks)
-{
-    reset_anomaly_stat(n_ranks);
-}
-
-void GlobalAnomalyStats::reset_anomaly_stat(const std::vector<int>& n_ranks)
-{
-  m_nprograms = n_ranks.size();
-
-  if (m_nprograms == 0)
-    return;
-  
-  if (m_anomaly_stats.size()){
-    for (auto item: m_anomaly_stats){
-      delete item.second;
-    }
-    m_anomaly_stats.clear();
+void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
+  std::lock_guard<std::mutex> _(m_mutex_anom);
+  auto sit = m_anomaly_stats.find(anom.get_stat_id());
+  if(sit == m_anomaly_stats.end()){
+    m_anomaly_stats[anom.get_stat_id()].set_do_accumulate(true);
+    sit = m_anomaly_stats.find(anom.get_stat_id());
   }
-
-  // pre-allocate AnomalyStat to avoid race-condition
-  for (int app_id = 0; app_id < m_nprograms; app_id++) {
-    for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++){
-      std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
-      m_anomaly_stats[stat_id] = new AnomalyStat(true);
-    }
-  }
+  sit->second.add(anom);
 }
 
-GlobalAnomalyStats::~GlobalAnomalyStats()
-{
-  for (auto pair: m_anomaly_stats)
-    delete pair.second;
-}
-
-void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data)
-{
+void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data){
   nlohmann::json j = nlohmann::json::parse(data);
-  if (j.count("anomaly"))
-    { //no need for lock here as data is kept separately for each rank
-      AnomalyData d(j["anomaly"].dump());
-      if (m_anomaly_stats.count(d.get_stat_id()))
-	m_anomaly_stats[d.get_stat_id()]->add(d);
+  if (j.count("anomaly")){ 
+    AnomalyData d(j["anomaly"].dump());
+    update_anomaly_stat(d);
+  }
+  
+  if (j.count("func")){
+    for (auto f: j["func"]) {
+      update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
+		       RunStats::from_strstate(f["inclusive"].dump()), 
+		       RunStats::from_strstate(f["exclusive"].dump())
+		       ); //locks
     }
-
-  if (j.count("func"))
-    {
-      for (auto f: j["func"]) {
-	update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
-			 RunStats::from_strstate(f["inclusive"].dump()), 
-			 RunStats::from_strstate(f["exclusive"].dump())
-			 ); //locks
-      }
-    } 
+  } 
 }
 
 
@@ -66,20 +38,15 @@ void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
   ADLocalFuncStatistics::State j;
   j.deserialize_cerealpb(data);
 
-  {//no need for lock here as data is kept separately for each rank
-    const AnomalyData &d = j.anomaly;
-    if (m_anomaly_stats.count(d.get_stat_id()))
-      m_anomaly_stats[d.get_stat_id()]->add(d);
-  }
+  const AnomalyData &d = j.anomaly;
+  update_anomaly_stat(d);
 
-  {
-    for (auto f: j.func) {
-      update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
-		       RunStats::from_state(f.inclusive), 
-		       RunStats::from_state(f.exclusive)
-		       ); //locks
-    }
-  } 
+  for (auto f: j.func) {
+    update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
+		     RunStats::from_state(f.inclusive), 
+		     RunStats::from_state(f.exclusive)
+		     ); //locks
+  }
 }
 
 std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
@@ -87,7 +54,7 @@ std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) con
   if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
     return "";
   
-  RunStats stat = m_anomaly_stats.find(stat_id)->second->get_stats();
+  RunStats stat = m_anomaly_stats.find(stat_id)->second.get_stats();
   return stat.get_json().dump();
 }
 
@@ -95,7 +62,7 @@ RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) co
 {
   if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
     throw std::runtime_error("GlobalAnomalyStats::get_anomaly_stat_obj stat_id " + stat_id + " does not exist");
-  return m_anomaly_stats.find(stat_id)->second->get_stats();
+  return m_anomaly_stats.find(stat_id)->second.get_stats();
 }
 
 
@@ -105,39 +72,36 @@ size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
     if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
         return 0;
 
-    return m_anomaly_stats.find(stat_id)->second->get_n_data();
+    return m_anomaly_stats.find(stat_id)->second.get_n_data();
 }
 
-nlohmann::json GlobalAnomalyStats::collect_stat_data()
-{
-    nlohmann::json jsonObjects = nlohmann::json::array();
+nlohmann::json GlobalAnomalyStats::collect_stat_data(){
+  nlohmann::json jsonObjects = nlohmann::json::array();
     
-    for (auto pair: m_anomaly_stats)
-    {
-        std::string stat_id = pair.first;
-        auto stats = pair.second->get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
-	                                 //We now own the std::list<std::string>* pointer and have to delete it
+  for (auto &pair: m_anomaly_stats){
+    std::string stat_id = pair.first;
+    auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
+      //We now own the std::list<std::string>* pointer and have to delete it
       
-        if (stats.second && stats.second->size())
-        {
-            nlohmann::json object;
-            object["key"] = stat_id;
-            object["stats"] = stats.first.get_json();
+    if (stats.second && stats.second->size()){
+      nlohmann::json object;
+      object["key"] = stat_id;
+      object["stats"] = stats.first.get_json();
 
-            object["data"] = nlohmann::json::array();
-            for (auto strdata: *stats.second)
-            {
-                object["data"].push_back(
-                    AnomalyData(strdata).get_json()
-                );
-            }
+      object["data"] = nlohmann::json::array();
+      for (auto strdata: *stats.second)
+	{
+	  object["data"].push_back(
+				   AnomalyData(strdata).get_json()
+				   );
+	}
 
-            jsonObjects.push_back(object);
-            delete stats.second;            
-        }
+      jsonObjects.push_back(object);
+      delete stats.second;            
     }
+  }
 
-    return jsonObjects;
+  return jsonObjects;
 }
 
 nlohmann::json GlobalAnomalyStats::collect_func_data() const{

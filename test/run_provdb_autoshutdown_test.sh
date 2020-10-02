@@ -10,7 +10,7 @@ if [ -f "../bin/provdb_admin" ]; then
     ip=$(hostname -i)
     port=1234
 
-    ../bin/provdb_admin ${ip}:${port} -autoshutdown &
+    ../bin/provdb_admin ${ip}:${port} -autoshutdown true &
     admin=$!
     sleep 1
 
