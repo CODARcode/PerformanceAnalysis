@@ -69,8 +69,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
 
 void Chimbuko::init_io(){
-    m_io = new ADio();
-    m_io->setRank(m_params.rank);
+    m_io = new ADio(m_params.program_idx, m_params.rank);
     m_io->setDispatcher();
     m_io->setWinSize(m_params.anom_win_size);
     if ((m_params.viz_iomode == IOMode::Online || m_params.viz_iomode == IOMode::Both) && m_params.viz_addr.size()){

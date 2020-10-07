@@ -5,7 +5,7 @@
 using namespace chimbuko;
 
 TEST(ADioTestsetOutputPath, createsDirectory){
-  ADio io;
+  ADio io(0,0);
   io.setDestructorThreadWaitTime(0); //remove annoying wait
   const static std::string path = "test_dir_to_delete";
   io.setOutputPath(path);
@@ -15,7 +15,7 @@ TEST(ADioTestsetOutputPath, createsDirectory){
 }
 
 TEST(ADioTestwrite, OKifnoCurlOrpath){ //no curl or path set
-  ADio io;
+  ADio io(0,0);
   io.setDestructorThreadWaitTime(0); //remove annoying wait
 
   CallListMap_p_t* callListMap = new CallListMap_p_t;
@@ -23,12 +23,11 @@ TEST(ADioTestwrite, OKifnoCurlOrpath){ //no curl or path set
   EXPECT_EQ( io.write(callListMap, 1), IOError::OK );
 }
 TEST(ADioTestwrite, OKifPathNoDispatch){ //path set, no curl or thread dispatch
-  ADio io;
+  ADio io(2233,1234);
   io.setDestructorThreadWaitTime(0); //remove annoying wait
 
   const static std::string path = "test_dir_to_delete2";
   io.setOutputPath(path);
-  io.setRank(1234);
   CallListMap_p_t* callListMap = new CallListMap_p_t;
 
   ExecData_t event;
@@ -39,7 +38,7 @@ TEST(ADioTestwrite, OKifPathNoDispatch){ //path set, no curl or thread dispatch
   EXPECT_EQ( io.write(callListMap, 5678), IOError::OK );
 
   //Check the file was created
-  EXPECT_EQ( std::experimental::filesystem::is_regular_file(path + "/0/1234/5678.json"), true );
+  EXPECT_EQ( std::experimental::filesystem::is_regular_file(path + "/2233/1234/5678.json"), true );
   
   std::experimental::filesystem::remove_all(path);
 }
