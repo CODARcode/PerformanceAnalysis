@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <cstring>
+#include <stdio.h>
 
 using namespace chimbuko;
 
@@ -94,6 +95,31 @@ struct SSTrw{
   
   SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
+
+
+TEST(ADParserTestConstructor, opensCorrectlyBPFile){
+  bool err = false;
+  try{
+    std::string filename = "commFile";   
+    {
+      adios2::ADIOS ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+      adios2::IO io = ad.DeclareIO("tau-metrics");
+      io.SetEngine("BPFile");
+      io.SetParameters({
+	  {"MarshalMethod", "BP"}
+	});
+      
+      adios2::Engine wr = io.Open(filename, adios2::Mode::Write);
+      wr.Close();
+    }
+    ADParser parser(filename, 0,0, "BPFile");    
+  }catch(std::exception &e){
+    std::cout << "Caught exception:\n" << e.what() << std::endl;
+    err = true;
+  }
+  EXPECT_EQ(err, false);
+}
+
 
 
 TEST(ADParserTestConstructor, opensCorrectlySST){
