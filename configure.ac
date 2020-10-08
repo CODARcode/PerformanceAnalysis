@@ -28,17 +28,51 @@ else
    LDFLAGS+=" `curl-config --libs`"
 fi
 
-
 #Check for adios2 library
 AC_ARG_WITH([adios2], AS_HELP_STRING([--with-adios2], [Specify ADIOS2 install directory]),[],[])
 if test "x$with_adios2" != "x"; then
-  CPPFLAGS+=" -I$with_adios2/include"
-  LDFLAGS+=" -L$with_adios2/lib `$with_adios2/bin/adios2-config --cxx-libs`"
-fi
+   AC_CHECK_PROG(HAVE_ADIOS2CONFIG, adios2-config, [yes],[no], "${with_adios2}/bin")
+   if test "x$HAVE_ADIOS2CONFIG" = "xno"; then
+      AC_MSG_FAILURE(["Cannot find adios2-config"])
+   fi
 
-AC_CHECK_LIB([adios2], [adios2_close], [], [HAVE_LIBadios2=no], [])
-if test "x$HAVE_LIBadios2" = "xno"; then
-   AC_MSG_FAILURE(["ADIOS2 is required"])
+   CPPFLAGS+=" -I$with_adios2/include `$with_adios2/bin/adios2-config --cxx-flags`"
+   #Between 2.5 and 2.6 they split the library into components. Unfortunately the adios2-config output doesn't play nicely with autotools (the link order gets broken)
+   #so we have to manually figure out which situation applies
+
+   LIBS_BAK=${LIBS}
+
+   #2.6.0
+   LIBS+=" -L$with_adios2/lib -ladios2_cxx11_mpi -ladios2_cxx11"
+   AC_LINK_IFELSE(
+ 	[
+		AC_LANG_PROGRAM(
+			[[ #include<adios2.h>
+ #include<mpi.h> ]], [[ adios2::ADIOS ad(MPI_COMM_SELF,adios2::DebugON);  ]]
+			)
+	], [adios2_links26=yes], [adios2_links26=no]
+	)
+   if test	"x${adios2_links26}" = "xno"; then
+        #2.5.0
+        LIBS=${LIBS_BAK}
+        LIBS+=" -L$with_adios2/lib -ladios2"
+        AC_LINK_IFELSE(
+	   [
+		AC_LANG_PROGRAM(
+			[[ #include<adios2.h>
+ #include<mpi.h> ]], [[ adios2::ADIOS ad(MPI_COMM_SELF,adios2::DebugON);  ]]
+			)
+	   ], [adios2_links25=yes], [adios2_links25=no]
+	   )
+
+      	if test	"x${adios2_links25}" = "xno"; then
+	       AC_MSG_FAILURE(["ADIOS2 is required"])
+        else
+               AC_MSG_NOTICE([Detected ADIOS <=2.5])
+	fi
+   else
+	   AC_MSG_NOTICE([Detected ADIOS 2.6+])
+   fi
 fi
 
 #Choose network
