@@ -43,7 +43,7 @@ if test "x$with_adios2" != "x"; then
    LIBS_BAK=${LIBS}
 
    #2.6.0
-   LIBS+=" -L$with_adios2/lib -ladios2_cxx11_mpi -ladios2_cxx11"
+   LIBS+=" -L$with_adios2/lib -L$with_adios2/lib64 -ladios2_cxx11_mpi -ladios2_cxx11 -Wl,-rpath-link,${with_adios2}/lib:${with_adios2}/lib64 -Wl,-rpath,${with_adios2}/lib:${with_adios2}/lib64"
    AC_LINK_IFELSE(
  	[
 		AC_LANG_PROGRAM(
@@ -55,7 +55,7 @@ if test "x$with_adios2" != "x"; then
    if test	"x${adios2_links26}" = "xno"; then
         #2.5.0
         LIBS=${LIBS_BAK}
-        LIBS+=" -L$with_adios2/lib -ladios2"
+        LIBS+=" -L$with_adios2/lib -L$with_adios2/lib64 -ladios2 -Wl,-rpath-link,${with_adios2}/lib:${with_adios2}/lib64 -Wl,-rpath,${with_adios2}/lib:${with_adios2}/lib64"
         AC_LINK_IFELSE(
 	   [
 		AC_LANG_PROGRAM(
