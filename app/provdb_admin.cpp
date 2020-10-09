@@ -50,9 +50,10 @@ struct ProvdbArgs{
   std::string engine;
   bool autoshutdown;
   int nshards;
+  int nthreads;
   std::string db_type;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1){}
 };
 
 
@@ -66,6 +67,7 @@ int main(int argc, char** argv) {
   addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
   addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
   addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
+  addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
   addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
 
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -83,8 +85,10 @@ int main(int argc, char** argv) {
     eng_opt += std::string("://") + args.ip;
   }
 
+  std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
+
   //Initialize provider engine
-  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
+  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, false, args.nthreads); //third argument specifies that progress loop runs on main thread, which should be fine as this thread spends all its time spinning otherwis
 
 #ifdef _PERF_METRIC
   //Get Margo to output profiling information

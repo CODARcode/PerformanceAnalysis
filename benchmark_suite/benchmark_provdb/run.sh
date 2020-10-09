@@ -4,7 +4,8 @@ cycles=60
 cycle_time_ms=1000
 anom_per_cyc=10
 norm_per_cyc=10
-shards=1
+shards=2
+threads=4
 #rm -f ps_perf.txt ps_perf_stats.txt
 
 export CHIMBUKO_VERBOSE=1
@@ -16,7 +17,7 @@ provdb_addr=${ip}:5000
 
 # -engine "na+sm"
 #-db_type "null"
-provdb_admin ${provdb_addr} -autoshutdown true -nshards ${shards}  -engine "na+sm"  2>&1 | tee provdb.log &
+provdb_admin ${provdb_addr} -autoshutdown true -nshards ${shards} -nthreads ${threads}  2>&1 | tee provdb.log &
 admin=$!
 
 sleep 5
@@ -28,7 +29,7 @@ mpirun --oversubscribe --allow-run-as-root -n ${ranks} ./benchmark_client ${prov
 
 wait $admin
 
-dir=${ranks}rank_cyc${cycle_time_ms}ms_anom${anom_per_cyc}_norm${norm_per_cyc}_shards${shards}_multiprov_nasm
+dir=${ranks}rank_cyc${cycle_time_ms}ms_anom${anom_per_cyc}_norm${norm_per_cyc}_shards${shards}_threads${threads}_multiprov_multithread
 mkdir ${dir}
 mv client_stats.json profile* ${dir}
 echo "ADMIN is $admin"
