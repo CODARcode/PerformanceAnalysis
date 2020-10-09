@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sstream>
+#include <vector>
 #include <cstdarg>
 namespace chimbuko{
 
@@ -50,6 +51,12 @@ inline std::string anyToStr<bool>(const bool &v){
  * @brief C-style string formatting but without the nasty mem buffer concerns
  */
 std::string stringize(const char* format, ...);
+
+/**
+ * @brief Break up a string into an array of strings around some delimiter
+ */
+std::vector<std::string> parseStringArray(const std::string &array, char delimiter);
+
 
 };
 

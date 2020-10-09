@@ -34,7 +34,7 @@ namespace chimbuko{
     /**
      * @brief Return a copy of the internal counter statistics
      */
-    std::unordered_map<std::string, RunStats> get_stats() const;
+    std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > get_stats() const;
     
     /**
      * @brief Serialize the state into a JSON object for sending to viz
@@ -43,7 +43,7 @@ namespace chimbuko{
 
   protected:
     mutable std::mutex m_mutex;
-    std::unordered_map<std::string, RunStats> m_counter_stats; /**< Map of counter name to global statistics*/
+    std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > m_counter_stats; /**< Map of program index and counter name to global statistics*/
   };
 
   /**

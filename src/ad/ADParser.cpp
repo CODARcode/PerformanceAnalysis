@@ -12,9 +12,9 @@
 
 using namespace chimbuko;
 
-ADParser::ADParser(std::string inputFile, int rank, std::string engineType, int openTimeoutSeconds)
+ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
-    m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank)
+    m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank), m_program_idx(program_idx)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -131,7 +131,7 @@ void ADParser::update_attributes() {
 	  while ( (idx = value.find("\"")) != std::string::npos )
 	    value.replace(idx, 1, "");
 	 	  
-	  m_new_metadata.push_back(MetaData_t(rank,tid,descr, value));
+	  m_new_metadata.push_back(MetaData_t(m_program_idx,rank,tid,descr, value));
 	    
 	  VERBOSE(std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl);
 	    
@@ -217,9 +217,7 @@ void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
     break;
   }
 
-  unsigned long pid; //should be only one pid
   std::unordered_map<unsigned long, unsigned long> thr_last_ts;
-  bool first = true;
   for(size_t i=0;i<count;i++){
     if(validateEvent(data)){
       unsigned long thr = data[IDX_T];
@@ -227,22 +225,14 @@ void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
       unsigned long pidi = data[IDX_P];
       unsigned long ridi = data[IDX_R];
 
-      bool skip = false;
-
-      if(first){ pid=pidi; first = false; }
-      else if(pidi != pid) skip = true; //need a better way of flagging invalid events as some still get through validateEvent
-	//throw std::runtime_error("For event " + Event_t(data,type,0).get_json().dump() + " PIDs differ in " + descr + " data ordering validation " + anyToStr(pidi) + ":" + anyToStr(pid)  );
-      
-      if(!skip){     	  
-	if(thr_last_ts.count(thr) && ts < thr_last_ts[thr]){
-	  std::stringstream ss; 
-	  std::ostream &os = exit_on_fail ? ss : std::cerr;
-	  if(!exit_on_fail) os << "Warning: ";
-	  os << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
-	  if(exit_on_fail) throw std::runtime_error(ss.str());
-	}
-	thr_last_ts[thr] = ts;
+      if(thr_last_ts.count(thr) && ts < thr_last_ts[thr]){
+	std::stringstream ss; 
+	std::ostream &os = exit_on_fail ? ss : std::cerr;
+	if(!exit_on_fail) os << "Warning: ";
+	os << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
+	if(exit_on_fail) throw std::runtime_error(ss.str());
       }
+      thr_last_ts[thr] = ts;
     }
     data += DIM_OFF;
   }
@@ -272,6 +262,12 @@ ParserError ADParser::fetchFuncData() {
 
       in_event_timestamps.SetSelection({{0, 0}, {m_timer_event_count, FUNC_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_event_timestamps, m_event_timestamps.data(), adios2::Mode::Sync);
+
+      //Replace the (defunct) tau program index
+      unsigned long *pidx_p = m_event_timestamps.data() + IDX_P;
+      for(size_t i=0;i<m_timer_event_count;i++){
+	*pidx_p = m_program_idx; pidx_p += FUNC_EVENT_DIM;
+      }
 
       //Replace the function index with the global index
       //As the function map was populated when the attributes were looked up, this doesn't need comms or the function name here
@@ -352,6 +348,12 @@ ParserError ADParser::fetchCommData() {
       in_comm_timestamps.SetSelection({{0, 0}, {m_comm_count, COMM_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_comm_timestamps, m_comm_timestamps.data(), adios2::Mode::Sync);
 
+      //Replace the (defunct) tau program index
+      unsigned long *pidx_p = m_comm_timestamps.data() + IDX_P;
+      for(size_t i=0;i<m_comm_count;i++){
+	*pidx_p = m_program_idx; pidx_p += COMM_EVENT_DIM;
+      }
+
       checkEventOrder(EventDataType::COMM, false);
 
       return ParserError::OK;
@@ -380,6 +382,12 @@ ParserError ADParser::fetchCounterData() {
       in_counter_values.SetSelection({{0, 0}, {m_counter_count, COUNTER_EVENT_DIM}});
       m_reader.Get<unsigned long>(in_counter_values, m_counter_timestamps.data(), adios2::Mode::Sync);
 
+      //Replace the (defunct) tau program index
+      unsigned long *pidx_p = m_counter_timestamps.data() + IDX_P;
+      for(size_t i=0;i<m_counter_count;i++){
+	*pidx_p = m_program_idx; pidx_p += COUNTER_EVENT_DIM;
+      }
+
       checkEventOrder(EventDataType::COUNT, false);
       
       return ParserError::OK;
@@ -404,7 +412,7 @@ const unsigned long* ADParser::getEarliest(const std::vector<const unsigned long
 }
 
 bool ADParser::validateEvent(const unsigned long* e) const{
-  return !( e == nullptr || e[IDX_P] > 1000000 || (int)e[IDX_R] != m_rank || e[IDX_T] >= 1000000 );
+  return !( e == nullptr || e[IDX_P] > 1000000 || (int)e[IDX_R] != m_rank || e[IDX_T] >= 1000000 || e[IDX_P] != m_program_idx );
 }
 
 
@@ -557,6 +565,8 @@ std::vector<Event_t> ADParser::getEvents() const{
 void ADParser::addFuncData(unsigned long const* d){
   if(m_event_timestamps.size() + FUNC_EVENT_DIM > m_event_timestamps.capacity())
     throw std::runtime_error("Adding func data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+  if(d[IDX_R] != m_rank) throw std::runtime_error("ADParser::addFuncData incorrect rank");
+  if(d[IDX_P] != m_program_idx) throw std::runtime_error("ADParser::addFuncData incorrect program id");
 
   m_event_timestamps.insert(m_event_timestamps.end(), d, d+FUNC_EVENT_DIM);
   ++m_timer_event_count;
@@ -564,6 +574,8 @@ void ADParser::addFuncData(unsigned long const* d){
 void ADParser::addCounterData(unsigned long const* d){
   if(m_counter_timestamps.size() + COUNTER_EVENT_DIM > m_counter_timestamps.capacity())
     throw std::runtime_error("Adding counter data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+  if(d[IDX_R] != m_rank) throw std::runtime_error("ADParser::addCounterData incorrect rank");
+  if(d[IDX_P] != m_program_idx) throw std::runtime_error("ADParser::addCounterData incorrect program id");
 
   m_counter_timestamps.insert(m_counter_timestamps.end(), d, d+COUNTER_EVENT_DIM);
   ++m_counter_count;
@@ -571,6 +583,8 @@ void ADParser::addCounterData(unsigned long const* d){
 void ADParser::addCommData(unsigned long const* d){
   if(m_comm_timestamps.size() + COMM_EVENT_DIM > m_comm_timestamps.capacity())
     throw std::runtime_error("Adding comm data will exceed vector capacity, causing a reallocate that will invalidate all Event_t objects");
+  if(d[IDX_R] != m_rank) throw std::runtime_error("ADParser::addCommData incorrect rank");
+  if(d[IDX_P] != m_program_idx) throw std::runtime_error("ADParser::addCommData incorrect program id");
 
   m_comm_timestamps.insert(m_comm_timestamps.end(), d, d+COMM_EVENT_DIM);
   ++m_comm_count;

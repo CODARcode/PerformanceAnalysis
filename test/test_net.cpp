@@ -158,7 +158,7 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
     const int N_MPI_PROCESSORS = 10;
 
     SstdParam param;
-    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    GlobalAnomalyStats glob_stats;
     net.add_payload(new NetPayloadUpdateParams(&param));
     net.add_payload(new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
@@ -214,7 +214,7 @@ TEST_F(NetTest, NetStatSenderTest)
     const int N_MPI_PROCESSORS = 10;
 
     SstdParam param;
-    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    GlobalAnomalyStats glob_stats;
     nlohmann::json resp;
 
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));

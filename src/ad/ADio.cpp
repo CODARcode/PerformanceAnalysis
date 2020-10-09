@@ -10,8 +10,8 @@ namespace fs = std::experimental::filesystem;
 /* ---------------------------------------------------------------------------
  * Implementation of ADio class
  * --------------------------------------------------------------------------- */
-ADio::ADio() 
-  : m_execWindow(0), m_dispatcher(nullptr), m_curl(nullptr), destructor_thread_waittime(10)
+ADio::ADio(unsigned long program_idx, int rank) 
+  : m_execWindow(0), m_dispatcher(nullptr), m_curl(nullptr), destructor_thread_waittime(10), m_rank(rank), m_program_idx(program_idx)
 {
 
 }
@@ -100,7 +100,7 @@ public:
 	     const std::string &packet) const{
 
     if (m_io.getOutputPath().length() && !m_disable_disk_write) {
-      std::string path = m_io.getOutputPath() + "/" + std::to_string(0);
+      std::string path = m_io.getOutputPath() + "/" + std::to_string(m_io.getProgramIdx());
 
       //create <output dir>/<mpi_rank>
       makedir(path);
@@ -201,7 +201,7 @@ public:
 
 	if(jExec.size() != 0 || jComm.size() != 0) {
 	  packet = nlohmann::json::object({
-					   {"app", 0},
+	                                   {"app", m_io.getProgramIdx()},
 					   {"rank", m_io.getRank()},
 					   {"step", m_step},
 					   {"exec", jExec},
@@ -252,7 +252,7 @@ public:
 	    jCount.push_back(eit.get_json());
     
     std::string packet = nlohmann::json::object({
-						 {"app", 0},
+                                               	 {"app", m_io.getProgramIdx()},
 						 {"rank", m_io.getRank()},
 						 {"step", m_step},
 						 {"counter", jCount}
@@ -293,7 +293,7 @@ public:
       jMD.push_back(it->get_json());
           
     std::string packet = nlohmann::json::object({
-						 {"app", 0},
+	                                         {"app", m_io.getProgramIdx()},
 						 {"rank", m_io.getRank()},
 						 {"step", m_step},
 						 {"metadata", jMD}

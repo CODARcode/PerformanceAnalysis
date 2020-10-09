@@ -11,6 +11,7 @@ The parameter server optionally sends data to an external webserver as JSON-form
 |    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array)*
 |        [
 |	    {
+|	      **'app'**: *Program index*,
 |	      **'counter'**: *Counter description*,
 |	      **'stats'**:   *Global aggregated statistics on counter values since start of run*,
 |	         {
@@ -72,8 +73,9 @@ The schema for the **'anomaly_stats'** object is as follows:
 |  **'func'**:    *Statistics on anomalies broken down by function, collected over entire run to-date (array)*
 |      [
 |        {
-|          **'name'**: *function name*,
+|          **'app'**: *program index*,
 |          **'fid'**: *global function index*,
+|          **'name'**: *function name*,
 |          **'exclusive'**:  *Statistics of runtime exclusive of children*
 |                 {
 |                   **'accumulate'**: *unused*,

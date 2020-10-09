@@ -40,7 +40,6 @@ if [ -f "../bin/provdb_admin" ]; then
     rm -f provdb.*.unqlite*  provider.address
     shards=1
 
-
     ../bin/provdb_admin "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
     admin=$!
     sleep 4

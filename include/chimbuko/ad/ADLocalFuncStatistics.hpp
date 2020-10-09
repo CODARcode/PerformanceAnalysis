@@ -18,6 +18,7 @@ namespace chimbuko{
      */
     struct State{
       struct FuncData{
+	unsigned long pid; /**< Program index*/
 	unsigned long id; /**< Function index*/
 	std::string name; /**< Function name*/
 	unsigned long n_anomaly; /**< Number of anomalies*/
@@ -29,7 +30,7 @@ namespace chimbuko{
 	 */
 	template<class Archive>
 	void serialize(Archive & archive){
-	  archive(id,name,n_anomaly,inclusive,exclusive);
+	  archive(pid,id,name,n_anomaly,inclusive,exclusive);
 	}
       };
       std::vector<FuncData> func; /** Function stats for each function*/
@@ -55,7 +56,7 @@ namespace chimbuko{
     };    
 
 
-    ADLocalFuncStatistics(const int step, PerfStats* perf = nullptr);
+    ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf = nullptr);
 
     /**
      * @brief Add function executions to internal statistics
@@ -79,19 +80,17 @@ namespace chimbuko{
     
     /**
      * @brief Get the current state as a JSON object
-     * @param rank The rank of this AD instance
      *
      * The string dump of this object is the serialized form sent to the parameter server
      */
-    nlohmann::json get_json_state(const int rank) const;
+    nlohmann::json get_json_state() const;
 
     /**
      * @brief Get the current state as a state object
-     * @param rank The rank of this AD instance
      *
      * The string dump of this object is the serialized form sent to the parameter server
      */    
-    State get_state(const int rank) const;
+    State get_state() const;
 
     /**
      * @brief Attach a RunMetric object into which performance metrics are accumulated
@@ -111,8 +110,10 @@ namespace chimbuko{
     static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step);
 
     int m_step; /**< io step */
-    unsigned long m_min_ts; /**lowest timestamp */
-    unsigned long m_max_ts; /**highest timestamp */
+    unsigned long m_rank; /**< Rank*/
+    unsigned long m_program_idx; /**< Program index*/
+    unsigned long m_min_ts; /**< lowest timestamp */
+    unsigned long m_max_ts; /**< highest timestamp */
     std::unordered_map<unsigned long, std::string> m_func; /**< map of function index to function name */
     std::unordered_map<unsigned long, RunStats> m_inclusive; /**< map of function index to function call time including child calls */
     std::unordered_map<unsigned long, RunStats> m_exclusive; /**< map of function index to function call time excluding child calls */

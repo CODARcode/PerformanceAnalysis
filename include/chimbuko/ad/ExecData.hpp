@@ -574,14 +574,25 @@ class MetaData_t {
 public:
   /**
    * @brief Construct an instance will full set of parameters
+   * @param pid Program index
+   * @param rid Rank
+   * @param tid Thread
+   * @param descr Key
+   * @param descr Value
    */
-  MetaData_t(unsigned long rank, unsigned long tid,
+  MetaData_t(unsigned long pid, unsigned long rid, unsigned long tid,
 	     const std::string &descr, const std::string &value);
   
   /**
+   * @brief Get the origin program index
+   */  
+  unsigned long get_pid() const{ return m_pid; }
+
+  /**
    * @brief Get the origin global comm rank
    */
-  unsigned long get_comm_rank() const{ return m_rank; }
+  unsigned long get_rid() const{ return m_rid; }
+
   /**
    * @brief Get the origin thread index
    */  
@@ -604,7 +615,8 @@ public:
    */
   nlohmann::json get_json() const;
 private:
-  unsigned long m_rank; /**< Global comm rank */
+  unsigned long m_pid; /**< Program index */
+  unsigned long m_rid; /**< Global comm rank */
   unsigned long m_tid; /**< Thread idx */
   std::string m_descr; /**< Metadata description */
   std::string m_value; /**< Metadata value */

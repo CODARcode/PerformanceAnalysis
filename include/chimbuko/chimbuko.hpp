@@ -45,12 +45,14 @@ namespace chimbuko {
     int perf_step; /**<How frequently (in IO steps) the performance data is dumped*/
 
     //General parameters for Chimbuko
+    int program_idx; /**< Program index (for workflows with >1 component) */
     int rank; /**< MPI rank of AD process */
     bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
 
     ChimbukoParams(): rank(-1234),  //not set!
+		      program_idx(0),
 		      verbose(true),
 		      outlier_sigma(6.),
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),

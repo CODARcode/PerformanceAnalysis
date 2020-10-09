@@ -14,7 +14,6 @@ using namespace chimbuko;
 
 struct pserverArgs{
   int nt;
-  int n_ad_modules;
   std::string logdir;
   std::string ws_addr;
 
@@ -35,7 +34,7 @@ struct pserverArgs{
   int zmq_io_thr;
 #endif
   
-  pserverArgs(): nt(-1), n_ad_modules(0), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
+  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1)
 #endif  
@@ -45,8 +44,6 @@ struct pserverArgs{
     static bool init = false;
     static commandLineParser<pserverArgs> p;
     if(!init){
-      addMandatoryCommandLineArg(p, n_ad_modules, "Set the number of AD modules (ranks)");      
-
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
@@ -68,7 +65,7 @@ struct pserverArgs{
 
 int main (int argc, char ** argv){
   pserverArgs args;
-  if(argc < pserverArgs::getParser().nMandatoryArgs()+1 || (argc == 2 && std::string(argv[1]) == "-help") ){
+  if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help") ){
     pserverArgs::getParser().help(std::cout);
     return argc < pserverArgs::getParser().nMandatoryArgs()+1 ? 1 : 0;
   }
@@ -112,11 +109,10 @@ int main (int argc, char ** argv){
 
     //nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
     std::cout << "Run parameter server with " << args.nt << " threads" << std::endl;
-    if ( ( args.ws_addr.size() || args.stat_outputdir.size() ) && args.n_ad_modules){
+    if (args.ws_addr.size() || args.stat_outputdir.size()){
       std::cout << "Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
-      global_func_stats.reset_anomaly_stat({args.n_ad_modules});
     }
 
     net.add_payload(new NetPayloadUpdateParams(&param, args.freeze_params));

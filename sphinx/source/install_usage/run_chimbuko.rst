@@ -25,10 +25,10 @@ The first step is to initialize the provenance database. We will assume that the
 
 .. code:: bash
 
-	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} -autoshutdown &
+	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} &
 	  sleep 2
 
-Here the **-autoshutdown** option ensures that the **provdb_admin** task exits once all of the AD instances have disconnected. The database will be written to disk into the directory from which the **provdb_admin** application is called, under the filename **provdb.unqlite**.
+The database will be written to disk into the directory from which the **provdb_admin** application is called, under the filename **provdb.unqlite**.
 
 For use below we define the variable **PROVDB_ADDR=tcp://${HEAD_NODE_IP}:${PROVDB_PORT}**. For convenience, the **provdb_admin** application will write out a file **provider.address**, the contents of which can be used in place of manually defining this variable.
 
@@ -38,17 +38,16 @@ The second step is to start the parameter server:
 
 .. code:: bash
 
-	  pserver ${RANKS} -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} &
+	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} &
 	  sleep 2
 
 Where the variables are as follows:
 
-- **RANKS** : The number of MPI ranks that the application will be run on
 - **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
 - **PSERVER_LOGDIR** : A directory for logging output
 - **VIZ_ADDRESS** : Address of the visualization module (see above).
 
-Note that all but the number of ranks are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
+Note that all the above are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
   

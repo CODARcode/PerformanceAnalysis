@@ -95,6 +95,34 @@ AnomalyStat::~AnomalyStat()
     if (m_data) delete m_data;
 }
 
+
+
+
+AnomalyStat::AnomalyStat(const AnomalyStat &r): m_stats(r.m_stats), m_data(nullptr){
+  if(r.m_data)
+    m_data = new std::list<std::string>(*r.m_data); 
+}
+
+AnomalyStat::AnomalyStat(AnomalyStat &&r): m_stats(std::move(r.m_stats)), m_data(r.m_data){
+  r.m_data = nullptr;
+}
+
+AnomalyStat & AnomalyStat::operator=(const AnomalyStat &r){
+  m_stats = r.m_stats;
+  if(m_data){ delete m_data; m_data = nullptr; }
+  if(r.m_data)
+    m_data = new std::list<std::string>(*r.m_data); 
+  return *this;
+}
+
+AnomalyStat & AnomalyStat::operator=(AnomalyStat &&r){
+  m_stats = std::move(r.m_stats);
+  m_data = r.m_data;
+  r.m_data = nullptr;
+  return *this;
+}
+
+
 void AnomalyStat::add(const AnomalyData& d, bool bStore)
 {
     std::lock_guard<std::mutex> _(m_mutex);
@@ -116,7 +144,7 @@ void AnomalyStat::add(const std::string& str, bool bStore)
     }
 }
 
-RunStats AnomalyStat::get_stats() {
+RunStats AnomalyStat::get_stats() const{
     std::lock_guard<std::mutex> _(m_mutex);
     return m_stats;
 }

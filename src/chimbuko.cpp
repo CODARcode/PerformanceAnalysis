@@ -6,7 +6,8 @@ using namespace chimbuko;
 
 void ChimbukoParams::print() const{
   std::cout << "\n" 
-	    << "rank       : " << rank << "\n"
+	    << "Program Idx: " << program_idx << "\n"
+	    << "Rank       : " << rank << "\n"
 	    << "Engine     : " << trace_engineType << "\n"
 	    << "BP in dir  : " << trace_data_dir << "\n"
 	    << "BP file    : " << trace_inputFile << "\n"
@@ -14,16 +15,16 @@ void ChimbukoParams::print() const{
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nVIS Addr   : " << viz_addr
-	    << "\nsigma      : " << outlier_sigma
-	    << "\nwindow size: " << anom_win_size
+	    << "\nSigma      : " << outlier_sigma
+	    << "\nWindow size: " << anom_win_size
 	  
 	    << "\nInterval   : " << interval_msec << " msec\n"
 #ifdef ENABLE_PROVDB
 	    << "\nProvDB addr: " << provdb_addr << "\n"
 	    << "\nProvDB shards: " << nprovdb_shards  << "\n"
 #endif
-	    << "perf. metric outpath : " << perf_outputpath << "\n"
-	    << "perf. step   : " << perf_step << "\n"
+	    << "Perf. metric outpath : " << perf_outputpath << "\n"
+	    << "Perf. step   : " << perf_step << "\n"
 	    << std::endl;
 }
 
@@ -69,8 +70,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
 
 void Chimbuko::init_io(){
-    m_io = new ADio();
-    m_io->setRank(m_params.rank);
+    m_io = new ADio(m_params.program_idx, m_params.rank);
     m_io->setDispatcher();
     m_io->setWinSize(m_params.anom_win_size);
     if ((m_params.viz_iomode == IOMode::Online || m_params.viz_iomode == IOMode::Both) && m_params.viz_addr.size()){
@@ -83,7 +83,7 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
-  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.rank, m_params.trace_engineType);
+  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType);
   m_parser->linkPerf(&m_perf);  
 }
 
@@ -380,13 +380,13 @@ void Chimbuko::run(unsigned long long& n_func_events,
     
     if(m_net_client && m_net_client->use_ps()){
       //Gather function profile and anomaly statistics and send to the pserver
-      ADLocalFuncStatistics prof_stats(step, &m_perf);
+      ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
       prof_stats.updateGlobalStatistics(*m_net_client);
 
       //Gather counter statistics and send to pserver
-      ADLocalCounterStatistics count_stats(step, nullptr, &m_perf); //currently collect all counters
+      ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
       count_stats.gatherStatistics(m_counter->getCountersByIndex());
       count_stats.updateGlobalStatistics(*m_net_client);
     }

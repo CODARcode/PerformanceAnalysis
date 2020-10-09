@@ -15,8 +15,24 @@ namespace chimbuko {
    */
   class ADio {
   public:
-    ADio();
+    /**
+     * @brief Constructor
+     * @param program_idx The program index
+     * @param rank MPI rank
+     */
+    ADio(unsigned long program_idx, int rank);
+
     ~ADio();
+
+    /**
+     * @brief Set the MPI rank of the current process
+     */
+    void setProgramIdx(unsigned long pid) { m_program_idx = pid; }
+
+    /**
+     * @ brief Get the program idx
+     */
+    unsigned long getProgramIdx() const{ return m_program_idx; }
 
     /**
      * @brief Set the MPI rank of the current process
@@ -120,6 +136,7 @@ namespace chimbuko {
     DispatchQueue * m_dispatcher; /**< Instance of multi-threaded writer*/
     CURL* m_curl; /**< A pointer to the CURL instance*/
     std::string m_url; /**< The URL of the server*/
+    unsigned long m_program_idx;                        /**< Program index*/
     int m_rank; /**< The MPI rank of the current process*/
     int destructor_thread_waittime; /**< Choose thread wait time in seconds after threadhandler has completed (default 10s)*/
   };

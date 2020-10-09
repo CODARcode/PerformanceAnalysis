@@ -46,6 +46,7 @@ nlohmann::json ADLocalCounterStatistics::get_json_state() const{
     const std::string &name = it.first;
 
     nlohmann::json obj;
+    obj["pid"] = m_program_idx;
     obj["name"] = name;
     obj["stats"] = it.second.get_json_state();
     g_info["counters"].push_back(obj);
@@ -60,6 +61,7 @@ ADLocalCounterStatistics::State ADLocalCounterStatistics::get_state() const{
     const std::string &name = it.first;
 
     State::CounterData obj;
+    obj.pid = m_program_idx;
     obj.name = name;
     obj.stats = it.second.get_state();
     g_info.counters.push_back(obj);

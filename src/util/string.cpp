@@ -23,4 +23,16 @@ std::string stringize(const char* format, ...){
   return std::string(buf);
 }
 
+std::vector<std::string> parseStringArray(const std::string &array, char delimiter){
+  std::vector<std::string> result;
+  std::stringstream s_stream(array);
+  while(s_stream.good()) {
+    std::string substr;
+    getline(s_stream, substr, delimiter);
+    result.push_back(std::move(substr));
+  }
+  return result;
+}
+
+
 }
