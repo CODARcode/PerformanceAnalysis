@@ -29,7 +29,7 @@ mpirun --oversubscribe --allow-run-as-root -n ${ranks} ./benchmark_client ${prov
 
 wait $admin
 
-dir=${ranks}rank_cyc${cycle_time_ms}ms_anom${anom_per_cyc}_norm${norm_per_cyc}_shards${shards}_threads${threads}_multiprov_multithread
+dir=${ranks}rank_cyc${cycle_time_ms}ms_anom${anom_per_cyc}_norm${norm_per_cyc}_shards${shards}_threads${threads}_multithread
 mkdir ${dir}
 mv client_stats.json profile* ${dir}
 echo "ADMIN is $admin"

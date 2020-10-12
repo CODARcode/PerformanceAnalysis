@@ -16,7 +16,6 @@
 #include <iostream>
 #include <csignal>
 #include <cassert>
-#include <memory>
 
 namespace tl = thallium;
 
@@ -120,10 +119,9 @@ int main(int argc, char** argv) {
   }
 
   //Initialize provider
-  std::vector<std::unique_ptr<sonata::Provider> > providers(args.nshards);
-  for(int s=0;s<args.nshards;s++) providers[s].reset(new sonata::Provider(engine,s));
+  sonata::Provider provider(engine, 0);
 
-  std::cout << "Providers are running on " << addr << std::endl;
+  std::cout << "Provider is running on " << addr << std::endl;
 
   std::vector<std::string> db_shard_names(args.nshards);
 
@@ -135,7 +133,7 @@ int main(int argc, char** argv) {
       std::string db_name = chimbuko::stringize("provdb.%d",s);
       std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
       std::cout << "Shard " << s << ": " << db_name << " " << config << std::endl;
-      admin.createDatabase(addr, s, db_name, args.db_type, config);
+      admin.createDatabase(addr, 0, db_name, args.db_type, config);
       db_shard_names[s] = db_name;
     }
 
@@ -143,7 +141,7 @@ int main(int argc, char** argv) {
     {
       sonata::Client client(engine);
       for(int s=0;s<args.nshards;s++){
-	sonata::Database db = client.open(addr, s, db_shard_names[s]);
+	sonata::Database db = client.open(addr, 0, db_shard_names[s]);
 	db.create("anomalies");
 	db.create("metadata");
 	db.create("normalexecs");
@@ -163,7 +161,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Admin detaching database shards" << std::endl;
     for(int s=0;s<args.nshards;s++){
-      admin.detachDatabase(addr, s, db_shard_names[s]);
+      admin.detachDatabase(addr, 0, db_shard_names[s]);
     }
 
     std::cout << "Admin shutting down server" << std::endl;

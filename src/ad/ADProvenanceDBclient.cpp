@@ -98,7 +98,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
     VERBOSE(std::cout << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl);
-    m_database = m_client.open(addr, shard, db_name);
+    m_database = m_client.open(addr, 0, db_name);
     VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
     m_coll_anomalies = m_database.open("anomalies");
     VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
