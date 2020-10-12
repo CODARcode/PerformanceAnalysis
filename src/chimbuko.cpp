@@ -187,8 +187,12 @@ bool Chimbuko::parseInputStep(int &step,
 			      unsigned long long& n_counter_events
 			      ){
   if (!m_parser->getStatus()) return false;
+  VERBOSE(std::cout << "driver commencing step " << step << std::endl);
   m_parser->beginStep();
-  if (!m_parser->getStatus()) return false;
+  if (!m_parser->getStatus()){
+    VERBOSE(std::cout << "driver parser appears to have disconnected, ending" << std::endl);
+    return false;
+  }
     
   // get trace data via SST
   step = m_parser->getCurrentStep();

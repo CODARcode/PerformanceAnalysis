@@ -34,6 +34,10 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
   // for sst engine, is the adios2 internally blocked here until *.sst file is found?  
   VERBOSE(std::cout << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl);
   m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
+
+  VERBOSE(std::cout << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl);
+  MPI_Barrier(MPI_COMM_WORLD);
+
     
   m_opened = true;
   m_status = true;
@@ -286,9 +290,21 @@ ParserError ADParser::fetchFuncData() {
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
 	    }else{
-	      std::cerr << "ADParser::fetchFuncData caught local index lookup error: " << e.what() << std::endl;
-	      std::cerr << "Associated event: " << ev.first.get_json().dump() << std::endl;
-	      throw std::runtime_error("ADParser::fetchFuncData failed local->global index substitution");
+	      std::ostringstream os;
+	      os <<  "ADParser::fetchFuncData caught local index lookup error: " << e.what() << std::endl;
+	      os <<  "Associated event: " << ev.first.get_json().dump() << std::endl;
+	      os <<  "Failed local->global index substitution" << std::endl;
+	      os <<  "This typically happens if the metadata defining the function name was not provided" << std::endl;
+	      //Rather than exiting, just invalidate the entry so it is ignored later
+	      os <<  "Invalidating event" << std::endl;
+	      std::cerr << os.str() << std::endl;
+	      unsigned long *pidx_p = m_event_timestamps.data() + i*FUNC_EVENT_DIM + IDX_P;
+	      *pidx_p = m_program_idx + 99999999; //give it an invalid program index
+	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
+	      if(ev.second) throw std::runtime_error("ADParser::fetchFuncData invalidation check failed!??");
+	      fidx_p += FUNC_EVENT_DIM;
+	      continue;
+	      //throw std::runtime_error(os.str());
 	    }
 	  }
 	  *fidx_p = new_idx;

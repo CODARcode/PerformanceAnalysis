@@ -70,10 +70,11 @@ int main(int argc, char** argv) {
   ProvdbArgs args;
   parser.parseCmdLineArgs(args, argc, argv);
  
-  std::string eng_opt = args.engine;
-  if(args.ip.size() > 0){
-    eng_opt += std::string("://") + args.ip;
+  std::string eng_opt = args.engine + std::string("://");
+  if(args.ip.size() > 0 && args.ip != "auto"){
+    eng_opt += args.ip;
   }
+  std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
 
   //Initialize provider engine
   tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
