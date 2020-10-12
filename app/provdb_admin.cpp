@@ -5,6 +5,7 @@
 #error "Provenance DB build is not enabled"
 #endif
 #include "chimbuko/util/commandLineParser.hpp"
+#include "chimbuko/util/string.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -47,8 +48,11 @@ struct ProvdbArgs{
   std::string ip;
   std::string engine;
   bool autoshutdown;
+  int nshards;
+  int nthreads;
+  std::string db_type;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1){}
 };
 
 
@@ -61,7 +65,10 @@ int main(int argc, char** argv) {
   addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
   addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
   addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
-  
+  addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
+  addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
+  addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
+
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
     return 0;
@@ -69,15 +76,17 @@ int main(int argc, char** argv) {
 
   ProvdbArgs args;
   parser.parseCmdLineArgs(args, argc, argv);
- 
-  std::string eng_opt = args.engine + std::string("://");
-  if(args.ip.size() > 0 && args.ip != "auto"){
-    eng_opt += args.ip;
+
+  if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
+
+  std::string eng_opt = args.engine;
+  if(args.ip.size() > 0){
+    eng_opt += std::string("://") + args.ip;
   }
   std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
 
   //Initialize provider engine
-  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
+  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, false, args.nthreads); //third argument specifies that progress loop runs on main thread, which should be fine as this thread spends all its time spinning otherwis
 
 #ifdef _PERF_METRIC
   //Get Margo to output profiling information
@@ -109,24 +118,33 @@ int main(int argc, char** argv) {
   }
 
   //Initialize provider
-  sonata::Provider provider(engine);
+  sonata::Provider provider(engine, 0);
 
   std::cout << "Provider is running on " << addr << std::endl;
 
-  {
-    std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
+  std::vector<std::string> db_shard_names(args.nshards);
 
+  {
     sonata::Admin admin(engine);
-    std::cout << "Admin creating database" << std::endl;
-    admin.createDatabase(addr, 0, "provdb", "unqlite", config);
+    std::cout << "Admin creating " << args.nshards << " database shards" << std::endl;
+    
+    for(int s=0;s<args.nshards;s++){
+      std::string db_name = chimbuko::stringize("provdb.%d",s);
+      std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+      std::cout << "Shard " << s << ": " << db_name << " " << config << std::endl;
+      admin.createDatabase(addr, 0, db_name, args.db_type, config);
+      db_shard_names[s] = db_name;
+    }
 
     //Create the collections
     {
       sonata::Client client(engine);
-      sonata::Database db = client.open(addr, 0, "provdb");
-      db.create("anomalies");
-      db.create("metadata");
-      db.create("normalexecs");
+      for(int s=0;s<args.nshards;s++){
+	sonata::Database db = client.open(addr, 0, db_shard_names[s]);
+	db.create("anomalies");
+	db.create("metadata");
+	db.create("normalexecs");
+      }
       std::cout << "Admin initialized collections" << std::endl;
     }
 
@@ -140,8 +158,10 @@ int main(int argc, char** argv) {
       if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
     }
 
-    std::cout << "Admin detaching database" << std::endl;
-    admin.detachDatabase(addr, 0, "provdb");
+    std::cout << "Admin detaching database shards" << std::endl;
+    for(int s=0;s<args.nshards;s++){
+      admin.detachDatabase(addr, 0, db_shard_names[s]);
+    }
 
     std::cout << "Admin shutting down server" << std::endl;
     if(!engine_is_finalized)

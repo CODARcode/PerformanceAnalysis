@@ -134,12 +134,12 @@ int main(int argc, char** argv){
   sonata::Admin admin(engine);
   
   std::string addr = (std::string)engine.self();
-  std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
+  std::string config = "{ \"path\" : \"./provdb.0.unqlite\" }";
 
-  admin.attachDatabase(addr, 0, "provdb", "unqlite", config);
+  admin.attachDatabase(addr, 0, "provdb.0", "unqlite", config);
 
   ADProvenanceDBclient client(0);
-  client.connect(addr);
+  client.connect(addr,1);
 
   if(!client.isConnected()){
     engine.finalize();

@@ -21,6 +21,7 @@ void ChimbukoParams::print() const{
 	    << "\nInterval   : " << interval_msec << " msec\n"
 #ifdef ENABLE_PROVDB
 	    << "\nProvDB addr: " << provdb_addr << "\n"
+	    << "\nProvDB shards: " << nprovdb_shards  << "\n"
 #endif
 	    << "Perf. metric outpath : " << perf_outputpath << "\n"
 	    << "Perf. step   : " << perf_step << "\n"
@@ -136,7 +137,7 @@ void Chimbuko::init_counter(){
 void Chimbuko::init_provdb(){
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
   if(m_params.provdb_addr.length() > 0)
-    m_provdb_client->connect(m_params.provdb_addr);
+    m_provdb_client->connect(m_params.provdb_addr, m_params.nprovdb_shards);
   m_normalevent_prov = new ADNormalEventProvenance;
 }
 #endif

@@ -27,6 +27,7 @@ struct Args{
   int anomalies_per_cycle;
   int normal_events_per_cycle;
   size_t cycle_time_ms;
+  int nshards;
 
   Args(){
     cycles = 10;
@@ -37,6 +38,7 @@ struct Args{
     anomalies_per_cycle = 10;
     normal_events_per_cycle = 10; //capture max 1 normal event per anomaly
     cycle_time_ms = 1000;
+    nshards=1;
   }
 };
 
@@ -60,6 +62,7 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, anomalies_per_cycle);
   addOptionalCommandLineArgDefaultHelpString(cmdline, normal_events_per_cycle);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, nshards);
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
     cmdline.help();
@@ -71,7 +74,7 @@ int main(int argc, char **argv){
   cmdline.parse(args, argc-1, (const char**)(argv+1));
 
   ADProvenanceDBclient provdb_client(rank);
-  provdb_client.connect(args.provdb_addr);
+  provdb_client.connect(args.provdb_addr,args.nshards);
   
   RunStats runstats; //any stats object
   for(int i=0;i<100;i++) runstats.push(i);

@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
+#include<chimbuko/util/string.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -75,7 +76,7 @@ void ADProvenanceDBclient::disconnect(){
   }
 }
 
-void ADProvenanceDBclient::connect(const std::string &addr){
+void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
   try{
     //Get the protocol
     size_t pos = addr.find(':');
@@ -91,10 +92,13 @@ void ADProvenanceDBclient::connect(const std::string &addr){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
+    int shard = m_rank % nshards;
+    std::string db_name = stringize("provdb.%d", shard);
+
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    VERBOSE(std::cout << "DB client connecting to " << addr << std::endl);
-    m_database = m_client.open(addr, 0, "provdb");
+    VERBOSE(std::cout << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl);
+    m_database = m_client.open(addr, 0, db_name);
     VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
     m_coll_anomalies = m_database.open("anomalies");
     VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);

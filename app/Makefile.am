@@ -45,8 +45,9 @@ else
 endif
 
 
-bindata_DATA = ws_flask_stat.py sst_view_parse.pl
+bindata_DATA = ws_flask_stat.py sst_view_parse.pl sonata_profile_parse.pl
 bindatadir = $(bindir)
 
 install-data-hook:
 	chmod u+x $(DESTDIR)$(bindatadir)/sst_view_parse.pl
+	chmod u+x $(DESTDIR)$(bindatadir)/sonata_profile_parse.pl

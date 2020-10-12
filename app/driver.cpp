@@ -24,6 +24,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
 #ifdef ENABLE_PROVDB
     addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+    addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");    
 #endif    
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
@@ -85,6 +86,10 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   params.interval_msec = 0; //pause at end of each io step
   params.perf_outputpath = ""; // performance output path
   params.perf_step = 10;   // make output every 10 steps
+#ifdef ENABLE_PROVDB
+  params.nprovdb_shards = 1;
+  params.provdb_addr = "";
+#endif
 
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 
