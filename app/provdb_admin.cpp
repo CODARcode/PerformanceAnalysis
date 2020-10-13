@@ -51,8 +51,9 @@ struct ProvdbArgs{
   int nshards;
   int nthreads;
   std::string db_type;
+  unsigned long db_commit_freq;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000){}
 };
 
 
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
   addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
   addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
   addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
+  addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
 
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
@@ -83,6 +85,7 @@ int main(int argc, char** argv) {
   if(args.ip.size() > 0){
     eng_opt += std::string("://") + args.ip;
   }
+
   std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
 
   //Initialize provider engine
@@ -139,24 +142,39 @@ int main(int argc, char** argv) {
     //Create the collections
     {
       sonata::Client client(engine);
+      std::vector<sonata::Database> db(args.nshards);
       for(int s=0;s<args.nshards;s++){
-	sonata::Database db = client.open(addr, 0, db_shard_names[s]);
-	db.create("anomalies");
-	db.create("metadata");
-	db.create("normalexecs");
+	db[s] = client.open(addr, 0, db_shard_names[s]);
+	db[s].create("anomalies");
+	db[s].create("metadata");
+	db[s].create("normalexecs");
       }
       std::cout << "Admin initialized collections" << std::endl;
+
+      //Setup a timer to periodically force a database commit
+      typedef std::chrono::high_resolution_clock Clock;
+      Clock::time_point commit_timer_start = Clock::now();
+
+
+      //Spin quietly until SIGTERM sent
+      signal(SIGTERM, termSignalHandler);  
+      std::cout << "Admin waiting for SIGTERM" << std::endl;
+      while(!stop_wait_loop) {
+	tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+
+	unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
+	if(commit_timer_ms >= args.db_commit_freq){
+	  std::cout << "Admit committing database to disk" << std::endl;
+	  for(int s=0;s<args.nshards;s++)
+	    db[s].commit();
+	  commit_timer_start = Clock::now();
+	}
+      
+	//If at least one client has previously connected but none are now connected, shutdown the server
+	if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
+      }
     }
 
-    //Spin quietly until SIGTERM sent
-    signal(SIGTERM, termSignalHandler);  
-    std::cout << "Admin waiting for SIGTERM" << std::endl;
-    while(!stop_wait_loop) {
-      tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
-      
-      //If at least one client has previously connected but none are now connected, shutdown the server
-      if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
-    }
 
     std::cout << "Admin detaching database shards" << std::endl;
     for(int s=0;s<args.nshards;s++){
