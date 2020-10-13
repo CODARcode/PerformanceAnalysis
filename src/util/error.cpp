@@ -38,7 +38,9 @@ namespace chimbuko{
   }
 
   void set_error_output_file(const int rank, const std::string &file_stub){
-    static std::ofstream f(stringize("%s.%d",file_stub.c_str(),rank));
+    std::string filename = stringize("%s.%d",file_stub.c_str(),rank);
+    static std::ofstream f(filename);
+    if(f.fail()) throw std::runtime_error("set_error_output_file could not open file " + filename);
     g_error.setRank(rank);
     g_error.setStream(&f);
   }

@@ -1,5 +1,6 @@
 #include <chimbuko/ad/ADAnomalyProvenance.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/util/error.hpp>
 
 using namespace chimbuko;
 
@@ -12,7 +13,14 @@ void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEv
   m_callstack.push_back(getCallStackEntry(call));
   std::string parent = call.get_parent();
   while(parent != "root"){
-    auto call_it = event_man.getCallData(parent);
+    CallListIterator_t call_it;
+    try{
+      call_it = event_man.getCallData(parent);
+    }catch(const std::exception &e){
+      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      break;
+    }
+
     m_callstack.push_back(getCallStackEntry(*call_it));
     parent = call_it->get_parent();
   }
@@ -44,31 +52,58 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
       VERBOSE(std::cout << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0) << std::endl);
 
       std::string gpu_event_parent = call.get_GPU_correlationID_partner(0);
-      CallListIterator_t pit = event_man.getCallData(gpu_event_parent);
       m_gpu_event_parent_info["event_id"] = gpu_event_parent;
-      m_gpu_event_parent_info["tid"] = pit->get_tid();
 
-      //Generate the parent stack
-      nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
-      gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
-
-      std::string parent = pit->get_parent();
-      while(parent != "root"){
-	auto call_it = event_man.getCallData(parent);
-	gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
-	parent = call_it->get_parent();
+      //Get the parent event
+      CallListIterator_t pit;
+      bool got_parent = true;
+      try{
+	pit = event_man.getCallData(gpu_event_parent);
+      }catch(const std::exception &e){
+	recoverable_error("Could not find GPU parent " + gpu_event_parent + " in call list due to : " + e.what());
+	got_parent = false;
       }
-      m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
-    }
-  }
+
+      if(got_parent){
+	m_gpu_event_parent_info["tid"] = pit->get_tid();
+
+	//Generate the parent stack
+	nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
+	gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
+
+	std::string parent = pit->get_parent();
+	while(parent != "root"){
+	  CallListIterator_t call_it;
+	  try{
+	    call_it = event_man.getCallData(parent);
+	  }catch(const std::exception &e){
+	    recoverable_error("Could not find GPU stack event parent " + parent + " in call list due to : " + e.what());
+	    break;
+	  }
+	  gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
+	  parent = call_it->get_parent();
+	}
+	m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
+      }
+    }//have correlation ID partner
+  }//m_is_gpu_event
 }
 
 void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 					     const ADEvent &event_man,
 					     const int window_size){
-  std::pair<CallListIterator_t, CallListIterator_t> win = event_man.getCallWindowStartEnd(call.get_id(), window_size);
   m_exec_window["exec_window"] = nlohmann::json::array();
   m_exec_window["comm_window"] = nlohmann::json::array();
+
+  //Get the window
+  std::pair<CallListIterator_t, CallListIterator_t> win;
+  try{
+    win = event_man.getCallWindowStartEnd(call.get_id(), window_size);
+  }catch(const std::exception &e){
+    recoverable_error("Could not get call window for event " + call.get_id());
+    return;
+  }
+
   for(auto it = win.first; it != win.second; it++){
     m_exec_window["exec_window"].push_back( { 
 	{"fid", it->get_fid()}, 

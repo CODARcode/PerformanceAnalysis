@@ -1,6 +1,7 @@
 #include <limits>
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/error.hpp"
 
 using namespace chimbuko;
 
@@ -45,6 +46,12 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   if(m_is_initialized) finalize();
   m_params = params;
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
+
+  //Initialize error collection
+  if(params.err_outputpath.size())
+    set_error_output_file(m_params.rank, stringize("%s/ad_error.%d", params.err_outputpath.c_str(), m_params.program_idx));
+  else
+    set_error_output_stream(m_params.rank, &std::cerr);
 
   // First, init io to make sure file (or connection) handler
   init_io();

@@ -1,6 +1,7 @@
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/util/map.hpp"
+#include "chimbuko/util/error.hpp"
 #include <iostream>
 #include <sstream> 
 
@@ -34,7 +35,14 @@ void ADEvent::stackProtectGC(CallListIterator_t it){
 
   std::string parent = it->get_parent();
   while(parent != "root"){
-    auto pit = getCallData(parent);
+    CallListIterator_t pit;
+    try{
+      pit = getCallData(parent);
+    }catch(const std::exception &e){
+      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      break;
+    }
+
     pit->can_delete(false);
     parent = pit->get_parent();
   }
@@ -49,12 +57,18 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
 
   std::string parent = it->get_parent();
   while(parent != "root"){
-    auto pit = getCallData(parent);
+    CallListIterator_t pit;
+    try{
+      pit = getCallData(parent);
+    }catch(const std::exception &e){
+      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      break;
+    }
 
     umit = m_unmatchedCorrelationID_count.find(pit->get_id());
     if(umit == m_unmatchedCorrelationID_count.end() || umit->second == 0)
       pit->can_delete(true);
-    else return; //stop here, the stack will be needed
+    else break; //stop here, the stack will be needed
 
     parent = pit->get_parent();
   }

@@ -30,6 +30,8 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
     addOptionalCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
 #endif
+    addOptionalCommandLineArg(p, err_outputpath, "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
+
     initialized = true;
   }
   return p;
@@ -90,6 +92,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   params.nprovdb_shards = 1;
   params.provdb_addr = "";
 #endif
+  params.err_outputpath = "";
 
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 

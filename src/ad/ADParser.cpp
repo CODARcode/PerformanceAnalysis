@@ -2,6 +2,7 @@
 #include "chimbuko/ad/utils.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/map.hpp"
+#include "chimbuko/util/error.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -148,7 +149,7 @@ void ADParser::update_attributes() {
     //Get the key
     size_t space_pos = name.find(" ");
     if(space_pos == std::string::npos){
-      std::cout << "WARNING: Encountered malformed attribute (missing space) \"" << name << "\"" << std::endl;
+      recoverable_error("Encountered malformed attribute (missing space) \"" + name + "\"");
       continue;
     }
 
@@ -164,7 +165,7 @@ void ADParser::update_attributes() {
     case Counter:
       m = &m_counterMap; break;
     default:
-      throw std::runtime_error("Invalid attribute type");
+      fatal_error("Invalid attribute type");
     }
 
     if(attributePair.second.count("Value")){
@@ -193,7 +194,7 @@ void ADParser::update_attributes() {
   m_attr_once = true;
 }
 
-void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) const{
+bool ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) const{
   size_t DIM_OFF, TS_OFF, count;
   std::string descr, descr_plural;
   unsigned long const*data;
@@ -222,6 +223,7 @@ void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
   }
 
   std::unordered_map<unsigned long, unsigned long> thr_last_ts;
+  bool in_order = true;
   for(size_t i=0;i<count;i++){
     if(validateEvent(data)){
       unsigned long thr = data[IDX_T];
@@ -231,15 +233,16 @@ void ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
 
       if(thr_last_ts.count(thr) && ts < thr_last_ts[thr]){
 	std::stringstream ss; 
-	std::ostream &os = exit_on_fail ? ss : std::cerr;
-	if(!exit_on_fail) os << "Warning: ";
-	os << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
-	if(exit_on_fail) throw std::runtime_error(ss.str());
+	ss << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
+	if(exit_on_fail){ fatal_error(ss.str()); }
+	else{ recoverable_error(ss.str()); }
+	in_order = false;
       }
       thr_last_ts[thr] = ts;
     }
     data += DIM_OFF;
   }
+  return in_order;
 }
 
 
@@ -286,7 +289,7 @@ ParserError ADParser::fetchFuncData() {
 	    //We need to work around that here
 	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
 	    if(!ev.second){
-	      VERBOSE(std::cout << "ADParser::fetchFuncData caught local index lookup error but appears to be associated with malformed event: " << ev.first.get_json().dump() << std::endl);
+	      recoverable_error("caught local index lookup error but appears to be associated with malformed event: " + ev.first.get_json().dump());
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
 	    }else{
@@ -295,16 +298,19 @@ ParserError ADParser::fetchFuncData() {
 	      os <<  "Associated event: " << ev.first.get_json().dump() << std::endl;
 	      os <<  "Failed local->global index substitution" << std::endl;
 	      os <<  "This typically happens if the metadata defining the function name was not provided" << std::endl;
+
 	      //Rather than exiting, just invalidate the entry so it is ignored later
 	      os <<  "Invalidating event" << std::endl;
-	      std::cerr << os.str() << std::endl;
+	      recoverable_error(os.str());
+
 	      unsigned long *pidx_p = m_event_timestamps.data() + i*FUNC_EVENT_DIM + IDX_P;
 	      *pidx_p = m_program_idx + 99999999; //give it an invalid program index
 	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
-	      if(ev.second) throw std::runtime_error("ADParser::fetchFuncData invalidation check failed!??");
+
+	      //Check invalidation worked
+	      if(ev.second) fatal_error("invalidation check failed!??");
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
-	      //throw std::runtime_error(os.str());
 	    }
 	  }
 	  *fidx_p = new_idx;
@@ -315,7 +321,7 @@ ParserError ADParser::fetchFuncData() {
       //Sometimes Tau gives us data that is out of order, we need to fix this
 #define DO_SORT
 #ifdef DO_SORT
-      {
+      if(!checkEventOrder(EventDataType::FUNC, false)){
 	std::map<unsigned long, std::vector<size_t> > data_sorted_idx; //preserve ordering of events that have the same timestamp
 	unsigned long* data = m_event_timestamps.data();
 	for(size_t i=0;i<m_timer_event_count;i++){
@@ -333,7 +339,7 @@ ParserError ADParser::fetchFuncData() {
 	m_event_timestamps.swap(data_sorted);
       }
 #else      
-      checkEventOrder(EventDataType::FUNC, false);
+      checkEventOrder(EventDataType::FUNC, true); //fatal errors
 #endif
 
       return ParserError::OK;
@@ -445,8 +451,6 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   bool good = true;
 
   if (!validateEvent(ev.get_ptr())){
-    std::cerr << "\n***** Invalid event detected *****\n";
-    //std::cout << "[" << rank << "] " << ev << std::endl;
     if(ev.valid()){
       std::string event_type("UNKNOWN"), func_name("UNKNOWN");
 
@@ -463,10 +467,13 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
 	  func_name = fit->second;
       }else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
 	func_name = "N/A";
-      
-      std::cerr << "Invalid event data: " << ev.get_json().dump() << std::endl 
-		<< "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
-    }else std::cerr << "Invalid event data pointer is null" << std::endl;
+ 
+      std::stringstream ss;
+      ss << "\n***** Invalid event detected *****\n"
+	 << "Invalid event data: " << ev.get_json().dump() << std::endl 
+	 << "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
+      recoverable_error(ss.str());
+    }else recoverable_error("\n***** Invalid event detected *****\nInvalid event data pointer is null");
     
     good = false;
   }
@@ -538,10 +545,10 @@ std::vector<Event_t> ADParser::getEvents() const{
 	      break;
 	    }
 	  }
-	  //throw std::runtime_error(ss.str());
+	  fatal_error(ss.str());
 	}
 	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [func]");
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [func]");
 	out.push_back(evp.first);
 	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_func_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
       }
@@ -552,9 +559,9 @@ std::vector<Event_t> ADParser::getEvents() const{
 
       if(evp.second){
 	unsigned long* latest_comm_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_comm_ts);
-	if(latest_comm_ts_val != nullptr && evp.first.ts() < *latest_comm_ts_val) throw std::runtime_error("ADParser::getEvents parsed comm data is not in time order");
+	if(latest_comm_ts_val != nullptr && evp.first.ts() < *latest_comm_ts_val) fatal_error("parsed comm data is not in time order");
 	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [comm]");
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [comm]");
 	out.push_back(evp.first);
 	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_comm_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
       }
@@ -564,15 +571,15 @@ std::vector<Event_t> ADParser::getEvents() const{
 							   generate_event_id(m_rank, step, idx_counterData));
       if(evp.second){
 	unsigned long* latest_count_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_count_ts);
-	if(latest_count_ts_val != nullptr && evp.first.ts() < *latest_count_ts_val) throw std::runtime_error("ADParser::getEvents parsed counter data is not in time order");
+	if(latest_count_ts_val != nullptr && evp.first.ts() < *latest_count_ts_val) fatal_error("parsed counter data is not in time order");
 	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) throw std::runtime_error("ADParser::getEvents event ordering error! [counter]");
+	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [counter]");
 	out.push_back(evp.first);
 	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_count_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
       }
       counterData = this->getCounterData(++idx_counterData);
     }else{
-      throw std::runtime_error("Unexpected pointer");
+      fatal_error("Unexpected pointer");
     }
   }//while loop over func and comm data
   return out;

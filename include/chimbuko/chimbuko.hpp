@@ -50,6 +50,8 @@ namespace chimbuko {
     bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
+    std::string err_outputpath; /**< Output path for error logs. If empty errors will be sent to std::cerr*/
+
 
     ChimbukoParams(): rank(-1234),  //not set!
 		      program_idx(0),
@@ -62,7 +64,8 @@ namespace chimbuko {
 		      provdb_addr(""), nprovdb_shards(1),
 #endif
 		      perf_outputpath(""), perf_step(10),
-		      only_one_frame(false), interval_msec(0)		      
+		      only_one_frame(false), interval_msec(0),
+		      err_outputpath("")
     {}
 
     void print() const;

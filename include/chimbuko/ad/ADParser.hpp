@@ -260,8 +260,9 @@ namespace chimbuko {
     /**
      * @brief Scan the data and check the events are in order
      * @param exit_on_fail Throw an error if the check fails
+     * @return true if the events are in order, false otherwise
      */
-    void checkEventOrder(const EventDataType type, bool exit_on_fail) const;
+    bool checkEventOrder(const EventDataType type, bool exit_on_fail) const;
 
 
     /**
