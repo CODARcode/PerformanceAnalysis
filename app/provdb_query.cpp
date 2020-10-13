@@ -7,10 +7,12 @@
 
 #include<nlohmann/json.hpp>
 #include<chimbuko/verbose.hpp>
+#include<chimbuko/util/string.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<sstream>
+#include<memory>
 
 using namespace chimbuko;
 
@@ -27,7 +29,8 @@ std::vector<std::string> splitString(const std::string &the_string, const char d
   
 void printUsageAndExit(){
   std::cout << "Usage: provdb_query <options> <instruction> <instruction args...>\n"
-	    << "options: -verbose (enable verbose output)\n"
+	    << "options: -verbose    Enable verbose output\n"
+	    << "         -nshards    Specify the number of shards (default 1)\n"
 	    << "instruction = 'filter' or 'execute'\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter: Apply a filter to a collection.\n"
@@ -37,7 +40,7 @@ void printUsageAndExit(){
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "execute: Execute an arbitrary jx9 query on the entire database\n"
-	    << "Arguments: <code> <vars>\n"
+	    << "Arguments: <code> <vars> <options>\n"
 	    << "where code is any jx9 code\n"
 	    << "vars is a comma-separated list (no spaces) of variables that are assigned within the function and returned\n"
 	    << "Example   code =  \"\\$vals = [];\n"
@@ -45,16 +48,19 @@ void printUsageAndExit(){
 	    << "                     array_push(\\$vals, \\$member);\n"
 	    << "                  }\"\n"
 	    << "          vars = 'vals'\n"
+	    << "options: -from_file    Treat the code argument as a filename from which to read the code\n"
+	    << "\n"
 	    << "NOTE: The collections are 'anomalies', 'metadata' and 'normalexecs'\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << std::endl;  
   exit(0);
 }
 
-void filter(ADProvenanceDBclient &client,
+void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
 	    int nargs, char** args){
   if(nargs != 2) throw std::runtime_error("Filter received unexpected number of arguments");
 
+  int nshards = clients.size();
   std::string coll_str = args[0];
   std::string query = args[1];
 
@@ -64,28 +70,43 @@ void filter(ADProvenanceDBclient &client,
   else if(coll_str == "normalexecs") coll = ProvenanceDataType::NormalExecData;
   else throw std::runtime_error("Invalid collection");
 
-  std::vector<std::string> result = client.filterData(coll, query);
-
-  std::cout << "[" << std::endl;
-
-  for(size_t i=0;i<result.size();i++){
-    nlohmann::json entry = nlohmann::json::parse(result[i]);
-    std::cout << entry.dump(4) << std::endl;
-    if(i!=result.size() -1)
-      std::cout << "," << std::endl;    
+  nlohmann::json result = nlohmann::json::array();
+  for(int s=0;s<nshards;s++){
+    std::vector<std::string> shard_results = clients[s]->filterData(coll, query);    
+    for(int i=0;i<shard_results.size();i++)
+      result.push_back( nlohmann::json::parse(shard_results[i]) );
   }
-  std::cout << "]" << std::endl;
+  std::cout << result.dump(4) << std::endl;
 }
 
-void execute(ADProvenanceDBclient &client,
+void execute(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
 	     int nargs, char** args){
-  if(nargs != 2) throw std::runtime_error("Execute received unexpected number of arguments");
+  if(nargs < 2) throw std::runtime_error("Execute received unexpected number of arguments");
 
+  int nshards = clients.size();
   std::string code = args[0];
   std::vector<std::string> vars_v = splitString(args[1],','); //comma separated list with no spaces eg  "a,b,c"
   std::unordered_set<std::string> vars_s; 
   for(auto &s : vars_v) vars_s.insert(s);
   
+  {
+    int a=2;
+    while(a<nargs){
+      std::string arg = args[a];
+      if(arg == "-from_file"){
+	std::ifstream in(code);
+	if(in.fail()) throw std::runtime_error("Could not open code file");
+	std::stringstream ss;
+	ss << in.rdbuf();
+	code = ss.str();
+	a++;
+      }else{
+	throw std::runtime_error("Unrecognized argument");
+      }
+    }
+  }
+
+
   if(Verbose::on()){
     std::cout << "Code: \"" << code << "\"" << std::endl;
     std::cout << "Variables:"; 
@@ -93,11 +114,17 @@ void execute(ADProvenanceDBclient &client,
     std::cout << std::endl;
   }
 
-  std::unordered_map<std::string,std::string> result = client.execute(code, vars_s);
-  for(auto &s : vars_v){
-    if(!result.count(s)) throw std::runtime_error("Result does not contain one of the expected variables");
-    std::cout << s <<  " = " << result[s] << std::endl;
+  nlohmann::json result = nlohmann::json::array();
+  for(int s=0;s<nshards;s++){
+    nlohmann::json shard_results_j;
+    std::unordered_map<std::string,std::string> shard_result = clients[s]->execute(code, vars_s);  
+    for(auto &var : vars_v){
+      if(!shard_result.count(var)) throw std::runtime_error("Result does not contain one of the expected variables");
+      shard_results_j[var] = nlohmann::json::parse(shard_result[var]);
+    }
+    result.push_back(std::move(shard_results_j));
   }
+  std::cout << result.dump(4) << std::endl;
 }
 
 
@@ -112,17 +139,21 @@ int main(int argc, char** argv){
 
   int arg_offset = 1;
   int a=1;
+  int nshards=1;
   while(a < argc){
     std::string arg = argv[a];
     if(arg == "-verbose"){
       Verbose::set_verbose(true);
       arg_offset++; a++;
+    }else if(arg == "-nshards"){
+      nshards = strToAny<int>(argv[a+1]);
+      arg_offset+=2; a+=2;
     }else a++;
   }
+  if(nshards <= 0) throw std::runtime_error("Number of shards must be >=1");
 
   std::string mode = argv[arg_offset++];
   
-
   ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
   thallium::engine & engine = ADProvenanceDBengine::getEngine();
 
@@ -134,28 +165,33 @@ int main(int argc, char** argv){
   sonata::Admin admin(engine);
   
   std::string addr = (std::string)engine.self();
-  std::string config = "{ \"path\" : \"./provdb.0.unqlite\" }";
 
-  admin.attachDatabase(addr, 0, "provdb.0", "unqlite", config);
+  std::vector<std::string> db_shard_names(nshards);
+  std::vector<std::unique_ptr<ADProvenanceDBclient> > clients(nshards);
+  for(int s=0;s<nshards;s++){
+    db_shard_names[s] = chimbuko::stringize("provdb.%d",s);
+    std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_shard_names[s].c_str());
+    admin.attachDatabase(addr, 0, db_shard_names[s], "unqlite", config);    
 
-  ADProvenanceDBclient client(0);
-  client.connect(addr,1);
-
-  if(!client.isConnected()){
-    engine.finalize();
-    throw std::runtime_error("Could not connect to database!");
+    clients[s].reset(new ADProvenanceDBclient(s));
+    clients[s]->connect(addr, nshards);
+    if(!clients[s]->isConnected()){
+      engine.finalize();
+      throw std::runtime_error(stringize("Could not connect to database shard %d!", s));
+    }
   }
 
   if(mode == "filter"){
-    filter(client, argc-arg_offset, argv+arg_offset);
+    filter(clients, argc-arg_offset, argv+arg_offset);
   }else if(mode == "execute"){
-    execute(client, argc-arg_offset, argv+arg_offset);
+    execute(clients, argc-arg_offset, argv+arg_offset);
   }else throw std::runtime_error("Invalid mode");
     
-  client.disconnect();
-  
 
-  admin.detachDatabase(addr, 0, "provdb");
+  for(int s=0;s<nshards;s++){
+    clients[s]->disconnect();
+    admin.detachDatabase(addr, 0, db_shard_names[s]);
+  }
 
   return 0;
 }
