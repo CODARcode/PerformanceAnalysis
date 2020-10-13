@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
 
 	unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
 	if(commit_timer_ms >= args.db_commit_freq){
-	  std::cout << "Admit committing database to disk" << std::endl;
+	  std::cout << "Admin committing database to disk" << std::endl;
 	  for(int s=0;s<args.nshards;s++)
 	    db[s].commit();
 	  commit_timer_start = Clock::now();

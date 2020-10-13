@@ -284,8 +284,9 @@ namespace chimbuko {
 
     /**
      * @brief Create an Event_t instance from the data at the provided pointer and run simple validation
+     * @param log_error If true a recoverable error will be logged for invalid events
      */
-    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id) const;
+    std::pair<Event_t,bool> createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id, bool log_error = true) const;
 
 
 

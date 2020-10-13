@@ -169,21 +169,26 @@ EventError ADEvent::addFunc(const Event_t& event) {
   }else if (eventType.compare("EXIT") == 0){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
     if (cs.size() == 0) { //Expect to have at least one entry; that created when the ENTRY was encountered
-      std::cerr << "\n***** Empty call stack! *****\n" << std::endl;
-      std::cerr << event.get_json().dump() << std::endl
-		<< m_eventType->find(event.eid())->second << ": "
-		<< m_funcMap->find(event.fid())->second << std::endl;
+      std::stringstream ss;
+      ss << "\n***** Empty call stack! *****\n" << std::endl
+	 << event.get_json().dump() << std::endl
+	 << m_eventType->find(event.eid())->second << ": "
+	 << m_funcMap->find(event.fid())->second << std::endl;
+      recoverable_error(ss.str());
       return EventError::EmptyCallStack;
     }
 
     //Get the function call object at the top of the stack and add the exit event
     CallListIterator_t& it = cs.top();
     if (!it->update_exit(event)) {
-      std::cerr << "\n***** Invalid EXIT event! *****\n" << std::endl;
-      std::cerr << event.get_json().dump() << std::endl
-		<< m_eventType->find(event.eid())->second << ": "
-		<< m_funcMap->find(event.fid())->second << std::endl;
-      std::cerr << it->get_json().dump() << std::endl;
+      std::stringstream ss;
+      ss << "\n***** Invalid EXIT event! *****\n" << std::endl
+	<< event.get_json().dump() << std::endl
+	<< m_eventType->find(event.eid())->second << ": "
+	<< m_funcMap->find(event.fid())->second << std::endl
+	<< it->get_json().dump() << std::endl;
+      recoverable_error(ss.str());
+      
       // while (!cs.empty()) {
       //     std::cerr << *cs.top() << std::endl;
       //     cs.pop();

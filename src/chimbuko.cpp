@@ -418,7 +418,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
       break;
 
     if (m_params.interval_msec)
-      std::this_thread::sleep_for(std::chrono::microseconds(m_params.interval_msec));
+      std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
   } // end of parser while loop
 
   //Always dump perf at end

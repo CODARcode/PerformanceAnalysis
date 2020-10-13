@@ -287,7 +287,7 @@ ParserError ADParser::fetchFuncData() {
 	  }catch(const std::exception &e){
 	    //Sometimes tau gives us malformed (nonsense) data entries, and this can cause the lookup to fail
 	    //We need to work around that here
-	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
+	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
 	    if(!ev.second){
 	      recoverable_error("caught local index lookup error but appears to be associated with malformed event: " + ev.first.get_json().dump());
 	      fidx_p += FUNC_EVENT_DIM;
@@ -305,9 +305,9 @@ ParserError ADParser::fetchFuncData() {
 
 	      unsigned long *pidx_p = m_event_timestamps.data() + i*FUNC_EVENT_DIM + IDX_P;
 	      *pidx_p = m_program_idx + 99999999; //give it an invalid program index
-	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event");
 
 	      //Check invalidation worked
+	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
 	      if(ev.second) fatal_error("invalidation check failed!??");
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
@@ -438,7 +438,7 @@ bool ADParser::validateEvent(const unsigned long* e) const{
 }
 
 
-std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id) const{
+std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id, bool log_error) const{
   // Create event
   Event_t ev(data, t, idx, id);
 
@@ -451,29 +451,33 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   bool good = true;
 
   if (!validateEvent(ev.get_ptr())){
-    if(ev.valid()){
-      std::string event_type("UNKNOWN"), func_name("UNKNOWN");
 
-      if(ev.type() == EventDataType::FUNC || ev.type() == EventDataType::COMM){
-	auto eit = this->getEventType()->find(ev.eid());
-	if(eit != this->getEventType()->end())
-	  event_type = eit->second;
-      }else if(ev.type() == EventDataType::COUNT)
-	event_type = "N/A";
+    //Log the invalid event as a recoverable error
+    if(log_error){
+      if(ev.valid()){
+	std::string event_type("UNKNOWN"), func_name("UNKNOWN");
+
+	if(ev.type() == EventDataType::FUNC || ev.type() == EventDataType::COMM){
+	  auto eit = this->getEventType()->find(ev.eid());
+	  if(eit != this->getEventType()->end())
+	    event_type = eit->second;
+	}else if(ev.type() == EventDataType::COUNT)
+	  event_type = "N/A";
       
-      if(ev.type() == EventDataType::FUNC){
-	auto fit = this->getFuncMap()->find(ev.fid());
-	if(fit != this->getFuncMap()->end())
-	  func_name = fit->second;
-      }else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
-	func_name = "N/A";
+	if(ev.type() == EventDataType::FUNC){
+	  auto fit = this->getFuncMap()->find(ev.fid());
+	  if(fit != this->getFuncMap()->end())
+	    func_name = fit->second;
+	}else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
+	  func_name = "N/A";
  
-      std::stringstream ss;
-      ss << "\n***** Invalid event detected *****\n"
-	 << "Invalid event data: " << ev.get_json().dump() << std::endl 
-	 << "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
-      recoverable_error(ss.str());
-    }else recoverable_error("\n***** Invalid event detected *****\nInvalid event data pointer is null");
+	std::stringstream ss;
+	ss << "\n***** Invalid event detected *****\n"
+	   << "Invalid event data: " << ev.get_json().dump() << std::endl 
+	   << "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
+	recoverable_error(ss.str());
+      }else recoverable_error("\n***** Invalid event detected *****\nInvalid event data pointer is null");
+    }//log_error
     
     good = false;
   }
