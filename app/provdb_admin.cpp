@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 
       //Spin quietly until SIGTERM sent
       signal(SIGTERM, termSignalHandler);  
-      std::cout << "Admin waiting for SIGTERM" << std::endl;
+      std::cout << "Admin main thread waiting for completion" << std::endl;
       while(!stop_wait_loop) {
 	tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
 
@@ -171,7 +171,10 @@ int main(int argc, char** argv) {
 	}
       
 	//If at least one client has previously connected but none are now connected, shutdown the server
-	if(args.autoshutdown && a_client_has_connected && connected.size() == 0) break;
+	if(args.autoshutdown && a_client_has_connected && connected.size() == 0){
+	  std::cout << "Admin detected all clients disconnected, shutting down" << std::endl;
+	  break;
+	}
       }
     }
 
