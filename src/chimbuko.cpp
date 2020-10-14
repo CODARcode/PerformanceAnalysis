@@ -151,6 +151,7 @@ void Chimbuko::init_provdb(){
   if(m_params.provdb_addr.length() > 0)
     m_provdb_client->connect(m_params.provdb_addr, m_params.nprovdb_shards);
   m_normalevent_prov = new ADNormalEventProvenance;
+  m_provdb_client->linkPerf(&m_perf);
 }
 #endif
 

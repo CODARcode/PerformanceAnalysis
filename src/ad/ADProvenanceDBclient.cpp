@@ -65,7 +65,11 @@ void ADProvenanceDBclient::disconnect(){
   if(m_is_connected){
     VERBOSE(std::cout << "ADProvenanceDBclient disconnecting" << std::endl);
     VERBOSE(std::cout << "ADProvenanceDBclient is waiting for outstanding calls to complete" << std::endl);
+
+    PerfTimer timer;
     anom_send_man.waitAll();
+    if(m_stats) m_stats->add("provdb_client_disconnect_wait_all_ms", timer.elapsed_ms());
+
     VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
     m_client_goodbye->on(m_server)(m_rank);    
     VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
@@ -136,7 +140,6 @@ std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<n
 
   PerfTimer timer;
 
-  timer.start();
   size_t size = entries.size();
   std::vector<uint64_t> ids(size);
   std::vector<std::string> dump(size);
@@ -198,6 +201,7 @@ void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const Prov
 void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
   if(entries.size() == 0 || !m_is_connected) return;
 
+  PerfTimer timer;
   size_t size = entries.size();
   std::vector<std::string> dump(size);
   for(int i=0;i<size;i++){
@@ -205,6 +209,13 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
     dump[i] = entries[i].dump();    
   }
 
+  if(m_stats){
+    m_stats->add("provdb_client_sendmulti_async_dump_json_ms", timer.elapsed_ms());
+    m_stats->add("provdb_client_sendmulti_async_nrecords", size);
+    for(int i=0;i<size;i++) m_stats->add("provdb_client_sendmulti_async_record_size", dump[i].size());
+  }
+
+  timer.start();
   uint64_t* ids;
   sonata::AsyncRequest *sreq;
 
@@ -218,6 +229,8 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
   }
 
   getCollection(type).store_multi(dump, ids, false, sreq); 
+
+  if(m_stats) m_stats->add("provdb_client_sendmulti_async_send_ms", timer.elapsed_ms());
 }
 
 void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
