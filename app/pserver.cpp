@@ -65,9 +65,9 @@ struct pserverArgs{
 
 int main (int argc, char ** argv){
   pserverArgs args;
-  if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help") ){
+  if(argc == 2 && std::string(argv[1]) == "-help"){
     pserverArgs::getParser().help(std::cout);
-    return argc < pserverArgs::getParser().nMandatoryArgs()+1 ? 1 : 0;
+    return 0;
   }
   pserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
 
