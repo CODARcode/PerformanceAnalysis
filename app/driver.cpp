@@ -31,6 +31,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
 #endif
     addOptionalCommandLineArg(p, err_outputpath, "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
+    addOptionalCommandLineArg(p, trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
 
     initialized = true;
   }
@@ -93,6 +94,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   params.provdb_addr = "";
 #endif
   params.err_outputpath = "";
+  params.trace_connect_timeout = 60;
 
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 

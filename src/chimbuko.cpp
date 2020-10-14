@@ -90,7 +90,8 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
-  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType);
+  m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType,
+			  m_params.trace_connect_timeout);
   m_parser->linkPerf(&m_perf);  
 }
 

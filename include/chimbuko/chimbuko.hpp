@@ -14,6 +14,8 @@ namespace chimbuko {
     std::string trace_inputFile; /**< The input file. Assuming the environment variable TAU_FILENAME is set, the binary name is BINARY_NAME and the MPI rank is WORLD_RANK, the file format is
 			      < inputFile = "${TAU_FILENAME}-${BINARY_NAME}-${WORLD_RANK}.bp"
 			      < Do not include the .sst file extensions for SST mode*/
+    int trace_connect_timeout; /**< Timeout (in seconds) of ADIOS2 SST connection to trace data*/
+
 
     //Parameters associated with the outlier detection algorithm
     double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
@@ -58,6 +60,7 @@ namespace chimbuko {
 		      verbose(true),
 		      outlier_sigma(6.),
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
+		      trace_connect_timeout(60),
 		      pserver_addr(""), hpserver_nthr(1),
 		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), anom_win_size(10),
 #ifdef ENABLE_PROVDB
