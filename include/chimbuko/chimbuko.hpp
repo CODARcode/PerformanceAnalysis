@@ -28,11 +28,7 @@ namespace chimbuko {
 			      */
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
-    //Parameters associated with communicating with the visualization (viz) module
-    IOMode viz_iomode; /**< Set to IOMode::Online to send to viz module, IOMode::Offline to dump to disk, or IOMode::Both for both */
-    std::string viz_datadump_outputPath; /**< If writing to disk, write to this directory */
-    std::string viz_addr; /**< If sending to the viz module, this is the web address (expected http://....) */
-
+    std::string provdata_outdir; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
 #ifdef ENABLE_PROVDB
     //Parameters associated with the provenance database
     std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
@@ -62,7 +58,7 @@ namespace chimbuko {
 		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 		      trace_connect_timeout(60),
 		      pserver_addr(""), hpserver_nthr(1),
-		      viz_iomode(IOMode::Offline), viz_datadump_outputPath("."), viz_addr(""), anom_win_size(10),
+		      anom_win_size(10),
 #ifdef ENABLE_PROVDB
 		      provdb_addr(""), nprovdb_shards(1),
 #endif
@@ -195,7 +191,6 @@ namespace chimbuko {
     void extractCounters(int rank, int step);
 
 
-#ifdef ENABLE_PROVDB
     /**
      * @brief Extract provenance information about anomalies and communicate to provenance DB
      */
@@ -208,8 +203,7 @@ namespace chimbuko {
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB
      */
-    void sendNewMetadataToProvDB() const;
-#endif
+    void sendNewMetadataToProvDB(int step) const;
     
     //Components and parameters
     ADParser * m_parser;       /**< adios2 input data stream parser */

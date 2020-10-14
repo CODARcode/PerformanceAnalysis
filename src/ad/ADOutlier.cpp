@@ -143,11 +143,13 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       n_outliers += 1;
       outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
     }else{
-      VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
       //Capture maximum of one normal execution per io step
-      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0)
+      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
+	VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+
 	outliers.insert(itt, Anomalies::EventType::Normal);      
+      }
     }
   }
 

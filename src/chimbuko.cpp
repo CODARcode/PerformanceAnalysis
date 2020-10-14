@@ -15,11 +15,11 @@ void ChimbukoParams::print() const{
 #ifdef _USE_ZMQNET
 	    << "\nPS Addr    : " << pserver_addr
 #endif
-	    << "\nVIS Addr   : " << viz_addr
 	    << "\nSigma      : " << outlier_sigma
 	    << "\nWindow size: " << anom_win_size
 	  
 	    << "\nInterval   : " << interval_msec << " msec\n"
+	    << "\nProvenance data outpath: " << provdata_outdir << "\n"
 #ifdef ENABLE_PROVDB
 	    << "\nProvDB addr: " << provdb_addr << "\n"
 	    << "\nProvDB shards: " << nprovdb_shards  << "\n"
@@ -81,16 +81,13 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
 
 void Chimbuko::init_io(){
-    m_io = new ADio(m_params.program_idx, m_params.rank);
-    m_io->setDispatcher();
-    m_io->setWinSize(m_params.anom_win_size);
-    if ((m_params.viz_iomode == IOMode::Online || m_params.viz_iomode == IOMode::Both) && m_params.viz_addr.size()){
-      m_io->open_curl(m_params.viz_addr);
-    }
+  m_io = new ADio(m_params.program_idx, m_params.rank);
+  m_io->setDispatcher();
+  m_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
 
-    if ((m_params.viz_iomode == IOMode::Offline || m_params.viz_iomode == IOMode::Both) && m_params.viz_datadump_outputPath.size()){
-      m_io->setOutputPath(m_params.viz_datadump_outputPath);
-    }
+  if(m_params.provdata_outdir.size())
+    m_io->setOutputPath(m_params.provdata_outdir);
+  
 }
 
 void Chimbuko::init_parser(){
@@ -292,8 +289,6 @@ void Chimbuko::extractCounters(int rank, int step){
 } 
 
 
-#ifdef ENABLE_PROVDB
-
 void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies, 
 					const int step,
 					const unsigned long first_event_ts,
@@ -302,7 +297,11 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
   constexpr bool add_outstanding = true;
 
   //Gather provenance data on anomalies and send to provenance database
-  if(m_provdb_client->isConnected()){
+  if(m_params.provdata_outdir.length() > 0
+#ifdef ENABLE_PROVDB
+     || m_provdb_client->isConnected()
+#endif
+     ){
     PerfTimer timer,timer2;
 
     //Put new normal event provenance into m_normalevent_prov
@@ -343,38 +342,61 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_us", timer2.elapsed_us());
     }
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_us", timer.elapsed_us());
-      
-    timer.start();
-    m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
-    m_perf.add("ad_extract_send_prov_anom_data_send_async_us", timer.elapsed_us());
 
-    timer.start();
-    m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
-    m_perf.add("ad_extract_send_prov_normalexec_data_send_async_us", timer.elapsed_us());
+    if(anomaly_prov.size() > 0){
+      timer.start();
+      m_io->writeJSON(anomaly_prov, step, "anomalies");
+      m_perf.add("ad_extract_send_prov_anom_data_io_write_us", timer.elapsed_us());
+
+#ifdef ENABLE_PROVDB      
+      timer.start();
+      m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
+      m_perf.add("ad_extract_send_prov_anom_data_send_async_us", timer.elapsed_us());
+#endif
+    }
+
+    if(normalevent_prov.size() > 0){
+      timer.start();
+      m_io->writeJSON(normalevent_prov, step, "normalexecs");
+      m_perf.add("ad_extract_send_prov_normalexec_data_io_write_us", timer.elapsed_us());
+
+#ifdef ENABLE_PROVDB      
+      timer.start();
+      m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
+      m_perf.add("ad_extract_send_prov_normalexec_data_send_async_us", timer.elapsed_us());
+#endif
+    }
+
   }//isConnected
 }
 
-void Chimbuko::sendNewMetadataToProvDB() const{
-  if(m_provdb_client->isConnected()){
+void Chimbuko::sendNewMetadataToProvDB(int step) const{
+  if(m_params.provdata_outdir.length() > 0
+#ifdef ENABLE_PROVDB
+     || m_provdb_client->isConnected()
+#endif
+     ){
     PerfTimer timer;
     std::vector<MetaData_t> const & new_metadata = m_parser->getNewMetaData();
     std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
     for(size_t i=0;i<new_metadata.size();i++)
       new_metadata_j[i] = new_metadata[i].get_json();
     m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_us", timer.elapsed_us());
-    timer.start();
-    m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
-    m_perf.add("ad_send_new_metadata_to_provdb_send_async_us", timer.elapsed_us());
+
+    if(new_metadata_j.size() > 0){
+      timer.start();
+      m_io->writeJSON(new_metadata_j, step, "metadata");
+      m_perf.add("ad_send_new_metadata_to_provdb_io_write_us", timer.elapsed_us());
+      
+#ifdef ENABLE_PROVDB
+      timer.start();
+      m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
+      m_perf.add("ad_send_new_metadata_to_provdb_send_async_us", timer.elapsed_us());
+#endif
+    }
+
   }
 }
-
-
-
-#endif
-
-
-
-
 
 void Chimbuko::run(unsigned long long& n_func_events, 
 		   unsigned long long& n_comm_events,
@@ -389,7 +411,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
   
-  PerfTimer step_timer;
+  PerfTimer step_timer, timer;
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
@@ -402,21 +424,18 @@ void Chimbuko::run(unsigned long long& n_func_events,
     extractEvents(first_event_ts, last_event_ts, step);
 
     //Run the outlier detection algorithm on the events
-    PerfTimer anom_timer;
+    timer.start();
     Anomalies anomalies = m_outlier->run(step);
-    m_perf.add("ad_run_anom_detection_time_us", anom_timer.elapsed_us());
+    m_perf.add("ad_run_anom_detection_time_us", timer.elapsed_us());
 
     n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
     frames++;
     
-
-#ifdef ENABLE_PROVDB
     //Generate anomaly provenance for detected anomalies and send to DB
     extractAndSendProvenance(anomalies, step, first_event_ts, last_event_ts);
     
     //Send any new metadata to the DB
-    sendNewMetadataToProvDB();
-#endif	
+    sendNewMetadataToProvDB(step);
     
     if(m_net_client && m_net_client->use_ps()){
       //Gather function profile and anomaly statistics and send to the pserver
@@ -431,12 +450,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
       count_stats.updateGlobalStatistics(*m_net_client);
     }
     
-
-
-    //Dump data accumulated during IO step
-    m_io->write(m_event->trimCallList(), step);
-    m_io->writeCounters(m_counter->flushCounters(), step);
-    m_io->writeMetaData(m_parser->getNewMetaData(), step);
+    //Trim the call list
+    timer.start();
+    delete m_event->trimCallList();
+    m_perf.add("ad_run_trim_calllist_us", timer.elapsed_us());
 
     m_perf.add("ad_run_total_step_time_excl_parse_us", step_timer.elapsed_us());
 

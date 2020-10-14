@@ -43,16 +43,15 @@ void printHelp(){
 	    << "Where <Trace engine type> : BPFile or SST\n"
 	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
 	    << "      <Trace file prefix> : The prefix of the file eg \"tau-metrics-[mybinary]\"\n"
-	    << "      <Output location>   : Where the data intended for the visualization module is sent.\n"
-	    << "                            If a url (starts with http) it is sent to the url,\n"
-	    << "                            otherwise if a non-empty string it is output to disk at that location\n"
+	    << "      <Output location>   : Directory where the provenance data is written (in conjunction with provDB if active).\n"
+	    << "                            An empty string disables writing the data to disk.\n"
 	    << "      <Options>           : Optional arguments as described below.\n";
   getOptionalArgsParser().help(std::cout);
 }
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
   if(argc < 5){
-    std::cerr << "Expected at least 5 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix> <output (ip/dir)>" << std::endl;
+    std::cerr << "Expected at least 5 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix> <output dir>" << std::endl;
     exit(-1);
   }
 
@@ -69,16 +68,8 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
   params.trace_inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
 
-  //Choose how the data intended for the vizualization module is handled
-  // if string starts with "http", use online mode (connect to viz module); otherwise offline mode (dump to disk)
-  std::string output = argv[4]; 
-  params.viz_iomode = IOMode::Both;
-  params.viz_datadump_outputPath = "";      //output directory
-  params.viz_addr = "";
-  if (output.find("http://") == std::string::npos)
-    params.viz_datadump_outputPath = output;
-  else
-    params.viz_addr = output;
+  //Set the directory where the provenance data is written in conjunction with the provDB. Blank string disables disk write.
+  params.provdata_outdir = argv[4]; 
 
   //The remainder are optional arguments. Enable using the appropriate command line switch
 
