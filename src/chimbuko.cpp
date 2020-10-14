@@ -43,6 +43,8 @@ Chimbuko::~Chimbuko(){
 }
 
 void Chimbuko::initialize(const ChimbukoParams &params){
+  PerfTimer timer;
+
   if(m_is_initialized) finalize();
   m_params = params;
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
@@ -73,6 +75,8 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   init_metadata_parser();
   
   m_is_initialized = true;
+  
+  m_perf.add("ad_initialize_total_us", timer.elapsed_us());
 }
 
 
@@ -156,6 +160,7 @@ void Chimbuko::init_metadata_parser(){
 
 void Chimbuko::finalize()
 {
+  PerfTimer timer;
   if(!m_is_initialized) return;
 
   if(m_net_client){
@@ -187,6 +192,9 @@ void Chimbuko::finalize()
   m_metadata_parser = nullptr;
 
   m_is_initialized = false;
+
+  m_perf.add("ad_finalize_total_us", timer.elapsed_us());
+  m_perf.write();
 }
 
 //Returns false if beginStep was not successful
@@ -196,21 +204,39 @@ bool Chimbuko::parseInputStep(int &step,
 			      unsigned long long& n_counter_events
 			      ){
   if (!m_parser->getStatus()) return false;
+
+  PerfTimer timer, total_timer;
+  total_timer.start();
+
   VERBOSE(std::cout << "driver commencing step " << step << std::endl);
+
+  timer.start();
   m_parser->beginStep();
   if (!m_parser->getStatus()){
     VERBOSE(std::cout << "driver parser appears to have disconnected, ending" << std::endl);
     return false;
   }
+  m_perf.add("ad_parse_input_begin_step_us", timer.elapsed_us());
     
   // get trace data via SST
   step = m_parser->getCurrentStep();
   VERBOSE(std::cout << "driver commencing input parse for step " << step << std::endl);
 
+  timer.start();
   m_parser->update_attributes();
+  m_perf.add("ad_parse_input_update_attributes_us", timer.elapsed_us());
+
+  timer.start();
   m_parser->fetchFuncData();
+  m_perf.add("ad_parse_input_fetch_func_data_us", timer.elapsed_us());
+
+  timer.start();
   m_parser->fetchCommData();
+  m_perf.add("ad_parse_input_fetch_comm_data_us", timer.elapsed_us());
+
+  timer.start();
   m_parser->fetchCounterData();
+  m_perf.add("ad_parse_input_fetch_counter_data_us", timer.elapsed_us());
 
   // early SST buffer release
   m_parser->endStep();
@@ -224,6 +250,7 @@ bool Chimbuko::parseInputStep(int &step,
   m_metadata_parser->addData(m_parser->getNewMetaData());
 
   VERBOSE(std::cout << "driver completed input parse for step " << step << std::endl);
+  m_perf.add("ad_parse_input_total_us", total_timer.elapsed_us());
 
   return true;
 }
@@ -240,12 +267,12 @@ void Chimbuko::extractEvents(unsigned long &first_event_ts,
 			     int step){
   PerfTimer timer;
   std::vector<Event_t> events = m_parser->getEvents();
-  m_perf.add("parser_event_extract_us", timer.elapsed_us());
+  m_perf.add("ad_extract_events_get_events_us", timer.elapsed_us());
   timer.start();
   for(auto &e : events)
     m_event->addEvent(e);
-  m_perf.add("parser_event_register_us", timer.elapsed_us());
-  m_perf.add("parser_event_count", events.size());
+  m_perf.add("ad_extract_events_register_us", timer.elapsed_us());
+  m_perf.add("ad_extract_events_event_count", events.size());
   first_event_ts = events.front().ts();
   last_event_ts = events.back().ts();
 }
@@ -260,7 +287,7 @@ void Chimbuko::extractCounters(int rank, int step){
 	       generate_event_id(rank, step, c));    
     m_counter->addCounter(ev);
   }
-  m_perf.add("parser_counter_extract_register_us", timer.elapsed_us());
+  m_perf.add("ad_extract_counters_get_register_us", timer.elapsed_us());
 } 
 
 
@@ -285,14 +312,14 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
 				       step, first_event_ts, last_event_ts);
       m_normalevent_prov->addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
-      m_perf.add("provdb_normalevent_update_per_event_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalevent_update_per_event_us", timer2.elapsed_us());
     }
-    m_perf.add("provdb_normalevent_update_total_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_normalevent_update_total_us", timer.elapsed_us());
 
     //Get any outstanding normal events from previous timesteps that we couldn't previously provide
     timer.start();
     std::vector<nlohmann::json> normalevent_prov = m_normalevent_prov->getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
-    m_perf.add("provdb_normalevent_get_outstanding_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_normalevent_get_outstanding_us", timer.elapsed_us());
 
     //Gather provenance of anomalies and for each one try to obtain a normal execution
     timer.start();
@@ -304,7 +331,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
 				       step, first_event_ts, last_event_ts);
       anomaly_prov[i++] = extract_prov.get_json();
-      m_perf.add("provdb_anom_data_generation_per_anom_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_anom_data_generation_per_anom_us", timer2.elapsed_us());
       
       //Get the associated normal event
       //if normal event not available put into the list of outstanding requests
@@ -312,17 +339,17 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       timer2.start();
       auto nev = m_normalevent_prov->getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete); 
       if(nev.second) normalevent_prov.push_back(std::move(nev.first));
-      m_perf.add("provdb_anom_normalevent_gather_per_anom_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_us", timer2.elapsed_us());
     }
-    m_perf.add("provdb_provenance_data_generation_total_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_provenance_data_generation_total_us", timer.elapsed_us());
       
     timer.start();
     m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
-    m_perf.add("provdb_anom_data_send_async_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_anom_data_send_async_us", timer.elapsed_us());
 
     timer.start();
     m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
-    m_perf.add("provdb_normalexec_data_send_async_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_normalexec_data_send_async_us", timer.elapsed_us());
   }//isConnected
 }
 
@@ -333,10 +360,10 @@ void Chimbuko::sendNewMetadataToProvDB() const{
     std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
     for(size_t i=0;i<new_metadata.size();i++)
       new_metadata_j[i] = new_metadata[i].get_json();
-    m_perf.add("provdb_metadata_gather_us", timer.elapsed_us());
+    m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_us", timer.elapsed_us());
     timer.start();
     m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
-    m_perf.add("provdb_metadata_send_async_us", timer.elapsed_us());
+    m_perf.add("ad_send_new_metadata_to_provdb_send_async_us", timer.elapsed_us());
   }
 }
 
@@ -376,7 +403,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     //Run the outlier detection algorithm on the events
     PerfTimer anom_timer;
     Anomalies anomalies = m_outlier->run(step);
-    m_perf.add("anom_detection_time_us", anom_timer.elapsed_us());
+    m_perf.add("ad_run_anom_detection_time_us", anom_timer.elapsed_us());
 
     n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
     frames++;
@@ -410,7 +437,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_io->writeCounters(m_counter->flushCounters(), step);
     m_io->writeMetaData(m_parser->getNewMetaData(), step);
 
-    m_perf.add("total_step_time_us", step_timer.elapsed_us());
+    m_perf.add("ad_run_total_step_time_excl_parse_us", step_timer.elapsed_us());
 
     if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0)
       m_perf.write(); //only writes if filename/output path set
