@@ -206,7 +206,7 @@ bool Chimbuko::parseInputStep(int &step,
   PerfTimer timer, total_timer;
   total_timer.start();
 
-  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << step << std::endl;
+  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << step+1 << std::endl;
 
   timer.start();
   m_parser->beginStep();
