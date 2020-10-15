@@ -206,7 +206,11 @@ bool Chimbuko::parseInputStep(int &step,
   PerfTimer timer, total_timer;
   total_timer.start();
 
-  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << step+1 << std::endl;
+  static bool first = true;
+  int expect_step = first ? 0 : step+1;
+  first = false;
+
+  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl;
 
   timer.start();
   m_parser->beginStep();
@@ -218,6 +222,8 @@ bool Chimbuko::parseInputStep(int &step,
     
   // get trace data via SST
   step = m_parser->getCurrentStep();
+  if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
+    
   if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
 
   timer.start();
@@ -415,7 +421,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
-    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver " << m_params.rank << " starting analysis of step " << step << std::endl;
+    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl;
     step_timer.start();
 
     //Extract counters and put into counter manager
