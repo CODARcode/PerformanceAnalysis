@@ -206,7 +206,7 @@ bool Chimbuko::parseInputStep(int &step,
   PerfTimer timer, total_timer;
   total_timer.start();
 
-  VERBOSE(std::cout << "driver commencing step " << step << std::endl);
+  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << step << std::endl;
 
   timer.start();
   m_parser->beginStep();
@@ -218,7 +218,7 @@ bool Chimbuko::parseInputStep(int &step,
     
   // get trace data via SST
   step = m_parser->getCurrentStep();
-  VERBOSE(std::cout << "driver commencing input parse for step " << step << std::endl);
+  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
 
   timer.start();
   m_parser->update_attributes();
@@ -415,6 +415,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
+    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver " << m_params.rank << " starting analysis of step " << step << std::endl;
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -465,9 +466,12 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
+    
+    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl;
   } // end of parser while loop
 
   //Always dump perf at end
   m_perf.write();
-
+  
+  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " run complete" << std::endl;
 }
