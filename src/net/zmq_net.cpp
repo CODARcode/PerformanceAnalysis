@@ -92,6 +92,11 @@ void doWork(void* context,
 	    PerfStats &perf, int thr_idx)
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
+
+  int zero = 0;
+  zmq_setsockopt(socket, ZMQ_RCVHWM, &zero, sizeof(int));
+  zmq_setsockopt(socket, ZMQ_SNDHWM, &zero, sizeof(int));
+
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
     
   zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
@@ -177,6 +182,13 @@ void ZMQNet::run()
 {    
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
+
+    int zero = 0;
+    zmq_setsockopt(frontend, ZMQ_RCVHWM, &zero, sizeof(int));
+    zmq_setsockopt(frontend, ZMQ_SNDHWM, &zero, sizeof(int));
+    zmq_setsockopt(backend, ZMQ_RCVHWM, &zero, sizeof(int));
+    zmq_setsockopt(backend, ZMQ_SNDHWM, &zero, sizeof(int));
+
 
     zmq_bind(frontend, "tcp://*:5559"); //create a socket for communication with the AD
     zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads

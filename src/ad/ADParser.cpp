@@ -96,14 +96,18 @@ void ADParser::update_attributes() {
   if (m_engineType == "BPFile" && m_attr_once) return;
 
   const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes(); //adios2::Params is an alias to std::map<std::string,std::string>
+  VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got attributes" << std::endl);
+
   m_new_metadata.clear(); //clear all previously seen metadata
   
   for (const auto attributePair: attributes){
     if(Verbose::on()){
-      std::cout << "ADParser::update_attributes parsing attribute: (" << attributePair.first << ", {";
+      std::stringstream ss;
+      ss << "ADParser::update_attributes rank " << m_rank << " parsing attribute: (" << attributePair.first << ", {";
       for(auto const &e : attributePair.second)
-	std::cout << "[" << e.first << "," << e.second << "]";
-      std::cout << "})" << std::endl;
+	ss << "[" << e.first << "," << e.second << "]";
+      ss << "})";
+      std::cout << ss.str() << std::endl;
     }
 
     std::string name = attributePair.first;
@@ -117,7 +121,7 @@ void ADParser::update_attributes() {
 
     //Skip attribute if not of known type
     if(attrib_type == Unknown){
-      VERBOSE(std::cout << "ADParser::update_attributes: attribute type not recognized" << std::endl);
+      VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute type not recognized" << std::endl);
       continue;
     }
       
@@ -178,15 +182,17 @@ void ADParser::update_attributes() {
       //Replace local with global index if a function and pserver connected
       if(attrib_type == Func){
 	PerfTimer timer;
+	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " global function index lookup " << key << std::endl);
 	key = m_global_func_idx_map.lookup(key, value);      
-	if(m_perf != nullptr) m_perf->add("global_func_idx_lookup_us", timer.elapsed_us());
+	if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_us", timer.elapsed_us());
+	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got global function index " << key << std::endl);
       }
     
       //Append to map
       if(!m->count(key)){
 	(*m)[key] = value;
       }else{ 
-	VERBOSE(std::cout << "ADParser::update_attributes: attribute key already in map, value " << m->find(key)->second << std::endl);
+	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl);
       }
     }
   }
@@ -320,7 +326,10 @@ ParserError ADParser::fetchFuncData() {
       //Sometimes Tau gives us data that is out of order, we need to fix this
 #define DO_SORT
 #ifdef DO_SORT
-      if(!checkEventOrder(EventDataType::FUNC, false)){
+      if(!checkEventOrder(EventDataType::FUNC, false)){	
+	VERBOSE(std::cout << "ADParser rank " << m_rank << " sorting func data" << std::endl);  
+	PerfTimer timer;
+	
 	std::map<unsigned long, std::vector<size_t> > data_sorted_idx; //preserve ordering of events that have the same timestamp
 	unsigned long* data = m_event_timestamps.data();
 	for(size_t i=0;i<m_timer_event_count;i++){
@@ -336,6 +345,13 @@ ParserError ADParser::fetchFuncData() {
 	  }
 	}
 	m_event_timestamps.swap(data_sorted);
+
+	double sort_time_ms = timer.elapsed_ms();
+	VERBOSE(std::cout << "ADParser rank " << m_rank << " finished sorting func data: " << m_timer_event_count << " entries in " << sort_time_ms << "ms" << std::endl);  
+	if(m_perf){
+	  m_perf->add("parser_sort_funcdata_ms", sort_time_ms);
+	  m_perf->add("parser_sort_funcdata_ndata", m_timer_event_count);
+	}
       }
 #else      
       checkEventOrder(EventDataType::FUNC, true); //fatal errors

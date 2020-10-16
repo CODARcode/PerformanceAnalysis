@@ -4,12 +4,16 @@ using namespace chimbuko;
 
 unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, const std::string &func_name){
   if(!connectedToPS()) return local_idx;
+
+  int rank = m_net_client->get_client_rank();
   auto it = m_idxmap.find(local_idx);
   if(it != m_idxmap.end()){
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap local index " << local_idx << " already in map, maps to global index " << it->second << std::endl);
+    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " already in map, maps to global index " << it->second << std::endl);
     return it->second;
   }else{
     //Obtain the index from the pserver
+    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " obtaining global index corresponding to local index " << local_idx << std::endl);
+
     Message msg;
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_GET, MessageKind::FUNCTION_INDEX);
     msg.set_msg(func_name);
@@ -20,7 +24,7 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
     unsigned long global_idx = strToAny<unsigned long>(msg.buf());
 
     m_idxmap[local_idx] = global_idx;
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap local index " << local_idx << " maps to global idx " << global_idx << std::endl);
+    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " maps to global idx " << global_idx << std::endl);
 
     return global_idx;
   }

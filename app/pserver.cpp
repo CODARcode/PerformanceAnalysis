@@ -9,6 +9,8 @@
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
 #include <fstream>
+#include "chimbuko/verbose.hpp"
+
 
 using namespace chimbuko;
 
@@ -70,6 +72,12 @@ int main (int argc, char ** argv){
     return 0;
   }
   pserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
+
+  //Parse environment variables
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+    std::cout << "Enabling verbose debug output" << std::endl;
+    Verbose::set_verbose(true);
+  }       
 
   SstdParam param; //global collection of parameters used to identify anomalies
   GlobalAnomalyStats global_func_stats; //global anomaly statistics

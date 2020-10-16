@@ -136,9 +136,9 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   getExecutionWindow(call, event_man, window_size);
  
   //Verbose output
-  if(Verbose::on()){
-    std::cout << "Anomaly:" << this->get_json() << std::endl;
-  }
+  // if(Verbose::on()){
+  //   std::cout << "Anomaly:" << this->get_json() << std::endl;
+  // }
 }
 
 
