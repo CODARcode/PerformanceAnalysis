@@ -99,6 +99,9 @@ void ADParser::update_attributes() {
   VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got attributes" << std::endl);
 
   m_new_metadata.clear(); //clear all previously seen metadata
+
+  //Delay inserting function idx/name pairs so we can do a batch lookup of the global function index
+  std::vector<std::pair<int, std::string> > func_idx_name_pairs; 
   
   for (const auto attributePair: attributes){
     if(Verbose::on()){
@@ -118,12 +121,6 @@ void ADParser::update_attributes() {
     else if(name.find("event_type") != std::string::npos) attrib_type = Event;
     else if(name.find("counter") != std::string::npos) attrib_type = Counter;
     else if(name.find("MetaData") != std::string::npos) attrib_type = Metadata;
-
-    //Skip attribute if not of known type
-    if(attrib_type == Unknown){
-      VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute type not recognized" << std::endl);
-      continue;
-    }
       
     //Parse metadata attributes
     if(attrib_type == Metadata){
@@ -146,56 +143,76 @@ void ADParser::update_attributes() {
 	  m_metadata_seen.insert(name);
 	}
       }
-      continue;
-    }
-
-    //Get the key
-    size_t space_pos = name.find(" ");
-    if(space_pos == std::string::npos){
-      recoverable_error("Encountered malformed attribute (missing space) \"" + name + "\"");
-      continue;
-    }
-
-    int key = std::stoi(name.substr(space_pos));
-
-    //Get the map
-    std::unordered_map<int, std::string>* m;
-    switch(attrib_type){
-    case Func:
-      m = &m_funcMap; break;
-    case Event:
-      m = &m_eventType; break;
-    case Counter:
-      m = &m_counterMap; break;
-    default:
-      fatal_error("Invalid attribute type");
-    }
-
-    if(attributePair.second.count("Value")){
-      std::string value = attributePair.second.find("Value")->second;
-
-      //Remove quotation marks from name string
-      size_t idx = 0;
-      while ( (idx = value.find("\"")) != std::string::npos )
-	value.replace(idx, 1, "");
-
-      //Replace local with global index if a function and pserver connected
-      if(attrib_type == Func){
-	PerfTimer timer;
-	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " global function index lookup " << key << std::endl);
-	key = m_global_func_idx_map.lookup(key, value);      
-	if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_us", timer.elapsed_us());
-	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got global function index " << key << std::endl);
+    }else if(attrib_type != Unknown){
+      //Get the key
+      size_t space_pos = name.find(" ");
+      if(space_pos == std::string::npos){
+	recoverable_error("Encountered malformed attribute (missing space) \"" + name + "\"");
+	continue;
       }
-    
-      //Append to map
-      if(!m->count(key)){
-	(*m)[key] = value;
-      }else{ 
-	VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl);
+
+      int key = std::stoi(name.substr(space_pos));
+
+      //Get the map
+      std::unordered_map<int, std::string>* m;
+      switch(attrib_type){
+      case Func:
+	m = &m_funcMap; break;
+      case Event:
+	m = &m_eventType; break;
+      case Counter:
+	m = &m_counterMap; break;
+      default:
+	fatal_error("Invalid attribute type");
       }
+
+      if(attributePair.second.count("Value")){
+	std::string value = attributePair.second.find("Value")->second;
+
+	//Remove quotation marks from name string
+	size_t idx = 0;
+	while ( (idx = value.find("\"")) != std::string::npos )
+	  value.replace(idx, 1, "");
+
+	if(attrib_type == Func){
+	  //Delay inserting function index -> name entry so we can batch-lookup function names
+	  func_idx_name_pairs.push_back( {key,value} );
+	}else if(!m->count(key)){ 	//Append to map
+	  (*m)[key] = value;
+	}else{ 
+	  VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl);
+	}      	
+      }
+
+    }//!= metadata && != unknown
+    else{
+      //Skip attribute if not of known type
+      VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute type not recognized" << std::endl);
     }
+
+  }//attribute pair loop
+
+  //Do batch lookup of function global indices
+  if(func_idx_name_pairs.size()){
+    PerfTimer timer;
+    size_t n_pairs = func_idx_name_pairs.size();
+    std::vector<unsigned long> loc_idx(n_pairs);
+    std::vector<std::string> func_names(n_pairs);
+    for(size_t i=0;i<n_pairs;i++){
+      loc_idx[i] = func_idx_name_pairs[i].first;
+      func_names[i] = func_idx_name_pairs[i].second;
+    }
+    VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " global function index lookup of " << n_pairs << " functions" << std::endl);
+    std::vector<unsigned long> glob_idx = m_global_func_idx_map.lookup(loc_idx, func_names);      
+	
+    for(size_t i=0;i<n_pairs;i++){
+      if(!m_funcMap.count(glob_idx[i]))
+	m_funcMap[ glob_idx[i] ] = func_names[i];      
+    }
+    if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_us", timer.elapsed_us());
+    VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got global function indices of " << n_pairs << " of functions" << std::endl);
   }
+
   m_attr_once = true;
 }
 

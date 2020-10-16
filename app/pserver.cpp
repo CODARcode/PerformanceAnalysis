@@ -127,7 +127,7 @@ int main (int argc, char ** argv){
     net.add_payload(new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
-    net.add_payload(new NetPayloadGlobalFunctionIndexMap(&global_func_index_map));
+    net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz

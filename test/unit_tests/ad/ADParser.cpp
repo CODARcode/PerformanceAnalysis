@@ -488,7 +488,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
       std::cout << "TEST: Writer thread initializing pserver" << std::endl;
       PSglobalFunctionIndexMap glob_map;
       ZMQNet ps;
-      ps.add_payload(new NetPayloadGlobalFunctionIndexMap(&glob_map));
+      ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map));
       ps.init(&argc, &argv, 1); //1 worker
       ps.run(".");
 

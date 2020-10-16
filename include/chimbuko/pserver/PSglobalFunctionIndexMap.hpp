@@ -50,12 +50,21 @@ namespace chimbuko{
     NetPayloadGlobalFunctionIndexMap(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
     MessageKind kind() const{ return MessageKind::FUNCTION_INDEX; }
     MessageType type() const{ return MessageType::REQ_GET; }
-    void action(Message &response, const Message &message) override{
-      check(message);
-      if(m_idxmap == nullptr) throw std::runtime_error("Cannot retrieve function index as map object has not been linked");
-      unsigned long idx = m_idxmap->lookup(message.buf()); //uses a mutex lock
-      response.set_msg(anyToStr(idx), false);
-    }
+    void action(Message &response, const Message &message) override;
   };
+
+  /**
+   * @brief Net payload for communicating function index pserver->AD in batches
+   */
+  class NetPayloadGlobalFunctionIndexMapBatched: public NetPayloadBase{
+    PSglobalFunctionIndexMap* m_idxmap;
+  public:
+    NetPayloadGlobalFunctionIndexMapBatched(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
+    MessageKind kind() const{ return MessageKind::FUNCTION_INDEX; }
+    MessageType type() const{ return MessageType::REQ_GET; }
+    void action(Message &response, const Message &message) override;
+  };
+
+
 
 };

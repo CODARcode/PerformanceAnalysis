@@ -1,5 +1,8 @@
 #include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
 #include <algorithm>
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/types/string.hpp>
 
 using namespace chimbuko;
 
@@ -34,5 +37,35 @@ void PSglobalFunctionIndexMap::deserialize(const nlohmann::json &fmap){
   for(auto const &e : m_fmap)
     max = std::max(max, e.second);
   m_idx = max+1;
+}
+
+void NetPayloadGlobalFunctionIndexMap::action(Message &response, const Message &message){
+  check(message);
+  if(m_idxmap == nullptr) throw std::runtime_error("Cannot retrieve function index as map object has not been linked");
+  unsigned long idx = m_idxmap->lookup(message.buf()); //uses a mutex lock
+  response.set_msg(anyToStr(idx), false);
+}
+
+
+void NetPayloadGlobalFunctionIndexMapBatched::action(Message &response, const Message &message){
+  check(message);
+  if(m_idxmap == nullptr) throw std::runtime_error("Cannot retrieve function index as map object has not been linked");
+
+  std::vector<std::string> func_names;
+  {
+    std::stringstream ss; ss << message.buf();
+    cereal::PortableBinaryInputArchive rd(ss);
+    rd(func_names);
+  }    
+  std::vector<unsigned long> global_indices(func_names.size());
+  for(size_t i=0;i<func_names.size();i++)
+    global_indices[i] = m_idxmap->lookup(func_names[i]); //uses a mutex lock
+
+  {
+    std::stringstream ss;
+    cereal::PortableBinaryOutputArchive wr(ss);
+    wr(global_indices);
+    response.set_msg(ss.str(), false);
+  }    
 }
 

@@ -41,6 +41,13 @@ namespace chimbuko{
      * Function names must be unique
      */
     unsigned long lookup(const unsigned long local_idx, const std::string &func_name);
+    
+    /**
+     * @brief Lookup the global indices corresponding to the input local indices as a batch
+     *
+     * Function names must be unique
+     */   
+    std::vector<unsigned long> lookup(const std::vector<unsigned long> &local_idx, const std::vector<std::string> &func_name);
 
 
     /**

@@ -60,6 +60,8 @@ struct hpserverArgs{
 
 
 int main (int argc, char ** argv){
+  std::cout << "WARNING: hpserver application is incomplete! Use pserver for production running." << std::endl;
+  
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     std::cout << "HPServer enabling verbose debug output" << std::endl;
     Verbose::set_verbose(true);
@@ -118,7 +120,7 @@ int main (int argc, char ** argv){
       net.add_payload(new NetPayloadGetParams(&param[t]), t);
       net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats[t]), t);
       net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats[t]), t);
-      net.add_payload(new NetPayloadGlobalFunctionIndexMap(&global_func_index_map), t);
+      net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map), t);
     }
     net.init(nullptr, nullptr, args.nt);
 
