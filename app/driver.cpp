@@ -109,6 +109,9 @@ int main(int argc, char ** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
 
+  VERBOSE(std::cout << "driver rank " << world_rank << " waiting at pre-run barrier" << std::endl);
+  MPI_Barrier(MPI_COMM_WORLD);
+
   try 
     {
 
@@ -160,6 +163,7 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       // Average analysis time and total number of outliers
       // -----------------------------------------------------------------------
+      VERBOSE(std::cout << "driver rank " << world_rank << " waiting at post-run barrier" << std::endl);
       MPI_Barrier(MPI_COMM_WORLD);
       processing_time = duration_cast<milliseconds>(t2 - t1).count();
 

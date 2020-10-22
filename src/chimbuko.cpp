@@ -227,21 +227,29 @@ bool Chimbuko::parseInputStep(int &step,
     
   if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
 
+  VERBOSE(std::cout << "driver rank " << m_params.rank << " updating attributes" << std::endl);  
   timer.start();
   m_parser->update_attributes();
   m_perf.add("ad_parse_input_update_attributes_us", timer.elapsed_us());
 
+  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching func data" << std::endl);  
   timer.start();
   m_parser->fetchFuncData();
   m_perf.add("ad_parse_input_fetch_func_data_us", timer.elapsed_us());
 
+  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching comm data" << std::endl);  
   timer.start();
   m_parser->fetchCommData();
   m_perf.add("ad_parse_input_fetch_comm_data_us", timer.elapsed_us());
 
+  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching counter data" << std::endl);  
   timer.start();
   m_parser->fetchCounterData();
   m_perf.add("ad_parse_input_fetch_counter_data_us", timer.elapsed_us());
+
+
+  VERBOSE(std::cout << "driver rank " << m_params.rank << " finished gathering data" << std::endl);  
+
 
   // early SST buffer release
   m_parser->endStep();
