@@ -43,7 +43,7 @@ Chimbuko::~Chimbuko(){
 }
 
 void Chimbuko::initialize(const ChimbukoParams &params){
-  PerfTimer timer;
+  PerfTimer total_timer, timer;
 
   if(m_is_initialized) finalize();
   m_params = params;
@@ -60,23 +60,31 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
   // Second, init parser because it will hold shared memory with event and outlier object
   // also, process will be blocked at this line until it finds writer (in SST mode)
+  timer.start();
   init_parser();
+  m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
 
   // Thrid, init event and outlier objects	
   init_event();
+
+  timer.start();
   init_net_client();
+  m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
+
   init_outlier();
   init_counter();
 
 #ifdef ENABLE_PROVDB
+  timer.start();
   init_provdb();
+  m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
 #endif
   
   init_metadata_parser();
   
   m_is_initialized = true;
   
-  m_perf.add("ad_initialize_total_us", timer.elapsed_us());
+  m_perf.add("ad_initialize_total_us", total_timer.elapsed_us());
 }
 
 
