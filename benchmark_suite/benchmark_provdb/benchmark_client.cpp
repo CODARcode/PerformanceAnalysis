@@ -43,128 +43,135 @@ struct Args{
 };
 
 int main(int argc, char **argv){
-  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-    std::cout << "Enabling verbose debug output" << std::endl;
-    Verbose::set_verbose(true);
-  }       
-
-  MPI_Init(&argc, &argv);
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  {
+    if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+      std::cout << "Enabling verbose debug output" << std::endl;
+      Verbose::set_verbose(true);
+    }       
 
-  commandLineParser<Args> cmdline;
-  addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, cycles);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, callstack_size);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, ncounters);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, winsize);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, comm_messages_per_winevent);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, anomalies_per_cycle);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, normal_events_per_cycle);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
-  addOptionalCommandLineArgDefaultHelpString(cmdline, nshards);
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
-    cmdline.help();
-    MPI_Finalize();
-    return 0;
-  }
+    commandLineParser<Args> cmdline;
+    addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, cycles);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, callstack_size);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, ncounters);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, winsize);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, comm_messages_per_winevent);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, anomalies_per_cycle);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, normal_events_per_cycle);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, nshards);
 
-  Args args;
-  cmdline.parse(args, argc-1, (const char**)(argv+1));
+    if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
+      cmdline.help();
+      MPI_Finalize();
+      return 0;
+    }
 
-  ADProvenanceDBclient provdb_client(rank);
-  provdb_client.connect(args.provdb_addr,args.nshards);
+    Args args;
+    cmdline.parse(args, argc-1, (const char**)(argv+1));
+
+    ADProvenanceDBclient provdb_client(rank);
+    provdb_client.connect(args.provdb_addr,args.nshards);
   
-  RunStats runstats; //any stats object
-  for(int i=0;i<100;i++) runstats.push(i);
-  nlohmann::json stats_j = runstats.get_json();
+    RunStats runstats; //any stats object
+    for(int i=0;i<100;i++) runstats.push(i);
+    nlohmann::json stats_j = runstats.get_json();
 
-  //Call stack
-  nlohmann::json callstack_entry = { {"fid",1}, {"func","test_function"}, {"entry",1234}, {"exit", 5678}, {"event_id", 1992}, {"is_anomaly", true} };
-  std::vector<nlohmann::json> callstack(args.callstack_size, callstack_entry);
+    //Call stack
+    nlohmann::json callstack_entry = { {"fid",1}, {"func","test_function"}, {"entry",1234}, {"exit", 5678}, {"event_id", 1992}, {"is_anomaly", true} };
+    std::vector<nlohmann::json> callstack(args.callstack_size, callstack_entry);
   
-  //Counters
-  nlohmann::json counter_entry = createCounterData_t(0,1,2,3,4,5,"counter").get_json();
-  std::vector<nlohmann::json> counters(args.ncounters, counter_entry);
+    //Counters
+    nlohmann::json counter_entry = createCounterData_t(0,1,2,3,4,5,"counter").get_json();
+    std::vector<nlohmann::json> counters(args.ncounters, counter_entry);
 
-  //Exec and comm window
-  nlohmann::json exec_window = {};
-  exec_window["exec_window"] = nlohmann::json::array();
-  exec_window["comm_window"] = nlohmann::json::array();
+    //Exec and comm window
+    nlohmann::json exec_window = {};
+    exec_window["exec_window"] = nlohmann::json::array();
+    exec_window["comm_window"] = nlohmann::json::array();
 
-  nlohmann::json exec_entry = { {"fid", 0}, {"func", "function" }, {"event_id", 0}, {"entry", 1234}, {"exit", 5678}, {"parent_event_id", 999}, {"is_anomaly", true} };
-  nlohmann::json comm_entry = createCommData_t(0,1,2,3,4,5,6,7,"SEND").get_json();
-  for(int i=0;i<2*args.winsize;i++){
-    exec_window["exec_window"].push_back(exec_entry);
-    for(int j=0;j<args.comm_messages_per_winevent;j++)
-      exec_window["comm_window"].push_back(comm_entry);
-  }
+    nlohmann::json exec_entry = { {"fid", 0}, {"func", "function" }, {"event_id", 0}, {"entry", 1234}, {"exit", 5678}, {"parent_event_id", 999}, {"is_anomaly", true} };
+    nlohmann::json comm_entry = createCommData_t(0,1,2,3,4,5,6,7,"SEND").get_json();
+    for(int i=0;i<2*args.winsize;i++){
+      exec_window["exec_window"].push_back(exec_entry);
+      for(int j=0;j<args.comm_messages_per_winevent;j++)
+	exec_window["comm_window"].push_back(comm_entry);
+    }
 
-  //GPU location and parent info
-  nlohmann::json gpu_loc = GPUvirtualThreadInfo(0,0,0,0).get_json();
-  nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
-  for(int i=0;i<args.callstack_size;i++) 
-    gpu_event_parent_stack.push_back(callstack_entry);
-  nlohmann::json gpu_parent = { {"event_id", "12:24:25"}, {"tid", 0} };
-  gpu_parent["call_stack"] = gpu_event_parent_stack;
+    //GPU location and parent info
+    nlohmann::json gpu_loc = GPUvirtualThreadInfo(0,0,0,0).get_json();
+    nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
+    for(int i=0;i<args.callstack_size;i++) 
+      gpu_event_parent_stack.push_back(callstack_entry);
+    nlohmann::json gpu_parent = { {"event_id", "12:24:25"}, {"tid", 0} };
+    gpu_parent["call_stack"] = gpu_event_parent_stack;
 
 
-  //Put it all together
-  nlohmann::json provenance_entry = {
+    //Put it all together
+    nlohmann::json provenance_entry = {
       {"pid", 0},
-	{"rid", 0},
-	  {"tid", 0},
-	    {"event_id", "0:12:250"},
-	      {"fid", 0},
-		{"func", "function"},
-		  {"entry", 1234},
-		    {"exit", 5678},
-		      {"runtime_total", 2458},
-			{"runtime_exclusive", 1922},
-			  {"call_stack", callstack},
-			    {"func_stats", stats_j},
-			      {"counter_events", counters},
-				{"is_gpu_event", true},
-				  {"gpu_location", gpu_loc },
-				    {"gpu_parent", gpu_parent},
-				      {"event_window", exec_window},
-					{"io_step", 199},
-					  {"io_step_tstart", 0},
-					    {"io_step_tend", 5000}
-  };
+      {"rid", 0},
+      {"tid", 0},
+      {"event_id", "0:12:250"},
+      {"fid", 0},
+      {"func", "function"},
+      {"entry", 1234},
+      {"exit", 5678},
+      {"runtime_total", 2458},
+      {"runtime_exclusive", 1922},
+      {"call_stack", callstack},
+      {"func_stats", stats_j},
+      {"counter_events", counters},
+      {"is_gpu_event", true},
+      {"gpu_location", gpu_loc },
+      {"gpu_parent", gpu_parent},
+      {"event_window", exec_window},
+      {"io_step", 199},
+      {"io_step_tstart", 0},
+      {"io_step_tend", 5000}
+    };
   
-  std::vector<nlohmann::json> anomaly_prov(args.anomalies_per_cycle,  provenance_entry);
-  std::vector<nlohmann::json> normalevent_prov(args.normal_events_per_cycle,  provenance_entry);
+    std::vector<nlohmann::json> anomaly_prov(args.anomalies_per_cycle,  provenance_entry);
+    std::vector<nlohmann::json> normalevent_prov(args.normal_events_per_cycle,  provenance_entry);
  
-  PerfStats stats(".","client_stats.json");
-  provdb_client.linkPerf(&stats);
+    PerfStats stats(".","client_stats.json");
+    provdb_client.linkPerf(&stats);
 
-  PerfTimer cyc_timer, timer;
-  for(int c=0;c<args.cycles;c++){
-    cyc_timer.start();
-    std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
+    PerfTimer cyc_timer, timer;
+    for(int c=0;c<args.cycles;c++){
+      cyc_timer.start();
+      std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
 
-    //In the real client we use asynchronous sends but for the benchmark it is better to use blocking
-    timer.start();
-    provdb_client.sendMultipleData(anomaly_prov, ProvenanceDataType::AnomalyData);
-    stats.add("anomaly_prov_send_ms", timer.elapsed_ms());
+      //In the real client we use asynchronous sends but for the benchmark it is better to use blocking
+      timer.start();
+      provdb_client.sendMultipleData(anomaly_prov, ProvenanceDataType::AnomalyData);
+      stats.add("anomaly_prov_send_ms", timer.elapsed_ms());
 
-    timer.start();
-    provdb_client.sendMultipleData(normalevent_prov, ProvenanceDataType::NormalExecData);
-    stats.add("normalevent_prov_send_ms", timer.elapsed_ms());
+      timer.start();
+      provdb_client.sendMultipleData(normalevent_prov, ProvenanceDataType::NormalExecData);
+      stats.add("normalevent_prov_send_ms", timer.elapsed_ms());
     
-    timer.start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(args.cycle_time_ms));
-    stats.add("sleep_ms", timer.elapsed_ms());
+      timer.start();
+      std::this_thread::sleep_for(std::chrono::milliseconds(args.cycle_time_ms));
+      stats.add("sleep_ms", timer.elapsed_ms());
 
-    stats.add("benchmark_cycle_time_ms", cyc_timer.elapsed_ms());
-  }//cycle loop
-  
-  if(rank==0){
-    stats.write();
+      stats.add("benchmark_cycle_time_ms", cyc_timer.elapsed_ms());
+    }//cycle loop
+     
+    if(rank==0){
+      std::cout << "Rank " << rank << " writing stats" << std::endl;
+      stats.write();
+    }
+
+    std::cout << "Rank " << rank << " finalizing MPI" << std::endl;
+    MPI_Finalize();
+    std::cout << "Rank " << rank << " exiting body" << std::endl;
   }
-
-  MPI_Finalize();
+  
+  std::cout << "Rank " << rank << " exiting main scope" << std::endl;
   return 0;
 }

@@ -17,6 +17,10 @@
 #include <csignal>
 #include <cassert>
 
+#include <spdlog/spdlog.h>
+#include "chimbuko/verbose.hpp"
+
+
 namespace tl = thallium;
 
 bool stop_wait_loop = false;
@@ -58,132 +62,141 @@ struct ProvdbArgs{
 
 
 int main(int argc, char** argv) {
-  //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
-  //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
-  //Using an empty string will cause it to default to Mochi's default ip/port
-  chimbuko::commandLineParser<ProvdbArgs> parser;
-  addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
-  addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
-  addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
-  addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-  addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
-  addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-  addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
+  {
+    //Parse environment variables
+    if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+      std::cout << "Enabling verbose debug output" << std::endl;
+      chimbuko::Verbose::set_verbose(true);
+      spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
+    }       
 
-  if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
-    parser.help(std::cout);
-    return 0;
-  }
+    //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
+    //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
+    //Using an empty string will cause it to default to Mochi's default ip/port
+    chimbuko::commandLineParser<ProvdbArgs> parser;
+    addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
+    addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
+    addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
+    addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
+    addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
+    addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
+    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
 
-  ProvdbArgs args;
-  parser.parseCmdLineArgs(args, argc, argv);
+    if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+      parser.help(std::cout);
+      return 0;
+    }
 
-  if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
+    ProvdbArgs args;
+    parser.parseCmdLineArgs(args, argc, argv);
 
-  std::string eng_opt = args.engine;
-  if(args.ip.size() > 0){
-    eng_opt += std::string("://") + args.ip;
-  }
+    if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
 
-  std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
+    std::string eng_opt = args.engine;
+    if(args.ip.size() > 0){
+      eng_opt += std::string("://") + args.ip;
+    }
 
-  //Initialize provider engine
-  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
+    std::cout << "ProvDB initializing thallium with address: " << eng_opt << std::endl;
+
+    //Initialize provider engine
+    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
 
 #ifdef _PERF_METRIC
-  //Get Margo to output profiling information
-  //A .diag and .csv file will be produced in the run directory
-  //Description can be found at https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
-  //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
-  //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
-  //Generate a profile plot automatically by running margo-gen-profile in the run directory
-  // auto margo_instance = engine.get_margo_instance();
-  // margo_diag_start(margo_instance);
-  // margo_profile_start(margo_instance);
+    //Get Margo to output profiling information
+    //A .diag and .csv file will be produced in the run directory
+    //Description can be found at https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
+    //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
+    //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
+    //Generate a profile plot automatically by running margo-gen-profile in the run directory
+    // auto margo_instance = engine.get_margo_instance();
+    // margo_diag_start(margo_instance);
+    // margo_profile_start(margo_instance);
 
-  //Edit: This doesn't seem very reliable, often not outputing all the data. Use the MARGO_ENABLE_PROFILING for more reliable output
+    //Edit: This doesn't seem very reliable, often not outputing all the data. Use the MARGO_ENABLE_PROFILING for more reliable output
 #endif
 
-  mtx = new tl::mutex;
-  engine.define("client_hello",client_hello).disable_response();
-  engine.define("client_goodbye",client_goodbye).disable_response();
+    mtx = new tl::mutex;
+    engine.define("client_hello",client_hello).disable_response();
+    engine.define("client_goodbye",client_goodbye).disable_response();
 
-  //Write address to file
-  std::string addr = (std::string)engine.self();    
-  {
-    std::ofstream f("provider.address");
-    f << addr;
-  }
+    //Write address to file
+    std::string addr = (std::string)engine.self();    
+    {
+      std::ofstream f("provider.address");
+      f << addr;
+    }
 
-  { //Scope in which provider is active
+    { //Scope in which provider is active
 
-    //Initialize provider
-    sonata::Provider provider(engine, 0);
+      //Initialize provider
+      sonata::Provider provider(engine, 0);
     
-    std::cout << "Provider is running on " << addr << std::endl;
+      std::cout << "Provider is running on " << addr << std::endl;
 
-    { //Scope in which admin object is active
-      sonata::Admin admin(engine);
-      std::cout << "Admin creating " << args.nshards << " database shards" << std::endl;
+      { //Scope in which admin object is active
+	sonata::Admin admin(engine);
+	std::cout << "Admin creating " << args.nshards << " database shards" << std::endl;
 
-      std::vector<std::string> db_shard_names(args.nshards);
-      for(int s=0;s<args.nshards;s++){
-	std::string db_name = chimbuko::stringize("provdb.%d",s);
-	std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
-	std::cout << "Shard " << s << ": " << db_name << " " << config << std::endl;
-	admin.createDatabase(addr, 0, db_name, args.db_type, config);
-	db_shard_names[s] = db_name;
-      }
-
-      //Create the collections
-      { //scope in which client is active
-	sonata::Client client(engine);
-	std::vector<sonata::Database> db(args.nshards);
+	std::vector<std::string> db_shard_names(args.nshards);
 	for(int s=0;s<args.nshards;s++){
-	  db[s] = client.open(addr, 0, db_shard_names[s]);
-	  db[s].create("anomalies");
-	  db[s].create("metadata");
-	  db[s].create("normalexecs");
+	  std::string db_name = chimbuko::stringize("provdb.%d",s);
+	  std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+	  std::cout << "Shard " << s << ": " << db_name << " " << config << std::endl;
+	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
+	  db_shard_names[s] = db_name;
 	}
-	std::cout << "Admin initialized collections" << std::endl;
 
-	//Setup a timer to periodically force a database commit
-	typedef std::chrono::high_resolution_clock Clock;
-	Clock::time_point commit_timer_start = Clock::now();
-
-
-	//Spin quietly until SIGTERM sent
-	signal(SIGTERM, termSignalHandler);  
-	std::cout << "Admin main thread waiting for completion" << std::endl;
-	while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
-	  tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
-
-	  unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
-	  if(commit_timer_ms >= args.db_commit_freq){
-	    std::cout << "Admin committing database to disk" << std::endl;
-	    for(int s=0;s<args.nshards;s++)
-	      db[s].commit();
-	    commit_timer_start = Clock::now();
+	//Create the collections
+	{ //scope in which client is active
+	  sonata::Client client(engine);
+	  std::vector<sonata::Database> db(args.nshards);
+	  for(int s=0;s<args.nshards;s++){
+	    db[s] = client.open(addr, 0, db_shard_names[s]);
+	    db[s].create("anomalies");
+	    db[s].create("metadata");
+	    db[s].create("normalexecs");
 	  }
+	  std::cout << "Admin initialized collections" << std::endl;
+
+	  //Setup a timer to periodically force a database commit
+	  typedef std::chrono::high_resolution_clock Clock;
+	  Clock::time_point commit_timer_start = Clock::now();
+
+
+	  //Spin quietly until SIGTERM sent
+	  signal(SIGTERM, termSignalHandler);  
+	  std::cout << "Admin main thread waiting for completion" << std::endl;
+	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
+	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+
+	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
+	    if(commit_timer_ms >= args.db_commit_freq){
+	      std::cout << "Admin committing database to disk" << std::endl;
+	      for(int s=0;s<args.nshards;s++)
+		db[s].commit();
+	      commit_timer_start = Clock::now();
+	    }
       
-	  //If at least one client has previously connected but none are now connected, shutdown the server
-	  if(args.autoshutdown && a_client_has_connected && connected.size() == 0){
-	    std::cout << "Admin detected all clients disconnected, shutting down" << std::endl;
-	    break;
+	    //If at least one client has previously connected but none are now connected, shutdown the server
+	    if(args.autoshutdown && a_client_has_connected && connected.size() == 0){
+	      std::cout << "Admin detected all clients disconnected, shutting down" << std::endl;
+	      break;
+	    }
 	  }
-	}
-      }//client scope
+	}//client scope
 
-      std::cout << "Admin ending admin scope" << std::endl;
-    }//admin scope
+	std::cout << "Admin ending admin scope" << std::endl;
+      }//admin scope
 
-    std::cout << "Admin ending provider scope" << std::endl;
-  }//provider scope
+      std::cout << "Admin ending provider scope" << std::endl;
+    }//provider scope
 
-  std::cout << "Admin shutting down server engine" << std::endl;
-  delete mtx; //delete mutex prior to engine finalize    
-  engine.finalize();
-  std::cout << "Admin finished, exiting engine scope" << std::endl;  
-  
+    std::cout << "Admin shutting down server engine" << std::endl;
+    delete mtx; //delete mutex prior to engine finalize    
+    engine.finalize();
+    std::cout << "Admin finished, exiting engine scope" << std::endl;  
+  }
+  std::cout << "Admin finished, exiting main scope" << std::endl;    
   return 0;
 }

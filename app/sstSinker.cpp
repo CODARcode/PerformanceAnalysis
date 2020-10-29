@@ -85,6 +85,7 @@ int main(int argc, char ** argv)
                 parser->update_attributes();
                 parser->fetchFuncData();
                 parser->fetchCommData();
+		parser->fetchCounterData();
             }
 
             frames++;

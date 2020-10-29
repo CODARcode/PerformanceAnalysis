@@ -32,7 +32,7 @@ optionalArgsParser & getOptionalArgsParser(){
 #endif
     addOptionalCommandLineArg(p, err_outputpath, "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
     addOptionalCommandLineArg(p, trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
-    addOptionalCommandLineArg(p, parser_beginstep_max_tries, "Set the number of attempts (at frequency 100ms) that the parser will take to start the next IO step (default 10000)");
+    addOptionalCommandLineArg(p, parser_beginstep_max_tries, "Set the number of attempts (each with 10s timeout) that the parser will take to start the next IO step (default 10000)");
 
     initialized = true;
   }

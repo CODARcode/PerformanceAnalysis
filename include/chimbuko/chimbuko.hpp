@@ -49,7 +49,7 @@ namespace chimbuko {
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
     std::string err_outputpath; /**< Output path for error logs. If empty errors will be sent to std::cerr*/
-    int parser_beginstep_max_tries; /**< Set the number of attempts (at frequency 100ms) that the parser will take to start the next IO step (default 10000)*/
+    int parser_beginstep_max_tries; /**< Set the number of attempts (each with 10s timeout) that the parser will take to start the next IO step (default 10000)*/
 
 
     ChimbukoParams(): rank(-1234),  //not set!

@@ -31,6 +31,7 @@ void AnomalousSendManager::waitAll(){
 
 AnomalousSendManager::~AnomalousSendManager(){
   waitAll();
+  VERBOSE(std::cout << "AnomalousSendManager exiting" << std::endl);
 }
 
 
@@ -72,11 +73,15 @@ void ADProvenanceDBclient::disconnect(){
 
     VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
     m_client_goodbye->on(m_server)(m_rank);    
-    VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
+    VERBOSE(std::cout << "ADProvenanceDBclient deleting handshake RPCs" << std::endl);
 
+    m_client_hello->deregister();
+    m_client_goodbye->deregister();
+    
     delete m_client_hello; m_client_hello = nullptr;
     delete m_client_goodbye; m_client_goodbye = nullptr;
     m_is_connected = false;
+    VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
   }
 }
 
