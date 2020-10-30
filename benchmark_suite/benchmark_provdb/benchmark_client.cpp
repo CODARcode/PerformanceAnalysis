@@ -44,6 +44,7 @@ struct Args{
 
 int main(int argc, char **argv){
   int rank;
+  PerfStats stats(".","client_stats.json");
   {
     if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
       std::cout << "Enabling verbose debug output" << std::endl;
@@ -76,6 +77,7 @@ int main(int argc, char **argv){
 
     ADProvenanceDBclient provdb_client(rank);
     provdb_client.connect(args.provdb_addr,args.nshards);
+    provdb_client.linkPerf(&stats);
   
     RunStats runstats; //any stats object
     for(int i=0;i<100;i++) runstats.push(i);
@@ -138,8 +140,6 @@ int main(int argc, char **argv){
     std::vector<nlohmann::json> anomaly_prov(args.anomalies_per_cycle,  provenance_entry);
     std::vector<nlohmann::json> normalevent_prov(args.normal_events_per_cycle,  provenance_entry);
  
-    PerfStats stats(".","client_stats.json");
-    provdb_client.linkPerf(&stats);
 
     PerfTimer cyc_timer, timer;
     for(int c=0;c<args.cycles;c++){
@@ -162,14 +162,14 @@ int main(int argc, char **argv){
       stats.add("benchmark_cycle_time_ms", cyc_timer.elapsed_ms());
     }//cycle loop
      
-    if(rank==0){
-      std::cout << "Rank " << rank << " writing stats" << std::endl;
-      stats.write();
-    }
-
     std::cout << "Rank " << rank << " finalizing MPI" << std::endl;
     MPI_Finalize();
     std::cout << "Rank " << rank << " exiting body" << std::endl;
+  }
+
+  if(rank==0){
+    std::cout << "Rank " << rank << " writing stats" << std::endl;
+    stats.write();
   }
   
   std::cout << "Rank " << rank << " exiting main scope" << std::endl;
