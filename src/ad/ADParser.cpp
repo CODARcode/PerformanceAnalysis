@@ -16,7 +16,7 @@ using namespace chimbuko;
 ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
     m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank), m_program_idx(program_idx),
-    m_max_tries(10000)
+    m_beginstep_timeout(30)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -53,33 +53,14 @@ ADParser::~ADParser() {
 
 int ADParser::beginStep(bool verbose) {
   if (m_opened){
-    int n_tries = 0;
-    adios2::StepStatus status;
-    while (n_tries < m_max_tries){
-      status = m_reader.BeginStep(adios2::StepMode::Read, 10.0f);
-      if (status == adios2::StepStatus::NotReady){
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	n_tries++;
-	continue;
-      }
-      else if (status == adios2::StepStatus::OK){
-	m_current_step++;
-	break;
-      }
-      else{
-	m_status = false;
-	m_current_step = -1;
-	break;
-      }
-    }
-    if(n_tries >= m_max_tries){
-      recoverable_error("Timed out waiting for next step to be ready\n");
+    adios2::StepStatus status = m_reader.BeginStep(adios2::StepMode::Read, float(m_beginstep_timeout));
+    if (status == adios2::StepStatus::OK){
+      m_current_step++;
+    }else{
+      if(status == adios2::StepStatus::NotReady){ recoverable_error("Timed out waiting for next step to be ready\n"); }
+      else{ recoverable_error("ADIOS2 BeginStep returned an error\n"); }
       m_status = false;
       m_current_step = -1;
-    }
-    
-    if (verbose){
-      std::cout << m_current_step << ": after " << n_tries << std::endl;
     }
   }
   return m_current_step;

@@ -32,7 +32,7 @@ optionalArgsParser & getOptionalArgsParser(){
 #endif
     addOptionalCommandLineArg(p, err_outputpath, "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
     addOptionalCommandLineArg(p, trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
-    addOptionalCommandLineArg(p, parser_beginstep_max_tries, "Set the number of attempts (each with 10s timeout) that the parser will take to start the next IO step (default 10000)");
+    addOptionalCommandLineArg(p, parser_beginstep_timeout, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
 
     initialized = true;
   }
@@ -87,7 +87,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
 #endif
   params.err_outputpath = "";
   params.trace_connect_timeout = 60;
-  params.parser_beginstep_max_tries = 10000;
+  params.parser_beginstep_timeout = 30;
 
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 

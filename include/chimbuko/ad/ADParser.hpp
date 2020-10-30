@@ -103,8 +103,8 @@ namespace chimbuko {
      */
     void endStep();
 
-    /**< Set the number of attempts (at frequency 100ms) that the parser will take to start the next IO step (default 10000)*/
-    void setMaxStepBeginTries(int tries){ m_max_tries = tries; }
+    /**< Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)*/
+    void setBeginStepTimeout(int timeout){ m_beginstep_timeout = timeout; }
 
     /**
      * @brief update attributes (or meta data), with ADIOS2 BPFile engine it only fetches
@@ -300,7 +300,7 @@ namespace chimbuko {
     std::string m_inputFile;                            /**< adios2 BP filename */
     std::string m_engineType;                           /**< adios2 engine type */
 
-    int m_max_tries;                                    /**< max number of attempts (each with 10s timeout) that the parser will take to start the next IO step*/
+    int m_beginstep_timeout;                            /**< the timeout in seconds on waiting for the next ADIOS2 timestep*/
     bool m_status;                                      /**< parser status */                              
     bool m_opened;                                      /**< true if connected to a writer or a BP file */
     bool m_attr_once;                                   /**< true for BP engine */
