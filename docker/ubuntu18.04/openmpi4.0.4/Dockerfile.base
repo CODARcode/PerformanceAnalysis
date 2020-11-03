@@ -48,3 +48,23 @@ ENV PATH=${PATH}:/opt/cmake-3.17.0-Linux-x86_64/bin
 
 RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp *.a /usr/lib
 
+#Libfabric
+WORKDIR /Downloads
+RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.9.0/libfabric-1.9.0.tar.bz2 && \
+    tar xf libfabric-1.9.0.tar.bz2 && \
+    cd /Downloads/libfabric-1.9.0 && \
+    ./configure --disable-verbs --disable-mlx --prefix=/opt/libfabric && \
+    make && make install && \
+    rm -rf /Downloads/libfabric*
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+
+#Cereal
+WORKDIR /Downloads
+RUN wget https://github.com/USCiLab/cereal/archive/v1.3.0.tar.gz && \
+    tar -xvzf v1.3.0.tar.gz && cd cereal-1.3.0 && \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt/cereal -DSKIP_PORTABILITY_TEST=ON && \
+    make -j 16 install && \
+    rm -rf /Downloads/*
+
+

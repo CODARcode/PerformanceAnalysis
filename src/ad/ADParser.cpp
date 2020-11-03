@@ -10,6 +10,7 @@
 #include <sstream>
 #include <map>
 #include <cstring>
+#include <experimental/filesystem>
 
 using namespace chimbuko;
 
@@ -31,6 +32,24 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
 		      {"DataTransport", "RDMA"},
 		      {"OpenTimeoutSecs", std::to_string(openTimeoutSeconds) }
     });
+
+  //BP4 mode (ADIOS2.6+) can be used in online mode also, but we must wait until the file is ready
+  if(m_engineType == "BP4"){
+    m_io.SetParameter("StreamReader","ON");
+    bool found = false;
+    for(int s=0;s<openTimeoutSeconds;s++){
+      if(std::experimental::filesystem::exists(inputFile)){
+	found = true; break;
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    if(!found){
+      recoverable_error("Could not find file " + inputFile);
+      m_opened = false;
+      m_status = false;
+      return;
+    }
+  }
 
   // open file
   // for sst engine, is the adios2 internally blocked here until *.sst file is found?  

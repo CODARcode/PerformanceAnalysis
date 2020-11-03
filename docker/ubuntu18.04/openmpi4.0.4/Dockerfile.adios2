@@ -4,15 +4,6 @@ RUN mkdir -p /Downloads/adiosvm && \
     git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm && \
     cd /Downloads/adiosvm && git checkout -b dev-brussel-fft3d remotes/origin/dev-brussel-fft3d
 
-
-RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.7.0/libfabric-1.7.0.tar.gz && \
-    tar xvfz libfabric-1.7.0.tar.gz && \
-    cd /Downloads/libfabric-1.7.0 && \
-    ./configure --disable-verbs --disable-mlx --prefix=/opt/libfabric && \
-    make && make install
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
-
-
 RUN cd /Downloads/adiosvm/adiospackages && \
     tar zxf sz-1.4.13.0.tar.gz && \
     cd /Downloads/adiosvm/adiospackages/sz-1.4.13.0 && \
@@ -29,8 +20,11 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
 # ----------------------------------------------------------------------------
 # ADIOS2 Installation
 # ----------------------------------------------------------------------------
+
+# && git checkout f23e72c051dca30a6b1c23b0755da6c343d3592c && \
+
 RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
-    cd /Downloads/ADIOS2 && git checkout f23e72c051dca30a6b1c23b0755da6c343d3592c && \
+    cd /Downloads/ADIOS2 && \
     mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
           -DADIOS2_USE_MPI:BOOL=ON \
@@ -58,6 +52,8 @@ RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
           -DMPIEXEC_MAX_NUMPROCS:STRING=16 \
           .. && \
     make -j 4 && make install
+
+RUN cd /Downloads/ADIOS2 && git log | head -1 > /opt/adios2/git_version
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV PATH=${PATH}:/opt/adios2/bin
