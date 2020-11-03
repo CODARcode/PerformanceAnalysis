@@ -66,8 +66,3 @@ For example, for a python3 application:
 	  tau_python -vv -tau-python-interpreter=python3 -adios2_trace ${APPLICATION}.py
 
 Note that the ADIOS2 filename required by Chimbuko will be set not to the application name but to the name of the python interpreter, e.g. for **TAU_ADIOS2_FILENAME=tau-metrics** and using python3.6, the filename will be "tau-metrics-python3.6".
-
-
-
-Fortran
-~~~~~~~

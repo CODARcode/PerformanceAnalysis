@@ -21,14 +21,28 @@ We will assume that the visualization module has been instantiated at an address
 
 ----------------------------------
 
-The first step is to initialize the provenance database. We will assume that the database provider will be instantiated on the primary node of the job, which has IP address **${HEAD_NODE_IP}**. Note that if running on a cluster with infiniband that also has a separate ethernet adaptor, it is necessary to specify the IP of the infiniband adaptor. The user should also choose a port for the provenance database, to which we assign the variable **${PROVDB_PORT}**.
+The first step is to initialize the provenance database. We will assume that the database provider will be instantiated on the primary node of the job, which has IP address **${HEAD_NODE_IP}**. The IP address can be obtained as follows:
 
 .. code:: bash
 
-	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} &
+	  HEAD_NODE_IP=$(hostname -i)
+
+Rather than an IP address it is also possible to set **HEAD_NODE_IP** equal to the name of the specific network adaptor, e.g. "eth0". The list of network adaptors can be found using **ifconfig**. Note that if running on a cluster with both infiniband and ethernet adaptors, it may be necessary to specify the IP or name of the infiniband adaptor for internode communication. Assuming the infiniband adaptor is "ib0" the IP can be obtained in a script as follows:
+
+.. code:: bash
+
+	  HEAD_NODE_IP=$(ifconfig 2>&1 ib0 | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
+
+The user should also choose a port for the provenance database, to which we assign the variable **${PROVDB_PORT}**.
+
+.. code:: bash
+
+	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} -nshards ${NSHARDS} -nthreads ${NTHREADS} &
 	  sleep 2
 
-The database will be written to disk into the directory from which the **provdb_admin** application is called, under the filename **provdb.unqlite**.
+For performance reasons the provenance database is **sharded** and the writing is threaded allowing parallel writes to different shards. By default there is only a single shard and thread, but for larger jobs the user should specify more shards and threads using the **-nshards ${NSHARDS}** and **-nthreads ${NTHREADS}** options respectively. The number of shards must also be communicated to the AD module below. The optimal number of shards and threads will depend on the system characteristics, however the number of threads should be at least as large as the number of shards. We recommend that the user run our provided benchmark application and increase the number of each to minimize the round-trip latency.
+
+The database will be written to disk into the directory from which the **provdb_admin** application is called, under the filename **provdb.${SHARD}.unqlite** where **${SHARD}** is the index of the database shard.
 
 For use below we define the variable **PROVDB_ADDR=tcp://${HEAD_NODE_IP}:${PROVDB_PORT}**. For convenience, the **provdb_admin** application will write out a file **provider.address**, the contents of which can be used in place of manually defining this variable.
 
@@ -57,19 +71,20 @@ The third step is to instantiate the AD modules:
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} driver SST ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} &
+	  mpirun -n ${RANKS} driver SST ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
 	  sleep 2
 
 Where the variables are as follows:
 
-- **${RANKS}** : The number of MPI ranks that the application will be run on
-- **${ADIOS2_FILE_DIR}** : The directory in which the ADIOS2 file is written (see below)
-- **${ADIOS2_FILE_PREFIX}** : The ADIOS2 file prefix (see below)
-- **${OUTPUT_LOC}** : (Deprecated) The Chimbuko AD formerly communicated anomaly information to the visualization directly either via http or through the disk system. This has been deprecated since the introduction of the provenance database, and by default the user should set **OUTPUT_LOC=""** (an empty string). However, if desired, a http URL results in JSON-formatted data on each anomaly being sent via libcurl to this address. Alternatively, if a path is provided, the JSON data will be written to this path.
-- **${PSERVER_ADDR}**:  The address of the parameter server from above
-- **${PROVDB_ADDR}**:  The address of the provenance databasde from above  
+- **RANKS** : The number of MPI ranks that the application will be run on
+- **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
+- **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
+- **OUTPUT_LOC** : The path in which provenance information is written. This information is identical to that stored in the provenance database, hence if the database is in use this output can be disabled by setting **OUTPUT_LOC=""** (an empty string). 
+- **PSERVER_ADDR**:  The address of the parameter server from above
+- **PROVDB_ADDR**:  The address of the provenance databasde from above
+- **NSHARDS**: The number of provenance database shards
 
-The **${ADIOS2_FILE_DIR}** and **${ADIOS2_FILE_PREFIX}** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**.
+The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
 The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
 
@@ -105,26 +120,26 @@ On the analysis machine, the provenance database and parameter server should be 
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} driver BPFile ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR}
+	  mpirun -n ${RANKS} driver BPFile ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} ...
 
 Note that the first argument of **driver**, which specifies the ADIOS2 engine, has been set to **BPFile**, and the process is not run in the background.	  
-	  
 	  
 Analysis using Singularity Containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+TODO
 
 Interacting with the Provenance Database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The provenance database is stored in a single file, **provdb.unqlite** in the job's run directory. From this directory the user can interact with the provenance database via the visualization module. A more general command line interface to the database is also provided via the **provdb_query** tool that allows the user to execute arbitrary jx9 queries on the database.
+The provenance database is stored in a single file, **provdb.${SHARD}.unqlite** in the job's run directory. From this directory the user can interact with the provenance database via the visualization module. A more general command line interface to the database is also provided via the **provdb_query** tool that allows the user to execute arbitrary jx9 queries on the database.
 
 The **provdb_query** tool has two modes of operation: **filter** and **execute**.
 
 Filter mode
 -----------
 
-**filter** mode allows the user to provide a jx9 filter function that is applied to filter out entries in a particular collection. It can be used as follows:
+**filter** mode allows the user to provide a jx9 filter function that is applied to filter out entries in a particular collection. The result is displayed in JSON format and can be piped to disk. It can be used as follows:
 
 .. code:: bash
 
@@ -164,11 +179,13 @@ Execute mode
 
 .. code:: bash
 
-	  provdb_query execute ${CODE} ${VARIABLES}
+	  provdb_query execute ${CODE} ${VARIABLES} ${OPTIONS}
 
 Where the variables are as follows:
 
 - **CODE** : The jx9 script
 - **VARIABLES** : a comma-separated list (without spaces) of the variables assigned by the script
 
-The **CODE** argument is a complete jx9 script. 
+The **CODE** argument is a complete jx9 script. As above, backslashes ('\') must be placed before internal '$' and '"' characters to prevent shell expansion.  
+
+If the option **-from_file** is specified the **${CODE}** variable above will be treated as a filename from which to obtain the script. Note that in this case the backslashes before the special characters are not necessary.
