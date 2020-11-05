@@ -71,12 +71,13 @@ The third step is to instantiate the AD modules:
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} driver SST ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
+	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
 	  sleep 2
 
 Where the variables are as follows:
 
 - **RANKS** : The number of MPI ranks that the application will be run on
+- **ADIOS2_ENGINE** : The ADIOS2 communications engine. For online analysis this should be **SST** by default (an alternative, **BP4** is discussed below)
 - **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
 - **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
 - **OUTPUT_LOC** : The path in which provenance information is written. This information is identical to that stored in the provenance database, hence if the database is in use this output can be disabled by setting **OUTPUT_LOC=""** (an empty string). 
@@ -86,13 +87,15 @@ Where the variables are as follows:
 
 The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
+The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former uses RDMA and should be the default choice. However we have observed that in some cases the **BP4** option (available in ADIOS2 2.6+), which writes the traces to disk rather than to memory, can reduce the overhead of running Chimbuko alongside the application.
+
 The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
 
 - **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
 - **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
 
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
-  
+
 ----------------------------------  
 
 The final step is to instantiate the application
@@ -123,6 +126,36 @@ On the analysis machine, the provenance database and parameter server should be 
 	  mpirun -n ${RANKS} driver BPFile ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} ...
 
 Note that the first argument of **driver**, which specifies the ADIOS2 engine, has been set to **BPFile**, and the process is not run in the background.	  
+
+Running Chimbuko on Summit
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Running Chimbuko on Summit is complicated by the need to allocate resources using the 'jsrun' job placement tool. A single instance of the provenance database and the parameter server must be run on a dedicated node (to avoid interfering with the job) and resources must be allocated on each node upon which the job is running for the AD instances. In our testing we found this most easily achieved by manually specifying the resources using **explicit resource files** (ERF). More details of the ERF format can be found `here <https://www.ibm.com/support/knowledgecenter/SSWRJV_10.1.0/jsm/jsrun.html>`_.
+
+For convenience we provide a script for generating the ERF files that should suffice for most normal MPI jobs:
+
+.. code:: bash
+
+	  ${AD_SOURCE_DIR}/scripts/summit/gen_erf_summit.sh
+
+This script generates 4 ERF files: **pserver.erf**, **provdb.erf**, **ad.erf** and **main.erf**, where the last is the placement script for the application. They are used as follows:
+
+.. code:: bash
+
+	  jsrun --erf_input=<file.erf> <executable> <options>
+
+For the provenance database (provdb_admin) we recommend using the OFI "verbs" transport protocol rather than the default TCP (specified using "-engine verbs") as it is optimized for Infiniband. For this protocol, the address parameter requires both a domain and adaptor to be specified, in the format **${DOMAIN}/${ADAPTOR}:${PORT}**. The appropriate adaptor/domain can be found using
+
+.. code:: bash
+
+	  jsrun -n 1 fi_info
+
+within an interactive session, and searching for one that supports verbs. However the following setup has been verified:	  
+
+.. code:: bash
+
+	  jsrun --erf_input=provdb.erf provdb_admin  mlx5_0/ib0:5000 -engine verbs -nshards ${NSHARDS} -nthreads ${NTHREADS} &
+
 	  
 Analysis using Singularity Containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
