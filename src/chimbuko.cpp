@@ -2,6 +2,7 @@
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/error.hpp"
+#include "chimbuko/util/time.hpp"
 
 using namespace chimbuko;
 
@@ -433,6 +434,12 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
+
+#if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
+  //Rank 0 records the number of outstanding requests as a function of time, which can be used to gauge whether the throughput of the provDB is sufficient
+  std::ofstream *perf_provdb_client_outstanding = nullptr;
+  if(m_params.rank == 0 && m_provdb_client->isConnected()) perf_provdb_client_outstanding = new std::ofstream(m_params.perf_outputpath + "/ad_provdb_outstandingreq.0.txt");
+#endif
   
   PerfTimer step_timer, timer;
 
@@ -481,8 +488,12 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     m_perf.add("ad_run_total_step_time_excl_parse_us", step_timer.elapsed_us());
 
-    if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0)
+    if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0){
+#if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
+      if(perf_provdb_client_outstanding) *perf_provdb_client_outstanding << getDateTime() << " " << m_provdb_client->getNoutstandingAsyncReqs() << std::endl;
+#endif
       m_perf.write(); //only writes if filename/output path set
+    }
 
     if (m_params.only_one_frame)
       break;
@@ -496,5 +507,9 @@ void Chimbuko::run(unsigned long long& n_func_events,
   //Always dump perf at end
   m_perf.write();
   
+#if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
+  if(perf_provdb_client_outstanding) delete perf_provdb_client_outstanding;
+#endif
+
   if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " run complete" << std::endl;
 }

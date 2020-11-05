@@ -8,11 +8,9 @@ using namespace chimbuko;
 
 
 void AnomalousSendManager::purge(){
-  if(outstanding.size() > MAX_OUTSTANDING){
-    while(!outstanding.empty() && outstanding.front().completed()){ //requests completing in-order so we can stop when we encounter the first non-complete
-      outstanding.front().wait(); //simply cleans up resources, non-blocking because already complete
-      outstanding.pop();
-    }
+  while(!outstanding.empty() && outstanding.front().completed()){ //requests completing in-order so we can stop when we encounter the first non-complete
+    outstanding.front().wait(); //simply cleans up resources, non-blocking because already complete
+    outstanding.pop();
   }
 }
 
@@ -28,6 +26,11 @@ void AnomalousSendManager::waitAll(){
     outstanding.pop();
   }
 }  
+
+size_t AnomalousSendManager::getNoutstanding(){
+  purge();
+  return outstanding.size();
+}
 
 AnomalousSendManager::~AnomalousSendManager(){
   waitAll();
@@ -203,6 +206,32 @@ void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const Prov
   getCollection(type).store(entry.dump(), ids, false, sreq);
 }
 
+void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
+  if(entries.size() == 0 || !m_is_connected) return;
+
+  PerfTimer timer, ftimer;
+  size_t size = entries.size();
+  uint64_t* ids;
+  sonata::AsyncRequest *sreq;
+
+  if(req == nullptr){
+    ids = nullptr; //utilize sonata mechanism for anomalous request
+    ftimer.start();
+    sreq = &anom_send_man.getNewRequest();
+    if(m_stats) m_stats->add("provdb_client_sendmulti_async_getnewreq_ms", timer.elapsed_ms());
+  }else{
+    req->ids.resize(size);
+    ids = req->ids.data();
+    sreq = &req->req;
+  }
+
+  getCollection(type).store_multi(entries, ids, false, sreq); 
+
+  if(m_stats) m_stats->add("provdb_client_sendmulti_async_send_ms", timer.elapsed_ms());
+}
+
+
+
 void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
   if(entries.size() == 0 || !m_is_connected) return;
 
@@ -220,22 +249,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
     for(int i=0;i<size;i++) m_stats->add("provdb_client_sendmulti_async_record_size", dump[i].size());
   }
 
-  timer.start();
-  uint64_t* ids;
-  sonata::AsyncRequest *sreq;
-
-  if(req == nullptr){
-    ids = nullptr; //utilize sonata mechanism for anomalous request
-    sreq = &anom_send_man.getNewRequest();
-  }else{
-    req->ids.resize(size);
-    ids = req->ids.data();
-    sreq = &req->req;
-  }
-
-  getCollection(type).store_multi(dump, ids, false, sreq); 
-
-  if(m_stats) m_stats->add("provdb_client_sendmulti_async_send_ms", timer.elapsed_ms());
+  sendMultipleDataAsync(dump, type, req);
 }
 
 void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
@@ -245,25 +259,20 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, 
   if(size == 0 || !m_is_connected) 
     return;
 
+  PerfTimer timer;
   std::vector<std::string> dump(size);
   for(int i=0;i<size;i++){
     if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
     dump[i] = entries[i].dump();
   }
 
-  uint64_t* ids;
-  sonata::AsyncRequest *sreq;
-
-  if(req == nullptr){
-    ids = nullptr; //utilize sonata mechanism for anomalous request
-    sreq = &anom_send_man.getNewRequest();
-  }else{
-    req->ids.resize(size);
-    ids = req->ids.data();
-    sreq = &req->req;
+  if(m_stats){
+    m_stats->add("provdb_client_sendmulti_async_dump_json_ms", timer.elapsed_ms());
+    m_stats->add("provdb_client_sendmulti_async_nrecords", size);
+    for(int i=0;i<size;i++) m_stats->add("provdb_client_sendmulti_async_record_size", dump[i].size());
   }
 
-  getCollection(type).store_multi(dump, ids, false, sreq); 
+  sendMultipleDataAsync(dump, type, req);
 }  
 
 

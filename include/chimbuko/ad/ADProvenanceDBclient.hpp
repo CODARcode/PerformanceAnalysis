@@ -44,7 +44,6 @@ namespace chimbuko{
    * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
    */
   class AnomalousSendManager{
-    static const int MAX_OUTSTANDING = 100;
     std::queue<sonata::AsyncRequest> outstanding;
 
     /**
@@ -61,6 +60,13 @@ namespace chimbuko{
      * @brief Block (wait) until all outstanding requests have completed
      */
     void waitAll();
+
+    /**
+     * @brief Get the number of incomplete (outstanding) requests
+     *
+     * Non-const because it must purge completed requests from the queue prior to counting
+     */
+    size_t getNoutstanding();
 
     ~AnomalousSendManager();
   };
@@ -86,6 +92,15 @@ namespace chimbuko{
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
 
     PerfStats *m_stats; /**< Performance data gathering*/
+
+    /**
+     * @brief Send std::vector of JSON strings asynchronously to the database (non-blocking). This is intended for sending many independent data entries at once.
+     * @param entries std::vector of data
+     * @param type The data type
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
+     */
+    void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+    
   public:
     ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr){}
 
@@ -206,6 +221,11 @@ namespace chimbuko{
      * @brief Link a PerfStats instance to monitor performance
      */
     void linkPerf(PerfStats *stats){ m_stats = stats; }
+
+    /**
+     * @brief Get the number of incomplete (outstanding) asynchronous stores
+     */
+    size_t getNoutstandingAsyncReqs(){ return anom_send_man.getNoutstanding(); }
 
   };
 
