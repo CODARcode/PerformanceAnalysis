@@ -1,5 +1,6 @@
 import sys
 import json
+import re
 
 import pymargo
 from pymargo.core import Engine
@@ -9,7 +10,15 @@ from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
 class provDBinterface:
-    def __init__(self,engine,filename):
+    #Filename should contain a '%d' which will be replaced by the shard index
+    def __init__(self,engine,filename,shard_idx):
+        if not re.search(r'\%d',filename):
+            print("Error, filename does not contain \%d")
+            sys.exit(1)
+
+        filename = re.sub(r'\%d',str(shard_idx),filename)
+        print("Filename is ",filename)
+            
         #Setup provider and admin to manage database
         self.provider = SonataProvider(engine, 0)
         self.address = str(engine.addr())
@@ -30,9 +39,9 @@ class provDBinterface:
         col = None
         if which_coll == "anomalies":
             col = self.anomalies
-        elif which_col == "normalexecs":
+        elif which_coll == "normalexecs":
             col = self.normalexecs
-        elif which_col == "metadata":
+        elif which_coll == "metadata":
             col = self.metadata
         else:
             print("Invalid collection")
@@ -47,10 +56,10 @@ class provDBinterface:
 
 if __name__ == '__main__':
     argc = len(sys.argv)
-    if(argc != 3):
+    if(argc != 4):
         print("""Basic script usage is to apply a jx9 filter to the database
 --------------------------------------------------------
-Usage python3.7 provdb_interact.py $COLLECTION $QUERY
+Usage python3.7 provdb_interact.py $COLLECTION $QUERY $NSHARDS
 --------------------------------------------------------
 Where COLLECTION is 'anomalies', 'normalexecs' or 'metadata'
 and QUERY is a jx9 query
@@ -60,13 +69,15 @@ e.g. "function(\$entry) { return true; }"   will show all entries
     
     col = sys.argv[1]
     query = sys.argv[2]
+    nshards = int(sys.argv[3])
 
     with Engine('na+sm', pymargo.server) as engine:
-        db = provDBinterface(engine, 'provdb.unqlite')
+        filtered_records = []
+        for i in range(nshards):
+            db = provDBinterface(engine, 'provdb.%d.unqlite', i)
+            filtered_records += [ json.loads(x) for x in db.filter(col,query) ]
+            #Ensure db is deleted before engine is finalized
+            del db
 
-        filtered_records = [ json.loads(x) for x in db.filter(col,query) ]
-        print(filtered_records)
-
-        #Ensure db is deleted before engine is finalized
-        del db
+        print(json.dumps(filtered_records,indent=4))
         engine.finalize()
