@@ -34,6 +34,8 @@ WORKDIR /Downloads
 RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
+#Revert to working version
+RUN git checkout 2d49ea9ecebce6fa459f57310abcda62befc5c7b
 
 #cuda+pthread+python
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \

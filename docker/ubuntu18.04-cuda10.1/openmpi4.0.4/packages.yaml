@@ -1,0 +1,74 @@
+packages:
+  python:
+    buildable: false
+    paths:
+      python@3.6.0: /usr
+  libfabric:
+    buildable: false
+    paths:
+      libfabric@1.9.0: /opt/libfabric
+  zlib:
+    buildable: false
+    paths:
+      zlib@1.2.11: /usr
+  ncurses:
+    buildable: false
+    paths:
+      ncurses@6.1: /usr
+  m4:
+    buildable: false
+    paths:
+      m4@1.4.18: /usr
+  pkg-config:
+    buildable: false
+    paths:
+      pkg-config@0.29.1: /usr
+  bzip2:
+    buildable: false
+    paths:
+      bzip2@1.0.6: /usr
+  perl:
+    buildable: false
+    paths:
+      perl@5.26.1: /usr
+  libtool:
+    buildable: false
+    paths:
+      libtool@2.4.6: /usr
+  diffutils:
+    buildable: false
+    paths:
+      diffutils@3.6: /usr
+  openssl:
+    buildable: false
+    paths:
+      openssl@1.1.1: /usr
+  cmake:
+    buildable: false
+    paths:
+      cmake@3.17.0: /opt/cmake-3.17.0-Linux-x86_64/
+  autoconf:
+    buildable: false
+    paths:
+      autoconf@2.69: /usr
+  automake:
+    buildable: false
+    paths:
+      automake@1.15: /usr
+  cereal:
+    buildable: false
+    paths:
+      cereal@1.3.0: /opt/cereal
+  openblas:
+    buildable: false
+    paths:
+      openblas@0.2.20: /usr
+
+
+
+
+
+
+
+
+

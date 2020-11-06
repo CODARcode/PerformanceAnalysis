@@ -1,3 +1,5 @@
+
+#A python module for interacting with the provenance database
 import sys
 import json
 import re
@@ -9,31 +11,23 @@ from pysonata.provider import SonataProvider
 from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
-class provDBinterface:
-    #Filename should contain a '%d' which will be replaced by the shard index
-    def __init__(self,engine,filename,shard_idx):
-        if not re.search(r'\%d',filename):
-            print("Error, filename does not contain \%d")
-            sys.exit(1)
-
-        filename = re.sub(r'\%d',str(shard_idx),filename)
-        print("Filename is ",filename)
-            
-        #Setup provider and admin to manage database
-        self.provider = SonataProvider(engine, 0)
-        self.address = str(engine.addr())
-        self.admin = SonataAdmin(engine)
-        self.admin.attach_database(self.address, 0, 'provdb', 'unqlite', "{ \"path\" : \"%s\" }" % filename)
-
+class provDBshard:
+    def __init__(self,client,address,db_name):
         #Open database as a client
-        self.client = SonataClient(engine)
-        self.database = self.client.open(self.address, 0, 'provdb')
+        self.database = client.open(address, 0, db_name)
 
         #Initialize collections
         self.anomalies = self.database.open('anomalies')
         self.normalexecs = self.database.open('normalexecs')
         self.metadata = self.database.open('metadata')
 
+    def __del__(self):
+        del self.anomalies
+        del self.normalexecs
+        del self.metadata        
+        del self.database
+
+        
     #Apply a jx9 filter to a collection
     def filter(self, which_coll, query):
         col = None
@@ -48,10 +42,53 @@ class provDBinterface:
             sys.exit(1)
         return col.filter(query)
 
+    def execute(self, code, variables):
+        return self.database.execute(code,variables)
+
+
+class provDBinterface:
+    #Filename should contain a '%d' which will be replaced by the shard index
+    def __init__(self,engine,filename,nshards):
+        if not re.search(r'\%d',filename):
+            print("Error, filename does not contain \%d")
+            sys.exit(1)
+
+        #Setup provider admin and client to manage database
+        self.provider = SonataProvider(engine, 0)
+        self.address = str(engine.addr())
+        self.admin = SonataAdmin(engine)
+        self.client = SonataClient(engine)
+
+        self.db_names = []
+        self.db_shards = []
+        for s in range(nshards):
+            db_name = "provdb.%d" % s
+            self.db_names.append(db_name)
+
+            db_file = re.sub(r'\%d',str(s),filename)    
+            print("Attaching shard %d as %s from file %s" % (s,db_name,db_file))
+            self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+
+            self.db_shards.append( provDBshard(self.client, self.address, db_name) )
+
+    def getNshards(self):
+        return len(self.db_shards)
+
+    def getShard(self, i):
+        return self.db_shards[i]
+
+    def getShards(self):
+        return self.db_shards
 
     def __del__(self):
-        self.admin.detach_database(self.address, 0, 'provdb')
+        del self.db_shards
+        del self.client
+        for n in self.db_names:
+            self.admin.detach_database(self.address, 0, n)
+        del self.admin
         del self.provider
+
+
         
 
 if __name__ == '__main__':
@@ -72,12 +109,13 @@ e.g. "function(\$entry) { return true; }"   will show all entries
     nshards = int(sys.argv[3])
 
     with Engine('na+sm', pymargo.server) as engine:
+        db = provDBinterface(engine, 'provdb.%d.unqlite', nshards)
+
         filtered_records = []
         for i in range(nshards):
-            db = provDBinterface(engine, 'provdb.%d.unqlite', i)
-            filtered_records += [ json.loads(x) for x in db.filter(col,query) ]
-            #Ensure db is deleted before engine is finalized
-            del db
+            filtered_records += [ json.loads(x) for x in db.getShard(i).filter(col,query) ]
 
         print(json.dumps(filtered_records,indent=4))
+
+        del db
         engine.finalize()
