@@ -73,6 +73,12 @@ namespace chimbuko{
       data().finalize();
     }
 
+    /**
+     * @brief Get the protocol from the address string
+     */
+    static std::string getProtocolFromAddress(const std::string &addr);
+    
+
   };
 
 

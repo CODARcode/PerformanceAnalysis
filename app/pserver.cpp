@@ -1,10 +1,17 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
+#include <chimbuko_config.h>
 #include <chimbuko/pserver.hpp>
+
 #ifdef _USE_MPINET
 #include <chimbuko/net/mpi_net.hpp>
 #else
 #include <chimbuko/net/zmq_net.hpp>
 #endif
+
+#ifdef ENABLE_PROVDB
+#include <chimbuko/pserver/PSProvenanceDBclient.hpp>
+#endif
+
 #include <mpi.h>
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
@@ -35,11 +42,18 @@ struct pserverArgs{
   int max_pollcyc_msg;
   int zmq_io_thr;
 #endif
+
+#ifdef ENABLE_PROVDB
+  std::string provdb_addr;
+#endif
   
   pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1)
-#endif  
+#endif
+#ifdef ENABLE_PROVDB
+	       , provdb_addr("")
+#endif
   {}
 
   static commandLineParser<pserverArgs> &getParser(){
@@ -58,6 +72,10 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
       addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
 #endif
+#ifdef ENABLE_PROVDB
+      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+#endif
+
       init = true;
     }
     return p;
@@ -75,7 +93,7 @@ int main (int argc, char ** argv){
 
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-    std::cout << "Enabling verbose debug output" << std::endl;
+    std::cout << "Pserver: Enabling verbose debug output" << std::endl;
     Verbose::set_verbose(true);
   }       
 
@@ -83,9 +101,10 @@ int main (int argc, char ** argv){
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
-    
+  
+  //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
-    std::cout << "Loading parameters from input file " << args.load_params << std::endl;
+    std::cout << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
     std::ifstream in(args.load_params);
     if(!in.good()) throw std::runtime_error("Could not load anomaly algorithm parameters from the file provided");
     nlohmann::json in_p;
@@ -107,7 +126,20 @@ int main (int argc, char ** argv){
 
   PSstatSender stat_sender(args.stat_send_freq);
 
+#ifdef ENABLE_PROVDB
+  PSProvenanceDBclient provdb_client;
+#endif
+
   try {
+#ifdef ENABLE_PROVDB
+    //Connect to the provenance database
+    if(args.provdb_addr.size()){
+      std::cout << "Pserver: connecting to provenance database" << std::endl;
+      provdb_client.connect(args.provdb_addr);
+    }
+#endif
+
+    //Setup network
     if (args.nt <= 0) {
       args.nt = std::max(
 		    (int)std::thread::hardware_concurrency() - 5,
@@ -115,10 +147,9 @@ int main (int argc, char ** argv){
 		    );
     }
 
-    //nt = std::max((int)std::thread::hardware_concurrency() - 2, 1);
-    std::cout << "Run parameter server with " << args.nt << " threads" << std::endl;
+    std::cout << "PServer: Run parameter server with " << args.nt << " threads" << std::endl;
     if (args.ws_addr.size() || args.stat_outputdir.size()){
-      std::cout << "Run anomaly statistics sender ";
+      std::cout << "PServer: Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
@@ -142,13 +173,23 @@ int main (int argc, char ** argv){
     net.run();
 #endif
 
-    // at this point, all pseudo AD modules finished sending 
-    // anomaly statistics data
+    //At this point, all pseudo AD modules finished sending anomaly statistics data
     std::this_thread::sleep_for(std::chrono::seconds(1));
     stat_sender.stop_stat_sender(1000);
 
+#ifdef ENABLE_PROVDB
+    //Send final statistics to the provenance database
+    if(provdb_client.isConnected()){
+      std::cout << "Pserver: sending final statistics to provDB" << std::endl;
+      provdb_client.sendMultipleData(global_func_stats.collect_func_data(), GlobalProvenanceDataType::FunctionStats);
+      provdb_client.sendMultipleData(global_counter_stats.get_json_state(), GlobalProvenanceDataType::CounterStats);
+      std::cout << "Pserver: disconnecting from provDB" << std::endl;      
+      provdb_client.disconnect();
+    }
+#endif
+
     // could be output to a file
-    std::cout << "Shutdown parameter server ..." << std::endl;
+    std::cout << "Pserver: Shutdown parameter server ..." << std::endl;
     //param.show(std::cout);
     std::ofstream o;
     o.open(args.logdir + "/parameters.txt");
@@ -174,14 +215,15 @@ int main (int argc, char ** argv){
       std::cout << e.what() << std::endl;
     }
 
-  std::cout << "Pserver finalizing the network" << std::endl;
+  std::cout << "Pserver: finalizing the network" << std::endl;
   net.finalize();
 #ifdef _USE_ZMQNET
   MPI_Finalize();
 #endif
 
+  //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
-    std::cout << "Saving parameters to output file " << args.save_params << std::endl;   
+    std::cout << "PServer: Saving parameters to output file " << args.save_params << std::endl;   
     std::ofstream out(args.save_params);
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
@@ -190,6 +232,6 @@ int main (int argc, char ** argv){
     out << out_p;
   }
 
-  std::cout << "Pserver finished" << std::endl;
+  std::cout << "Pserver: finished" << std::endl;
   return 0;
 }
