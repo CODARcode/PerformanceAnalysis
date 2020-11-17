@@ -74,15 +74,18 @@ void ADProvenanceDBclient::disconnect(){
     anom_send_man.waitAll();
     if(m_stats) m_stats->add("provdb_client_disconnect_wait_all_ms", timer.elapsed_ms());
 
-    VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
-    m_client_goodbye->on(m_server)(m_rank);    
-    VERBOSE(std::cout << "ADProvenanceDBclient deleting handshake RPCs" << std::endl);
+    if(m_perform_handshake){
+      VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
+      m_client_goodbye->on(m_server)(m_rank);    
+      VERBOSE(std::cout << "ADProvenanceDBclient deleting handshake RPCs" << std::endl);
+      
+      m_client_hello->deregister();
+      m_client_goodbye->deregister();
+      
+      delete m_client_hello; m_client_hello = nullptr;
+      delete m_client_goodbye; m_client_goodbye = nullptr;
+    }
 
-    m_client_hello->deregister();
-    m_client_goodbye->deregister();
-    
-    delete m_client_hello; m_client_hello = nullptr;
-    delete m_client_goodbye; m_client_goodbye = nullptr;
     m_is_connected = false;
     VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
   }
@@ -113,12 +116,14 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     VERBOSE(std::cout << "DB client opening normal execution collection" << std::endl);
     m_coll_normalexecs = m_database.open("normalexecs");
 
-
-    VERBOSE(std::cout << "DB client registering RPCs and handshaking with provDB" << std::endl);
     m_server = eng.lookup(addr);
-    m_client_hello = new thallium::remote_procedure(eng.define("client_hello").disable_response());
-    m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
-    m_client_hello->on(m_server)(m_rank);
+
+    if(m_perform_handshake){
+      VERBOSE(std::cout << "DB client registering RPCs and handshaking with provDB" << std::endl);
+      m_client_hello = new thallium::remote_procedure(eng.define("client_hello").disable_response());
+      m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
+      m_client_hello->on(m_server)(m_rank);
+    }      
 
     m_is_connected = true;
     VERBOSE(std::cout << "DB client connected successfully" << std::endl);

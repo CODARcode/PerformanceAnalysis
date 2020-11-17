@@ -90,6 +90,7 @@ namespace chimbuko{
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+    bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
     PerfStats *m_stats; /**< Performance data gathering*/
 
@@ -102,9 +103,14 @@ namespace chimbuko{
     void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
     
   public:
-    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr){}
+    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
 
     ~ADProvenanceDBclient();
+
+    /**
+     * @brief Enable or disable the client<->server handshake (call before connecting)
+     */
+    void setEnableHandshake(const bool to){ m_perform_handshake = to; }
     
     /**
      * @brief Connect the client to the provenance database server

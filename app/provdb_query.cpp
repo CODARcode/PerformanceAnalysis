@@ -17,17 +17,6 @@
 
 using namespace chimbuko;
 
-std::vector<std::string> splitString(const std::string &the_string, const char delimiter){
-  std::vector<std::string> result;
-  std::stringstream s_stream(the_string);
-  while(s_stream.good()) {
-    std::string substr;
-    getline(s_stream, substr, delimiter); 
-    result.push_back(std::move(substr));
-  }
-  return result;
-}
-  
 void printUsageAndExit(){
   std::cout << "Usage: provdb_query <options> <instruction> <instruction args...>\n"
 	    << "options: -verbose    Enable verbose output\n"
@@ -92,7 +81,7 @@ void execute(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
 
   int nshards = clients.size();
   std::string code = args[0];
-  std::vector<std::string> vars_v = splitString(args[1],','); //comma separated list with no spaces eg  "a,b,c"
+  std::vector<std::string> vars_v = parseStringArray(args[1],','); //comma separated list with no spaces eg  "a,b,c"
   std::unordered_set<std::string> vars_s; 
   for(auto &s : vars_v) vars_s.insert(s);
   
@@ -155,18 +144,14 @@ void filter_global(PSProvenanceDBclient &client,
 }
 
 
-void client_hello(const thallium::request& req, const int rank) {
-}
-void client_goodbye(const thallium::request& req, const int rank) {
-}
-void pserver_hello(const thallium::request& req) {
-}
-void pserver_goodbye(const thallium::request& req) {
-}
-
-
 int main(int argc, char** argv){
   if(argc < 2) printUsageAndExit();
+
+  //Parse environment variables
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+    std::cout << "Pserver: Enabling verbose debug output" << std::endl;
+    Verbose::set_verbose(true);
+  }       
 
   int arg_offset = 1;
   int a=1;
@@ -188,68 +173,67 @@ int main(int argc, char** argv){
   ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
   thallium::engine & engine = ADProvenanceDBengine::getEngine();
 
-  engine.define("client_hello",client_hello).disable_response();
-  engine.define("client_goodbye",client_goodbye).disable_response();
-  engine.define("pserver_hello",pserver_hello).disable_response();
-  engine.define("pserver_goodbye",pserver_goodbye).disable_response();
-
-
-  sonata::Provider provider(engine);
-  sonata::Admin admin(engine);
+  {
+    sonata::Provider provider(engine);
+    sonata::Admin admin(engine);
   
-  std::string addr = (std::string)engine.self();
+    std::string addr = (std::string)engine.self();
 
-  //Actions on main sharded anomaly database
-  if(mode == "filter" || mode == "execute"){
+    //Actions on main sharded anomaly database
+    if(mode == "filter" || mode == "execute"){
 
-    std::vector<std::string> db_shard_names(nshards);
-    std::vector<std::unique_ptr<ADProvenanceDBclient> > clients(nshards);
-    for(int s=0;s<nshards;s++){
-      db_shard_names[s] = chimbuko::stringize("provdb.%d",s);
-      std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_shard_names[s].c_str());
-      admin.attachDatabase(addr, 0, db_shard_names[s], "unqlite", config);    
+      std::vector<std::string> db_shard_names(nshards);
+      std::vector<std::unique_ptr<ADProvenanceDBclient> > clients(nshards);
+      for(int s=0;s<nshards;s++){
+	db_shard_names[s] = chimbuko::stringize("provdb.%d",s);
+	std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_shard_names[s].c_str());
+	admin.attachDatabase(addr, 0, db_shard_names[s], "unqlite", config);    
 
-      clients[s].reset(new ADProvenanceDBclient(s));
-      clients[s]->connect(addr, nshards);
-      if(!clients[s]->isConnected()){
-	engine.finalize();
-	throw std::runtime_error(stringize("Could not connect to database shard %d!", s));
+	clients[s].reset(new ADProvenanceDBclient(s));
+	clients[s]->setEnableHandshake(false);	      
+	clients[s]->connect(addr, nshards);
+	if(!clients[s]->isConnected()){
+	  engine.finalize();
+	  throw std::runtime_error(stringize("Could not connect to database shard %d!", s));
+	}
+      }
+
+      if(mode == "filter"){
+	filter(clients, argc-arg_offset, argv+arg_offset);
+      }else if(mode == "execute"){
+	execute(clients, argc-arg_offset, argv+arg_offset);
+      }else throw std::runtime_error("Invalid mode");
+    
+
+      for(int s=0;s<nshards;s++){
+	clients[s]->disconnect();
+	admin.detachDatabase(addr, 0, db_shard_names[s]);
       }
     }
+    //Actions on global database
+    else if(mode == "filter-global"){
+      std::string db_name = "provdb.global";
+      PSProvenanceDBclient client;
+      client.setEnableHandshake(false);
 
-    if(mode == "filter"){
-      filter(clients, argc-arg_offset, argv+arg_offset);
-    }else if(mode == "execute"){
-      execute(clients, argc-arg_offset, argv+arg_offset);
-    }else throw std::runtime_error("Invalid mode");
+      std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+      admin.attachDatabase(addr, 0, db_name, "unqlite", config);    
     
+      client.connect(addr);
+      if(!client.isConnected()){
+	engine.finalize();
+	throw std::runtime_error("Could not connect to global database");
+      }
 
-    for(int s=0;s<nshards;s++){
-      clients[s]->disconnect();
-      admin.detachDatabase(addr, 0, db_shard_names[s]);
-    }
-  }
-  //Actions on global database
-  else if(mode == "filter-global"){
-    std::string db_name = "provdb.global";
-    PSProvenanceDBclient client;
+      if(mode == "filter-global"){
+	filter_global(client, argc-arg_offset, argv+arg_offset);
+      }else throw std::runtime_error("Invalid mode");
 
-    std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
-    admin.attachDatabase(addr, 0, db_name, "unqlite", config);    
-    
-    client.connect(addr);
-    if(!client.isConnected()){
-      engine.finalize();
-      throw std::runtime_error("Could not connect to global database");
+      client.disconnect();
+      admin.detachDatabase(addr, 0, db_name);
     }
 
-    if(mode == "filter-global"){
-      filter_global(client, argc-arg_offset, argv+arg_offset);
-    }else throw std::runtime_error("Invalid mode");
-    
-    client.disconnect();
-    admin.detachDatabase(addr, 0, db_name);
-  }
+  }//exit scope of provider and admin to ensure deletion before engine finalize
 
   return 0;
 }

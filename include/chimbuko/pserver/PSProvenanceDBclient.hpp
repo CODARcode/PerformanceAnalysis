@@ -30,11 +30,12 @@ namespace chimbuko{
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+    bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
     PerfStats *m_stats; /**< Performance data gathering*/
 
   public:
-    PSProvenanceDBclient(): m_is_connected(false), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr){}
+    PSProvenanceDBclient(): m_is_connected(false), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
 
     ~PSProvenanceDBclient();
     
@@ -54,6 +55,10 @@ namespace chimbuko{
      */
     void disconnect(); 
 
+    /**
+     * @brief Enable or disable the client<->server handshake (call before connecting)
+     */
+    void setEnableHandshake(const bool to){ m_perform_handshake = to; }
 
     /**
      * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality

@@ -57,7 +57,6 @@ std::string stringize(const char* format, ...);
  */
 std::vector<std::string> parseStringArray(const std::string &array, char delimiter);
 
-
 };
 
 
