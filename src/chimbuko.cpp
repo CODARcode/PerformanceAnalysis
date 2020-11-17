@@ -131,6 +131,8 @@ void Chimbuko::init_net_client(){
 #else
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
+    if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
+
     m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
   }
 }

@@ -54,19 +54,45 @@ namespace chimbuko{
     int get_client_rank() const{ return m_rank; }
 
     /**
-     * @brief Send a message to the parameter server and receive the response
+     * @brief Send a message to the parameter server and receive the response in a serialized format
      * @param msg The message
-     * @return The response message in string format. This is a JSON object with 'Header' and 'Buffer' fields
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
     std::string send_and_receive(const Message &msg);
 
+    /**
+     * @brief Send a message to the parameter server and receive the response both as Message objects
+     * @param send The sent message
+     * @param recv The received message
+     *
+     * Note recv and send can be the same object
+     */       
+    void send_and_receive(Message &recv, const Message &send);
 
     /**
      * @brief If linked timing and packet size information will be gathered
      */
     void linkPerf(PerfStats* perf){ m_perf = perf; }
 
+#ifdef _USE_ZMQNET
+    /**
+     * @brief Set the timeout on blocking receives. Must be called prior to connecting
+     */
+    void setRecvTimeout(const int timeout_ms){ m_recv_timeout_ms = timeout_ms; }
+
+    /**
+     * @brief Get the zeroMQ socket
+     */
+    void * getZMQsocket(){ return m_socket; }
+
+    /**
+     * @brief Get the zeroMQ context
+     */
+    void * getZMQcontext(){ return m_context; }
     
+#endif
+
+
   private:
     bool m_use_ps;                           /**< true if the parameter server is in use */
     int m_rank;                              /**< MPI rank of current process */
@@ -76,6 +102,7 @@ namespace chimbuko{
 #else
     void* m_context;                         /**< ZeroMQ context */
     void* m_socket;                          /**< ZeroMQ socket */
+    int m_recv_timeout_ms;                   /**< Timeout (in ms) on blocking receives (default 30s)*/
 #endif
     PerfStats * m_perf;                      /**< Performance monitoring */
   };

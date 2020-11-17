@@ -74,6 +74,10 @@ namespace chimbuko {
      */
     void setIOthreads(const int nt){ m_io_threads = nt; }
 
+    /**
+     * @brief Set the port upon which the connection is made. Must be called prior to run(..)
+     */
+    void setPort(const int port){ m_port = port; }
 
   protected:
     /**
@@ -105,6 +109,7 @@ namespace chimbuko {
     mutable std::mutex m_mutex;
     int m_clients; /**< Number of connected clients*/
     bool m_client_has_connected; /**< At least one client has connected previously*/
+    int m_port; /**< The port upon which the net connects*/
   };
 
 } // end of chimbuko namespace

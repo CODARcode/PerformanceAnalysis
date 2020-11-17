@@ -62,7 +62,7 @@ public:
 };
 
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559)
 {
   add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
   add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
@@ -189,8 +189,8 @@ void ZMQNet::run()
     zmq_setsockopt(backend, ZMQ_RCVHWM, &zero, sizeof(int));
     zmq_setsockopt(backend, ZMQ_SNDHWM, &zero, sizeof(int));
 
-
-    zmq_bind(frontend, "tcp://*:5559"); //create a socket for communication with the AD
+    std::string tcp_addr = "tcp://*:"+anyToStr(m_port);
+    zmq_bind(frontend, tcp_addr.c_str()); //create a socket for communication with the AD
     zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
 
     const int NR_ITEMS = 2; 
@@ -397,8 +397,8 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     zmq_msg_t msg;
     int ret;
     zmq_msg_init(&msg);
-    ret = zmq_msg_recv(&msg, socket, 0);
-    strmsg.assign((char*)zmq_msg_data(&msg), ret);
+    ret = zmq_msg_recv(&msg, socket, 0);    
+    if(ret != -1) strmsg.assign((char*)zmq_msg_data(&msg), ret);
     zmq_msg_close(&msg);
     return ret;
 }

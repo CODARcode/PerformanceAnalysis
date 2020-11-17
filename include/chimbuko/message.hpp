@@ -152,9 +152,8 @@ public:
     /** 
      * @brief Set the message contents. 
      *
-     * If 'include_head' is true, the string 'msg' will be interpreted as a JSON object and the 'Header' field will be used to fill the header portion of the message
-     * and the 'Buffer' field as the contents
-     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry
+     * If 'include_head' is true, the string 'msg' will be interpreted as a serialized message and it will be unpacked into this object (use to parse received messages)
+     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry (use to generate new messages to send)
      */
     void set_msg(const std::string& msg, bool include_head=false); 
   
@@ -164,11 +163,11 @@ public:
     void set_msg(int cmd);
 
     /**
-     * @brief Return the message contents as a stringized JSON object containing the 'Header' and 'Buffer' fields corresponding to the header and message contents, resp.
+     * @brief Return the message contents as a string
      */
     const std::string& buf() const { return m_buf; }; 
     /**
-     * @brief Return the message as a stringized JSON object containing the header and contents
+     * @brief Return the message in serialized form
      */
     std::string data() const;
 

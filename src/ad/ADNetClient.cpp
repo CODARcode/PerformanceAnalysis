@@ -1,5 +1,6 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/util/error.hpp>
 #include <mpi.h>
 
 using namespace chimbuko;
@@ -10,6 +11,7 @@ ADNetClient::ADNetClient()
 #ifdef _USE_ZMQNET
     m_context = nullptr;
     m_socket = nullptr;
+    m_recv_timeout_ms = 30000;
 #endif
 }
 
@@ -62,6 +64,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     int zero = 0;
     zmq_setsockopt(m_socket, ZMQ_RCVHWM, &zero, sizeof(int));
     zmq_setsockopt(m_socket, ZMQ_SNDHWM, &zero, sizeof(int));
+    zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &m_recv_timeout_ms, sizeof(int));
 
     if(zmq_connect(m_socket, sname.c_str()) == -1){
       std::string err = strerror(errno);      
@@ -81,15 +84,22 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     msg.clear();
 
     VERBOSE(std::cout << "ADNetClient waiting for handshake response from server" << std::endl);
-    ZMQNet::recv(m_socket, strmsg);
+    int ret = ZMQNet::recv(m_socket, strmsg);
+    if(ret == -1){
+      if(errno == EAGAIN){ recoverable_error("Connect error to parameter server: handshake timed out"); }
+      else{ recoverable_error("Connect error to parameter server: receive returned an error"); }
+      return;
+    }
+
     VERBOSE(std::cout << "ADNetClient handshake response received" << std::endl);
     
     msg.set_msg(strmsg, true);
 
-    if (msg.buf().compare("Hello!I am NET!") != 0)
-    {
-      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
+    if (msg.buf().compare("Hello!I am NET!") != 0){
+      recoverable_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
+      return;
     } 
+
     m_use_ps = true;
     std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
 #endif
@@ -156,7 +166,8 @@ std::string ADNetClient::send_and_receive(const Message &msg){
   ZMQNet::send(m_socket, send_msg);
   
   //Receive global parameters from PS
-  ZMQNet::recv(m_socket, recv_msg);   
+  int ret = ZMQNet::recv(m_socket, recv_msg);   
+  if(ret == -1) throw std::runtime_error("ADNetClient::send_and_receive: receive call returned an error");
 #endif
 
 #ifdef _PERF_METRIC
@@ -169,3 +180,9 @@ std::string ADNetClient::send_and_receive(const Message &msg){
 
   return recv_msg;
 }
+
+void ADNetClient::send_and_receive(Message &recv,  const Message &send){
+  recv.set_msg( send_and_receive(send), true );
+}
+
+
