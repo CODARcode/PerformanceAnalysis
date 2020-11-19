@@ -75,7 +75,7 @@ namespace chimbuko {
     void setIOthreads(const int nt){ m_io_threads = nt; }
 
     /**
-     * @brief Set the port upon which the connection is made. Must be called prior to run(..)
+     * @brief Set the port upon which the connection is made. Must be called prior to run(..). Default 5559
      */
     void setPort(const int port){ m_port = port; }
 

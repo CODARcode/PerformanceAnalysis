@@ -26,6 +26,8 @@ struct pserverArgs{
   std::string logdir;
   std::string ws_addr;
 
+  int port;
+
   std::string load_params;
   bool load_params_set;
 
@@ -46,8 +48,8 @@ struct pserverArgs{
 #ifdef ENABLE_PROVDB
   std::string provdb_addr;
 #endif
-  
-  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
+ 
+  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1)
 #endif
@@ -62,6 +64,7 @@ struct pserverArgs{
     if(!init){
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
+      addOptionalCommandLineArg(p, port, "Set the pserver port (default: 5559)");
       addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
       addOptionalCommandLineArg(p, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
       addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
@@ -121,6 +124,7 @@ int main (int argc, char ** argv){
   ZMQNet net;
   net.setMaxMsgPerPollCycle(args.max_pollcyc_msg);
   net.setIOthreads(args.zmq_io_thr);
+  net.setPort(args.port);
   MPI_Init(&argc, &argv);
 #endif
 
@@ -147,7 +151,12 @@ int main (int argc, char ** argv){
 		    );
     }
 
-    std::cout << "PServer: Run parameter server with " << args.nt << " threads" << std::endl;
+    std::cout << "PServer: Run parameter server ";
+#ifdef _USE_ZMQNET
+    std::cout << "on port " << args.port << " ";
+#endif
+    std::cout << "with " << args.nt << " threads" << std::endl;
+
     if (args.ws_addr.size() || args.stat_outputdir.size()){
       std::cout << "PServer: Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
