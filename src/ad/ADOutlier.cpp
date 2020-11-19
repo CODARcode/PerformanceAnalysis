@@ -53,10 +53,7 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
         msg.set_msg(l.serialize(), false);
         size_t sent_sz = msg.size();
 
-	std::string strmsg = m_net_client->send_and_receive(msg);
-
-	msg.clear();
-        msg.set_msg(strmsg , true);
+	m_net_client->send_and_receive(msg, msg);
         size_t recv_sz = msg.size();
         g.assign(msg.buf());
         return std::make_pair(sent_sz, recv_sz);

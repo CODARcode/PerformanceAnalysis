@@ -23,9 +23,7 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_GET, MessageKind::FUNCTION_INDEX);
     msg.set_msg(func_name);
 
-    std::string str_rep = m_net_client->send_and_receive(msg);
-	     
-    msg.set_msg(str_rep, true);
+    m_net_client->send_and_receive(msg, msg);
     unsigned long global_idx = strToAny<unsigned long>(msg.buf());
 
     m_idxmap[local_idx] = global_idx;
@@ -74,7 +72,7 @@ std::vector<unsigned long> ADglobalFunctionIndexMap::lookup(const std::vector<un
       msg.set_msg(ss.str(), false);
     }
     
-    msg.set_msg(m_net_client->send_and_receive(msg), true); //response message comes with header
+    m_net_client->send_and_receive(msg, msg);
     
     std::vector<unsigned long> global_indices;
     {
