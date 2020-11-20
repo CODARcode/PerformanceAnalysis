@@ -1,15 +1,20 @@
+#include <malloc.h>
 #include <sstream>
 #include "chimbuko/util/memutils.hpp"
 #include "gtest/gtest.h"
+
 
 using namespace chimbuko;
 
 TEST(TestMemory, runTests){
 
-  size_t total, resident, data;
+  //Disable heap from holding onto memory
+  mallopt(M_MMAP_THRESHOLD,0);
 
-  getMemUsage(total, resident, data);  
-  std::cout << total << " " << resident << " " << data << std::endl;
+  size_t total, resident;
+
+  getMemUsage(total, resident);  
+  std::cout << total << " " << resident  << std::endl;
   
   size_t to_alloc = 1024*1024*sizeof(double);
 
@@ -19,27 +24,28 @@ TEST(TestMemory, runTests){
   for(size_t i=0;i<1024*1024;i++)
     d[i] = i;
 
-  size_t total2, resident2, data2;
-  getMemUsage(total2, resident2, data2);  
-  std::cout << total2 << " " << resident2 << " " << data2 << std::endl;
+  size_t total2, resident2;
+  getMemUsage(total2, resident2);  
+  std::cout << total2 << " " << resident2 << std::endl;
 
-  size_t delta = data2-data;
+  size_t delta = resident2-resident;
   
   std::cout << "Data changed by " << delta << " kB" << std::endl;
 
-  EXPECT_NEAR(delta, to_alloc/1024, 50);
+  EXPECT_NEAR(delta, to_alloc/1024, 100);
 
 
   std::cout << "Deallocating " << to_alloc / 1024 << " kB" << std::endl;
   free(d);
 
-  size_t total3, resident3, data3;
-  getMemUsage(total3, resident3, data3);  
-  std::cout << total3 << " " << resident3 << " " << data3 << std::endl;
+  size_t total3, resident3;
+  getMemUsage(total3, resident3);  
+  std::cout << total3 << " " << resident3 << std::endl;
 
+  delta = resident2 - resident3;
   std::cout << "Data changed by " << delta << " kB" << std::endl;
 
-  delta = data2 - data3;
-  EXPECT_NEAR(delta, to_alloc/1024, 50);
+  //It's not very accurate, or possibly the stack is growing
+  EXPECT_NEAR(delta, to_alloc/1024, 200);
 
 }

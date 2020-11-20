@@ -7,7 +7,7 @@ namespace chimbuko{
 
   size_t getMemPageSize(){ return sysconf(_SC_PAGE_SIZE); }
 
-  void getMemUsage(size_t &vm_total, size_t &vm_resident, size_t &data_and_stack){
+  void getMemUsage(size_t &vm_total, size_t &vm_resident){
     size_t page_size_kB = getMemPageSize()/1024;
 
     /*
@@ -25,11 +25,9 @@ namespace chimbuko{
       dt         (7) dirty pages (unused in Linux 2.6)  
     */
     std::ifstream in("/proc/self/statm");
-    size_t share, text, lib, dt;
-    in >> vm_total >> vm_resident >> share >> text >> lib >> data_and_stack >> dt;
+    in >> vm_total >> vm_resident;
     vm_total *= page_size_kB;
     vm_resident *= page_size_kB;
-    data_and_stack *= page_size_kB;
   }
    
 

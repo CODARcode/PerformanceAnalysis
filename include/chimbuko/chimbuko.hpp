@@ -219,6 +219,7 @@ namespace chimbuko {
     ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
 #endif
     mutable PerfStats m_perf; /**< Performance data */
+    mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */
     
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/
