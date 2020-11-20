@@ -1,22 +1,11 @@
 #pragma once
-#include <sstream>
-#include <iomanip>
-#include <ctime>
+#include <string>
 
 namespace chimbuko{
 
   /**
-   * @brief Get the local date and time
+   * @brief Get the local date and time in format "M-D-Y H-M-S"
    */
-  std::string getDateTime(){
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    std::stringstream ss;
-    ss << std::put_time(&tm, "%m-%d-%Y %H-%M-%S");
-    return ss.str();
-  }
-
-
-
+  std::string getDateTime();
 
 };

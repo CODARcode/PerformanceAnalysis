@@ -1,5 +1,5 @@
 #include <sstream>
-#include "chimbuko/util/memory.hpp"
+#include "chimbuko/util/memutils.hpp"
 #include "gtest/gtest.h"
 
 using namespace chimbuko;
