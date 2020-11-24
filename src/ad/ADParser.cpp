@@ -17,7 +17,7 @@ using namespace chimbuko;
 ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
     m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank), m_program_idx(program_idx),
-    m_beginstep_timeout(30), m_global_func_idx_map(program_idx)
+    m_beginstep_timeout(30), m_global_func_idx_map(program_idx), m_data_rank_override(false)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -297,6 +297,13 @@ ParserError ADParser::fetchFuncData() {
       for(size_t i=0;i<m_timer_event_count;i++){
 	*pidx_p = m_program_idx; pidx_p += FUNC_EVENT_DIM;
       }
+      //Optionally override the rank index
+      if(m_data_rank_override){
+	unsigned long *pidx_r = m_event_timestamps.data() + IDX_R;
+	for(size_t i=0;i<m_timer_event_count;i++){
+	  *pidx_r = m_rank; pidx_r += FUNC_EVENT_DIM;
+	}
+      }
 
       //Replace the function index with the global index
       //As the function map was populated when the attributes were looked up, this doesn't need comms or the function name here
@@ -408,6 +415,14 @@ ParserError ADParser::fetchCommData() {
 	*pidx_p = m_program_idx; pidx_p += COMM_EVENT_DIM;
       }
 
+      //Optionally override the rank index
+      if(m_data_rank_override){
+	unsigned long *pidx_r = m_comm_timestamps.data() + IDX_R;
+	for(size_t i=0;i<m_comm_count;i++){
+	  *pidx_r = m_rank; pidx_r += COMM_EVENT_DIM;
+	}
+      }
+
       checkEventOrder(EventDataType::COMM, false);
 
       return ParserError::OK;
@@ -440,6 +455,14 @@ ParserError ADParser::fetchCounterData() {
       unsigned long *pidx_p = m_counter_timestamps.data() + IDX_P;
       for(size_t i=0;i<m_counter_count;i++){
 	*pidx_p = m_program_idx; pidx_p += COUNTER_EVENT_DIM;
+      }
+
+      //Optionally override the rank index
+      if(m_data_rank_override){
+	unsigned long *pidx_r = m_counter_timestamps.data() + IDX_R;
+	for(size_t i=0;i<m_counter_count;i++){
+	  *pidx_r = m_rank; pidx_r += COUNTER_EVENT_DIM;
+	}
       }
 
       checkEventOrder(EventDataType::COUNT, false);

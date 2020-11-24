@@ -258,6 +258,14 @@ namespace chimbuko {
      */
     unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
 
+    
+    /**
+     * @brief When true the parser will override the rank index of the parsed data with the rank member parameter
+     *
+     * This is useful for example when multiple instances of a non-MPI program are being run and the user wishes to distinguish them by the rank index
+     */
+    void setDataRankOverride(bool to){ m_data_rank_override = to; }
+
   private:
     
     /**
@@ -327,6 +335,8 @@ namespace chimbuko {
     ADglobalFunctionIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
 
     PerfStats* m_perf;                                  /**< Performance monitoring */
+
+    bool m_data_rank_override;                          /**< Overwrite the rank index in the parsed data with member m_rank (default false)*/
   };
 
 } // end of AD namespace

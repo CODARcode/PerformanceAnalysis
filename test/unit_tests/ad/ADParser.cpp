@@ -71,13 +71,13 @@ struct SSTrw{
   //Reader
   ADParser *parser;
 
-  void openReader(const int pid = 0){
+  void openReader(const int pid = 0, const int rid = 0){
     barrier.wait();
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); //ADIOS2 seems to crash if we don't wait a short amount of time between starting the writer and starting the reader
     std::cout << "Parse thread initializing" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
     
-    parser = new ADParser(filename, pid,0, "SST");
+    parser = new ADParser(filename, pid, rid, "SST");
     std::cout << "Parser initialized" << std::endl;
     
     barrier.wait();
@@ -648,4 +648,125 @@ TEST(ADParserTest, eventsOrderedCorrectly){
     EXPECT_EQ(same_up_to_id_string(events[i], events_out[i]), true);
   
 
+}
+
+
+//Check the optional override of the rank index in the data is working
+TEST(ADParserTestFuncDataIO, checkRankOverride){
+  bool err = false;
+
+  try{
+    SSTrw rw;
+
+    std::thread wthr([&](){
+		       unsigned long func_data[FUNC_EVENT_DIM];
+		       for(int i=0;i<FUNC_EVENT_DIM;i++) func_data[i] = i;
+		       func_data[IDX_R] = 0;
+		       size_t func_count_val = 1;
+
+		       unsigned long comm_data[COMM_EVENT_DIM];
+		       for(int i=0;i<COMM_EVENT_DIM;i++) comm_data[i] = i;
+		       comm_data[IDX_R] = 0;
+		       size_t comm_count_val = 1;
+
+		       unsigned long counter_data[COUNTER_EVENT_DIM];
+		       for(int i=0;i<COUNTER_EVENT_DIM;i++) counter_data[i] = i;
+		       counter_data[IDX_R] = 0;
+		       size_t counter_count_val = 1;
+		       
+		       rw.openWriter();
+
+		       //Func
+		       auto func_count = rw.io.DefineVariable<size_t>("timer_event_count");
+		       auto func_timestamps = rw.io.DefineVariable<unsigned long>("event_timestamps", {1, FUNC_EVENT_DIM}, {0, 0}, {1, FUNC_EVENT_DIM});
+
+		       //Comm
+		       auto comm_count = rw.io.DefineVariable<size_t>("comm_count");
+		       auto comm_timestamps = rw.io.DefineVariable<unsigned long>("comm_timestamps", {1, COMM_EVENT_DIM}, {0, 0}, {1, COMM_EVENT_DIM});
+
+		       //Counter
+		       auto counter_count = rw.io.DefineVariable<size_t>("counter_event_count");
+		       auto counter_timestamps = rw.io.DefineVariable<unsigned long>("counter_values", {1, COUNTER_EVENT_DIM}, {0, 0}, {1, COUNTER_EVENT_DIM});
+
+
+		       rw.wr.BeginStep();
+		       rw.wr.Put(func_count, &func_count_val);			 
+		       rw.wr.Put(func_timestamps, func_data);
+
+		       rw.wr.Put(comm_count, &comm_count_val);			 
+		       rw.wr.Put(comm_timestamps, comm_data);
+
+		       rw.wr.Put(counter_count, &counter_count_val);			 
+		       rw.wr.Put(counter_timestamps, counter_data);
+		       
+		       rw.wr.EndStep();
+
+		       rw.barrier.wait();
+		       
+		       rw.closeWriter();
+		     });
+
+    int pid = 199;
+    int rid = 887;
+    rw.openReader(pid, rid);
+    rw.parser->setDataRankOverride(true); //enable the rank override
+    rw.parser->beginStep();
+
+    //Check func
+    {
+      ParserError perr = rw.parser->fetchFuncData();    
+      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
+      
+      unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
+      expect_data[IDX_P] = pid;
+      expect_data[IDX_R] = rid;
+      const unsigned long* rdata = rw.parser->getFuncData(0);
+      std::cout << "Func data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
+
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );    
+    }
+
+    //Check comm
+    {
+      ParserError perr = rw.parser->fetchCommData();    
+      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(rw.parser->getNumCommData(), 1 );
+      
+      unsigned long expect_data[COMM_EVENT_DIM]; for(int i=0;i<COMM_EVENT_DIM;i++) expect_data[i] = i;
+      expect_data[IDX_P] = pid;
+      expect_data[IDX_R] = rid;
+      const unsigned long* rdata = rw.parser->getCommData(0);
+      std::cout << "Comm data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
+
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COMM_EVENT_DIM*sizeof(unsigned long) ) );    
+    }
+
+    //Check counter
+    {
+      ParserError perr = rw.parser->fetchCounterData();    
+      EXPECT_EQ(perr , chimbuko::ParserError::OK );     
+      EXPECT_EQ(rw.parser->getNumCounterData(), 1 );
+      
+      unsigned long expect_data[COUNTER_EVENT_DIM]; for(int i=0;i<COUNTER_EVENT_DIM;i++) expect_data[i] = i;
+      expect_data[IDX_P] = pid;
+      expect_data[IDX_R] = rid;
+      const unsigned long* rdata = rw.parser->getCounterData(0);
+      std::cout << "Counter data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
+
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COUNTER_EVENT_DIM*sizeof(unsigned long) ) );    
+    }
+
+    rw.parser->endStep();
+
+    rw.barrier.wait();
+    
+    rw.closeReader();
+  
+    wthr.join();
+  }catch(std::exception &e){
+    std::cout << "Caught exception:\n" << e.what() << std::endl;
+    err = true;
+  }
+  EXPECT_EQ(err, false);
 }

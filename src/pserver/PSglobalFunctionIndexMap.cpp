@@ -8,7 +8,6 @@
 using namespace chimbuko;
 
 unsigned long PSglobalFunctionIndexMap::lookup(unsigned long pid, const std::string &func_name){
-  static unsigned long idx = 0;
   std::lock_guard<std::mutex> _(m_mutex);
   auto pit = m_fmap.find(pid);
 
