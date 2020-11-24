@@ -17,7 +17,7 @@ using namespace chimbuko;
 ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
     m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank), m_program_idx(program_idx),
-    m_beginstep_timeout(30)
+    m_beginstep_timeout(30), m_global_func_idx_map(program_idx)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;

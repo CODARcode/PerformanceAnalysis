@@ -3,6 +3,7 @@
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>
+#include <cereal/types/utility.hpp>
 
 
 using namespace chimbuko;
@@ -21,7 +22,13 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
 
     Message msg;
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_GET, MessageKind::FUNCTION_INDEX);
-    msg.set_msg(func_name);
+    {
+      std::stringstream ss;
+      cereal::PortableBinaryOutputArchive wr(ss);
+      std::pair<unsigned long, std::string> towr(m_pid, func_name);
+      wr(towr);
+      msg.set_msg(ss.str(), false);
+    }
 
     m_net_client->send_and_receive(msg, msg);
     unsigned long global_idx = strToAny<unsigned long>(msg.buf());
@@ -68,6 +75,7 @@ std::vector<unsigned long> ADglobalFunctionIndexMap::lookup(const std::vector<un
     {
       std::stringstream ss;
       cereal::PortableBinaryOutputArchive wr(ss);
+      wr(m_pid);
       wr(get_remote_func_names);
       msg.set_msg(ss.str(), false);
     }

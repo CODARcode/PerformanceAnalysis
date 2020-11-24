@@ -16,6 +16,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
 
   Barrier barrier2(2);
 
+  unsigned long pid = 199, pid2 = 256;
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
 
@@ -34,7 +35,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
     });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-  unsigned long vals[4];
+  unsigned long vals[5];
 
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
@@ -42,13 +43,17 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
 	ADNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(&net_client);
+	ADglobalFunctionIndexMap local_map(pid, &net_client);
 	vals[0] = local_map.lookup(22, "hello");
 	vals[1] = local_map.lookup(55, "world");
 
 	vals[2] = local_map.lookup(22, ""); //second lookup doesn't need function name
 	vals[3] = local_map.lookup(55, "");
 	
+	//Ensure that different program indices but the same function name are distinguished
+	ADglobalFunctionIndexMap local_map2(pid2, &net_client);
+	vals[4] = local_map2.lookup(22, "hello");
+
 	std::cout << "AD thread terminating connection" << std::endl;
 	net_client.disconnect_ps();
 	std::cout << "AD thread waiting at barrier" << std::endl;
@@ -65,6 +70,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
   EXPECT_EQ(vals[1], 1);
   EXPECT_EQ(vals[2], 0);
   EXPECT_EQ(vals[3], 1);
+  EXPECT_EQ(vals[4], 2);
     		         
 #else
 #error "Requires compiling with MPI or ZMQ net"
@@ -80,6 +86,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
 
   Barrier barrier2(2);
 
+  unsigned long pid = 199, pid2 = 256;
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
 
@@ -101,7 +108,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
   std::vector<unsigned long> loc_idx = { 22,33,44,55 };
   std::vector<std::string> func_names = { "hello", "world", "foo", "bar" };
 
-  std::vector<unsigned long> vals1, vals2;
+  std::vector<unsigned long> vals1, vals2, vals3;
 
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
@@ -109,9 +116,13 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
 	ADNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(&net_client);
+	ADglobalFunctionIndexMap local_map(pid, &net_client);
 	vals1 = local_map.lookup(loc_idx, func_names);
 	vals2 = local_map.lookup(loc_idx, func_names);
+	
+	//Ensure same function names but different program indices distinguished
+	ADglobalFunctionIndexMap local_map2(pid2, &net_client);
+	vals3 = local_map2.lookup(loc_idx, func_names);
 	
 	std::cout << "AD thread terminating connection" << std::endl;
 	net_client.disconnect_ps();
@@ -136,6 +147,12 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
   EXPECT_EQ(vals2[1], 1);
   EXPECT_EQ(vals2[2], 2);
   EXPECT_EQ(vals2[3], 3);
+
+  EXPECT_EQ(vals3.size(), 4);
+  EXPECT_EQ(vals3[0], 4);
+  EXPECT_EQ(vals3[1], 5);
+  EXPECT_EQ(vals3[2], 6);
+  EXPECT_EQ(vals3[3], 7);
     		         
 #else
 #error "Requires compiling with MPI or ZMQ net"
@@ -152,6 +169,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
 
   Barrier barrier2(2);
 
+  unsigned long pid = 199;
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
 
@@ -181,7 +199,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
 	ADNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(&net_client);
+	ADglobalFunctionIndexMap local_map(pid, &net_client);
 	vals1 = local_map.lookup(loc_idx, func_names);
 	vals2 = local_map.lookup(loc_idx, func_names);
 	

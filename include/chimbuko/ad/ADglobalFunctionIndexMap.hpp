@@ -16,14 +16,17 @@ namespace chimbuko{
   class ADglobalFunctionIndexMap{
     ADNetClient *m_net_client;
     std::unordered_map<unsigned long, unsigned long> m_idxmap; /**< Map of local function index to global function index*/
+    unsigned long m_pid; /**< Program index*/
   public:
 
     /**
      * @brief Class constructor. 
+     * @param pid The program index
+     * @param A pointer to the ADNetClient
      *
      *If a pointer to the net client is not provided the local index will not be synchronized betwee nodes
      */
-    ADglobalFunctionIndexMap(ADNetClient *net_client = nullptr): m_net_client(net_client){}
+    ADglobalFunctionIndexMap(unsigned long pid, ADNetClient *net_client = nullptr): m_net_client(net_client), m_pid(pid){}
 
     /**
      * @brief Check if the pserver is connected
