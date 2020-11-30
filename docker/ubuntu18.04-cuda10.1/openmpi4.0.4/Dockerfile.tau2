@@ -34,16 +34,23 @@ WORKDIR /Downloads
 RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
-#Revert to working version
-RUN git checkout 2d49ea9ecebce6fa459f57310abcda62befc5c7b
-
-#cuda+pthread+python
+#cuda+pthread+python+mpi
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \	 
     -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
     -papi=/opt/papi -cuda=/usr/local/cuda && \
     	make -j$JOBS install
+
+#cuda+pthread+python
+RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2_nompi \	 
+    -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
+    -papi=/opt/papi -cuda=/usr/local/cuda && \
+    	make -j$JOBS install
+
+
 
 #cuda+openmp+python
 # RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \

@@ -44,29 +44,16 @@ namespace chimbuko {
 
     //General parameters for Chimbuko
     int program_idx; /**< Program index (for workflows with >1 component) */
-    int rank; /**< MPI rank of AD process */
+    int rank; /**< The rank index of the trace data*/ 
     bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
     std::string err_outputpath; /**< Output path for error logs. If empty errors will be sent to std::cerr*/
     int parser_beginstep_timeout; /**< Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)*/
 
+    bool override_rank; /**<Set Chimbuko to overwrite the rank index in the parsed data with its own rank parameter. This disables verification of the data rank.*/
 
-    ChimbukoParams(): rank(-1234),  //not set!
-		      program_idx(0),
-		      verbose(true),
-		      outlier_sigma(6.),
-		      trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
-		      trace_connect_timeout(60),
-		      pserver_addr(""), hpserver_nthr(1),
-		      anom_win_size(10),
-#ifdef ENABLE_PROVDB
-		      provdb_addr(""), nprovdb_shards(1),
-#endif
-		      perf_outputpath(""), perf_step(10),
-		      only_one_frame(false), interval_msec(0),
-		      err_outputpath(""), parser_beginstep_timeout(30)
-    {}
+    ChimbukoParams();
 
     void print() const;
   };

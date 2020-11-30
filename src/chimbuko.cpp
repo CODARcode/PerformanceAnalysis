@@ -7,6 +7,23 @@
 
 using namespace chimbuko;
 
+ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
+				  program_idx(0),
+				  verbose(true),
+				  outlier_sigma(6.),
+				  trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
+				  trace_connect_timeout(60),
+				  pserver_addr(""), hpserver_nthr(1),
+				  anom_win_size(10),
+#ifdef ENABLE_PROVDB
+				  provdb_addr(""), nprovdb_shards(1),
+#endif
+				  perf_outputpath(""), perf_step(10),
+				  only_one_frame(false), interval_msec(0),
+				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false)
+{}
+
+
 void ChimbukoParams::print() const{
   std::cout << "\n" 
 	    << "Program Idx: " << program_idx << "\n"
@@ -105,6 +122,7 @@ void Chimbuko::init_parser(){
 			  m_params.trace_connect_timeout);
   m_parser->linkPerf(&m_perf);  
   m_parser->setBeginStepTimeout(m_params.parser_beginstep_timeout);
+  m_parser->setDataRankOverride(m_params.override_rank);
 }
 
 void Chimbuko::init_event(){

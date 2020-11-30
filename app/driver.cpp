@@ -12,6 +12,33 @@ using namespace std::chrono;
 
 typedef commandLineParser<ChimbukoParams> optionalArgsParser;
 
+//Specialized class for setting the override_rank
+struct overrideRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
+  static int & input_data_rank(){ static int v; return v; }
+
+  int parse(ChimbukoParams &into, const std::string &arg, const char** vals, const int vals_size){
+    if(arg == "-override_rank"){
+      if(vals_size < 1) return -1;
+      int v;
+      try{
+	v = strToAny<int>(vals[0]);
+      }catch(const std::exception &exc){
+	return -1;
+      }
+      input_data_rank() = v;
+      into.override_rank = true;
+      std::cout << "Driver: Override rank set to true, input data rank is " << input_data_rank << std::endl;
+      return 1;
+    }
+    return -1;
+  }
+  void help(std::ostream &os) const{
+    os << "-override_rank : Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank." << std::endl;
+  }
+};
+
+  
+
 optionalArgsParser & getOptionalArgsParser(){
   static bool initialized = false;
   static optionalArgsParser p;
@@ -34,6 +61,9 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
     addOptionalCommandLineArg(p, parser_beginstep_timeout, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
 
+    addOptionalCommandLineArg(p, rank, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
+    p.addOptionalArg(new overrideRankArg);
+
     initialized = true;
   }
   return p;
@@ -50,7 +80,7 @@ void printHelp(){
   getOptionalArgsParser().help(std::cout);
 }
 
-ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_rank){
+ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_world_rank){
   if(argc < 5){
     std::cerr << "Expected at least 5 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix> <output dir>" << std::endl;
     exit(-1);
@@ -60,36 +90,48 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int world_r
   // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
   // -----------------------------------------------------------------------
   ChimbukoParams params;
-  params.verbose = world_rank == 0; //head node produces verbose output
-  params.rank = world_rank;
       
   //Parameters for the connection to the instrumented binary trace output
   params.trace_engineType = argv[1]; // BPFile or SST
   params.trace_data_dir = argv[2]; // *.bp location
   std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
-  params.trace_inputFile = bp_prefix + "-" + std::to_string(world_rank) + ".bp";
 
   //Set the directory where the provenance data is written in conjunction with the provDB. Blank string disables disk write.
   params.provdata_outdir = argv[4]; 
 
   //The remainder are optional arguments. Enable using the appropriate command line switch
 
-  params.pserver_addr = "";  //address of parameter server
+  params.pserver_addr = "";  //don't use pserver by default
   params.hpserver_nthr = 1;
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
   params.anom_win_size = 10; // size of window of events captured around anomaly
-  params.interval_msec = 0; //pause at end of each io step
-  params.perf_outputpath = ""; // performance output path
+  params.perf_outputpath = ""; //don't use perf output by default
   params.perf_step = 10;   // make output every 10 steps
 #ifdef ENABLE_PROVDB
   params.nprovdb_shards = 1;
-  params.provdb_addr = "";
+  params.provdb_addr = ""; //don't use provDB by default
 #endif
-  params.err_outputpath = "";
+  params.err_outputpath = ""; //use std::cerr for errors by default
   params.trace_connect_timeout = 60;
   params.parser_beginstep_timeout = 30;
+  params.rank = -1234; //assign an invalid value as default for use below
 
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
+
+  //By default assign the rank index of the trace data as the MPI rank of the AD process
+  //Allow override by user
+  if(params.rank < 0)
+    params.rank = mpi_world_rank;
+
+  params.verbose = params.rank == 0; //head node produces verbose output
+
+  //Assume the rank index of the data is the same as the driver rank parameter
+  params.trace_inputFile = bp_prefix + "-" + std::to_string(params.rank) + ".bp";
+
+  //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
+  //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
+  if(params.override_rank)
+    params.trace_inputFile = bp_prefix + "-" + std::to_string(overrideRankArg::input_data_rank()) + ".bp";
 
   return params;
 }
@@ -105,11 +147,11 @@ int main(int argc, char ** argv){
       
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
-  int world_rank, world_size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
+  int mpi_world_rank, mpi_world_size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);    
 
-  VERBOSE(std::cout << "driver rank " << world_rank << " waiting at pre-run barrier" << std::endl);
+  VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": waiting at pre-run barrier" << std::endl);
   MPI_Barrier(MPI_COMM_WORLD);
 
   try 
@@ -117,13 +159,13 @@ int main(int argc, char ** argv){
 
       //Parse environment variables
       if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-	std::cout << "Enabling verbose debug output" << std::endl;
+	std::cout << "Driver MPI rank " << mpi_world_rank << ": Enabling verbose debug output" << std::endl;
 	Verbose::set_verbose(true);
       }       
 
       //Parse Chimbuko parameters
-      ChimbukoParams params = getParamsFromCommandLine(argc, argv, world_rank);
-      if(world_rank == 0) params.print();
+      ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
+      if(mpi_world_rank == 0) params.print();
 
       //Instantiate Chimbuko
       Chimbuko driver(params);
@@ -141,9 +183,9 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
-      if (world_rank == 0) {
-	std::cout << "rank: " << world_rank 
-		  << " analysis start " << (driver.use_ps() ? "with": "without") 
+      if (mpi_world_rank == 0) {
+	std::cout << "Driver MPI rank " << mpi_world_rank 
+		  << ": analysis start " << (driver.use_ps() ? "with": "without") 
 		  << " pserver" << std::endl;
       }
 
@@ -155,15 +197,15 @@ int main(int argc, char ** argv){
 		 frames);
       t2 = high_resolution_clock::now();
         
-      if (world_rank == 0) {
-	std::cout << "rank: " << world_rank << " analysis done!\n";
+      if (mpi_world_rank == 0) {
+	std::cout << "Driver MPI rank " << mpi_world_rank << ": analysis done!\n";
 	driver.show_status(true);
       }
 
       // -----------------------------------------------------------------------
       // Average analysis time and total number of outliers
       // -----------------------------------------------------------------------
-      VERBOSE(std::cout << "driver rank " << world_rank << " waiting at post-run barrier" << std::endl);
+      VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": waiting at post-run barrier" << std::endl);
       MPI_Barrier(MPI_COMM_WORLD);
       processing_time = duration_cast<milliseconds>(t2 - t1).count();
 
@@ -191,10 +233,10 @@ int main(int argc, char ** argv){
       }
 
         
-      if (world_rank == 0) {
-	std::cout << "\n"
-		  << "Avg. num. frames     : " << (double)total_frames/(double)world_size << "\n"
-		  << "Avg. processing time : " << (double)total_processing_time/(double)world_size << " msec\n"
+      if (mpi_world_rank == 0) {
+	std::cout << "Driver MPI rank " << mpi_world_rank << ": Final report\n"
+		  << "Avg. num. frames     : " << (double)total_frames/(double)mpi_world_size << "\n"
+		  << "Avg. processing time : " << (double)total_processing_time/(double)mpi_world_size << " msec\n"
 		  << "Total num. outliers  : " << total_n_outliers << "\n"
 		  << "Total func events    : " << total_n_func_events << "\n"
 		  << "Total comm events    : " << total_n_comm_events << "\n"
@@ -205,21 +247,21 @@ int main(int argc, char ** argv){
     }
   catch (std::invalid_argument &e)
     {
+      std::cout << "Driver MPI rank " << mpi_world_rank << ": caught invalid argument:" << std::endl;
       std::cout << e.what() << std::endl;
-      //todo: usages()
     }
   catch (std::ios_base::failure &e)
     {
-      std::cout << "I/O base exception caught\n";
+      std::cout << "Driver MPI rank " << mpi_world_rank << ": I/O base exception caught\n";
       std::cout << e.what() << std::endl;
     }
   catch (std::exception &e)
     {
-      std::cout << "Exception caught\n";
+      std::cout << "Driver MPI rank " << mpi_world_rank << ": Exception caught\n";
       std::cout << e.what() << std::endl;
     }
 
   MPI_Finalize();
-  VERBOSE(std::cout << "Rank " << world_rank << ": driver is exiting" << std::endl);
+  VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": driver is exiting" << std::endl);
   return 0;
 }
