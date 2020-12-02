@@ -72,8 +72,9 @@ namespace chimbuko{
   public:
     PSstatSenderGlobalCounterStatsPayload(GlobalCounterStats *stats): m_stats(stats){}
     void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->get_json_state();
-      into["counter_stats"] = std::move(stats);
+      nlohmann::json stats = m_stats->get_json_state(); //a JSON array
+      if(stats.size())
+	into["counter_stats"] = std::move(stats);
     }
   };
 

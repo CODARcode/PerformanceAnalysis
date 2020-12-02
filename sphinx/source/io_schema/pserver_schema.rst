@@ -8,7 +8,7 @@ The parameter server optionally sends data to an external webserver as JSON-form
 
 | {
 |    **'anomaly_stats'**: *Statistics of anomalies. Note this field will not appear if no anomalies have been detected (object with schema given below)*
-|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array)*
+|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array). This field will not appear if no counters were collected*
 |        [
 |	    {
 |	      **'app'**: *Program index*,
@@ -31,7 +31,7 @@ The parameter server optionally sends data to an external webserver as JSON-form
 
 ---------------------
 
-Note that the **anomaly_stats** entry will only be present if anomalies were detected. The **counter_stats** array will always but may contain no entries.
+Note that the **anomaly_stats** entry will only be present if anomalies were detected, and the **counter_stats** array will only appear if counters have been collected.
 
 The schema for the **'anomaly_stats'** object is as follows:
 
