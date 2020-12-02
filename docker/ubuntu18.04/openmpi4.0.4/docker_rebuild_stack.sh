@@ -6,5 +6,5 @@ docker build -f Dockerfile.tau2 -t chimbuko/tau2:ubuntu18.04 .
 docker build -f Dockerfile.ad.provdb -t chimbuko/ad:ubuntu18.04-provdb .
 docker build -f Dockerfile.nwchem -t chimbuko/nwchem:ubuntu18.04-provdb .
 docker build -f Dockerfile.chimbuko.nwchem -t chimbuko/run_nwchem:ubuntu18.04-provdb .
+docker build -f Dockerfile.viz -t chimbuko/viz:ubuntu18.04 .
 
-#docker build -f Dockerfile.mpi-app-tau-ad-provdb -t  chimbuko/mpi-app:ubuntu18.04-openmpi3.0.1-tau-ad-provdb .
