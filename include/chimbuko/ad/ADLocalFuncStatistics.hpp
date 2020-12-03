@@ -2,7 +2,7 @@
 
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
-#include <chimbuko/ad/AnomalyStat.hpp>
+#include <chimbuko/ad/AnomalyData.hpp>
 #include <chimbuko/util/Anomalies.hpp>
 #include "chimbuko/util/PerfStats.hpp"
 

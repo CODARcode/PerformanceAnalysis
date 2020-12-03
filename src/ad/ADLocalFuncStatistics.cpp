@@ -1,5 +1,5 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/ad/AnomalyStat.hpp>
+#include <chimbuko/ad/AnomalyData.hpp>
 
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>

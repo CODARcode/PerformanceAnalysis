@@ -74,7 +74,7 @@ if (( 1 )); then
     viz_install=/opt/chimbuko/viz
     
     export SERVER_CONFIG="production"
-    if (( $CHIMBUKO_VERBOSE == 1 )); then
+    if [ -z "${CHIMBUKO_VERBOSE}x" ]; then
 	export SERVER_CONFIG="development"
     fi
     
@@ -144,7 +144,7 @@ if (( 1 )); then
 fi
 
 #Shutdown the viz
-if (( using_viz == 1 )); then
+if (( ${using_viz} == 1 )); then
     echo "Shutting down viz"
     cd /opt/chimbuko/viz
     ./webserver/shutdown_webserver.sh

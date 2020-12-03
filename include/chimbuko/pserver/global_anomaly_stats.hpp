@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include "chimbuko/ad/AnomalyStat.hpp"
+#include "chimbuko/pserver/AnomalyStat.hpp"
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
 
@@ -83,7 +83,7 @@ namespace chimbuko{
     nlohmann::json collect_stat_data();
 
     /**
-     * @brief Collect function statistics into JSON object
+     * @brief Collect aggregated function profile statistics into JSON object
      */
     nlohmann::json collect_func_data() const;
     
@@ -99,7 +99,7 @@ namespace chimbuko{
     std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
     // for global function statistics
     mutable std::mutex m_mutex_func;
-    std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to statistics on the function*/
+    std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
   };
 
   /**

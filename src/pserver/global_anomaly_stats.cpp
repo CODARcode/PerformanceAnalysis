@@ -78,6 +78,7 @@ size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
 nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
     
+  //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
   for (auto &pair: m_anomaly_stats){
     std::string stat_id = pair.first;
     auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
