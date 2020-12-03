@@ -7,7 +7,7 @@ using namespace chimbuko;
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
   auto sit = m_anomaly_stats.find(anom.get_stat_id());
-  if(sit == m_anomaly_stats.end()){
+  if(sit == m_anomaly_stats.end()){ //new app_idx/rank detected
     m_anomaly_stats[anom.get_stat_id()].set_do_accumulate(true);
     sit = m_anomaly_stats.find(anom.get_stat_id());
   }
@@ -79,6 +79,8 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
     
   //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
+  //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
+  //that have been collected from that rank since the last flush
   for (auto &pair: m_anomaly_stats){
     std::string stat_id = pair.first;
     auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 

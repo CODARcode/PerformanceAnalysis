@@ -2,13 +2,21 @@
 Parameter Server Streaming Output
 *********************************
 
-The parameter server optionally sends data to an external webserver as JSON-formatted packets via http using libcurl. This communication is handled by the :ref:`api/api_code:PSstatSender` class. The data packet is a JSON object comprising two *payloads*: **anomaly_stats** and **counter_stats**. Note, counters are integer valued quantities that are typically hardware counters but include information on MPI communications packet sizes, etc. The data packet JSON object has the following schema:
+Every IO frame the AD instances send three pieces of information to the pserver:
+
+#. For every function execution in the IO frame the inclusive and exclusive runtime and the number of anomalies for this function. These are aggregated over all IO frames and ranks on the parameter server and represent the function profile.
+
+#. The total number of anomalies detected in the IO frame.
+
+#. Statistics on the values of each counter over the IO step (e.g. for a memory usage counter this would be the mean, std.dev., etc of the memory usage over the IO frame. These are aggregated over all IO frams and ranks on the parameter server.
+
+The parameter server optionally sends data to an external webserver as JSON-formatted packets via http using libcurl at some fixed frequency (independent of the frequency of IO steps in the trace data collection). This communication is handled by the :ref:`api/api_code:PSstatSender` class. The data packet is a JSON object comprising two *payloads*: **anomaly_stats** and **counter_stats**. Note, counters are integer valued quantities that are typically hardware counters but include information on MPI communications packet sizes, etc. The data packet JSON object has the following schema:
 
 ---------------------
 
 | {
-|    **'anomaly_stats'**: *Statistics of anomalies. Note this field will not appear if no anomalies have been detected (object with schema given below)*
-|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array). This field will not appear if no counters were collected*
+|    **'anomaly_stats'**: *Statistics of anomalies  (object with schema given below). This field will not appear if no data has been received from the AD instances since the last send*
+|    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array). This field will not appear if no counters were ever collected*
 |        [
 |	    {
 |	      **'app'**: *Program index*,
@@ -31,7 +39,7 @@ The parameter server optionally sends data to an external webserver as JSON-form
 
 ---------------------
 
-Note that the **anomaly_stats** entry will only be present if anomalies were detected, and the **counter_stats** array will only appear if counters have been collected.
+Note that the **anomaly_stats** entry will only be present if data has been received from the AD instances since the last send, and the **counter_stats** array will only appear if counters have ever been collected.
 
 The schema for the **'anomaly_stats'** object is as follows:
 

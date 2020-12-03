@@ -96,7 +96,7 @@ namespace chimbuko{
   protected:    
     // for global anomaly statistics
     mutable std::mutex m_mutex_anom;
-    std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Global anomaly statistics indexed by a stat_id of form "${app_id}:${rank_id}" */
+    std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Map of stat_id of form "${app_id}:${rank_id}" to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
     // for global function statistics
     mutable std::mutex m_mutex_func;
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/

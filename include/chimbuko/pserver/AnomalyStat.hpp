@@ -75,7 +75,7 @@ namespace chimbuko {
 
   private:
     mutable std::mutex               m_mutex;
-    RunStats                 m_stats; /** Statistics on the number of anomalies over all ranks collected since start of run*/
+    RunStats                 m_stats; /** Statistics on the number of anomalies collected per io step since start of run as well as count of total anomalies*/
     std::list<std::string> * m_data; /**< A list of JSON-formatted strings that represent serializations of the incoming AnomalyData instances since last flush*/
   };
 
