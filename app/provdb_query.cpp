@@ -28,12 +28,14 @@ void printUsageAndExit(){
 	    << "where collection = 'anomalies', 'metadata', 'normalexecs'\n"
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
+	    << "query can also be set to 'DUMP', which will return all entries, equivalent to \"function(\\$a){ return true; }\"\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter-global: Apply a filter to a collection of global data.\n"
 	    << "Arguments: <collection> <query>\n"
 	    << "where collection = 'func_stats', 'counter_stats'\n"
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
+	    << "query can also be set to 'DUMP', which will return all entries, equivalent to \"function(\\$a){ return true; }\"\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "execute: Execute an arbitrary jx9 query on the entire anomaly provenance database\n"
 	    << "Arguments: <code> <vars> <options>\n"
@@ -59,6 +61,7 @@ void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
   int nshards = clients.size();
   std::string coll_str = args[0];
   std::string query = args[1];
+  if(query == "DUMP") query = "function($a){ return true; }";
 
   ProvenanceDataType coll;
   if(coll_str == "anomalies") coll = ProvenanceDataType::AnomalyData;
@@ -129,6 +132,7 @@ void filter_global(PSProvenanceDBclient &client,
 
   std::string coll_str = args[0];
   std::string query = args[1];
+  if(query == "DUMP") query = "function($a){ return true; }";
 
   GlobalProvenanceDataType coll;
   if(coll_str == "func_stats") coll = GlobalProvenanceDataType::FunctionStats;
