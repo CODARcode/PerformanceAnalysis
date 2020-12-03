@@ -149,3 +149,5 @@ if (( ${using_viz} == 1 )); then
     cd /opt/chimbuko/viz
     ./webserver/shutdown_webserver.sh
 fi
+
+wait

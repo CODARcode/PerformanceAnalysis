@@ -84,7 +84,7 @@ if (( 1 )); then
     cd -
     
     ws_addr="http://${ip}:5002/api/anomalydata"
-    ps_extraargs+=" -ws_addr ${ws_addr}"    
+    ps_extra_args+=" -ws_addr ${ws_addr}"    
 fi
 
 #Run the pserver
@@ -111,6 +111,7 @@ if (( 1 )); then
     sleep 2
 fi
 
+#Run the main program
 if (( 1 )); then
     echo "Running main"
     #Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime
@@ -123,3 +124,5 @@ if (( ${using_viz} == 1 )); then
     cd /opt/chimbuko/viz
     ./webserver/shutdown_webserver.sh
 fi
+
+wait
