@@ -9,7 +9,7 @@
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/Anomalies.hpp"
 
-namespace chimbuko {  
+namespace chimbuko {   
   /**
    * @brief abstract class for anomaly detection algorithms
    * 
@@ -18,10 +18,15 @@ namespace chimbuko {
 
   public:
     /**
+     * @brief Enumeration of which statistic is used for outlier detection
+     */
+    enum OutlierStatistic { ExclusiveRuntime, InclusiveRuntime };
+
+    /**
      * @brief Construct a new ADOutlier object
      * 
      */
-    ADOutlier();
+    ADOutlier(OutlierStatistic stat = ExclusiveRuntime);
     /**
      * @brief Destroy the ADOutlier object
      * 
@@ -88,6 +93,17 @@ namespace chimbuko {
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
 
+
+    /**
+     * @brief Set the statistic used for the anomaly detection
+     */    
+    void setStatistic(OutlierStatistic to){ m_statistic = to; }
+
+    /**
+     * @brief Extract the appropriate statistic from an ExecData_t object
+     */
+    double getStatisticValue(const ExecData_t &e) const;
+
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
@@ -99,6 +115,8 @@ namespace chimbuko {
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
 
     PerfStats *m_perf;
+  private:
+    OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
   };
 
   /**
@@ -112,7 +130,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierSSTD object
      * 
      */
-    ADOutlierSSTD();
+    ADOutlierSSTD(OutlierStatistic stat = ExclusiveRuntime);
     /**
      * @brief Destroy the ADOutlierSSTD object
      * 

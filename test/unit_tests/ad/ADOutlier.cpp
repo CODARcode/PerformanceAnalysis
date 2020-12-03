@@ -16,6 +16,8 @@ using namespace chimbuko;
 //Derived class to allow access to protected member functions
 class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
+  ADOutlierSSTDTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierSSTD(stat){}
+  
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
@@ -220,6 +222,71 @@ TEST(ADOutlierTestRunWithoutPS, Works){
   size_t nnorm_func = anomalies.nFuncEvents(func_id, Anomalies::EventType::Normal);
   EXPECT_EQ(nnorm_func, 1);
   EXPECT_EQ( anomalies.allEvents(Anomalies::EventType::Normal)[0], std::next(call_list.begin(), 0) ); //first event
+}
+
+
+
+
+TEST(ADOutlierTestRunWithoutPS, OutlierStatisticSelection){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id_par = 1234;
+  int func_id_child = 9999;
+
+  //Generate some events with a parent and child, for which the child has the outlier
+  
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    //create the parent
+    unsigned long parent_start = 1000*(i+1);
+    unsigned long child_start = parent_start + 1;
+    long child_runtime = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    long parent_runtime = child_runtime + 2;
+
+    //std::cout << "Adding parent (start=" << parent_start << " runtime=" << parent_runtime << ") and child (start=" << child_start << " runtime=" << child_runtime << ")" << std::endl;
+
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id_par, "my_parent_func", parent_start, parent_runtime) );
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id_child, "my_child_func", child_start, child_runtime) );
+    bindParentChild(*std::next(call_list.rbegin(),1), *call_list.rbegin() );
+  }
+  long ts_end = 1000*N + 800;
+  
+  //typedef std::unordered_map<unsigned long, std::vector<CallListIterator_t>> ExecDataMap_t;
+  ExecDataMap_t data_map;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    data_map[it->get_fid()].push_back(it);
+
+  //Check using the exclusive runtime (default)
+  {
+    ADOutlierSSTDTest outlier(ADOutlier::ExclusiveRuntime);
+    outlier.linkExecDataMap(&data_map);
+    Anomalies anomalies = outlier.run(0);
+
+    size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    std::cout << "# outliers detected: " << nout << std::endl;
+    EXPECT_EQ(nout, 1);
+    size_t nout_par = anomalies.nFuncEvents(func_id_par, Anomalies::EventType::Outlier);
+    EXPECT_EQ(nout_par, 0);
+    size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
+    EXPECT_EQ(nout_child, 1);
+  }
+
+  //Check using the include runtime; the parent should also be anomalous
+  {
+    ADOutlierSSTDTest outlier(ADOutlier::InclusiveRuntime);
+    outlier.linkExecDataMap(&data_map);
+    Anomalies anomalies = outlier.run(0);
+
+    size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    std::cout << "# outliers detected: " << nout << std::endl;
+    EXPECT_EQ(nout, 2);
+    size_t nout_par = anomalies.nFuncEvents(func_id_par, Anomalies::EventType::Outlier);
+    EXPECT_EQ(nout_par, 1);
+    size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
+    EXPECT_EQ(nout_child, 1);
+  }
 }
 
 
