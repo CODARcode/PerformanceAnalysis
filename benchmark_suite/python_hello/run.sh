@@ -106,7 +106,8 @@ fi
 if (( 1 )); then
     echo "Instantiating AD"
     rm *.sst
-    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-python3.6 . ${extra_args} 2>&1 | tee ad.log &
+    #Use inclusive runtime so that the anomaly is assigned to the function and not to the stdlib sleep function it calls
+    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-python3.6 . ${extra_args} -outlier_statistic "inclusive_runtime" 2>&1 | tee ad.log &
     sleep 2
 fi
 

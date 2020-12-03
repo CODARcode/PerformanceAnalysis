@@ -33,7 +33,7 @@ struct overrideRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
     return -1;
   }
   void help(std::ostream &os) const{
-    os << "-override_rank : Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank." << std::endl;
+    os << "-override_rank : Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank.";
   }
 };
 
@@ -63,6 +63,8 @@ optionalArgsParser & getOptionalArgsParser(){
 
     addOptionalCommandLineArg(p, rank, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
     p.addOptionalArg(new overrideRankArg);
+
+    addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
 
     initialized = true;
   }
@@ -115,7 +117,8 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   params.trace_connect_timeout = 60;
   params.parser_beginstep_timeout = 30;
   params.rank = -1234; //assign an invalid value as default for use below
-
+  params.outlier_statistic = "exclusive_runtime";
+  
   getOptionalArgsParser().parse(params, argc-5, (const char**)(argv+5));
 
   //By default assign the rank index of the trace data as the MPI rank of the AD process

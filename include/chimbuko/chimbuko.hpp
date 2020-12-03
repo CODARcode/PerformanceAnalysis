@@ -53,6 +53,8 @@ namespace chimbuko {
 
     bool override_rank; /**<Set Chimbuko to overwrite the rank index in the parsed data with its own rank parameter. This disables verification of the data rank.*/
 
+    std::string outlier_statistic; /**< Set the statistic used in outlier detection*/
+
     ChimbukoParams();
 
     void print() const;

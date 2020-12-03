@@ -20,7 +20,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 #endif
 				  perf_outputpath(""), perf_step(10),
 				  only_one_frame(false), interval_msec(0),
-				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false)
+				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
+				  outlier_statistic("exclusive_runtime")
 {}
 
 
@@ -159,8 +160,13 @@ void Chimbuko::init_net_client(){
 
 void Chimbuko::init_outlier(){
   if(!m_event) throw std::runtime_error("Event managed must be initialized before calling init_outlier");
+
+  ADOutlier::OutlierStatistic stat;
+  if(m_params.outlier_statistic == "exclusive_runtime") stat = ADOutlier::ExclusiveRuntime;
+  else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
+  else{ fatal_error("Invalid statistic"); }
   
-  m_outlier = new ADOutlierSSTD();
+  m_outlier = new ADOutlierSSTD(stat);
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
