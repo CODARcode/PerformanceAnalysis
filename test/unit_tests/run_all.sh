@@ -1,4 +1,5 @@
 #!/bin/bash
+#Run all of the unit tests
 #Fail if any test fails
 set -e
 set -o pipefail
@@ -17,6 +18,9 @@ set -o pipefail
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats
+./util/PerfStats
 ./util/error
+./util/memutils
+./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
 ./net/ZMQMENet

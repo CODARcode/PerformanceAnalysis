@@ -5,7 +5,26 @@ AC_PROG_CXX
 AM_PROG_AR
 LT_INIT
 
-CXXFLAGS+=" -O3"
+# Check if compiling to generate a coverage report using gcov
+# Once built, run the tests in the install/test directory, then from the build directory run
+#(pip3 install gcovr)
+#gcovr -j 8 -v -r ${src_dir} --object-directory=. -e '.*3rdparty/' -e '.*app/'
+#where src_dir is the source directory
+AC_ARG_ENABLE([gcov],
+  [AS_HELP_STRING([--enable-gcov], [Enable code coverage report using gcov (requires gcc)])],
+  [:],
+  [enable_gcov=no]
+)
+
+if test "x$enable_gcov" != "xno"; then
+AC_MSG_NOTICE([Compiling with coverage report])
+CXXFLAGS=" -O0 --coverage -g"
+LDFLAGS=" --coverage"
+else
+AC_MSG_NOTICE([Compiling with optimization])
+CXXFLAGS=" -O3 -g"
+LDFLAGS=""
+fi
 
 # Check for c++17
 CXXFLAGS+=" -std=c++17"
