@@ -3,7 +3,10 @@ services:
   - docker
 before_install:
   - cd docker/ubuntu18.04/openmpi4.0.4/ && docker build -f Dockerfile.ad.provdb.gcov -t chimbuko/ad:ubuntu18.04-provdb-gcov .
-script: ci_env=`bash <(curl -s https://codecov.io/env)` && docker run ${ci_env} -it chimbuko/ad:ubuntu18.04-provdb-gcov
+script: 
+  - ci_env=`bash <(curl -s https://codecov.io/env)` 
+  - echo "${ci_env}"
+  - docker run ${ci_env} -it chimbuko/ad:ubuntu18.04-provdb-gcov
 addons:
   apt:
     packages:
