@@ -22,7 +22,7 @@ RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
 
 RUN cd /Downloads/PerformanceAnalysis && git log | head -1 > /opt/chimbuko/ad/git_version
 
-RUN pip3 install gcovr
+RUN apt-get update && apt-get install -y lcov vim
 
 COPY run_tests_upload_coverage.sh /Downloads/
 
