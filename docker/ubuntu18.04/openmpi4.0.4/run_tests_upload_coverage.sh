@@ -1,4 +1,8 @@
 #!/bin/bash
+#Fail if anything fails
+set -e
+set -o pipefail
+
 cd /opt/chimbuko/ad/test
 echo "Executing tests"
 ./run_all.sh DOCKER_SETUP_MOCHI
