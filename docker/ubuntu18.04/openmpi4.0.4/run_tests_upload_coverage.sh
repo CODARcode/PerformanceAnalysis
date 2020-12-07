@@ -1,3 +1,4 @@
+#!/bin/bash
 cd /opt/chimbuko/ad/test
 echo "Executing tests"
 ./run_all.sh DOCKER_SETUP_MOCHI
