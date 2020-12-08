@@ -19,5 +19,5 @@ cd /Downloads/PerformanceAnalysis
 #bash <(curl -s https://codecov.io/bash) -t d416f950-cacb-4716-a3a8-e608fd3bf84a -f coverage.xml -v -K
 
 #Add -d to the line below to dump the upload to stdout rather than uploading it
-bash <(curl -s https://codecov.io/bash) -t d416f950-cacb-4716-a3a8-e608fd3bf84a -f coverage2.info -X gcov -K
+bash <(curl -s https://codecov.io/bash) -t d416f950-cacb-4716-a3a8-e608fd3bf84a -f coverage2.info -X gcov -K -v
 echo "Done"
