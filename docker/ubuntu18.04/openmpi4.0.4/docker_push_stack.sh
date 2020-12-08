@@ -7,3 +7,4 @@ docker push chimbuko/tau2:ubuntu18.04
 docker push chimbuko/chimbuko/nwchem:ubuntu18.04-provdb
 docker push chimbuko/run_nwchem:ubuntu18.04-provdb
 docker push chimbuko/viz:ubuntu18.04
+docker push chimbuko/run_examples:ubuntu18.04-provdb .
