@@ -14,7 +14,8 @@ RUN apt-get update && \
                         libzmq5 libzmq3-dev \
                         bzip2 libbz2-dev zlib1g zlib1g-dev \ 
                         curl libcurl4-openssl-dev libgtest-dev zip unzip \
-                        libopenblas-base libopenblas-dev libnuma-dev && \
+                        libopenblas-base libopenblas-dev libnuma-dev \
+			openssl libssl-dev && \
     apt autoremove -y && \
     rm -rf /var/lib/apt/lists/* 
 
@@ -78,3 +79,6 @@ RUN wget https://github.com/USCiLab/cereal/archive/v1.3.0.tar.gz && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt/cereal -DSKIP_PORTABILITY_TEST=ON && \
     make -j 16 install && \
     rm -rf /Downloads/*
+
+#Fix missing /etc/protocol
+RUN apt-get update && apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase

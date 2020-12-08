@@ -16,8 +16,8 @@ COPY packages.yaml /root/.spack/
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
         spack install mercury ^libfabric@1.9.0 && \
-	spack install mochi-sonata@0.5.1 ^libfabric@1.9.0 && \
-	spack install py-mochi-sonata ^mochi-sonata@0.5.1 ^python@3.6.0 ^libfabric@1.9.0 && \
+	spack install mochi-sonata@master ^libfabric@1.9.0 && \
+	spack install py-mochi-sonata ^mochi-sonata@master ^python@3.6.0 ^libfabric@1.9.0 && \
 	spack gc -y && spack clean -a
 
 WORKDIR /

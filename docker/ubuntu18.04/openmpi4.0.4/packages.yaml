@@ -1,74 +1,86 @@
 packages:
   python:
     buildable: false
-    paths:
-      python@3.6.0: /usr
+    externals:
+    - spec: python@3.6.0
+      prefix: /usr
   libfabric:
     buildable: false
-    paths:
-      libfabric@1.9.0: /opt/libfabric
+    externals:
+    - spec: libfabric@1.9.0
+      prefix: /opt/libfabric
   zlib:
     buildable: false
-    paths:
-      zlib@1.2.11: /usr
+    externals:
+    - spec: zlib@1.2.11
+      prefix: /usr
   ncurses:
     buildable: false
-    paths:
-      ncurses@6.1: /usr
+    externals:
+    - spec: ncurses@6.1
+      prefix: /usr
   m4:
     buildable: false
-    paths:
-      m4@1.4.18: /usr
+    externals:
+    - spec: m4@1.4.18
+      prefix: /usr
   pkg-config:
     buildable: false
-    paths:
-      pkg-config@0.29.1: /usr
+    externals:
+    - spec: pkg-config@0.29.1
+      prefix: /usr
   bzip2:
     buildable: false
-    paths:
-      bzip2@1.0.6: /usr
+    externals:
+    - spec: bzip2@1.0.6
+      prefix: /usr
   perl:
     buildable: false
-    paths:
-      perl@5.26.1: /usr
+    externals:
+    - spec: perl@5.26.1
+      prefix: /usr
   libtool:
     buildable: false
-    paths:
-      libtool@2.4.6: /usr
+    externals:
+    - spec: libtool@2.4.6
+      prefix: /usr
   diffutils:
     buildable: false
-    paths:
-      diffutils@3.6: /usr
+    externals:
+    - spec: diffutils@3.6
+      prefix: /usr
   openssl:
     buildable: false
-    paths:
-      openssl@1.1.1: /usr
+    externals:
+    - spec: openssl@1.1.1
+      prefix: /usr
   cmake:
     buildable: false
-    paths:
-      cmake@3.17.0: /opt/cmake-3.17.0-Linux-x86_64/
+    externals:
+    - spec: cmake@3.17.0
+      prefix: /opt/cmake-3.17.0-Linux-x86_64/
   autoconf:
     buildable: false
-    paths:
-      autoconf@2.69: /usr
+    externals:
+    - spec: autoconf@2.69
+      prefix: /usr
   automake:
     buildable: false
-    paths:
-      automake@1.15: /usr
+    externals:
+    - spec: automake@1.15
+      prefix: /usr
   cereal:
     buildable: false
-    paths:
-      cereal@1.3.0: /opt/cereal
+    externals:
+    - spec: cereal@1.3.0
+      prefix: /opt/cereal
   openblas:
     buildable: false
-    paths:
-      openblas@0.2.20: /usr
-
-
-
-
-
-
-
-
-
+    externals:
+    - spec: openblas@0.2.20
+      prefix: /usr
+  openmpi:
+    buildable: false
+    externals:
+    - spec: openmpi@4.0.4
+      prefix: /opt/openmpi4.0.4
