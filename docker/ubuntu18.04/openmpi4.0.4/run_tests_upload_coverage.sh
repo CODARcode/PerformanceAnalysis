@@ -10,8 +10,11 @@ cd /build
 echo "Gathering coverage data"
 #gcovr -j 8 -v -r /Downloads/PerformanceAnalysis --object-directory=. -e '.*3rdparty/' -e '.*app/' --xml /Downloads/PerformanceAnalysis/coverage.xml
 
-lcov --capture --directory . --rc lcov_branch_coverage=1 --output-file coverage.info
-lcov --rc lcov_branch_coverage=1 --remove coverage.info '/usr/*' '/spack/*' '*/3rdparty/*' '*/app/*' '/opt/*' --output-file coverage2.info
+#lcov --capture --directory . --rc lcov_branch_coverage=1 --output-file coverage.info
+#lcov --rc lcov_branch_coverage=1 --remove coverage.info '/usr/*' '/spack/*' '*/3rdparty/*' '*/app/*' '/opt/*' --output-file coverage2.info
+
+lcov --capture --directory . --output-file coverage.info
+lcov --remove coverage.info '/usr/*' '/spack/*' '*/3rdparty/*' '*/app/*' '/opt/*' --output-file coverage2.info
 mv coverage2.info /Downloads/PerformanceAnalysis/
 
 echo "Uploading coverage data"
