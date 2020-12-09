@@ -322,8 +322,12 @@ void Chimbuko::extractEvents(unsigned long &first_event_ts,
     m_event->addEvent(e);
   m_perf.add("ad_extract_events_register_us", timer.elapsed_us());
   m_perf.add("ad_extract_events_event_count", events.size());
-  first_event_ts = events.front().ts();
-  last_event_ts = events.back().ts();
+  if(events.size()){
+    first_event_ts = events.front().ts();
+    last_event_ts = events.back().ts();
+  }else{
+    first_event_ts = last_event_ts = -1; //no events!
+  }
 }
   
 void Chimbuko::extractCounters(int rank, int step){

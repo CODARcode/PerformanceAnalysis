@@ -27,7 +27,7 @@ struct overrideRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
       }
       input_data_rank() = v;
       into.override_rank = true;
-      std::cout << "Driver: Override rank set to true, input data rank is " << input_data_rank << std::endl;
+      std::cout << "Driver: Override rank set to true, input data rank is " << input_data_rank() << std::endl;
       return 1;
     }
     return -1;
