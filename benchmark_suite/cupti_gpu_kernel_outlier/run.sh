@@ -12,7 +12,6 @@ device_max=2 #maximum number of GPUs to run on
 export TAU_ROOT=/opt/tau2/x86_64
 export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-python-cupti-pdt-adios2
 export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-python-cupti-pdt-adios2
-export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
 
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000

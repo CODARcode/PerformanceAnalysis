@@ -12,9 +12,8 @@ anom_mult=100 #Mult factor for anomalies
 ################# END OF USER INPUT ##############
 
 export TAU_ROOT=/opt/tau2/x86_64
-export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-cupti-pdt-adios2
-export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-cupti-pdt-adios2
-export TAU_PLUGINS=libTAU-adios2-trace-plugin.so
+export TAU_MAKEFILE=$TAU_ROOT/lib/Makefile.tau-papi-mpi-pthread-python-cupti-pdt-adios2
+export TAU_PLUGINS_PATH=$TAU_ROOT/lib/shared-papi-mpi-pthread-python-cupti-pdt-adios2
 
 export TAU_ADIOS2_PERIODIC=1
 export TAU_ADIOS2_PERIOD=1000000
@@ -129,7 +128,7 @@ fi
 
 #Run the main program
 if (( 1 )); then
-    EXEC_OPTS="-cupti -um"
+    EXEC_OPTS="-cupti -um -adios2_trace"
     EXEC_T="-T papi,mpi,pthread,cupti,pdt,adios2"
     
     echo "Running main"
