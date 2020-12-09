@@ -2,10 +2,13 @@
 Provenance Database Schema
 **************************
 
-Below we describe the JSON schema for the **anomalies** and **normalexecs** collections of the provenance database.
+Main database
+-------------
+
+Below we describe the JSON schema for the **anomalies** and **normalexecs** collections of the **main database** component of the provenance database.
 
 Function event schema
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 This section describes the JSON schema for the **anomalies** and **normalexecs** collections. The fields of the JSON object are bolded, and a brief description follows the colon (:). 
 
@@ -140,7 +143,7 @@ and for the **gpu_parent** field:
 Note that Tau considers a GPU device/context/stream much in the same way as a CPU thread, and assigns it a unique index. This index is the "thread index" for GPU events.
 
 Metadata schema
----------------------
+^^^^^^^^^^^^^^^
 
 Metadata are stored in the metadata collection in the following JSON schema:
 
@@ -157,3 +160,74 @@ Metadata are stored in the metadata collection in the following JSON schema:
 | }
 
 Note that the **tid** (thread index) for metadata is usually 0, apart from for metadata associated with a GPU context/device/stream, for which the index is the virtual thread index assigned by Tau to the context/device/stream.  
+
+Global database
+-------------
+
+Below we describe the JSON schema for the **func_stats** and **counter_stats** collections of the **global database** component of the provenance database.
+
+Function profile statistics schema
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**func_stats** contains aggregated profile information for all functions. The JSON schema is as follows:
+
+| {
+|   **'app'**: *program index*,
+|   **'fid'**: *global function index*,
+|   **'name'**: *function name*,
+|   **'exclusive'**:  *Statistics of runtime exclusive of children*
+|          {
+|            **'accumulate'**: *unused*,
+|            **'count'**: *total function executions*,
+|            **'kurtosis'**: *kurtosis of function exclusive time distribution*,
+|            **'maximum'**: *maximum function exclusive time*,
+|            **'mean'**: *average function exclusive time*,
+|            **'minimum'**: *minimum function exclusive time*,
+|            **'skewness'**: *skewness of function exclusive time distribution*,
+|            **'stddev'**: *standard deviation of function exclusive time distribution*,
+|	   },
+|   **'inclusive'**: *Statistics of runtime inclusive of children*
+|	   {
+|            **'accumulate'**: *unused*,
+|            **'count'**: *total function executions*,
+|            **'kurtosis'**: *kurtosis of function inclusive time distribution*,
+|            **'maximum'**: *maximum function inclusive time*,
+|            **'mean'**: *average function inclusive time*,
+|            **'minimum'**: *minimum function inclusive time*,
+|            **'skewness'**: *skewness of function inclusive time distribution*,
+|            **'stddev'**: *standard deviation of function inclusive time distribution*,
+|	   },
+|   **'stats'**: *Statistics on function anomalies per timestep observed in run to-date*
+|	   {
+|	     **'accumulate'**: *total number of anomalies observed for this function*,
+|            **'count'**: *number of timesteps data colected for*,
+|            **'kurtosis'**: *kurtosis of distribution of anomalies/step*,
+|            **'maximum'**: *maximum anomalies/step*,
+|            **'mean'**: *average anomalies/step*,
+|            **'minimum'**: *minimum anomalies/step*,
+|            **'skewness'**: *skewness of distribution of anomalies/step*,
+|            **'stddev'**: *standard deviation distribution of anomalies/step*,
+|	   }
+| }
+
+Counter statistics schema
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The **counter_stats** collection has the following schema:
+
+| {
+|   **'app'**: *Program index*,
+|   **'counter'**: *Counter description*,
+|   **'stats'**:   *Global aggregated statistics on counter values since start of run*,
+|          {
+|           **'accumulate'**: *Unused*,
+|           **'count'**: *Number of times counter appeared*,
+|           **'kurtosis'**: *kurtosis of distribution of value*,
+|           **'maximum'**: *maximum value*,
+|           **'mean'**: *average value*,
+|           **'minimum'**: *minimum value*,
+|           **'skewness'**: *skewness of distribution of values*,
+|           **'stddev'**: *standard deviation of distribution of values*
+|           }
+| }
+

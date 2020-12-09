@@ -9,15 +9,15 @@ Online Analysis
 
 Chimbuko is designed primarily for online analysis. In this mode an instance of the AD module is spawned for each instance of the application (e.g. for each MPI rank); a centralized parameter server aggregates global statistics and distributes information to the visualization module; and a centralized provenance database maintains detailed information regarding each anomaly.
 
-Note that the provenance database component of Chimbuko requires the Mochi/Sonata shared libraries which are typically installed using Spack. The user must ensure that the **mochi-sonata** Spack library is loaded.
+Note that the provenance database component of Chimbuko requires the Mochi/Sonata shared libraries which are typically installed using Spack. The user must ensure that the **mochi-sonata** Spack library is loaded. In addition the visualization module requires **py-mochi-sonata**, the Python interface to Sonata.
 
 .. code:: bash
 
-	  spack load mochi-sonata
+	  spack load mochi-sonata py-mochi-sonata
 
 (It may be necessary to source the **setup_env.sh** script to setup spack first, which by default installs in the **spack/share/spack/** subdirectory of Spack's install location.)
 
-We will assume that the visualization module has been instantiated at an address **${VIZ_ADDRESS}**, which should be an **http** address including port, for example **VIZ_ADDRESS=http://localhost:5000**. If visualization is not desired the user can simply set **VIZ_ADDRESS=""** (an empty string).
+We will assume that the visualization module listener has been set up with an address **${VIZ_ADDRESS}**, which should be of the form **http://${HOST}:${PORT}/api/anomalydata**, for example **VIZ_ADDRESS=http://localhost:5000/api/anomalydata**. If visualization is not desired the user can simply set **VIZ_ADDRESS=""** (an empty string).
 
 ----------------------------------
 
@@ -48,11 +48,54 @@ For use below we define the variable **PROVDB_ADDR=tcp://${HEAD_NODE_IP}:${PROVD
 
 ----------------------------------
 
-The second step is to start the parameter server:
+The second step is to instantiate the visualization module:
 
 .. code:: bash
 
-	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} &
+    export DATABASE_URL="sqlite:///${VIZ_DATA_DIR}/main.sqlite"
+    export ANOMALY_STATS_URL="sqlite:///${VIZ_DATA_DIR}/anomaly_stats.sqlite"
+    export ANOMALY_DATA_URL="sqlite:///${VIZ_DATA_DIR}/anomaly_data.sqlite"
+    export FUNC_STATS_URL="sqlite:///${VIZ_DATA_DIR}/func_stats.sqlite"
+    export PROVENANCE_DB="${PWD}/"
+    export PROVDB_ADDR=$(cat provider.address)
+    export SHARDED_NUM=1
+    export C_FORCE_ROOT=1   #REQUIRED FOR DOCKER IMAGES ONLY
+
+    cd ${VIZ_INSTALL_DIR}
+
+    echo "run redis ..."
+    redis-stable/src/redis-server redis-stable/redis.conf 2>&1 | tee ${VIZ_DATA_DIR}/redis.log &
+    sleep 5
+
+    echo "run celery ..."
+    python3 manager.py celery --loglevel=info 2>&1 | tee ${VIZ_DATA_DIR}/celery.log &
+    sleep 5
+
+    echo "create db ..."
+    python3 manager.py createdb 2>&1 | tee ${VIZ_DATA_DIR}/create_db.log
+    sleep 2
+
+    echo "run webserver (server config ${SERVER_CONFIG}) with provdb on ${PROVDB_ADDR}...  Logging  to ${VIZ_DATA_DIR}/viz.log"
+    python3 manager.py runserver --host 0.0.0.0 --port ${VIZ_PORT} --debug 2>&1 | tee ${VIZ_DATA_DIR}/viz.log &
+    sleep 2
+
+    cd -
+
+Where the variables are as follows:
+
+- **${VIZ_PORT}** : The port to assign to the visualization module
+- **${VIZ_DATA_DIR}**: A directory for storing logs and temporary data (assumed to exist)
+- **${VIZ_INSTALL_DIR}**: The directory where the visualization module is installed
+
+Henceforth we assign the variable **${VIZ_ADDRESS}=${HEAD_NODE_IP}:${VIZ_PORT}**.
+  
+----------------------------------
+
+The third step is to start the parameter server:
+
+.. code:: bash
+
+	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} -provdb_addr ${PROVDB_ADDR} &
 	  sleep 2
 
 Where the variables are as follows:
@@ -60,14 +103,15 @@ Where the variables are as follows:
 - **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
 - **PSERVER_LOGDIR** : A directory for logging output
 - **VIZ_ADDRESS** : Address of the visualization module (see above).
-
+- **PROVDB_ADDR**: The address of the provenance database (see above). This option enables the storing of the final globally-aggregated function profile information into the provenance database.
+  
 Note that all the above are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
   
 ----------------------------------  
 
-The third step is to instantiate the AD modules:
+The fourth step is to instantiate the AD modules:
 
 .. code:: bash
 
@@ -87,14 +131,21 @@ Where the variables are as follows:
 
 The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
-The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former uses RDMA and should be the default choice. However we have observed that in some cases the **BP4** option (available in ADIOS2 2.6+), which writes the traces to disk rather than to memory, can reduce the overhead of running Chimbuko alongside the application.
+The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former uses RDMA and should be the default choice. However we have observed that in some cases the **BP4** option (available in ADIOS2 2.6+), which writes the traces to disk rather than to memory, can reduce the overhead of running Chimbuko alongside the application. Note however that BP4 mode can interfere with disk I/O-heavy components of the main application and so local burst buffers (e.g. Summit's NVME) should be used if necessary.
 
 The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
 
 - **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
 - **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
-
+- **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.
+- **-rank** : By default the data rank assigned to an AD instance is taken from its MPI rank in MPI_COMM_WORLD. This rank is used to verify the incoming trace data. This option allows the user to manually set the rank index.
+- **-override_rank** : This option disables the data rank verification and instead overwrites the data rank of the incoming trace data with the data rank stored in the AD instance. The value supplied must be the original data rank (this is used to generate the correct trace filename). 
+  
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
+
+**Note**: For workflows with multiple different component executables, the AD instances must be provided with a program index such that the data is appropriately tagged.
+
+**Note**: If a program is executed multiple times but without MPI, the 'rank' index of the data must be set manually by the AD. In this case the 'rank' becomes a way of indexing the different instances of the program. This can be achieved setting ***-rank ${DESIRED_RANK} -override_rank 0**,  which will set the data rank to **${DESIRED_RANK}**. (The 0 provided to -override rank is because for non-MPI applications the rank assigned by Tau is always 0.)
 
 ----------------------------------  
 
@@ -127,6 +178,31 @@ On the analysis machine, the provenance database and parameter server should be 
 
 Note that the first argument of **driver**, which specifies the ADIOS2 engine, has been set to **BPFile**, and the process is not run in the background.	  
 
+Examples
+~~~~~~~~
+
+The "benchmark_suite" subdirectory of the source repository contains a number of examples of using Chimbuko including Makefiles and run scripts designed to allow them to be run in our Docker environments. Examples for CPU-only workflows include:
+
+- **c_from_python** (Python/C): A function with artificial anomalies that is part of a C library called from Python.
+- **func_multimodal** (C++): A function with multiple "modes" with different runtimes, and artificial anomalies introduced periodically.
+- **mpi_comm_outlier** (C++): An MPI application with anomalies introduced in the communication between two specific ranks.
+- **mpi_comm_outlier** (C++): An MPI application with anomalies introduced in the communication on a specific thread.
+- **multiinstance_nompi** (C++): An application with artificial anomalies for which multiple instances are run simultaneously without MPI. This example demonstrates how to manually specify the "rank" index to allow the data from the different instances to be correctly tagged.
+- **python_hello** (Python): An example of running a simple Python application with Chimbuko.
+- **simple_workflow** (C++): An example of a workflow with multiple components. This example demonstrates to how specify the "program index" to allow the data from different workflow components to be correctly tagged.
+
+For GPU workflows we presently have examples only for Nvidia GPUS:
+
+- **cupti_gpu_kernel_outlier** (C++/CUDA): An example with an artificial anomaly introduced into a CUDA kernel. This example demonstrates how to compile and run with C++/CUDA.
+- **cupti_gpu_kernel_outlier_multistream** (C++/CUDA): A variant of the above but with the kernel executed simultaneously on multiple streams.
+
+For convenience we provide docker images in which these examples can be run alongside the full Chimbuko stack:
+.. code:: bash
+   docker pull chimbuko/run_examples:ubuntu18.04-provdb
+
+The command to properly execute the docker image can be found in a script in the source repository, **benchmark_suite/run_cpu_examples_docker.sh**.
+
+
 Running Chimbuko on Summit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -156,11 +232,12 @@ within an interactive session, and searching for one that supports verbs. Howeve
 
 	  jsrun --erf_input=provdb.erf provdb_admin  mlx5_0/ib0:5000 -engine verbs -nshards ${NSHARDS} -nthreads ${NTHREADS} &
 
-	  
-Analysis using Singularity Containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TODO
+..
+   Analysis using Singularity Containers
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   TODO
 
 Interacting with the Provenance Database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,6 +266,9 @@ The **QUERY** argument should be a jx9 function returning a bool and enclosed in
 
 	  QUERY="function(\$entry){ return \$entry['some_field'] == ${SOME_VALUE}; }"
 
+
+Alternatively the query can be set to "DUMP", which will output all entries.
+	  
 The function is applied sequentially to each element of the collection. Inside the function the entry is described by the variable **$entry**. Note that the backslash-dollar (\\$) is necessary to prevent the shell from trying to expand the variable. Fields of **$entry** can be queried using the square-bracket notation with the field name inside. In the sketch above the field "some_field" is compared to a value **${SOME_VALUE}** (here representing a numerical value or a value expanded by the shell, *not* a jx9 variable!). 
 
 Some examples:
@@ -205,6 +285,22 @@ Some examples:
 
 	  provdb_query filter anomalies "function(\$a){ return \$a['is_gpu_event']; }"
 
+Filter-global mode
+------------------
+
+If the pserver is connected to the provenance database, at the end of the run the aggregated function profile data and global averages of counters will be stored in a "global" database "provdb.global.unqlite". This database can be queried using the **filter-global** mode, which like the above allows the user to provide a jx9 filter function that is applied to filter out entries in a particular collection. The result is displayed in JSON format and can be piped to disk. It can be used as follows:
+
+.. code:: bash
+
+	  provdb_query filter-global ${COLLECTION} ${QUERY}
+
+Where the variables are as follows:
+
+- **COLLECTION** : One of the two collections in the database, **func_stats**, **counter_stats**.
+- **QUERY**: The query, format described below.
+ 
+The formatting of the **QUERY** argument is described above.
+	  
 Execute mode
 ------------
 
