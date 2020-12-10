@@ -12,11 +12,11 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 
 # Releases
 
-- Latest release: v3.0.0
+- Latest release: v4.0.0
 
 # Directory layout
 
-- 3rdparty: 3-rd party libraries 
+- 3rdparty: third party libraries 
   
 - app: applications of PerformanceAnalysis library including the on-node AD module, provenance database server, parameter server and pseudo clients (for debug and test purpose)
   
@@ -37,7 +37,3 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 # Reporting Bugs
 
 If you find a bug, please open an [issue on PerformanceAnalysis github repositoty](https://github.com/CODARcode/PerformanceAnalysis/issues).
-
-# License
-
-TBD
