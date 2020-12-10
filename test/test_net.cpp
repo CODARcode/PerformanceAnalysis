@@ -4,7 +4,7 @@
 #include "chimbuko/net/zmq_net.hpp"
 #endif
 #include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/ad/AnomalyStat.hpp"
+#include "chimbuko/ad/AnomalyData.hpp"
 #include "chimbuko/pserver/global_anomaly_stats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>
@@ -51,6 +51,9 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
     SstdParam param;
     net.add_payload(new NetPayloadUpdateParams(&param));
     net.add_payload(new NetPayloadGetParams(&param));
+
+    std::cout << "NetSendRecvMultiThreadSingleClientTest payloads are:" << std::endl;
+    net.list_payloads(std::cout);
 
     //net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
 
@@ -155,7 +158,7 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
     const int N_MPI_PROCESSORS = 10;
 
     SstdParam param;
-    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    GlobalAnomalyStats glob_stats;
     net.add_payload(new NetPayloadUpdateParams(&param));
     net.add_payload(new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
@@ -211,7 +214,7 @@ TEST_F(NetTest, NetStatSenderTest)
     const int N_MPI_PROCESSORS = 10;
 
     SstdParam param;
-    GlobalAnomalyStats glob_stats({N_MPI_PROCESSORS});
+    GlobalAnomalyStats glob_stats;
     nlohmann::json resp;
 
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));

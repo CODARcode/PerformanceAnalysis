@@ -50,6 +50,16 @@ s     */
     socket = zmq_socket(context, ZMQ_REQ);
     //zmq_connect(socket, "tcp://localhost:5559");
     zmq_connect(socket, argv[1]);
+
+    //Handshake
+    {
+      Message msg;
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
+      msg.set_msg("");
+      std::string strmsg;
+      ZMQNet::send(socket, msg.data());
+      ZMQNet::recv(socket, strmsg);
+    }
 #endif
     const int n_functions = 4;
     const double mean[n_functions] = {1.0, 10.0, 100.0, 1000.0};
@@ -106,8 +116,8 @@ s     */
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if (rank == 0) {
 #ifdef _USE_MPINET
+    if (rank == 0) {
         msg.clear();
         msg.set_info(rank, 0, (int)MessageType::REQ_GET, MessageKind::SSTD);
         MPINet::send(server, msg.data(), 0, MessageType::REQ_GET, msg.count());
@@ -127,10 +137,20 @@ s     */
         msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(server, msg.data(), 0, MessageType::REQ_QUIT, msg.count());
-#else
-        zmq_send(socket, nullptr, 0, 0);
-#endif
     }
+#else
+    msg.clear();
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+    msg.set_msg("");
+    std::string strmsg;
+    std::cout << "pclient rank " << rank << " sending disconnect notification" << std::endl;
+    ZMQNet::send(socket, msg.data());
+    std::cout << "pclient rank " << rank << " waiting for disconnect notification response" << std::endl;
+    ZMQNet::recv(socket, strmsg);
+    std::cout << "pclient rank " << rank << " exiting" << std::endl;
+#endif
+
+
 
 #ifdef _USE_MPINET
     MPI_Comm_disconnect(&server);

@@ -1,17 +1,21 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
     #Connect via tcp
-    rm provdb.unqlite  provider.address
+    rm -f provdb.*.unqlite*  provider.address
 
     ip=$(hostname -i)
     port=1234
+    shards=2
 
-    ../bin/provdb_admin ${ip}:${port} -autoshutdown &
+    ../bin/provdb_admin ${ip}:${port} -autoshutdown true -nshards ${shards} &
     admin=$!
-    sleep 1
+    sleep 4
 
-    mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address)
+    mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address) ${shards}
 
     sleep 5
     if [[ $(ps | grep $admin) != "" ]]; then

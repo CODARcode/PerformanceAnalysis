@@ -40,23 +40,35 @@ namespace chimbuko{
 
   /**
    * @brief Create an ExecData_t from the inputs provided
+   * If runtime == 0, no exit event will be generated
    */
   ExecData_t createFuncExecData_t(unsigned long pid,
-					    unsigned long rid,
-					    unsigned long tid,
-					    unsigned long func_id,
-					    const std::string &func_name,
-					    long start,
-					    long runtime){
+				  unsigned long rid,
+				  unsigned long tid,
+				  unsigned long func_id,
+				  const std::string &func_name,
+				  unsigned long start,
+				  unsigned long runtime){
     Event_t entry = createFuncEvent_t(pid, rid, tid, 0, func_id, start);
-    Event_t exit = createFuncEvent_t(pid, rid, tid, 1, func_id, start + runtime);
-
     ExecData_t exec(entry);
-    exec.update_exit(exit);
+
+    if(runtime > 0){
+      Event_t exit = createFuncEvent_t(pid, rid, tid, 1, func_id, start + runtime);
+      exec.update_exit(exit);
+    }
     exec.set_funcname(func_name);
     return exec;
   }
 
+  
+  /**
+   * @brief Setup parent <-> child relationship between events
+   */
+  void bindParentChild(ExecData_t &parent, ExecData_t &child){
+    child.set_parent(parent.get_id());
+    parent.update_exclusive(child.get_runtime());
+    parent.inc_n_children();
+  }
 
 
   /**
@@ -130,6 +142,21 @@ namespace chimbuko{
     return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, ss.str());
   }
 
+  /**
+   * @brief Create a Commdata_t object
+   * @param commType SEND or RECV
+   */
+  CommData_t createCommData_t(unsigned long pid,
+			      unsigned long rid,
+			      unsigned long tid,
+			      unsigned long eid,
+			      unsigned long comm_tag,
+			      unsigned long comm_partner,
+			      unsigned long comm_bytes,
+			      unsigned long ts,
+			      std::string commType){
+    return CommData_t(createCommEvent_t(pid,rid,tid,eid,comm_tag,comm_partner,comm_bytes,ts), commType);
+  }
 
 
   //A mock class that acts as the parameter server
@@ -162,7 +189,9 @@ namespace chimbuko{
 	strmsg.assign((char*)zmq_msg_data(&msg), ret);
 	zmq_msg_close(&msg);
       }
-      EXPECT_EQ(strmsg, R"({"Buffer":"Hello!","Header":{"dst":0,"frame":0,"kind":0,"size":6,"src":0,"type":5}})");
+      Message rmsg;
+      rmsg.set_msg(strmsg,true);
+      EXPECT_EQ(rmsg.buf(), "Hello!");
 
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
@@ -246,15 +275,18 @@ namespace chimbuko{
       }
       std::cout << "Mock PS received string: " << strmsg << std::endl;
 
-      std::stringstream ss;
-      ss << "{\"Buffer\":\"" << test_msg << "\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":4,\"size\":" << test_msg.size() << ",\"src\":0,\"type\":1}}";
-      EXPECT_EQ(strmsg, ss.str());
-    
+      Message rmsg;
+      rmsg.set_msg(strmsg, true);
+      EXPECT_EQ(rmsg.buf(), test_msg);
+      EXPECT_EQ(rmsg.type(), REQ_ADD);
+      EXPECT_EQ(rmsg.kind(), COUNTER_STATS);
+
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
       {
 	Message msg_t;
-	msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
+	msg_t.set_info(0,0,REP_ECHO,DEFAULT);
+	msg_t.set_msg(std::string(""), false);
 	strmsg = msg_t.data();
 			 
 	zmq_msg_t msg;
@@ -266,7 +298,40 @@ namespace chimbuko{
       }
     }
 
-    void end(){
+    void waitForDisconnect(){
+      std::cout << "Mock PS is waiting for disconnect message" << std::endl;
+      std::string strmsg;
+      {
+	zmq_msg_t msg;
+	zmq_msg_init(&msg);
+	int len = zmq_msg_recv(&msg, socket, 0);
+	strmsg.assign((char*)zmq_msg_data(&msg), len);
+	zmq_msg_close(&msg);
+      }
+      Message rmsg;
+      rmsg.set_msg(strmsg, true);
+      EXPECT_EQ(rmsg.buf(), "");
+      EXPECT_EQ(rmsg.type(), REQ_QUIT);
+
+      std::cout << "Mock PS received disconnect message, sending response" << std::endl;
+      {
+	Message msg_t;
+	msg_t.set_info(0,0,REP_QUIT,DEFAULT);
+	msg_t.set_msg(std::string(""), false);
+	strmsg = msg_t.data();
+			 
+	zmq_msg_t msg;
+	int ret;
+	zmq_msg_init_size(&msg, strmsg.size());
+	memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
+	ret = zmq_msg_send(&msg, socket, 0);
+	zmq_msg_close(&msg);
+      }
+    }
+
+      
+    void end(){     
+      std::cout << "Mock PS is finalizing" << std::endl;
       zmq_close(socket);
       zmq_ctx_term(context);
     }

@@ -23,6 +23,7 @@ __global__ void the_kernel(clock_value_t wait){
 
 int main(int argc, char **argv)
 {
+  MPI_Init(&argc, &argv); //tau plugin system is only initialized if MPI_Init called, even if not actually using MPI!
   assert(argc>=3);
   int cycles = std::stoi(argv[1]);
   int freq = std::stoi(argv[2]); //how frequently (in cycles) an outlier is inserted
@@ -58,8 +59,6 @@ int main(int argc, char **argv)
     }
   }
   
-  MPI_Init(&argc, &argv); //tau plugin system is only initialized if MPI_Init called, even if not actually using MPI!
-
   int ndevice = 1;
   assert( cudaGetDeviceCount(&ndevice) == cudaSuccess );
   std::cout << "Number of devices " << ndevice << std::endl;

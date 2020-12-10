@@ -19,9 +19,7 @@ TEST(ADTestWithProvDB, BpfileTest)
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.viz_iomode = IOMode::Both;
-    params.viz_addr = "";
-    params.viz_datadump_outputPath = "";
+    params.provdata_outdir = ""; //don't write
 
     params.outlier_sigma = 6.0;
     params.only_one_frame = true; //just analyze first IO frame
@@ -87,7 +85,9 @@ int main(int argc, char** argv)
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
   ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  int ret = RUN_ALL_TESTS();
 
   assert(MPI_Finalize() == MPI_SUCCESS );
+  
+  return ret;
 }

@@ -7,7 +7,7 @@ using namespace chimbuko;
 
 TEST(ADMetadataParser, ParseCudaDeviceAndContext){
   ADMetadataParser parser;
-  std::vector<MetaData_t> md = {  MetaData_t(0, 9, "CUDA Context", "1"), MetaData_t(0, 9, "CUDA Device", "2"), MetaData_t(0, 9, "CUDA Stream", "3") };
+  std::vector<MetaData_t> md = {  MetaData_t(0,0, 9, "CUDA Context", "1"), MetaData_t(0,0, 9, "CUDA Device", "2"), MetaData_t(0,0, 9, "CUDA Stream", "3") };
   parser.addData(md);
   
   EXPECT_EQ( parser.isGPUthread(9), true );
@@ -23,7 +23,7 @@ TEST(ADMetadataParser, ParseCudaDeviceAndContext){
 
 TEST(ADMetadataParser, ParseGPUproperties){
   ADMetadataParser parser;
-  std::vector<MetaData_t> md = {  MetaData_t(0, 1234, "GPU[9] Clock Rate", "98765"), MetaData_t(0, 1234, "GPU[9] Name", "NVidia Deathstar") };
+  std::vector<MetaData_t> md = {  MetaData_t(0,0, 1234, "GPU[9] Clock Rate", "98765"), MetaData_t(0,0, 1234, "GPU[9] Name", "NVidia Deathstar") };
   parser.addData(md);
 
   const auto & gpu_props = parser.getGPUproperties();

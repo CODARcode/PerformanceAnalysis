@@ -223,6 +223,20 @@ nlohmann::json RunStats::get_json() const {
     };
 }
 
+RunStats::RunStatsValues RunStats::get_stat_values() const{
+  RunStatsValues out;
+  out.count = count();
+  out.accumulate = accumulate();
+  out.minimum = minimum();
+  out.maximum = maximum();
+  out.mean = mean();
+  out.stddev = stddev();
+  out.skewness = skewness();
+  out.kurtosis = kurtosis();
+  return out;
+}
+
+
 nlohmann::json RunStats::get_json_state() const {
     return {
         {"count", m_state.count},

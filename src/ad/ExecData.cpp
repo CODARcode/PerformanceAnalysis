@@ -6,14 +6,12 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-  : m_runtime(0), m_label(1), m_parent("-1"), m_can_delete(true), m_gpu_correlation_id_partner("")
-{
-    m_exclusive = 0;
-    m_n_children = 0;
-    m_n_messages = 0;
-}
-ExecData_t::ExecData_t(const Event_t& ev)
-  : m_can_delete(true), m_gpu_correlation_id_partner("")
+  : m_id(""), m_pid(0), m_rid(0), m_tid(0), m_fid(0), 
+    m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
+    m_n_children(0), m_n_messages(0),
+    m_label(1), m_parent("-1"), m_can_delete(true), m_gpu_correlation_id_partner(0){}
+
+ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
     m_id = ev.id();
     m_pid = ev.pid();
@@ -21,13 +19,7 @@ ExecData_t::ExecData_t(const Event_t& ev)
     m_tid = ev.tid();
     m_fid = ev.fid();
     m_entry = (long)ev.ts();
-    m_exit = 0;
-    m_runtime = 0;
-    m_exclusive = 0;
-    m_label = 1;
     m_parent = "root";
-    m_n_children = 0;
-    m_n_messages = 0;    
 }
 
 ExecData_t::~ExecData_t() {
@@ -112,6 +104,12 @@ nlohmann::json ExecData_t::get_json(bool with_message) const
             j["messages"].push_back(comm.get_json());
     }
     return j;
+}
+
+
+const std::string & ExecData_t::get_GPU_correlationID_partner(const size_t i) const{
+  if(i>=m_gpu_correlation_id_partner.size()) throw std::runtime_error("ExecData_t::get_GPU_correlationID_partner index out of range");
+  return m_gpu_correlation_id_partner[i];
 }
 
 /* ---------------------------------------------------------------------------
@@ -308,15 +306,16 @@ nlohmann::json CommData_t::get_json() const
     };
 }
 
-MetaData_t::MetaData_t(unsigned long rank, unsigned long tid, const std::string &descr, const std::string &value):
-  m_rank(rank), m_tid(tid), m_descr(descr), m_value(value){}
+MetaData_t::MetaData_t(unsigned long pid, unsigned long rid, unsigned long tid, const std::string &descr, const std::string &value):
+  m_pid(pid), m_rid(rid), m_tid(tid), m_descr(descr), m_value(value){}
 
 nlohmann::json MetaData_t::get_json() const{
   return {
-	  {"rid",m_rank},
-	  {"tid",m_tid},
+    {"pid", m_pid}, 
+      {"rid",m_rid},
+	{"tid",m_tid},
 	  {"descr",m_descr},
-	  {"value",m_value}
+	    {"value",m_value}
   };
 }
 

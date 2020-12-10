@@ -23,10 +23,13 @@ mainStatSender_LDADD = $(LDADD)
 test_DATA = run_all.sh run_ad.sh run_net.sh run_stat_sender.sh
 
 if ENABLE_PROVDB
-test_PROGRAMS += mainProvDBclient mainADwithProvDB provDBclientConnectDisconnect
+test_PROGRAMS += mainProvDBclient mainProvDBpserverClient mainADwithProvDB provDBclientConnectDisconnect
 
 mainProvDBclient_SOURCES = mainProvDBclient.cpp
 mainProvDBclient_LDADD = $(LDADD)
+
+mainProvDBpserverClient_SOURCES = mainProvDBpserverClient.cpp
+mainProvDBpserverClient_LDADD = $(LDADD)
 
 mainADwithProvDB_SOURCES = mainADwithProvDB.cpp
 mainADwithProvDB_LDADD = $(LDADD)
@@ -34,7 +37,7 @@ mainADwithProvDB_LDADD = $(LDADD)
 provDBclientConnectDisconnect_SOURCES = provDBclientConnectDisconnect.cpp
 provDBclientConnectDisconnect_LDADD = $(LDADD)
 
-test_DATA += run_provdb_client_test.sh run_ad_with_provdb.sh run_provdb_autoshutdown_test.sh
+test_DATA += run_provdb_client_test.sh run_provdb_pserver_client_test.sh run_ad_with_provdb.sh run_provdb_autoshutdown_test.sh
 endif
 
 install-data-hook:

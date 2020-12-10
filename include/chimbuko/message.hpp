@@ -5,6 +5,9 @@
 
 namespace chimbuko {
 
+/**
+  * @brief Enum of the message "type" or action
+  */
 enum MessageType {
     REQ_ADD  =  1,
     REQ_GET  =  2,
@@ -18,6 +21,9 @@ enum MessageType {
     REP_ECHO = 50
 };
 
+/**
+ * @brief Enum of the message "kind" describing the context of the action
+ */
 enum MessageKind {
     DEFAULT = 0,
     CMD     = 1,
@@ -32,6 +38,9 @@ enum MessageCmd {
     ECHO = 1
 };
 
+/**
+ * @brief A class containing a message and header that can be serialized in JSON form for communication
+ */
 class Message {
 public:
     class Header {
@@ -93,6 +102,13 @@ public:
         void set_header(const nlohmann::json& j);
         void set_header(const std::string& s);
 
+        /**
+	 * @brief Serialize using cereal
+	 */
+        template<class Archive>
+	void serialize(Archive & archive){
+	  archive(m_h);
+	}
     private:
         /**
          * @brief header information
@@ -136,9 +152,8 @@ public:
     /** 
      * @brief Set the message contents. 
      *
-     * If 'include_head' is true, the string 'msg' will be interpreted as a JSON object and the 'Header' field will be used to fill the header portion of the message
-     * and the 'Buffer' field as the contents
-     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry
+     * If 'include_head' is true, the string 'msg' will be interpreted as a serialized message and it will be unpacked into this object (use to parse received messages)
+     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry (use to generate new messages to send)
      */
     void set_msg(const std::string& msg, bool include_head=false); 
   
@@ -148,22 +163,37 @@ public:
     void set_msg(int cmd);
 
     /**
-     * @brief Return the message contents as a stringized JSON object containing the 'Header' and 'Buffer' fields corresponding to the header and message contents, resp.
+     * @brief Return the message contents as a string
      */
     const std::string& buf() const { return m_buf; }; 
     /**
-     * @brief Return the message as a stringized JSON object containing the header and contents
+     * @brief Return the message in serialized form
      */
     std::string data() const;
 
+    /**
+     * @brief Get the origin rank
+     */
     int src() const { return m_head.src(); }
 
+    /**
+     * @brief Get the destination rank
+     */
     int dst() const { return m_head.dst(); }
 
+    /**
+     * @brief Get the message type
+     */
     int type() const { return m_head.type(); }
 
+    /**
+     * @brief Get the message kind
+     */
     int kind() const { return m_head.kind(); }
 
+    /**
+     * @brief Get the message kind in string form
+     */
     std::string kind_str() const {
         switch(m_head.kind())
         {
@@ -177,8 +207,14 @@ public:
         }
     }
 
+   /**
+    * @brief Get the message size in bytes
+    */
     int size() const { return m_head.size(); }
 
+    /**
+     * @brief Get the message io frame (step)
+     */
     int frame() const { return m_head.frame(); } 
 
     /**
@@ -187,15 +223,29 @@ public:
      */
     void clear() { m_buf.clear(); }
 
+    /**
+     * @brief Create a message reply with the source, destination, type and kind appropriately filled
+     */
     Message createReply() const;
 
+    /**
+     * @brief Write the message to the output stream in JSON form
+     */
     void show(std::ostream& os) const {
         os << m_head.get_json().dump();
     }
 
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_head, m_buf);
+    }
+
 private:
-    Header m_head;
-    std::string m_buf;
+    Header m_head; /**< Message header*/
+    std::string m_buf; /**< Message content*/
 };
 
 } // end of namespace chimbuko

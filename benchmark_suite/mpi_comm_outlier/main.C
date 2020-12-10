@@ -57,15 +57,16 @@ void* torus_comm(const int rank,
 }
 
 int main(int argc, char **argv){
-  if(argc < 5){
-    std::cout << "Usage: <binary> <ncycles> <anom rank index> <anom mult> <anom freq>" << std::endl;
+  if(argc < 6){
+    std::cout << "Usage: <binary> <ncycles> <base comm size (MB)> <anom rank index> <anom mult> <anom freq>" << std::endl;
     exit(0);
   }
   int cycles = strToAny<int>(argv[1]);
-  int anom_rank = strToAny<int>(argv[2]);
-  int anom_mult = strToAny<int>(argv[3]);
-  int anom_freq = strToAny<int>(argv[4]);
-
+  int base_MB = strToAny<int>(argv[2]);
+  int anom_rank = strToAny<int>(argv[3]);
+  int anom_mult = strToAny<int>(argv[4]);
+  int anom_freq = strToAny<int>(argv[5]);
+  
   MPI_Init(&argc, &argv);
   
   //MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
@@ -79,7 +80,7 @@ int main(int argc, char **argv){
   std::cout << "Rank " << rank << " left neighbor is " << lneighbor << " and right neighbor " << rneighbor << std::endl;
 
   for(int i=0;i<cycles;i++){
-    size_t send_bytes = 1024*1024;
+    size_t send_bytes = base_MB*1024*1024;
     if(rank == anom_rank && i > 0 && i % anom_freq == 0)
       send_bytes *= anom_mult;
 

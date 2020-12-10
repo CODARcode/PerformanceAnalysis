@@ -4,60 +4,73 @@
 #include "chimbuko/ad/ADCounter.hpp"
 #include "chimbuko/util/DispatchQueue.hpp"
 #include <fstream>
-#include <curl/curl.h>
 
 namespace chimbuko {
 
   /**
-   * @brief A class that manages communication of JSON-formatted data to the parameter server via CURL and/or to disk
+   * @brief A class that manages communication of JSON-formatted data to disk
    */
   class ADio {
   public:
-    ADio();
+    /**
+     * @brief Constructor
+     * @param program_idx The program index
+     * @param rank MPI rank
+     */
+    ADio(unsigned long program_idx, int rank);
+
     ~ADio();
 
+    /**
+     * @brief Set the MPI rank of the current process
+     */
+    void setProgramIdx(unsigned long pid) { m_program_idx = pid; }
+
+    /**
+     * @ brief Get the program idx
+     */
+    unsigned long getProgramIdx() const{ return m_program_idx; }
+
+    /**
+     * @brief Set the MPI rank of the current process
+     */
     void setRank(int rank) { m_rank = rank; }
+
+    /**
+     * @brief Get the MPI rank of the current process
+     */
     int getRank() const { return m_rank; }
 
-    bool open_curl(std::string url);
-    void close_curl();
-
+    /**
+     * @brief For disk output, provide the write path
+     *
+     * A zero length string will disable disk IO
+     */
     void setOutputPath(std::string path);
+
+    /**
+     * @brief Get the write path
+     */
     std::string getOutputPath() const { return m_outputPath; }
 
+    /**
+     * @brief If a DispatchQueue instance has not previously been created, create an instance with the parameters provided
+     */
     void setDispatcher(std::string name="ioDispatcher", size_t thread_cnt=1);
 
-    void setWinSize(unsigned int winSize) { m_execWindow = winSize; }
-    unsigned int getWinSize() const { return m_execWindow; }
-
-    CURL* getCURL() { return m_curl; }
-    std::string getURL() { return m_url; }
-
+    /**
+     * @brief Get the number of threads performing the IO
+     */
     size_t getNumIOJobs() const {
       if (m_dispatcher == nullptr) return 0;
       return m_dispatcher->size();
     }
 
     /**
-     * @brief Write anomalous events discovered during timestep
-     * @param m Organized list of anomalous events
-     * @param step adios2 io step
+     * @brief Write an array of JSON objects
+     * @param file_stub File will be ${file_stub}.${step}.json
      */
-    IOError write(CallListMap_p_t* m, long long step);
-
-    /**
-     * @brief Write counter data
-     * @param counterList List of counter events
-     * @param adios2 io step
-     */
-    IOError writeCounters(CounterDataListMap_p_t* counterList, long long step);
-
-    /**
-     * @brief Write metadata accumulated during this IO step
-     * @param newMetadata  Vector of MetaData_t instances containing metadata accumulated during this IO step
-     * @param adios2 io step
-     */    
-    IOError writeMetaData(const std::vector<MetaData_t> &newMetadata, long long step);
+    IOError writeJSON(const std::vector<nlohmann::json> &data, long long step, const std::string &file_stub);
     
     /**
      * @brief Set the amount of time between completion of thread dispatcher tasks and destruction of the dispatcher in the class destructor
@@ -66,16 +79,11 @@ namespace chimbuko {
     void setDestructorThreadWaitTime(const int secs){ destructor_thread_waittime = secs; }
     
   private:
-    void _open(std::fstream& f, std::string filename, IOOpenMode mode);
-
-  private:
-    unsigned int m_execWindow;
-    std::string m_outputPath;
-    DispatchQueue * m_dispatcher;
-    CURL* m_curl;
-    std::string m_url;
-    int m_rank;
-    int destructor_thread_waittime; //Choose thread wait time in seconds after threadhandler has completed (default 10s)
+    std::string m_outputPath; /**< Disk path of written output*/
+    DispatchQueue * m_dispatcher; /**< Instance of multi-threaded writer*/
+    unsigned long m_program_idx;                        /**< Program index*/
+    int m_rank; /**< The MPI rank of the current process*/
+    int destructor_thread_waittime; /**< Choose thread wait time in seconds after threadhandler has completed (default 10s)*/
   };
 
 } // end of AD namespace

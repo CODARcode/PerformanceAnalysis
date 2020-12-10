@@ -21,9 +21,17 @@ Related Github repositories
    :caption: Introduction
 
    introduction/overview
-   introduction/install
 
+.. toctree::
+   :caption: Installation and Usage
+	     
+   install_usage/install_usage
 
+.. toctree::
+   :caption: IO Schema
+	     
+   io_schema/schema
+   
 .. toctree::
    :caption: API For Developers
 

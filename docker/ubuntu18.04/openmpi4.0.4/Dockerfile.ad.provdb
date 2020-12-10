@@ -1,33 +1,35 @@
-FROM chimbuko/mochi:ubuntu18.04 AS mochi
+FROM chimbuko/mochi:ubuntu18.04 AS build_base
 
-FROM chimbuko/adios2:ubuntu18.04 AS ad-build
+COPY --from=chimbuko/adios2:ubuntu18.04 /opt /opt
 
-COPY --from=mochi /sds /sds
-COPY --from=mochi /spack /spack
-COPY --from=mochi /root/.spack /root/.spack
+#################
+FROM build_base AS build
 
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 6_25_20_17_09" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 10_29_20_18_52" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
 
 SHELL ["/bin/bash", "-c"]
 
+ENV CPATH=/opt/cereal/include:${CPATH}
+
 RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
     CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad && \
-    make -j 4 install && cd /opt/chimbuko/ad/test && ./run_all.sh DOCKER_SETUP_MOCHI
+    make -j 4 install && cd /opt/chimbuko/ad/test 
+#&& ./run_all.sh DOCKER_SETUP_MOCHI
 
-FROM chimbuko/adios2:ubuntu18.04
+RUN cd /Downloads/PerformanceAnalysis && git log | head -1 > /opt/chimbuko/ad/git_version
 
-RUN mkdir -p /opt/chimbuko/ad
-COPY --from=ad-build /opt/chimbuko/ad /opt/chimbuko/ad
 
-COPY --from=mochi /sds /sds
-COPY --from=mochi /spack /spack
-COPY --from=mochi /root/.spack /root/.spack
+################
+FROM build_base
 
+COPY --from=build /opt/chimbuko/ad /opt/chimbuko/ad
+
+RUN apt-get update && apt-get install -y gdb emacs-nox vim && apt autoremove -y && rm -rf /var/lib/apt/lists/* 
 
 WORKDIR /opt/chimbuko/ad/test
 ENTRYPOINT [ "./run_all.sh", "DOCKER_SETUP_MOCHI" ]

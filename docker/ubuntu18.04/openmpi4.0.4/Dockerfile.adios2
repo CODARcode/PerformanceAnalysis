@@ -4,15 +4,6 @@ RUN mkdir -p /Downloads/adiosvm && \
     git clone https://github.com/pnorbert/adiosvm.git /Downloads/adiosvm && \
     cd /Downloads/adiosvm && git checkout -b dev-brussel-fft3d remotes/origin/dev-brussel-fft3d
 
-
-RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.7.0/libfabric-1.7.0.tar.gz && \
-    tar xvfz libfabric-1.7.0.tar.gz && \
-    cd /Downloads/libfabric-1.7.0 && \
-    ./configure --disable-verbs --disable-mlx --prefix=/opt/libfabric && \
-    make && make install
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
-
-
 RUN cd /Downloads/adiosvm/adiospackages && \
     tar zxf sz-1.4.13.0.tar.gz && \
     cd /Downloads/adiosvm/adiospackages/sz-1.4.13.0 && \
@@ -29,8 +20,9 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
 # ----------------------------------------------------------------------------
 # ADIOS2 Installation
 # ----------------------------------------------------------------------------
+
 RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
-    cd /Downloads/ADIOS2 && git checkout f23e72c051dca30a6b1c23b0755da6c343d3592c && \
+    cd /Downloads/ADIOS2 && \
     mkdir -p /Downloads/ADIOS2/build && cd /Downloads/ADIOS2/build && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2 \
           -DADIOS2_USE_MPI:BOOL=ON \
@@ -57,13 +49,51 @@ RUN cd /Downloads && git clone https://github.com/ornladios/ADIOS2.git && \
           -DCMAKE_BUILD_TYPE=Release \
           -DMPIEXEC_MAX_NUMPROCS:STRING=16 \
           .. && \
-    make -j 4 && make install
+    make -j 8 && make install
+
+RUN cd /Downloads/ADIOS2 && git log | head -1 > /opt/adios2/git_version
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
 ENV PATH=${PATH}:/opt/adios2/bin
 ENV PYTHONPATH=${PYTHONPATH}:/opt/adios2/lib/python3.5/site-packages
 
-RUN rm -rf /var/lib/apt/lists/* && rm -rf /Downloads
+# ----------------------------------------------------------------------------
+# ADIOS2 installation without MPI (needed for non-MPI programs)
+# ----------------------------------------------------------------------------
+
+RUN mkdir -p /Downloads/ADIOS2/build_nompi && cd /Downloads/ADIOS2/build_nompi && \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt/adios2_nompi \
+          -DADIOS2_USE_MPI:BOOL=OFF \
+          -DADIOS2_USE_HDF5:BOOL=OFF \
+          -DADIOS2_USE_ZeroMQ:BOOL=ON \
+          -DADIOS2_USE_Fortran:BOOL=ON \
+          -DADIOS2_USE_Python:BOOL=ON \
+          -DADIOS2_USE_SST:BOOL=ON \
+          -DADIOS2_USE_BZip2:BOOL=ON \
+          -DADIOS2_USE_ZFP:BOOL=OFF \
+          -DADIOS2_USE_DataMan:BOOL=ON \
+          -DADIOS2_USE_Profiling:BOOL=OFF \
+          -DADIOS2_USE_Blosc:BOOL=ON \
+          -DBUILD_SHARED_LIBS:BOOL=ON \
+          -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+          -DLIBFABRIC_ROOT=/opt/libfabric \
+          -DSZ_ROOT=/opt/SZ \
+          -DSZ_INCLUDE_DIR=/opt/SZ/include \
+          -DSZ_LIBRARY=/opt/SZ/lib/libsz.so \
+          -DBLOSC_INCLUDE_DIR=/opt/blosc/include \
+          -DBLOSC_LIBRARY=/opt/blosc/lib/libblosc.so \
+          -DADIOS2_BUILD_TESTING:BOOL=ON \
+          -DADIOS2_BUILD_EXAMPLES_EXPERIMENTAL:BOOL=OFF \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DMPIEXEC_MAX_NUMPROCS:STRING=16 \
+          .. && \
+    make -j 8 && make install
+
+RUN cd /Downloads/ADIOS2 && git log | head -1 > /opt/adios2_nompi/git_version
+
+# ----------------------------------------------------------------------------
+# Finish up
+# ----------------------------------------------------------------------------
 
 WORKDIR /
 
@@ -75,6 +105,3 @@ ENV PATH=${PATH}:/opt/adios2/bin
 
 ENTRYPOINT [ "adios2-config" ]
 CMD [ "-v" ]
-
-# (example) To build adios2 image
-# >> docker build -f Dockerfile.adios2 -t chimbuko/adios2:latest .

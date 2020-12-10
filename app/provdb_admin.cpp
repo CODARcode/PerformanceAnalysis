@@ -1,10 +1,11 @@
 //The "admin" task that creates the provenance database
 
-#include <config.h>
+#include <chimbuko_config.h>
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif
-
+#include "chimbuko/util/commandLineParser.hpp"
+#include "chimbuko/util/string.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -16,132 +17,232 @@
 #include <csignal>
 #include <cassert>
 
+#include <spdlog/spdlog.h>
+#include "chimbuko/verbose.hpp"
+
+
 namespace tl = thallium;
 
-bool stop_wait_loop = false;
-bool engine_is_finalized = false;
+bool stop_wait_loop = false; //trigger breakout of main thread spin loop
 
 void termSignalHandler( int signum ) {
   stop_wait_loop = true;
 }
 
 tl::mutex *mtx;
-std::set<int> connected;
-bool a_client_has_connected = false;
+std::set<int> connected; //which AD ranks are currently connected
+bool a_client_has_connected = false; //has an AD rank previously connected?
+
+bool pserver_connected = false; //is the pserver connected
+bool pserver_has_connected = false; //did the pserver ever connect
 
 //Allows a client to register with the provider
 void client_hello(const tl::request& req, const int rank) {
   std::lock_guard<tl::mutex> lock(*mtx);
   connected.insert(rank);
   a_client_has_connected = true;
-  std::cout << "Client " << rank << " has said hello: " << connected.size() << " ranks now connected" << std::endl;
+  std::cout << "ProvDB Admin: Client " << rank << " has said hello: " << connected.size() << " ranks now connected" << std::endl;
 }
 //Allows a client to deregister from the provider
 void client_goodbye(const tl::request& req, const int rank) {
   std::lock_guard<tl::mutex> lock(*mtx);
   connected.erase(rank);
-  std::cout << "Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
+  std::cout << "ProvDB Admin: Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
 }
+
+//Allows the pserver to register with the provider
+void pserver_hello(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  pserver_connected = true;
+  pserver_has_connected = true;
+  std::cout << "ProvDB Admin: Pserver has said hello" << std::endl;
+}
+//Allows the pserver to deregister from the provider
+void pserver_goodbye(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  pserver_connected = false;
+  std::cout << "ProvDB Admin: Pserver has said goodbye" << std::endl;
+}
+
+
+struct ProvdbArgs{
+  std::string ip;
+  std::string engine;
+  bool autoshutdown;
+  int nshards;
+  int nthreads;
+  std::string db_type;
+  unsigned long db_commit_freq;
+
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000){}
+};
 
 
 
 int main(int argc, char** argv) {
-  if(argc < 2){
-    std::cout << "Usage: provdb_admin <ip:port> <options>\n"
-	      << "ip:port should specify the ip address and port. Using an empty string will cause it to default to Mochi's default ip/port.\n"
-	      << "Options:\n"
-	      << "-engine Specify the Thallium/Margo engine type (default \"ofi+tcp\""
-	      << "-autoshutdown If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected\n"
-	      << std::endl;
-    return 0;
-  }
+  {
+    //Parse environment variables
+    if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+      std::cout << "ProvDB Admin: Enabling verbose debug output" << std::endl;
+      chimbuko::Verbose::set_verbose(true);
+      spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
+    }       
 
-  //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
-  //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
-  //Using an empty string will cause it to default to Mochi's default ip/port
-  
-  std::string ip = argv[1];
+    //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
+    //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
+    //Using an empty string will cause it to default to Mochi's default ip/port
+    chimbuko::commandLineParser<ProvdbArgs> parser;
+    addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
+    addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
+    addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
+    addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
+    addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
+    addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
+    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
 
-  std::string eng_opt = "ofi+tcp";
-  bool autoshutdown = false;
-
-  int arg=2;
-  while(arg < argc){
-    std::string sarg = argv[arg];
-    if(sarg == "-engine"){
-      eng_opt = argv[arg+1];
-      arg+=2;
-    }else if(sarg == "-autoshutdown"){
-      autoshutdown = true;
-      arg++;
-    }else{
-      throw std::runtime_error("Unknown option: " + sarg);
+    if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+      parser.help(std::cout);
+      return 0;
     }
-  }
-  
-  if(ip.size() > 0){
-    eng_opt += std::string("://") + argv[1];
-  }
 
-  //Initialize provider engine
-  tl::engine engine(eng_opt, THALLIUM_SERVER_MODE);
-  engine.enable_remote_shutdown();
-  engine.push_finalize_callback([]() { engine_is_finalized = true; stop_wait_loop = true; });
+    ProvdbArgs args;
+    parser.parseCmdLineArgs(args, argc, argv);
 
-  mtx = new tl::mutex;
-  engine.define("client_hello",client_hello).disable_response();
-  engine.define("client_goodbye",client_goodbye).disable_response();
+    if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
+
+    std::string eng_opt = args.engine;
+    if(args.ip.size() > 0){
+      eng_opt += std::string("://") + args.ip;
+    }
+
+    std::cout << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
+
+    //Initialize provider engine
+    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
+
+#ifdef _PERF_METRIC
+    //Get Margo to output profiling information
+    //A .diag and .csv file will be produced in the run directory
+    //Description can be found at https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
+    //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
+    //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
+    //Generate a profile plot automatically by running margo-gen-profile in the run directory
+    // auto margo_instance = engine.get_margo_instance();
+    // margo_diag_start(margo_instance);
+    // margo_profile_start(margo_instance);
+
+    //Edit: This doesn't seem very reliable, often not outputing all the data. Use the MARGO_ENABLE_PROFILING for more reliable output
+#endif
+
+    mtx = new tl::mutex;
+    engine.define("client_hello",client_hello).disable_response();
+    engine.define("client_goodbye",client_goodbye).disable_response();
+    engine.define("pserver_hello",pserver_hello).disable_response();
+    engine.define("pserver_goodbye",pserver_goodbye).disable_response();
 
 
-  //Write address to file
-  std::string addr = (std::string)engine.self();    
-  {
-    std::ofstream f("provider.address");
-    f << addr;
-  }
-
-  //Initialize provider
-  sonata::Provider provider(engine);
-
-  std::cout << "Provider is running on " << addr << std::endl;
-
-  {
-    std::string config = "{ \"path\" : \"./provdb.unqlite\" }";
-
-    sonata::Admin admin(engine);
-    std::cout << "Admin creating database" << std::endl;
-    admin.createDatabase(addr, 0, "provdb", "unqlite", config);
-
-    //Create the collections
+    //Write address to file
+    std::string addr = (std::string)engine.self();    
     {
-      sonata::Client client(engine);
-      sonata::Database db = client.open(addr, 0, "provdb");
-      db.create("anomalies");
-      db.create("metadata");
-      db.create("normalexecs");
-      std::cout << "Admin initialized collections" << std::endl;
+      std::ofstream f("provider.address");
+      f << addr;
     }
 
-    //Spin quietly until SIGTERM sent
-    signal(SIGTERM, termSignalHandler);  
-    std::cout << "Admin waiting for SIGTERM" << std::endl;
-    while(!stop_wait_loop) {
-      tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+    { //Scope in which provider is active
+
+      //Initialize provider
+      sonata::Provider provider(engine, 0);
+    
+      std::cout << "ProvDB Admin: Provider is running on " << addr << std::endl;
+
+      { //Scope in which admin object is active
+	sonata::Admin admin(engine);
+	std::cout << "ProvDB Admin: creating global data database" << std::endl;
+	std::string glob_db_name = "provdb.global";
+	std::string glob_db_config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", glob_db_name.c_str());
+	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
+	
+	std::cout << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
+
+	std::vector<std::string> db_shard_names(args.nshards);
+	for(int s=0;s<args.nshards;s++){
+	  std::string db_name = chimbuko::stringize("provdb.%d",s);
+	  std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+	  std::cout << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
+	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
+	  db_shard_names[s] = db_name;
+	}
+
+	//Create the collections
+	{ //scope in which client is active
+	  sonata::Client client(engine);
+	  
+	  //Initialize the provdb shards
+	  std::vector<sonata::Database> db(args.nshards);
+	  for(int s=0;s<args.nshards;s++){
+	    db[s] = client.open(addr, 0, db_shard_names[s]);
+	    db[s].create("anomalies");
+	    db[s].create("metadata");
+	    db[s].create("normalexecs");
+	  }
+
+	  //Initialize the global provdb
+	  sonata::Database glob_db = client.open(addr, 0, glob_db_name);
+	  glob_db.create("func_stats");
+	  glob_db.create("counter_stats");
+
+	  std::cout << "ProvDB Admin: initialized collections" << std::endl;
+
+	  //Setup a timer to periodically force a database commit
+	  typedef std::chrono::high_resolution_clock Clock;
+	  Clock::time_point commit_timer_start = Clock::now();
+
+
+	  //Spin quietly until SIGTERM sent
+	  signal(SIGTERM, termSignalHandler);  
+	  std::cout << "ProvDB Admin: main thread waiting for completion" << std::endl;
+	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
+	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
+
+	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
+	    if(commit_timer_ms >= args.db_commit_freq){
+	      std::cout << "ProvDB Admin: committing database to disk" << std::endl;
+	      for(int s=0;s<args.nshards;s++)
+		db[s].commit();
+	      glob_db.commit();
+	      commit_timer_start = Clock::now();
+	    }
       
-      //If at least one client has previously connected but none are now connected, shutdown the server
-      if(autoshutdown && a_client_has_connected && connected.size() == 0) break;
-    }
+	    //If at least one client has previously connected but none are now connected, shutdown the server
+	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
+	    if(
+	       args.autoshutdown && 
+	       ( a_client_has_connected && connected.size() == 0 ) &&
+	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) )
+	       ){
+	      std::cout << "ProvDB Admin: detected all clients disconnected, shutting down" << std::endl;
+	      break;
+	    }
+	  }
+	}//client scope
 
-    std::cout << "Admin detaching database" << std::endl;
-    admin.detachDatabase(addr, 0, "provdb");
+	//If the pserver didn't connect (it is optional), delete the empty database
+	if(!pserver_has_connected){
+	  std::cout << "ProvDB Admin: destroying pserver database as it didn't connect (connection is optional)" << std::endl;
+	  admin.destroyDatabase(addr, 0, glob_db_name);
+	}
+	
+	std::cout << "ProvDB Admin: ending admin scope" << std::endl;
+      }//admin scope
 
-    std::cout << "Admin shutting down server" << std::endl;
-    if(!engine_is_finalized)
-      engine.finalize();
-    std::cout << "Admin thread finished" << std::endl;
+      std::cout << "ProvDB Admin: ending provider scope" << std::endl;
+    }//provider scope
+
+    std::cout << "ProvDB Admin: shutting down server engine" << std::endl;
+    delete mtx; //delete mutex prior to engine finalize    
+    engine.finalize();
+    std::cout << "ProvDB Admin: finished, exiting engine scope" << std::endl;  
   }
-
-  delete mtx;
-  
+  std::cout << "ProvDB Admin: finished, exiting main scope" << std::endl;    
   return 0;
 }

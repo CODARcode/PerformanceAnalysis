@@ -1,13 +1,9 @@
 #include<chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include<chimbuko/pserver/global_anomaly_stats.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include<chimbuko/util/string.hpp>
 
-#include<thread>
-#include<chrono>
-#include <condition_variable>
-#include <mutex>
-#include <cstring>
-#include <random>
 
 using namespace chimbuko;
 
@@ -18,7 +14,7 @@ struct ADLocalFuncStatisticsTest: public ADLocalFuncStatistics{
 };
 
 
-TEST(ADLocalFuncStatisticsTestUpdateGlobaltatisticsWithPS, Works){
+TEST(ADLocalFuncStatisticsTestUpdateGlobalStatisticsWithPS, Works){
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)
@@ -29,42 +25,98 @@ TEST(ADLocalFuncStatisticsTestUpdateGlobaltatisticsWithPS, Works){
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
 
-  std::thread ps_thr([&]{
-		       MockParameterServer ps;
-		       ps.start(barrier2, sinterface);
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       
-		       barrier2.wait();
-		       std::cout << "PS thread waiting for stat update" << std::endl;
-		       ps.receive_statistics(barrier2,"test");
-		       barrier2.wait();
-		       
+  CallList_t fake_execs;
+  ExecDataMap_t fake_exec_map;
+  Anomalies anomalies;
 
-		       barrier2.wait();		       
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.end();
-		     });
+  int pid = 2;
+  int rank = 1;
+  int thread = 99;
+  int nfuncs=100;
+  int nevent=100;
+  int nanomalies_per_func = 2;
+  for(int i=0;i<nfuncs;i++){
+    for(int j=0;j<nevent;j++){
+      ExecData_t e = createFuncExecData_t(pid, rank, thread,
+					  i, "func"+anyToStr(i),
+					  100*i, 100);
+      auto it = fake_execs.insert(fake_execs.end(),e);
+      fake_exec_map[i].push_back(it);
+
+      if(j<nanomalies_per_func){
+	anomalies.insert(it, Anomalies::EventType::Outlier);
+      }
+
+    }
+  }
+
+  ADLocalFuncStatistics loc(pid,rank,0);
+  loc.gatherStatistics(&fake_exec_map);
+  loc.gatherAnomalies(anomalies);
+
+  std::cout << "JSON size " << loc.get_json_state().dump().size() << std::endl;
+  std::cout << "Binary size " << loc.get_state().serialize_cerealpb().size() << std::endl;
+
+
+  GlobalAnomalyStats glob;
+
+  std::thread ps_thr([&]{
+      int argc; char** argv;
+      ZMQNet net;
+      net.add_payload(new NetPayloadUpdateAnomalyStats(&glob));
+      net.init(&argc, &argv, 1);
+      net.run("");             
+      net.finalize();
+    });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		       
   std::thread out_thr([&]{
-			barrier2.wait();
-			try{
-			  ADNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  barrier2.wait();
-			  std::cout << "AD thread updating local stats" << std::endl;
-			  ADLocalFuncStatisticsTest::updateGlobalStatisticsTest(net_client, "test",0);
-			  barrier2.wait();			  
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();			  
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
-		      });
+      std::cout << "AD thread waiting to connect" << std::endl;
+      try{
+	ADNetClient net_client;
+	net_client.connect_ps(0, 0, sname);
+	std::cout << "AD thread updating local stats" << std::endl;
+	loc.updateGlobalStatistics(net_client);
+	std::cout << "AD thread terminating connection" << std::endl;
+	net_client.disconnect_ps();
+      }catch(const std::exception &e){
+	std::cerr << e.what() << std::endl;
+      }
+    });
+
   ps_thr.join();
   out_thr.join();
   
+  std::string anom_stat_id = stringize("%d:%d", pid,rank);
+  
+  EXPECT_EQ( glob.get_n_anomaly_data(anom_stat_id), 1 ); //1 set of data added
+  RunStats stats = glob.get_anomaly_stat_obj(anom_stat_id);
+  EXPECT_EQ( stats.accumulate(), 200);
+
+  nlohmann::json gdata = glob.collect();
+  EXPECT_EQ( gdata["anomaly"].size(), 1 );
+  EXPECT_EQ( gdata["anomaly"][0]["key"], anom_stat_id );
+  EXPECT_EQ( gdata["anomaly"][0]["data"].size(), 1 );
+  EXPECT_EQ( gdata["anomaly"][0]["data"][0].dump(), loc.get_state().anomaly.get_json().dump() );
+
+  EXPECT_EQ( gdata["func"].size(), nfuncs );
+  bool found = false;
+  for(int i=0;i<nfuncs;i++){ //events are not in original order due to intermediate storing in unordered_map
+    if( gdata["func"][i]["fid"] == 8 ){
+      found = true;
+      EXPECT_EQ( gdata["func"][i]["app"], pid );
+      EXPECT_EQ( gdata["func"][i]["name"], "func8" );
+      std::cout << "Stats:" << gdata["func"][i]["stats"].dump() << std::endl;
+      double c = gdata["func"][i]["stats"]["count"];
+      EXPECT_EQ(c, 1.0); //1 step
+      c = gdata["func"][i]["stats"]["accumulate"];
+      EXPECT_EQ(c, (double)nanomalies_per_func);
+      break;
+    }
+  }
+  EXPECT_EQ(found , true);
+
+
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif

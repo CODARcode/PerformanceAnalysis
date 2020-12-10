@@ -10,8 +10,8 @@ using namespace chimbuko;
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
-ADOutlier::ADOutlier() 
-  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false), m_perf(nullptr)
+ADOutlier::ADOutlier(OutlierStatistic stat) 
+  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat)
 {
 }
 
@@ -26,12 +26,21 @@ void ADOutlier::linkNetworkClient(ADNetClient *client){
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }
 
-
-
+double ADOutlier::getStatisticValue(const ExecData_t &e) const{
+  switch(m_statistic){
+  case ExclusiveRuntime:
+    return e.get_exclusive();
+  case InclusiveRuntime:
+    return e.get_inclusive();
+  default:
+    throw std::runtime_error("Invalid statistic");
+  }
+}
+ 
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD() : ADOutlier(), m_sigma(6.0) {
+ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(6.0) {
     m_param = new SstdParam();
 }
 
@@ -53,10 +62,7 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
         msg.set_msg(l.serialize(), false);
         size_t sent_sz = msg.size();
 
-	std::string strmsg = m_net_client->send_and_receive(msg);
-
-	msg.clear();
-        msg.set_msg(strmsg , true);
+	m_net_client->send_and_receive(msg, msg);
         size_t recv_sz = msg.size();
         g.assign(msg.buf());
         return std::make_pair(sent_sz, recv_sz);
@@ -90,7 +96,7 @@ Anomalies ADOutlierSSTD::run(int step) {
 	encounter_it->second++;
 
       if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
-	param[func_id].push(static_cast<double>(itt->get_runtime()));
+	param[func_id].push( this->getStatisticValue(*itt) );
       }
     }
   }
@@ -134,20 +140,22 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
   const double thr_lo = mean - m_sigma * std;
 
   for (auto itt : data) {
-    const double runtime = static_cast<double>(itt->get_runtime());
+    const double runtime = this->getStatisticValue(*itt);
     int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
     itt->set_label(label);
     if (label == -1) {
       VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
+	      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
       n_outliers += 1;
       outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
     }else{
-      VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	      << " runtime " << itt->get_runtime() << " mean " << mean << " std " << std << std::endl);
       //Capture maximum of one normal execution per io step
-      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0)
+      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
+	VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+
 	outliers.insert(itt, Anomalies::EventType::Normal);      
+      }
     }
   }
 

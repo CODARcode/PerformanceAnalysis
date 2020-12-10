@@ -1,4 +1,7 @@
 #!/bin/bash
+#Fail if any test fails
+set -e
+set -o pipefail
 
 #In the docker images we must load the MOCHI libraries using spack
 if [[ $# == 1 && $1 == "DOCKER_SETUP_MOCHI" ]]; then
@@ -30,6 +33,12 @@ if [ -f "../bin/provdb_admin" ]; then
     echo "Wait for next tests for 5 seconds ..."
     sleep 5
     ./run_provdb_client_test.sh
+
+    echo "Provenance DB pserver client test"
+    echo "Wait for next tests for 5 seconds ..."
+    sleep 5
+    ./run_provdb_pserver_client_test.sh
+
     echo "Provenance DB autoshutdown test"
     echo "Wait for next tests for 5 seconds ..."
     sleep 5

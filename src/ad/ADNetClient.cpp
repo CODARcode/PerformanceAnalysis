@@ -1,16 +1,22 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/util/error.hpp>
 #include <mpi.h>
 
 using namespace chimbuko;
 
 ADNetClient::ADNetClient() 
-: m_use_ps(false)
+  : m_use_ps(false), m_perf(nullptr)
 {
 #ifdef _USE_ZMQNET
     m_context = nullptr;
     m_socket = nullptr;
+    m_recv_timeout_ms = 30000;
 #endif
+}
+
+ADNetClient::~ADNetClient(){
+  disconnect_ps();
 }
 
 void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
@@ -54,9 +60,15 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
 #else
     m_context = zmq_ctx_new();
     m_socket = zmq_socket(m_context, ZMQ_REQ);
+
+    int zero = 0;
+    zmq_setsockopt(m_socket, ZMQ_RCVHWM, &zero, sizeof(int));
+    zmq_setsockopt(m_socket, ZMQ_SNDHWM, &zero, sizeof(int));
+    zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &m_recv_timeout_ms, sizeof(int));
+
     if(zmq_connect(m_socket, sname.c_str()) == -1){
       std::string err = strerror(errno);      
-      throw std::runtime_error("ZMQ failed to connect, with error: " + err);
+      throw std::runtime_error("ZMQ failed to connect to socket at address " + sname + ", due to error: " + err);
     }
 
     // test connection
@@ -72,17 +84,24 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     msg.clear();
 
     VERBOSE(std::cout << "ADNetClient waiting for handshake response from server" << std::endl);
-    ZMQNet::recv(m_socket, strmsg);
+    int ret = ZMQNet::recv(m_socket, strmsg);
+    if(ret == -1){
+      if(errno == EAGAIN){ recoverable_error("Connect error to parameter server: handshake timed out"); }
+      else{ recoverable_error("Connect error to parameter server: receive returned an error"); }
+      return;
+    }
+
     VERBOSE(std::cout << "ADNetClient handshake response received" << std::endl);
     
     msg.set_msg(strmsg, true);
 
-    if (msg.buf().compare("\"Hello!I am NET!\"") != 0)
-    {
-      throw std::runtime_error("Connect error to parameter server: response message not as expected (ZMQNET)!");
+    if (msg.buf().compare("Hello!I am NET!") != 0){
+      recoverable_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
+      return;
     } 
+
     m_use_ps = true;
-    std::cout << "ADNetClient successfully connected to server" << std::endl;
+    std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
 #endif
     //MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -90,31 +109,32 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
 void ADNetClient::disconnect_ps() {
     if (!m_use_ps) return;
 
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnecting from PS" << std::endl);
+#ifdef _USE_MPINET
     MPI_Barrier(MPI_COMM_WORLD);
     if (m_rank == 0)
     {
-#ifdef _USE_MPINET
         Message msg;
         msg.set_info(m_rank, m_srank, MessageType::REQ_QUIT, MessageKind::CMD);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(m_comm, msg.data(), m_srank, MessageType::REQ_QUIT, msg.count());
-#else
-        zmq_send(m_socket, nullptr, 0, 0);
-#endif
     }
     MPI_Barrier(MPI_COMM_WORLD);
-
-#ifdef _USE_MPINET
     MPI_Comm_disconnect(&m_comm);
 #else
-    zmq_close(m_socket);
-    zmq_ctx_term(m_context);
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl);
+    Message msg;
+    msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::DEFAULT);
+    msg.set_msg("");
+    send_and_receive(msg);
 #endif
+    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl);
     m_use_ps = false;
 }
 
 std::string ADNetClient::send_and_receive(const Message &msg){  
-  std::string strmsg;
+  PerfTimer timer;
+  std::string send_msg = msg.data(), recv_msg;
 #ifdef _USE_MPINET
   MessageType req_type = MessageType(msg.type());
   MessageType rep_type;
@@ -133,21 +153,36 @@ std::string ADNetClient::send_and_receive(const Message &msg){
     throw std::runtime_error("Invalid request type");
   }
   
-  MPINet::send(m_comm, msg.data(), m_srank, req_type, msg.count());
+  MPINet::send(m_comm, send_msg, m_srank, req_type, msg.count());
   
   MPI_Status status;
   int count;
   MPI_Probe(m_srank, rep_type, m_comm, &status);
   MPI_Get_count(&status, MPI_BYTE, &count);
   
-  strmsg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
+  recv_msg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
 #else
   //Send local parameters to PS
-  ZMQNet::send(m_socket, msg.data());
+  ZMQNet::send(m_socket, send_msg);
   
   //Receive global parameters from PS
-  ZMQNet::recv(m_socket, strmsg);   
+  int ret = ZMQNet::recv(m_socket, recv_msg);   
+  if(ret == -1) throw std::runtime_error("ADNetClient::send_and_receive: receive call returned an error");
 #endif
 
-  return strmsg;
+#ifdef _PERF_METRIC
+  if(m_perf){
+    m_perf->add("net_client_send_recv_time_ms", timer.elapsed_ms());
+    m_perf->add("net_client_send_bytes", send_msg.size()); //1 char = 1 byte
+    m_perf->add("net_client_recv_bytes", recv_msg.size());
+  }
+#endif  
+
+  return recv_msg;
 }
+
+void ADNetClient::send_and_receive(Message &recv,  const Message &send){
+  recv.set_msg( send_and_receive(send), true );
+}
+
+

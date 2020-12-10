@@ -3,6 +3,7 @@
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/string.hpp"
 #include <iostream>
 #include <string.h>
 
@@ -11,12 +12,60 @@
 #include <fstream>
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds MilliSec;
+typedef std::chrono::microseconds MicroSec;
 #endif
 
 using namespace chimbuko;
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0)
+/**
+ * @brief Register client connection
+ */
+class NetPayloadHandShakeWithCount: public NetPayloadBase{
+public:
+  int &clients;
+  bool &client_has_connected;
+  std::mutex &m;
+  NetPayloadHandShakeWithCount(int &clients, bool &client_has_connected, std::mutex &m): clients(clients), m(m), client_has_connected(client_has_connected){}
+  
+  MessageKind kind() const{ return MessageKind::DEFAULT; }
+  MessageType type() const{ return MessageType::REQ_ECHO; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg(std::string("Hello!I am NET!"), false);
+    std::lock_guard<std::mutex> _(m);
+    clients++;
+    client_has_connected = true;
+    VERBOSE(std::cout << "ZMQNet handshake received, #clients is now " << clients << std::endl);
+  };
+};
+
+/**
+ * @brief Register client disconnection
+ */
+class NetPayloadClientDisconnectWithCount: public NetPayloadBase{
+public:
+  int &clients;
+  std::mutex &m;
+  NetPayloadClientDisconnectWithCount(int &clients, std::mutex &m): clients(clients), m(m){}
+  
+  MessageKind kind() const{ return MessageKind::DEFAULT; }
+  MessageType type() const{ return MessageType::REQ_QUIT; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg("", false);
+    std::lock_guard<std::mutex> _(m);
+    clients--;
+    if(clients < 0) throw std::runtime_error("ZMQNet registered clients < 0! Likely a client did not perform a handshake");
+
+    VERBOSE(std::cout << "ZMQNet received disconnect notification, #clients is now " << clients << std::endl);
+  };
+};
+
+
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559)
 {
+  add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
+  add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
 }
 
 ZMQNet::~ZMQNet()
@@ -26,65 +75,94 @@ ZMQNet::~ZMQNet()
 void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 {
     m_context  = zmq_ctx_new();
+    if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
+      throw std::runtime_error("ZMQNet::init couldn't set number of io threads to requested amount");   
+
+    //Check worker_idx = 0 for all payloads
+    for(auto const &e : m_payloads)
+      if(e.first != 0) throw std::runtime_error("ZMQNet all payloads must have worker_idx=0");
+
     init_thread_pool(nt);
 }
 
 void doWork(void* context,     
 	    std::unordered_map<MessageKind,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
-	    > &payloads)
+	    > &payloads,
+	    PerfStats &perf, int thr_idx)
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
+
+  int zero = 0;
+  zmq_setsockopt(socket, ZMQ_RCVHWM, &zero, sizeof(int));
+  zmq_setsockopt(socket, ZMQ_SNDHWM, &zero, sizeof(int));
+
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
     
   zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
  
-  while(true){
+  std::string perf_prefix = "worker" + anyToStr(thr_idx) + "_";
+  PerfTimer timer;
 
+  while(true){
     //Poll the socket to check for incoming messages. If an error is returned, exit the loop
     //Errors typically mean the context has been terminated
     constexpr int nitems = 1; //size of items array
     constexpr long timeout = -1; //poll forever until error or success
+    timer.start();
     if(zmq_poll(items, nitems, timeout) < 1){
       break;
     }
-
+    perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+    
     //Receive the message into a json-formatted string
+    timer.start();
     std::string strmsg;
     ZMQNet::recv(socket, strmsg);
+    perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
 
-    VERBOSE(std::cout << "ZMQ worker received message: " << strmsg << std::endl);
+    VERBOSE(std::cout << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl);
     
     //Parse the message and instantiate a reply message with appropriate sender
+    timer.start();
     Message msg, msg_reply;
     msg.set_msg(strmsg, true);
 
     msg_reply = msg.createReply();
+    perf.add(perf_prefix + "message_parse_reply_create_ms", timer.elapsed_ms());
 
+    timer.start();
     auto kit = payloads.find((MessageKind)msg.kind());
-    if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided (did you add the payload to the server?)");
+    if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided. Message: " + strmsg + " (did you add the payload to the server?)");
     auto pit = kit->second.find((MessageType)msg.type());
-    if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided (did you add the payload to the server?)");
+    if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided. Mesage: " + strmsg + " (did you add the payload to the server?)");
+    perf.add(perf_prefix + "message_kind_type_lookup_ms", timer.elapsed_ms());
 
     //Apply the payload
+    timer.start();
     pit->second->action(msg_reply, msg);
-    VERBOSE(std::cout << "Worker sending response: " << msg_reply.data() << std::endl);
-    
+    strmsg = msg_reply.data();
+    VERBOSE(std::cout << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl);
+    perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
+
     //Send the reply
-    ZMQNet::send(socket, msg_reply.data());
-    
+    timer.start();
+    ZMQNet::send(socket, strmsg);
+    perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());
+
   }//while(<receiving messages>)
   
   zmq_close(socket);
 }
 
-void ZMQNet::init_thread_pool(int nt)
-{
-    for (int i = 0; i < nt; i++) {
-        m_threads.push_back(
-			    std::thread(&doWork, std::ref(m_context), std::ref(m_payloads) )
-			    );
-    }
+void ZMQNet::init_thread_pool(int nt){
+  m_perf_thr.resize(nt);
+
+  for (int i = 0; i < nt; i++) {
+    m_threads.push_back(
+			std::thread(&doWork, std::ref(m_context), std::ref(m_payloads.begin()->second), std::ref(m_perf_thr[i]), i )
+			);
+  }
 }
 
 void ZMQNet::finalize()
@@ -105,7 +183,14 @@ void ZMQNet::run()
     void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
     void* backend  = zmq_socket(m_context, ZMQ_DEALER);
 
-    zmq_bind(frontend, "tcp://*:5559"); //create a socket for communication with the AD
+    int zero = 0;
+    zmq_setsockopt(frontend, ZMQ_RCVHWM, &zero, sizeof(int));
+    zmq_setsockopt(frontend, ZMQ_SNDHWM, &zero, sizeof(int));
+    zmq_setsockopt(backend, ZMQ_RCVHWM, &zero, sizeof(int));
+    zmq_setsockopt(backend, ZMQ_SNDHWM, &zero, sizeof(int));
+
+    std::string tcp_addr = "tcp://*:"+anyToStr(m_port);
+    zmq_bind(frontend, tcp_addr.c_str()); //create a socket for communication with the AD
     zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
 
     const int NR_ITEMS = 2; 
@@ -115,68 +200,128 @@ void ZMQNet::run()
         { backend , 0, ZMQ_POLLIN, 0 }
     };
 
+    std::string perf_prefix = "router_";
+    PerfTimer timer, freq_timer;
+
 #ifdef _PERF_METRIC
+    m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
+
     unsigned int n_requests = 0, n_replies = 0;
-    Clock::time_point t_start, t_end, t_init;
-    MilliSec duration, elapsed;
+    double duration, elapsed;
     std::ofstream f;
 
     f.open(logdir + "/ps_perf.txt", std::fstream::out | std::fstream::app);
     if (f.is_open())
         f << "# PS PERFORMANCE MEASURE" << std::endl;
-    t_init = Clock::now();
-    t_start = Clock::now();  
+    Clock::time_point t_init = Clock::now();
+    Clock::time_point t_start = Clock::now();  
+    Clock::time_point t_end;
 #endif
+    
+    //For measuring receive/response frequency
+    freq_timer.start();
+    size_t freq_n_req = 0, freq_n_reply = 0;
 
     VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
     m_n_requests = 0;
     while(true){
+      if(m_client_has_connected && m_clients == 0){
+	if(m_n_requests == 0){
+	  VERBOSE(std::cout << "ZMQnet all clients have disconnected and queue cleared" << std::endl);
+	  break;
+	}else{
+	  VERBOSE(std::cout << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl);	  
+	}
+      }
+
+      timer.start();
       int err = zmq_poll(items, NR_ITEMS, -1);  //wait (indefinitely) for comms on both sockets
       if(err == -1){
 	std::string error = std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n";
 	throw std::runtime_error(error);
       }
+      m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+
       VERBOSE(std::cout << "ZMQnet received message" << std::endl);
+
+      //If the message was received from a worker thread, route to the AD
+      //Drain the outgoing queue first to free resources
+      if(items[1].revents & ZMQ_POLLIN) {
+	timer.start();
+	int nmsg = recvAndSend(backend, frontend, m_max_pollcyc_msg);
+	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
+	VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from back to front\n");
+	m_n_requests -= nmsg; //decrement number of outstanding requests
+#ifdef _PERF_METRIC
+	m_perf.add(perf_prefix + "route_front_to_back_msg_per_cyc", nmsg);
+	freq_n_reply += nmsg;
+	n_replies += nmsg;
+#endif
+      } 
       
       //If the message was received from the AD, route the message to a worker thread
       if(items[0].revents & ZMQ_POLLIN) { 
-	if (recvAndSend(frontend, backend)) {
-	  stop();
-	  break;
-	}
-	m_n_requests++;
+	timer.start();
+	int nmsg = recvAndSend(frontend, backend, m_max_pollcyc_msg);
+	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
+	VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from front to back\n");
+	m_n_requests += nmsg;
 #ifdef _PERF_METRIC
-	n_requests++;
+	m_perf.add(perf_prefix + "route_back_to_front_msg_per_cyc", nmsg);
+	freq_n_req += nmsg;
+	n_requests += nmsg;
 #endif
       }
 
-      //If the message was received from a worker thread, route to the AD
-      if(items[1].revents & ZMQ_POLLIN) {
-	recvAndSend(backend, frontend);
-	m_n_requests--;
-#ifdef _PERF_METRIC
-	n_replies++;
-#endif
-      } 
 
 #ifdef _PERF_METRIC
       t_end = Clock::now();
-      duration = std::chrono::duration_cast<MilliSec>(t_end - t_start);
-      if (duration.count() >= 10000 && f.is_open()) {
-	elapsed = std::chrono::duration_cast<MilliSec>(t_end - t_init);
-	f << elapsed.count() << " " 
+      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
+      if (duration >= 10000. && f.is_open()) {
+	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+	f << elapsed << " " 
 	  << n_requests << " " 
 	  << n_replies << " " 
-	  << duration.count() 
+	  << duration 
 	  << std::endl;
 	t_start = t_end;
 	n_requests = 0;
 	n_replies = 0;
       }
+
+      double freq_elapsed = freq_timer.elapsed_ms();
+      if(freq_elapsed > 1000){
+	m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
+	m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
+	freq_n_req = freq_n_reply = 0; freq_timer.start();
+      }
 #endif
     }
 
-    //Close the sockets
+    //Force perf output when exiting
+#ifdef _PERF_METRIC
+      t_end = Clock::now();
+      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
+      if (f.is_open()) {
+	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+	f << elapsed << " " 
+	  << n_requests << " " 
+	  << n_replies << " " 
+	  << duration
+	  << std::endl;
+      }
+
+      double freq_elapsed = freq_timer.elapsed_ms();
+      m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
+      m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
+
+      //Combine and write out statistics
+      for(auto const &t : m_perf_thr)
+	m_perf += t;
+      m_perf.write();
+#endif
+
+    //Close the sockets; this will end the worker threads
     zmq_close(frontend);
     zmq_close(backend);
 
@@ -186,27 +331,36 @@ void ZMQNet::run()
 #endif
 }
 
-bool ZMQNet::recvAndSend(void* skFrom, void* skTo)
-{
-    int more, len;
-    size_t more_size = sizeof(int);
 
-    do {
-        zmq_msg_t msg;
-        zmq_msg_init(&msg);
+int ZMQNet::recvAndSend(void* skFrom, void* skTo, int max_msg){
+  //Returns number of messages routed (i.e. excluding disconnect message)
+  size_t more_size = sizeof(int);
+  int msg_count = 0;
 
-        len = zmq_msg_recv(&msg, skFrom, 0);
-        zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size);
-        if (more == 0 && len == 0)
-        {
-            return true;
-        }
-        zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
-        zmq_msg_close(&msg);
-    } while (more);
+  while(msg_count < max_msg){
+    zmq_msg_t msg;
+    zmq_msg_init(&msg);
 
-    return false;
+    int len = zmq_msg_recv(&msg, skFrom, ZMQ_DONTWAIT); //non-blocking receive
+    if(len == -1 && errno == EAGAIN){ //no more messages on queue
+      zmq_msg_close(&msg);
+      return msg_count;
+    }else if(len == -1) throw std::runtime_error("ZMQNet::recvAndSend error receiving: " + std::string(zmq_strerror(errno)));
+    int more;
+    zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size); //check whether message is part of a multi-part message
+
+    if(!more)
+      ++msg_count; //don't count multi-part messages as distinct messages to avoid exiting too early
+    
+    if(more || len)
+      zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
+
+    zmq_msg_close(&msg);
+  }
+
+  return msg_count;
 }
+
 
 void ZMQNet::stop()
 {
@@ -243,8 +397,8 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     zmq_msg_t msg;
     int ret;
     zmq_msg_init(&msg);
-    ret = zmq_msg_recv(&msg, socket, 0);
-    strmsg.assign((char*)zmq_msg_data(&msg), ret);
+    ret = zmq_msg_recv(&msg, socket, 0);    
+    if(ret != -1) strmsg.assign((char*)zmq_msg_data(&msg), ret);
     zmq_msg_close(&msg);
     return ret;
 }

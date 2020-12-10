@@ -1,62 +1,52 @@
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
 #include <chimbuko/verbose.hpp>
+#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 
 using namespace chimbuko;
 
-GlobalAnomalyStats::GlobalAnomalyStats(const std::vector<int>& n_ranks)
-{
-    reset_anomaly_stat(n_ranks);
+void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
+  std::lock_guard<std::mutex> _(m_mutex_anom);
+  auto sit = m_anomaly_stats.find(anom.get_stat_id());
+  if(sit == m_anomaly_stats.end()){ //new app_idx/rank detected
+    m_anomaly_stats[anom.get_stat_id()].set_do_accumulate(true);
+    sit = m_anomaly_stats.find(anom.get_stat_id());
+  }
+  sit->second.add(anom);
 }
 
-void GlobalAnomalyStats::reset_anomaly_stat(const std::vector<int>& n_ranks)
-{
-    if (n_ranks.size() == 0)
-        return;
-
-    if (m_anomaly_stats.size())
-    {
-        for (auto item: m_anomaly_stats)
-        {
-            delete item.second;
-        }
-        m_anomaly_stats.clear();
+void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data){
+  nlohmann::json j = nlohmann::json::parse(data);
+  if (j.count("anomaly")){ 
+    AnomalyData d(j["anomaly"].dump());
+    update_anomaly_stat(d);
+  }
+  
+  if (j.count("func")){
+    for (auto f: j["func"]) {
+      update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
+		       RunStats::from_strstate(f["inclusive"].dump()), 
+		       RunStats::from_strstate(f["exclusive"].dump())
+		       ); //locks
     }
-
-    // pre-allocate AnomalyStat to avoid race-condition
-    for (int app_id = 0; app_id < (int)n_ranks.size(); app_id++) {
-        for (int rank_id = 0; rank_id < n_ranks[app_id]; rank_id++){
-            std::string stat_id = std::to_string(app_id) + ":" + std::to_string(rank_id);
-            m_anomaly_stats[stat_id] = new AnomalyStat(true);
-        }
-    }
+  } 
 }
 
-GlobalAnomalyStats::~GlobalAnomalyStats()
-{
-    for (auto pair: m_anomaly_stats)
-        delete pair.second;
-}
 
-void GlobalAnomalyStats::add_anomaly_data(const std::string& data)
-{
-    nlohmann::json j = nlohmann::json::parse(data);
-    if (j.count("anomaly"))
-    {
-        AnomalyData d(j["anomaly"].dump());
-        if (m_anomaly_stats.count(d.get_stat_id()))
-            m_anomaly_stats[d.get_stat_id()]->add(d);
-    }
 
-    if (j.count("func"))
-    {
-        for (auto f: j["func"]) {
-            update_func_stat(
-                f["id"], f["name"], f["n_anomaly"],
-                RunStats::from_strstate(f["inclusive"].dump()), 
-                RunStats::from_strstate(f["exclusive"].dump())
-            );
-        }
-    }
+void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
+{
+  ADLocalFuncStatistics::State j;
+  j.deserialize_cerealpb(data);
+
+  const AnomalyData &d = j.anomaly;
+  update_anomaly_stat(d);
+
+  for (auto f: j.func) {
+    update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
+		     RunStats::from_state(f.inclusive), 
+		     RunStats::from_state(f.exclusive)
+		     ); //locks
+  }
 }
 
 std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
@@ -64,71 +54,84 @@ std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) con
   if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
     return "";
   
-  RunStats stat = m_anomaly_stats.find(stat_id)->second->get_stats();
+  RunStats stat = m_anomaly_stats.find(stat_id)->second.get_stats();
   return stat.get_json().dump();
 }
+
+RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) const
+{
+  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+    throw std::runtime_error("GlobalAnomalyStats::get_anomaly_stat_obj stat_id " + stat_id + " does not exist");
+  return m_anomaly_stats.find(stat_id)->second.get_stats();
+}
+
+
 
 size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
 {
     if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
         return 0;
 
-    return m_anomaly_stats.find(stat_id)->second->get_n_data();
+    return m_anomaly_stats.find(stat_id)->second.get_n_data();
 }
 
-nlohmann::json GlobalAnomalyStats::collect_stat_data()
-{
-    nlohmann::json jsonObjects = nlohmann::json::array();
+nlohmann::json GlobalAnomalyStats::collect_stat_data(){
+  nlohmann::json jsonObjects = nlohmann::json::array();
     
-    for (auto pair: m_anomaly_stats)
-    {
-        std::string stat_id = pair.first;
-        auto stats = pair.second->get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
-	                                 //We now own the std::list<std::string>* pointer and have to delete it
+  //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
+  //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
+  //that have been collected from that rank since the last flush
+  for (auto &pair: m_anomaly_stats){
+    std::string stat_id = pair.first;
+    auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
+      //We now own the std::list<std::string>* pointer and have to delete it
       
-        if (stats.second && stats.second->size())
-        {
-            nlohmann::json object;
-            object["key"] = stat_id;
-            object["stats"] = stats.first.get_json();
+    if (stats.second && stats.second->size()){
+      nlohmann::json object;
+      object["key"] = stat_id;
+      object["stats"] = stats.first.get_json();
 
-            object["data"] = nlohmann::json::array();
-            for (auto strdata: *stats.second)
-            {
-                object["data"].push_back(
-                    AnomalyData(strdata).get_json()
-                );
-            }
+      object["data"] = nlohmann::json::array();
+      for (auto strdata: *stats.second)
+	{
+	  object["data"].push_back(
+				   AnomalyData(strdata).get_json()
+				   );
+	}
 
-            jsonObjects.push_back(object);
-            delete stats.second;            
-        }
+      jsonObjects.push_back(object);
+      delete stats.second;            
     }
+  }
 
-    return jsonObjects;
+  return jsonObjects;
 }
 
-nlohmann::json GlobalAnomalyStats::collect_func_data() const
-{
-    nlohmann::json jsonObjects = nlohmann::json::array();
-    {
-        std::lock_guard<std::mutex> _(m_mutex_func);
-        for (auto pair: m_func)
-        {
-            nlohmann::json object;
-            object["fid"] = pair.first;
-            object["name"] = pair.second;
-            object["stats"] = m_func_anomaly.find(pair.first)->second.get_json();
-            object["inclusive"] = m_inclusive.find(pair.first)->second.get_json();
-            object["exclusive"] = m_exclusive.find(pair.first)->second.get_json();
-            jsonObjects.push_back(object);
-        }
+nlohmann::json GlobalAnomalyStats::collect_func_data() const{
+  nlohmann::json jsonObjects = nlohmann::json::array();
+  {
+    std::lock_guard<std::mutex> _(m_mutex_func);
+    for(const auto &p : m_funcstats){
+      unsigned long pid = p.first;
+      for(const auto &f : p.second){
+	unsigned long fid = f.first;
+	const FuncStats &fstat = f.second;
+
+	nlohmann::json object;
+	object["app"] = pid;
+	object["fid"] = fid;
+	object["name"] = fstat.func;
+	object["stats"] = fstat.func_anomaly.get_json();
+	object["inclusive"] = fstat.inclusive.get_json();
+	object["exclusive"] = fstat.exclusive.get_json();
+	jsonObjects.push_back(object);
+      }
     }
-    return jsonObjects;
+  }
+  return jsonObjects;
 }
 
-nlohmann::json GlobalAnomalyStats::collect()
-{
+nlohmann::json GlobalAnomalyStats::collect(){
     nlohmann::json object;
     object["anomaly"] = collect_stat_data();
     if (object["anomaly"].size() == 0)
@@ -140,15 +143,24 @@ nlohmann::json GlobalAnomalyStats::collect()
 }
 
 
-void GlobalAnomalyStats::update_func_stat(unsigned long id, const std::string& name, 
-    unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive)
-{
-    std::lock_guard<std::mutex> _(m_mutex_func);   
-    m_func[id] = name;
-    if (m_func_anomaly.count(id) == 0) {
-        m_func_anomaly[id].set_do_accumulate(true);
-    }
-    m_func_anomaly[id].push(n_anomaly);
-    m_inclusive[id] += inclusive;
-    m_exclusive[id] += exclusive;
+void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::string& name, 
+					  unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
+  std::lock_guard<std::mutex> _(m_mutex_func);
+  //Determine if previously seen
+  bool first_encounter = false;
+  auto pit = m_funcstats.find(pid);
+  if(pit == m_funcstats.end() || pit->second.count(id) == 0) 
+    first_encounter = true;
+
+  //Get stats struct (will create entries if needed)
+  FuncStats &fstats = m_funcstats[pid][id];   
+
+  if(first_encounter){
+    fstats.func = name;
+    fstats.func_anomaly.set_do_accumulate(true);
+  }
+
+  fstats.func_anomaly.push(n_anomaly);
+  fstats.inclusive += inclusive;
+  fstats.exclusive += exclusive;
 }

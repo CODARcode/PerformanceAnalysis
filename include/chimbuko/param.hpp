@@ -66,14 +66,23 @@ namespace chimbuko {
    */
   class NetPayloadUpdateParams: public NetPayloadBase{
     ParamInterface * m_param;
+    bool m_freeze; /**< If set to true, the additional data from the AD will be ignored and the parameter state will not change*/
   public:
-    NetPayloadUpdateParams(ParamInterface *param): m_param(param){}
+    /**
+     * @brief Construct the NetPayloadUpdateParams object
+     * @param param A pointer to an instance of ParamInterface
+     * @param freeze If true the state will not be modified by the update command
+     */
+    NetPayloadUpdateParams(ParamInterface *param, bool freeze = false): m_param(param), m_freeze(freeze){}
     MessageKind kind() const{ return MessageKind::PARAMETERS; }
     MessageType type() const{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
       //Response message is a copy of the updated statistics in JSON form
-      response.set_msg(m_param->update(message.buf(), true), false);
+      response.set_msg(m_freeze ? 
+		       m_param->serialize() : 
+		       m_param->update(message.buf(), true),
+		       false);
     }	
   };
   /** 

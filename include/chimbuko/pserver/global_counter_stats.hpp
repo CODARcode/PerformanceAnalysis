@@ -22,12 +22,19 @@ namespace chimbuko{
      *
      * For data format see ADLocalCounterStatistics::get_json_state()
      */
-    void add_data(const std::string& data);
+    void add_data_json(const std::string& data);
+
+    /**
+     * @brief Merge internal statistics with those contained within the Cereal portable binary string 'data'
+     *
+     * For data format see ADLocalCounterStatistics::State::serialize_cerealpb()
+     */
+    void add_data_cerealpb(const std::string& data);
 
     /**
      * @brief Return a copy of the internal counter statistics
      */
-    std::unordered_map<std::string, RunStats> get_stats() const;
+    std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > get_stats() const;
     
     /**
      * @brief Serialize the state into a JSON object for sending to viz
@@ -36,7 +43,7 @@ namespace chimbuko{
 
   protected:
     mutable std::mutex m_mutex;
-    std::unordered_map<std::string, RunStats> m_counter_stats; /**< Map of counter name to global statistics*/
+    std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > m_counter_stats; /**< Map of program index and counter name to global statistics*/
   };
 
   /**
@@ -51,7 +58,7 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
-      m_global_counter_stats->add_data(message.buf()); //note, this uses a mutex lock internally
+      m_global_counter_stats->add_data_cerealpb(message.buf()); //note, this uses a mutex lock internally
       response.set_msg("", false);
     }
   };
@@ -65,8 +72,9 @@ namespace chimbuko{
   public:
     PSstatSenderGlobalCounterStatsPayload(GlobalCounterStats *stats): m_stats(stats){}
     void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->get_json_state();
-      into["counter_stats"] = std::move(stats);
+      nlohmann::json stats = m_stats->get_json_state(); //a JSON array
+      if(stats.size())
+	into["counter_stats"] = std::move(stats);
     }
   };
 

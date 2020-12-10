@@ -1,0 +1,3 @@
+This example compiles a C code containing a fake anomaly as a Python module and runs it under Python with Chimbuko
+
+Developed by Allen Liu, SULI program intern, Summer 2020

@@ -1,5 +1,5 @@
 #pragma once
-#include<config.h>
+#include<chimbuko_config.h>
 
 #ifdef ENABLE_PROVDB
 
@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <queue>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
+#include <chimbuko/util/PerfStats.hpp>
 
 namespace chimbuko{
 
@@ -43,7 +44,6 @@ namespace chimbuko{
    * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
    */
   class AnomalousSendManager{
-    static const int MAX_OUTSTANDING = 100;
     std::queue<sonata::AsyncRequest> outstanding;
 
     /**
@@ -60,6 +60,13 @@ namespace chimbuko{
      * @brief Block (wait) until all outstanding requests have completed
      */
     void waitAll();
+
+    /**
+     * @brief Get the number of incomplete (outstanding) requests
+     *
+     * Non-const because it must purge completed requests from the queue prior to counting
+     */
+    size_t getNoutstanding();
 
     ~AnomalousSendManager();
   };
@@ -83,16 +90,34 @@ namespace chimbuko{
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+    bool m_perform_handshake; /**< Optionally disable the client->server registration */
+
+    PerfStats *m_stats; /**< Performance data gathering*/
+
+    /**
+     * @brief Send std::vector of JSON strings asynchronously to the database (non-blocking). This is intended for sending many independent data entries at once.
+     * @param entries std::vector of data
+     * @param type The data type
+     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
+     */
+    void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
+    
   public:
-    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr){}
+    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
 
     ~ADProvenanceDBclient();
+
+    /**
+     * @brief Enable or disable the client<->server handshake (call before connecting)
+     */
+    void setEnableHandshake(const bool to){ m_perform_handshake = to; }
     
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
+     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
      */
-    void connect(const std::string &addr);
+    void connect(const std::string &addr, const int nshards);
 
     /**
      * @brief Check if connnection has been established to provider
@@ -197,6 +222,16 @@ namespace chimbuko{
      * @return A map between the variables and their values
      */
     std::unordered_map<std::string,std::string> execute(const std::string &code, const std::unordered_set<std::string>& vars) const;
+
+    /**
+     * @brief Link a PerfStats instance to monitor performance
+     */
+    void linkPerf(PerfStats *stats){ m_stats = stats; }
+
+    /**
+     * @brief Get the number of incomplete (outstanding) asynchronous stores
+     */
+    size_t getNoutstandingAsyncReqs(){ return anom_send_man.getNoutstanding(); }
 
   };
 

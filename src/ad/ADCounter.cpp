@@ -1,18 +1,18 @@
 #include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/util/error.hpp"
 #include <iostream>
 
 using namespace chimbuko;
 
 void ADCounter::addCounter(const Event_t& event){
-  if(!m_counterMap) throw std::runtime_error("Counter mapping not linked");
+  if(!m_counterMap) fatal_error("Counter mapping not linked");
 
   //If this is the first counter after a flush, we recreate the list
   if(!m_counters) m_counters = new CounterDataListMap_p_t;
 
   //Get the counter name
-  if(m_counterMap == nullptr) throw std::runtime_error("Counter map not linked");
   auto it = m_counterMap->find(event.counter_id());
-  if(it == m_counterMap->end()) throw std::runtime_error("Counter index could not be found in map");
+  if(it == m_counterMap->end()) fatal_error("Counter index " + std::to_string(event.counter_id()) + " could not be found in map");
 
   //Append the counter to the list, and add the iterator to the maps
   auto &count_list_prt = (*m_counters)[event.pid()][event.rid()][event.tid()];

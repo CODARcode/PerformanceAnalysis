@@ -10,6 +10,7 @@ using namespace chimbuko;
 
 MPINet::MPINet() : m_inited(0), m_tpool(nullptr), m_stop(false)
 {
+  add_payload(new NetPayloadHandShake());
 }
 
 MPINet::~MPINet()
@@ -20,34 +21,38 @@ MPINet::~MPINet()
     }    
 }
 
-void MPINet::init(int* argc, char*** argv, int nt)
-{    
-    // initialize MPI, if it didn't
-    MPI_Initialized(&m_inited);
-    if (!m_inited) 
+void MPINet::init(int* argc, char*** argv, int nt){    
+  //Check worker_idx = 0 for all payloads
+  for(auto const &e : m_payloads)
+    if(e.first != 0) throw std::runtime_error("MPINet all payloads must have worker_idx=0");
+  
+
+  // initialize MPI, if it didn't
+  MPI_Initialized(&m_inited);
+  if (!m_inited) 
     {
-        MPI_Init_thread(argc, &(*argv), MPI_THREAD_MULTIPLE, &m_thread_provided);
+      MPI_Init_thread(argc, &(*argv), MPI_THREAD_MULTIPLE, &m_thread_provided);
     }
 
-    // check thread level
-    MPI_Query_thread(&m_thread_provided);
-    if (m_thread_provided != MPI_THREAD_MULTIPLE)
+  // check thread level
+  MPI_Query_thread(&m_thread_provided);
+  if (m_thread_provided != MPI_THREAD_MULTIPLE)
     {
-        std::cerr << "Currenlty only support MPI_THREAD_MULTIPLE mode\n";
-        exit(1);
+      std::cerr << "Currenlty only support MPI_THREAD_MULTIPLE mode\n";
+      exit(1);
     }
 
-    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (m_size > 1)
+  MPI_Comm_size(MPI_COMM_WORLD, &m_size);
+  MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (m_size > 1)
     {
-        std::cerr << "Currently MPINET must be size of 1!\n";
-        exit(1);
+      std::cerr << "Currently MPINET must be size of 1!\n";
+      exit(1);
     }
     
-    // initialize thread pool
-    init_thread_pool(nt);
+  // initialize thread pool
+  init_thread_pool(nt);
 }
 
 void MPINet::finalize()
@@ -104,8 +109,8 @@ void MPINet::run()
 
             _msg_reply = _msg.createReply();
 	    
-	    auto kit = m_payloads.find(_msg.kind());
-	    if(kit == m_payloads.end()) throw std::runtime_error("No payload associated with the message kind provided");
+	    auto kit = m_payloads.begin()->second.find(_msg.kind());
+	    if(kit == m_payloads.begin()->second.end()) throw std::runtime_error("No payload associated with the message kind provided");
 	    auto pit = kit->second.find(_msg.type());
 	    if(pit == kit->second.end()) throw std::runtime_error("No payload associated with the message type provided");
 	    

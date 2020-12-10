@@ -4,7 +4,10 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <regex>
 #include <chimbuko/ad/utils.hpp>
+#include <chimbuko/verbose.hpp>
+#include <chimbuko/util/string.hpp>
 
 namespace chimbuko{
 
@@ -37,5 +40,19 @@ std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid)
     // return generate_event_id(rank, step, idx) + "_" + std::to_string(eid);
 }
 
+std::string getHPserverIP(const std::string &base_ip, const int hpserver_nthr, const int rank){
+  if(hpserver_nthr <= 0) throw std::runtime_error("getHPserverIP input hpserver_nthr cannot be <1");
+  std::regex r(R"((.*)\:(\d+)\s*$)");
+  std::smatch m;
+  if(!std::regex_match(base_ip, m, r)) throw std::runtime_error("getHPserverIP Could not parse base IP address " + base_ip);
+  std::string server = m[1];
+  int base_port = strToAny<int>(m[2]);
+  
+  int port_offset = rank % hpserver_nthr; //assign round-robin to ranks
+
+  int port = base_port + port_offset;
+  std::string new_ip = server + ":" + anyToStr(port);
+  return new_ip;
+}
 
 }

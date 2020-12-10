@@ -49,24 +49,40 @@ namespace chimbuko {
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Convert a run statistics mapping into a string
+     * @brief Convert a run statistics mapping into a JSON string
+     * @param The map between global function index and statistics
+     * @return Run statistics in string format
+     */
+    static std::string serialize_json(const std::unordered_map<unsigned long, RunStats>& runstats);
+
+    /**
+     * @brief Convert a run statistics JSON string into a map
+     * @param[in] parameters The parameter string
+     * @param[out] runstats The map between global function index and statistics
+     */
+    static void deserialize_json(const std::string& parameters,
+			    std::unordered_map<unsigned long, RunStats>& runstats);
+
+
+    /**
+     * @brief Convert a run statistics mapping into a Cereal portable binary representration
      * @param The run stats mapping
      * @return Run statistics in string format
      */
-    static std::string serialize(const std::unordered_map<unsigned long, RunStats>& runstats);
+    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, RunStats>& runstats);
 
     /**
-     * @brief Convert a run statistics string into a map
+     * @brief Convert a run statistics Cereal portable binary representation string into a map
      * @param[in] parameters The parameter string
-     * @param[out] runstats The run stats map
+     * @param[out] runstats The map between global function index and statistics
      */
-    static void deserialize(const std::string& parameters,
+    static void deserialize_cerealpb(const std::string& parameters,
 			    std::unordered_map<unsigned long, RunStats>& runstats);
 
 
     /**
      * @brief Update the internal run statistics with those included in the input map
-     * @param[in] runstats The input map
+     * @param[in] runstats The map between global function index and statistics
      */
     void update(const std::unordered_map<unsigned long, RunStats>& runstats);
 
@@ -78,7 +94,7 @@ namespace chimbuko {
     
     /**
      * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
-     * @param[in,out] runstats The input/output map
+     * @param[in,out] runstats The map between global function index and statistics
      */
     void update_and_return(std::unordered_map<unsigned long, RunStats>& runstats);
 
@@ -90,28 +106,37 @@ namespace chimbuko {
 
     /**
      * @brief Set the internal run statistics to match those included in the input map. Overwrite performed only for those keys in input.
-     * @param runstats The input map
+     * @param runstats The input map between global function index and statistics
      */
     void assign(const std::unordered_map<unsigned long, RunStats>& runstats);
 
     /**
-     * @brief Get an element of the internal map. id is the function index
+     * @brief Get an element of the internal map
+     * @param id The global function index
      */
     RunStats& operator [](unsigned long id) { return m_runstats[id]; }
 
     /**
-     * @brief Get the internal map
+     * @brief Get the internal map between global function index and statistics
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
 
     /**
      * @brief Get the statistical distribution associated with a given function
+     * 
+     * Functionality is identical to operator[] only it will throw an error if the function does not exist
      */
     const RunStats & get_function_stats(const unsigned long func_id) const override;
 
+
+  protected:
+    /**
+     * @brief Get the internal map of global function index to statistics
+     */
+    std::unordered_map<unsigned long, RunStats> & access_runstats(){ return m_runstats; }    
     
   private:
-    std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of function index to statistics*/
+    std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of global function index to statistics*/
   };
 
 } // end of chimbuko namespace

@@ -1,0 +1,35 @@
+FROM chimbuko/ad:ubuntu18.04-cuda10.1-provdb AS base
+COPY --from=chimbuko/tau2:ubuntu18.04-cuda10.1 /opt /opt
+COPY --from=chimbuko/viz:ubuntu18.04-cuda10.1 /opt/chimbuko/viz /opt/chimbuko/viz
+
+ENV PATH=/opt/tau2/x86_64/bin/:/opt/chimbuko/ad/bin:${PATH}
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+RUN apt-get update && apt-get install -y gdb emacs-nox vim psmisc
+
+#Create a setup script
+RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load py-mochi-sonata" >> /root/.bashrc
+
+FROM base AS build
+
+WORKDIR /Downloads
+RUN echo "FORCE UPDATE 10_29_20_18_52" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+
+#Compile the (MPI) examples
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-python-cupti-pdt-adios2
+
+WORKDIR /benchmark_suite/cupti_gpu_kernel_outlier
+RUN cp /Downloads/PerformanceAnalysis/benchmark_suite/cupti_gpu_kernel_outlier/* . && \
+    make
+
+WORKDIR /benchmark_suite/cupti_gpu_kernel_outlier_multistream
+RUN cp /Downloads/PerformanceAnalysis/benchmark_suite/cupti_gpu_kernel_outlier_multistream/* . && \
+    make
+
+#Cleanup
+FROM base
+
+COPY --from=build /benchmark_suite /benchmark_suite
+WORKDIR /benchmark_suite
+
+ENTRYPOINT [ "/bin/bash" ]

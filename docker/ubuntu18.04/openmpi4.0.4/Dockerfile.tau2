@@ -33,15 +33,17 @@ WORKDIR /Downloads
 
 #Download and install tau from git
 #Change the tag below to force docker build not to use cache
-RUN echo "FORCE REDOWNLOAD 4_9_20_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
+RUN echo "FORCE REDOWNLOAD 10_30_20_16_39" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
+#pthread+mpi
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -papi=/opt/papi \
  && make -j$JOBS install
 
+#pthread+python+mpi
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
@@ -49,14 +51,15 @@ RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
     -papi=/opt/papi \
  && make -j$JOBS install
 
-RUN git log | head -1 > /opt/tau2/git_version
+#pthread+python
+RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran \
+    -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
+    -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2_nompi \
+    -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
+    -papi=/opt/papi \
+ && make -j$JOBS install
 
-# Use tarball version instead
-# RUN	wget http://tau.uoregon.edu/tau.tgz && \
-# 	tar -xvzf tau.tgz && \
-#  	cd tau-2.29 && \
-# 	./configure -cc=gcc -c++=g++ -fortran=gfortran -mpi -pthread -bfd=download -unwind=download -pdt=/opt/pdt -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 -papi=/opt/papi && \
-#  	make -j$JOBS install
+RUN git log | head -1 > /opt/tau2/git_version
 
 FROM chimbuko/adios2:ubuntu18.04 
 

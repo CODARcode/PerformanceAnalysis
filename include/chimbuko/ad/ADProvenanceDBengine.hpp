@@ -1,5 +1,5 @@
 #pragma once
-#include<config.h>
+#include<chimbuko_config.h>
 
 #ifdef ENABLE_PROVDB
 
@@ -18,7 +18,7 @@ namespace chimbuko{
      */
     struct data_v{
       thallium::engine* m_eng;
-      std::pair<std::string, int> m_protocol;
+      std::pair<std::string, int> m_protocol; /**< The protocol and mode (client/server)*/
       bool m_is_initialized;
       inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp;ofi_rxm", THALLIUM_CLIENT_MODE}), m_is_initialized(false){}
 
@@ -72,6 +72,12 @@ namespace chimbuko{
     static inline void finalize(){
       data().finalize();
     }
+
+    /**
+     * @brief Get the protocol from the address string
+     */
+    static std::string getProtocolFromAddress(const std::string &addr);
+    
 
   };
 

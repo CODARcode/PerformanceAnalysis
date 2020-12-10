@@ -1,7 +1,8 @@
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <curl/curl.h>
 #include <chimbuko/verbose.hpp>
-
+#include <sstream>
+#include <fstream>
 using namespace chimbuko;
 
 
@@ -39,32 +40,40 @@ static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
     return size * nmemb;
 }
 
-static void send_stat(std::string url, 
+static void send_stat(std::string url, std::string stat_save_dir,
 		      std::atomic_bool& bStop, 
 		      const std::vector<PSstatSenderPayloadBase*> &payloads,
 		      std::atomic_bool &bad,
 		      size_t send_freq){
   try{
-    curl_global_init(CURL_GLOBAL_ALL);
-    
+    bool write_curl = url.size() > 0;
+    bool write_disk = stat_save_dir.size() > 0;
+
     CURL* curl = nullptr;
     struct curl_slist * headers = nullptr;
     CURLcode res;
     long httpCode(0);
 
-    curl = curl_easy_init();
-    if (curl == nullptr) throw std::runtime_error("Failed to initialize curl easy handler");
+    //Initialize
+    if(write_curl){
+      curl_global_init(CURL_GLOBAL_ALL);
+      
+      curl = curl_easy_init();
+      if (curl == nullptr) throw std::runtime_error("Failed to initialize curl easy handler");
+      
+      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+      // Dont bother trying IPv6, which would increase DNS resolution time
+      curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+      // Don't wait forever, time out after 10 seconds 
+      //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+      // Follow HTTP redirects if necessary
+      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+      // header
+      headers = curl_slist_append(headers, "Content-Type: application/json");
+      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }      
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    // Dont bother trying IPv6, which would increase DNS resolution time
-    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-    // Don't wait forever, time out after 10 seconds 
-    //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
-    // Follow HTTP redirects if necessary
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    // header
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    size_t iter = 0;
 
     while (!bStop){
       nlohmann::json json_packet;
@@ -78,31 +87,41 @@ static void send_stat(std::string url,
       VERBOSE(std::cout << "PSstatSender packet size " << json_packet.size() << std::endl);
       VERBOSE(std::cout << "PSstatSender do_fetch=" << do_fetch << std::endl);
 
+      if(do_fetch && write_disk) throw std::runtime_error("PSstatSender payload requests callback but this is not possible if writing to disk");
+
       //Send if object has content
       if(json_packet.size() != 0){
 	std::string packet = json_packet.dump();
             
-	// send data
-	curl_fetch_str fetch(do_fetch); //request callback if 
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&fetch);
-      
-	res = curl_easy_perform(curl);
-	if (res != CURLE_OK){
-	  std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+	if(write_disk){ //Send data to disk
+	  std::stringstream fname; fname << stat_save_dir << "/pserver_output_stats_" << iter << ".json";
+	  std::ofstream of(fname.str());
+	  if(!of.good()) throw std::runtime_error("PSstatSender could not write to file "  + fname.str());
+	  of << packet;
 	}
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-      
-	if(do_fetch){
-	  for(auto payload : payloads){
-	    if(payload->do_fetch()) payload->process_callback(packet, fetch.m_payload);
+	if(write_curl){ //Send data via curl
+	  curl_fetch_str fetch(do_fetch); //request callback if 
+	  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
+	  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
+	  curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
+	  curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&fetch);
+	  
+	  res = curl_easy_perform(curl);
+	  if (res != CURLE_OK){
+	    std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
 	  }
-	}
+	  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+	  if(do_fetch){
+	    for(auto payload : payloads){
+	      if(payload->do_fetch()) payload->process_callback(packet, fetch.m_payload);
+	    }
+	  }
+	}      
       }//json object has content
       std::this_thread::sleep_for(std::chrono::milliseconds(send_freq));
+      ++iter;
     }
   
 
@@ -117,15 +136,15 @@ static void send_stat(std::string url,
   }
 }
 
-void PSstatSender::run_stat_sender(std::string url)
+void PSstatSender::run_stat_sender(const std::string &url, const std::string &stat_save_dir)
 {
-    if (url.size()) {
-        m_stat_sender = new std::thread(send_stat, url, 
-					std::ref(m_stop_sender), 
-					std::ref(m_payloads),
-					std::ref(m_bad),
-					m_send_freq);
-    }
+  if (url.size() || stat_save_dir.size()) {
+    m_stat_sender = new std::thread(send_stat, url, stat_save_dir,
+				    std::ref(m_stop_sender), 
+				    std::ref(m_payloads),
+				    std::ref(m_bad),
+				    m_send_freq);
+  }
 }
 
 void PSstatSender::stop_stat_sender(int wait_msec)

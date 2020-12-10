@@ -1,5 +1,8 @@
 #include "chimbuko/message.hpp"
 #include <sstream>
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/types/string.hpp>
+
 
 using namespace chimbuko;
 
@@ -49,17 +52,14 @@ void Message::set_info(int src, int dst, int type, int kind, int frame, int size
 
 void Message::set_msg(const std::string& msg, bool include_head)
 {
-    if (include_head)
-    {
-        nlohmann::json j = nlohmann::json::parse(msg);
-        m_head.set_header(j["Header"]);
-        m_buf = j["Buffer"].dump();
-    }
-    else
-    {
-        m_buf = msg;
-        m_head.size() = m_buf.size();
-    }            
+  if(include_head){
+    std::stringstream ss; ss << msg;
+    cereal::PortableBinaryInputArchive rd(ss);
+    rd(*this);
+  }else{
+    m_buf = msg;
+    m_head.size() = m_buf.size();
+  }
 }
 
 void Message::set_msg(int cmd)
@@ -69,18 +69,12 @@ void Message::set_msg(int cmd)
 
 std::string Message::data() const 
 {
-    nlohmann::json j;
-    j["Header"] = m_head.get_json();
-    try
-    {
-        j["Buffer"] = nlohmann::json::parse(m_buf);
-    }
-    catch(const std::exception& e)
-    {
-        j["Buffer"] = m_buf;
-    }
-    
-    return j.dump();
+  std::stringstream ss;
+  {
+    cereal::PortableBinaryOutputArchive wr(ss);
+    wr(*this);
+  }
+  return ss.str();
 }
 
 

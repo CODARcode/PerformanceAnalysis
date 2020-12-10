@@ -1,7 +1,32 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/ad/AnomalyStat.hpp>
+#include <chimbuko/ad/AnomalyData.hpp>
+
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/types/string.hpp>
 
 using namespace chimbuko;
+
+std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
+  std::stringstream ss;
+  {    
+    cereal::PortableBinaryOutputArchive wr(ss);
+    wr(*this);    
+  }
+  return ss.str();
+}
+
+void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
+  std::stringstream ss; ss << strstate;;
+  {    
+    cereal::PortableBinaryInputArchive rd(ss);
+    rd(*this);    
+  }
+}
+
+ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
+  m_program_idx(program_idx), m_rank(rank), m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf), m_n_anomalies(0){}
+
 
 void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
   for (auto it : *exec_data) { //loop over functions (key is function index)
@@ -27,7 +52,7 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
   m_n_anomalies += anom.nEvents(Anomalies::EventType::Outlier);
 }
 
-nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{
+nlohmann::json ADLocalFuncStatistics::get_json_state() const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();
@@ -36,6 +61,7 @@ nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{
     const unsigned long n = m_anomaly_count.find(func_id)->second;
 
     nlohmann::json obj;
+    obj["pid"] = m_program_idx;
     obj["id"] = func_id;
     obj["name"] = it.second;
     obj["n_anomaly"] = n;
@@ -44,18 +70,39 @@ nlohmann::json ADLocalFuncStatistics::get_json_state(const int rank) const{
     g_info["func"].push_back(obj);
   }
 
-  //NOTE: Application index is fixed to 0 here : fixme!
-  g_info["anomaly"] = AnomalyData(0, rank, m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
+  g_info["anomaly"] = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
+  return g_info;
+}
+
+
+ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
+  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
+  State g_info;
+  for (auto it : m_func) { //loop over function index
+    const unsigned long func_id = it.first;
+    State::FuncData obj;
+    obj.pid = m_program_idx;
+    obj.id = func_id;
+    obj.name = it.second;
+    obj.n_anomaly = m_anomaly_count.find(func_id)->second;
+    obj.inclusive = m_inclusive.find(func_id)->second.get_state();
+    obj.exclusive = m_exclusive.find(func_id)->second.get_state();
+    g_info.func.push_back(obj);
+  }
+
+  g_info.anomaly = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies);
   return g_info;
 }
 
 
 std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  nlohmann::json g_info = get_json_state(net_client.get_client_rank());
+  //nlohmann::json g_info = get_json_state();
+  State g_info = get_state();
   PerfTimer timer;
   timer.start();
-  auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
+  //auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
+  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step);
   
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_us", timer.elapsed_us());

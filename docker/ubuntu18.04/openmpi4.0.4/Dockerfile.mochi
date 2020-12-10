@@ -3,7 +3,7 @@ FROM chimbuko/base:ubuntu18.04 AS mochi-install
 SHELL ["/bin/bash", "-c"]
 
 ENV SPACK_ROOT=/spack/spack
-RUN echo FORCE_REDOWNLOAD_6_12_20_11_40 >> /dev/null && \
+RUN echo FORCE_REDOWNLOAD_10_30_20_12_53 >> /dev/null && \
     mkdir /spack && cd /spack && \
     git clone https://github.com/spack/spack.git
 
@@ -12,19 +12,13 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
     git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git && \
     spack repo add sds-repo
 
+COPY packages.yaml /root/.spack/
+
 RUN source /spack/spack/share/spack/setup-env.sh && \
-	spack install mercury && \
-	spack install mochi-abt-io && \
-	spack install mochi-sdskv+bdb+leveldb && \
-	spack install mochi-sonata ^libfabric fabrics=tcp,rxm && \
-	spack gc -y
-
-#FROM chimbuko/base:ubuntu18.04
-
-#SHELL ["/bin/bash", "-c"]
-#COPY --from=mochi-install /spack /spack
-#COPY --from=mochi-install /root/.spack /root/.spack
-#COPY --from=mochi-install /sds /sds
+        spack install mercury ^libfabric@1.9.0 && \
+	spack install mochi-sonata@master ^libfabric@1.9.0 && \
+	spack install py-mochi-sonata ^mochi-sonata@master ^python@3.6.0 ^libfabric@1.9.0 && \
+	spack gc -y && spack clean -a
 
 WORKDIR /
 

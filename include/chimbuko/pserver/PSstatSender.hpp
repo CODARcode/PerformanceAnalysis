@@ -60,8 +60,9 @@ namespace chimbuko{
      * @brief Start sending global anomaly stats to the visualization module (curl)
      * 
      * @param url The URL of the visualization module
+     * @param stat_save_dir Optionally output the stats to disk in this directory alongside/instead of to the viz module
      */
-    void run_stat_sender(std::string url);
+    void run_stat_sender(const std::string &url, const std::string &stat_save_dir = "");
 
     /**
      * @brief Stop sending global anomaly stats to the visualization module (curl)
