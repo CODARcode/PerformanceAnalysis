@@ -196,11 +196,51 @@ For GPU workflows we presently have examples only for Nvidia GPUS:
 - **cupti_gpu_kernel_outlier** (C++/CUDA): An example with an artificial anomaly introduced into a CUDA kernel. This example demonstrates how to compile and run with C++/CUDA.
 - **cupti_gpu_kernel_outlier_multistream** (C++/CUDA): A variant of the above but with the kernel executed simultaneously on multiple streams.
 
-For convenience we provide docker images in which these examples can be run alongside the full Chimbuko stack:
-.. code:: bash
-   docker pull chimbuko/run_examples:ubuntu18.04-provdb
+For convenience we provide docker images in which these examples can be run alongside the full Chimbuko stack. The CPU examples can be run as:
 
-The command to properly execute the docker image can be found in a script in the source repository, **benchmark_suite/run_cpu_examples_docker.sh**.
+.. code:: bash
+	  
+   docker pull chimbuko/run_examples:latest
+   docker run --rm -it -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_examples:latest
+
+And connect to this visualization server at **localhost:5002**.
+
+For the GPU examples the user must have access to a system with an installation of the NVidia CUDA driver and runtime compatible with CUDA 10.1 as well as a Docker installation configured to support the GPU. Internally we use the `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ tool to start the Docker images. To run,
+
+.. code:: bash
+	  
+	  docker pull chimbuko/run_examples:latest-gpu
+	  nvidia-docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_examples:latest-gpu
+
+And connect to this visualization server at **localhost:5002**.	  
+
+We also provide DockerFiles and run scripts for two real-world scientific applications described below:
+
+NWChem
+^^^^^^
+
+`NWChem <https://www.nwchem-sw.org/>`_ (Northwest Computational Chemistry Package) is the US DOE's premier massively parallel computational chemistry package, largely written in Fortran. We provide a `Docker image <https://hub.docker.com/r/chimbuko/run_nwchem>`_ demonstrating the coupling of an NWChem molecular dynamics simulation of the ethanol molecule with Chimbuko. To run the image:
+
+.. code:: bash
+	  
+	  docker pull chimbuko/run_nwchem:latest
+	  docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_nwchem:latest
+
+And connect to this visualization server at **localhost:5002**.
+
+MOCU (ExaLearn)
+^^^^^^^^^^^^^^^
+
+The MOCU application is part of the `ExaLearn <https://github.com/exalearn>`_ project, a US DOE-funded organization whose role is to develop machine learning techniques for HPC environments. The MOCU (Mean Objective Cost of Uncertainty) code is a PyCuda GPU application for NVidia GPUs that computes uncertainty quantification values of the Kuramoto model of coupled oscillators, which is often used to model the behavior of chemical and biological systems as well as in neuroscience.
+
+To run the image the user must have access to a system with an installation of the NVidia CUDA driver and runtime compatible with CUDA 10.1 as well as a Docker installation configured to support the GPU. Internally we use the `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ tool to start the Docker images. To run:
+
+.. code:: bash
+	  
+	  docker pull chimbuko/run_mocu:latest
+	  nvidia-docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_mocu:latest
+
+And connect to this visualization server at **localhost:5002**.
 
 
 Running Chimbuko on Summit
