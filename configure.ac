@@ -1,4 +1,5 @@
 AC_INIT(Chimbuko Performance Data Analysis, 3.0)
+: ${CXXFLAGS=""}   #Disable default optimization
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 AC_LANG(C++)
 AC_PROG_CXX
@@ -18,12 +19,12 @@ AC_ARG_ENABLE([gcov],
 
 if test "x$enable_gcov" != "xno"; then
 AC_MSG_NOTICE([Compiling with coverage report])
-CXXFLAGS=" -O0 --coverage -g"
-LDFLAGS=" --coverage"
+CXXFLAGS+=" -O0 --coverage -g"
+LDFLAGS+=" --coverage"
 else
 AC_MSG_NOTICE([Compiling with optimization])
-CXXFLAGS=" -O3 -g"
-LDFLAGS=""
+CXXFLAGS+=" -O3 -g"
+LDFLAGS+=""
 fi
 
 # Check for c++17
