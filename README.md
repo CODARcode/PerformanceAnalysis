@@ -8,7 +8,7 @@ This library is part of the [CHIMBUKO](https://github.com/CODARcode/Chimbuko) so
 
 # Documentation
 
-Please find [details from here](https://codarcode.github.io/PerformanceAnalysis/).
+Comprehensive documentation on the installation and running of Chimbuko, as well as a full API reference, can be found [here](https://chimbuko-performance-analysis.readthedocs.io/en/latest/).
 
 # Releases
 
