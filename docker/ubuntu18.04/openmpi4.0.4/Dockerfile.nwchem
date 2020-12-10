@@ -23,32 +23,35 @@ RUN git clone https://github.com/hjjvandam/nwchem-1.git
 WORKDIR /Codar/nwchem-1
 RUN git checkout pretauadio2
 
-WORKDIR /Codar/nwchem-1/src/space
-RUN sed -i "3731s|^|c|" sp_init.F
-RUN sed -i "3732s|^|c|" sp_init.F
-RUN sed -i "3733s|^|c|" sp_init.F
-RUN sed -i "3734s|^|c|" sp_init.F
-RUN sed -i "3735s|^|c|" sp_init.F
-RUN sed -i "3736s|^|c|" sp_init.F
-RUN sed -i "3737s|^|c|" sp_init.F
-RUN sed -i "3738s|^|c|" sp_init.F
+# WORKDIR /Codar/nwchem-1/src/space
+# RUN sed -i "3731s|^|c|" sp_init.F
+# RUN sed -i "3732s|^|c|" sp_init.F
+# RUN sed -i "3733s|^|c|" sp_init.F
+# RUN sed -i "3734s|^|c|" sp_init.F
+# RUN sed -i "3735s|^|c|" sp_init.F
+# RUN sed -i "3736s|^|c|" sp_init.F
+# RUN sed -i "3737s|^|c|" sp_init.F
+# RUN sed -i "3738s|^|c|" sp_init.F
 
-RUN sed -i "3740s|^|c|" sp_init.F
-RUN sed -i "3741s|^|c|" sp_init.F
-RUN sed -i "3742s|^|c|" sp_init.F
+# RUN sed -i "3740s|^|c|" sp_init.F
+# RUN sed -i "3741s|^|c|" sp_init.F
+# RUN sed -i "3742s|^|c|" sp_init.F
 
-RUN sed -i "3744s|^|c|" sp_init.F
-RUN sed -i "3745s|^|c|" sp_init.F
-RUN sed -i "3746s|^|c|" sp_init.F
+# RUN sed -i "3744s|^|c|" sp_init.F
+# RUN sed -i "3745s|^|c|" sp_init.F
+# RUN sed -i "3746s|^|c|" sp_init.F
+
+RUN echo INVALIDATE_1 >> /dev/null
 
 WORKDIR /Codar/nwchem-1
 # to enable tau compiler for nwchem
 ENV USE_TAU="source"
 ENV ARMCI_NETWORK=MPI-TS
-ENV BLASOPT="-lopenblas `adios2-config -c -f`"
+#ENV BLASOPT="-llapack -lopenblas `adios2-config -c -f`"
 ENV NWCHEM_MODULES=md
 ENV GA_RELEASE_NO=5.7.1
-RUN ./contrib/distro-tools/build_nwchem 2>&1 | tee build_nwchem.log
+#Disable tau profile as it causes depend.x to SEGV during build
+RUN export TAU_PROFILE=0 && export BLASOPT="-llapack -lopenblas `adios2-config -c -f`" && echo "BLASOPT is " ${BLASOPT} && ./contrib/distro-tools/build_nwchem 2>&1 | tee build_nwchem.log
 
 FROM chimbuko/tau2:ubuntu18.04
 WORKDIR /

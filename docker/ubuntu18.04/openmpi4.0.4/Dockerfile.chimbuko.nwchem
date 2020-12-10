@@ -1,7 +1,5 @@
 FROM chimbuko/ad:ubuntu18.04-provdb AS ad-module
-
-#FROM chimbuko/viz:ubuntu18.04 AS viz-module
-
+FROM chimbuko/viz:ubuntu18.04 AS viz-module
 FROM chimbuko/nwchem:ubuntu18.04-provdb 
 
 # copy spack install
@@ -10,9 +8,8 @@ COPY --from=ad-module /sds /sds
 COPY --from=ad-module /root/.spack /root/.spack
 
 # copy chimbuko modules
-#RUN mkdir -p /opt/chimbuko
 COPY --from=ad-module /opt/chimbuko /opt/chimbuko
-#COPY --from=viz-module /opt/chimbuko /opt/chimbuko
+COPY --from=viz-module /opt/chimbuko /opt/chimbuko
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
