@@ -11,4 +11,4 @@ ENV PATH=/opt/chimbuko/ad/bin/:${PATH}
 COPY run_mocu_chimbuko.sh /Downloads/MOCU_Kuramoto/
 RUN chmod a+x run_mocu_chimbuko.sh
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "./run_mocu_chimbuko.sh" ]

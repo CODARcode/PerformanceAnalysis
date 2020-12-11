@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e
+
 docker push chimbuko/base:ubuntu18.04-cuda10.1
 docker push chimbuko/adios2:ubuntu18.04-cuda10.1
 docker push chimbuko/mochi:ubuntu18.04-cuda10.1
