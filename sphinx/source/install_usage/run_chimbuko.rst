@@ -88,6 +88,8 @@ Where the variables are as follows:
 - **${VIZ_INSTALL_DIR}**: The directory where the visualization module is installed
 
 Henceforth we assign the variable **${VIZ_ADDRESS}=${HEAD_NODE_IP}:${VIZ_PORT}**.
+
+For details on the installation and usage of the visualization module, please refer to the `readme <https://github.com/CODARcode/ChimbukoVisualizationII>`_.
   
 ----------------------------------
 

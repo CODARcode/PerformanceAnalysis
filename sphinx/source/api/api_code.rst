@@ -86,6 +86,13 @@ ADNetClient
 	:project: api
 	:path: ../../include/chimbuko/ad//ADNetClient.hpp
 
+ADNormalEventProvenance
+-----------------------
+
+.. doxygenfile:: ADNormalEventProvenance.hpp
+	:project: api
+	:path: ../../include/chimbuko/ad//ADNormalEventProvenance.hp
+	       
 ADOutlier
 ---------
 
@@ -114,13 +121,14 @@ ADProvenanceDBengine
 	:project: api
 	:path: ../../include/chimbuko/ad//ADProvenanceDBengine.hpp
 
-AnomalyStat
+AnomalyData
 -----------
 
-.. doxygenfile:: AnomalyStat.hpp
+.. doxygenfile:: AnomalyData.hpp
 	:project: api
-	:path: ../../include/chimbuko/ad//AnomalyStat.hpp
+	:path: ../../include/chimbuko/ad//AnomalyData.hpp
 
+	       
 ExecData
 --------
 
@@ -161,6 +169,14 @@ Parameter Server
 
 The parameter server runs on the head node and aggregates function anomaly and counter statistics for visualization. Aggregated statistics for function executions are also maintained and synchronized back to the AD instances such that the anomaly detection algorithm uses the most complete statistics to identify anomalies.
 
+AnomalyStat
+-----------
+
+.. doxygenfile:: AnomalyStat.hpp
+	:project: api
+	:path: ../../include/chimbuko/pserver/AnomalyStat.hpp
+
+
 global_anomaly_stats
 --------------------
 
@@ -182,6 +198,13 @@ PSglobalFunctionIndexMap
 	:project: api
 	:path: ../../include/chimbuko/pserver/PSglobalFunctionIndexMap.hpp
 
+PSProvenanceDBclient
+--------------------
+
+.. doxygenfile:: PSProvenanceDBclient.hpp
+	:project: api
+	:path: ../../include/chimbuko/pserver/PSProvenanceDBclient.hpp
+	       
 PSstatSender
 ------------
 
@@ -216,6 +239,14 @@ ZMQNet
    :project: api
    :path: ../../../include/chimbuko/net/zmq_net.hpp
 
+ZMQMENet
+--------
+
+.. doxygenfile:: zmqme_net.hpp
+	:project: api
+	:path: ../../include/chimbuko/net/zmqme_net.hpp
+
+	  
 Message
 ~~~~~~~
 
@@ -263,6 +294,13 @@ DispatchQueue
 	:project: api
 	:path: ../../include/chimbuko/util//DispatchQueue.hpp
 
+error
+-----
+
+.. doxygenfile:: error.hpp
+	:project: api
+	:path: ../../include/chimbuko/util//error.hpp
+	       
 hash
 ----
 
@@ -270,6 +308,20 @@ hash
 	:project: api
 	:path: ../../include/chimbuko/util//hash.hpp
 
+map
+---
+
+.. doxygenfile:: map.hpp
+	:project: api
+	:path: ../../include/chimbuko/util//map.hpp
+
+memutils
+--------
+
+.. doxygenfile:: memutils.hpp
+	:project: api
+	:path: ../../include/chimbuko/util//memutils.hpp
+	       
 mtQueue
 -------
 
@@ -312,6 +364,13 @@ threadPool
 	:project: api
 	:path: ../../include/chimbuko/util//threadPool.hpp
 
+time
+----
+
+.. doxygenfile:: time.hpp
+	:project: api
+	:path: ../../include/chimbuko/util//time.hpp
+	       
 verbose
 -------
 
