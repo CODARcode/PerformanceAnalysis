@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 #include <chimbuko/util/barrier.hpp>
+#include <chimbuko/util/string.hpp>
 #include <chimbuko/net/zmqme_net.hpp>
 #include <chimbuko/ad/ADNetClient.hpp>
 
@@ -104,7 +105,8 @@ TEST(TestZMQMENet, CanConnectMultiClientsPerEndpoint){
 class NetPayloadIncrement: public NetPayloadBase{
 public:
   int &i;
-  std::mutex m;
+
+  static std::mutex & theMutex(){ static std::mutex _m ; return _m; }
 
   NetPayloadIncrement(int &i): i(i){}
 
@@ -112,9 +114,9 @@ public:
   MessageType type() const{ return MessageType::REQ_ADD; }
   void action(Message &response, const Message &message) override{
     check(message);
-    std::lock_guard<std::mutex> _(m);
+    std::lock_guard<std::mutex> _(theMutex());
     i++;
-    response.set_msg("", false);
+    response.set_msg("Incremented i to " + anyToStr(i), false);
   };
 };
 
@@ -158,7 +160,8 @@ TEST(TestZMQMENet, PayloadOperationsWork){
 	  Message msg;
 	  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::CMD);
 	  msg.set_msg("");
-	  net_client.send_and_receive(msg);
+	  net_client.send_and_receive(msg,msg);
+	  std::cout << "AD thread " << c << " received response message: " << msg.buf() << std::endl;
 
 	  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 	  std::cout << "AD thread " << c << " terminating connection" << std::endl;
