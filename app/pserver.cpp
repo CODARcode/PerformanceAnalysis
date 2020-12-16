@@ -3,6 +3,7 @@
 #include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
+#include <mpi.h>
 #include <chimbuko/net/mpi_net.hpp>
 #else
 #include <chimbuko/net/zmq_net.hpp>
@@ -12,7 +13,6 @@
 #include <chimbuko/pserver/PSProvenanceDBclient.hpp>
 #endif
 
-#include <mpi.h>
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
 #include <fstream>
@@ -125,7 +125,6 @@ int main (int argc, char ** argv){
   net.setMaxMsgPerPollCycle(args.max_pollcyc_msg);
   net.setIOthreads(args.zmq_io_thr);
   net.setPort(args.port);
-  MPI_Init(&argc, &argv);
 #endif
 
   PSstatSender stat_sender(args.stat_send_freq);
@@ -226,9 +225,6 @@ int main (int argc, char ** argv){
 
   std::cout << "Pserver: finalizing the network" << std::endl;
   net.finalize();
-#ifdef _USE_ZMQNET
-  MPI_Finalize();
-#endif
 
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
