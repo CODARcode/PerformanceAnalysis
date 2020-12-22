@@ -117,7 +117,7 @@ The fourth step is to instantiate the AD modules:
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
+	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
 	  sleep 2
 
 Where the variables are as follows:
@@ -126,17 +126,19 @@ Where the variables are as follows:
 - **ADIOS2_ENGINE** : The ADIOS2 communications engine. For online analysis this should be **SST** by default (an alternative, **BP4** is discussed below)
 - **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
 - **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
-- **OUTPUT_LOC** : The path in which provenance information is written. This information is identical to that stored in the provenance database, hence if the database is in use this output can be disabled by setting **OUTPUT_LOC=""** (an empty string). 
-- **PSERVER_ADDR**:  The address of the parameter server from above
-- **PROVDB_ADDR**:  The address of the provenance databasde from above
+- **PSERVER_ADDR**:  The address of the parameter server from above. 
+- **PROVDB_ADDR**:  The address of the provenance database from above.
 - **NSHARDS**: The number of provenance database shards
 
 The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
 The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former uses RDMA and should be the default choice. However we have observed that in some cases the **BP4** option (available in ADIOS2 2.6+), which writes the traces to disk rather than to memory, can reduce the overhead of running Chimbuko alongside the application. Note however that BP4 mode can interfere with disk I/O-heavy components of the main application and so local burst buffers (e.g. Summit's NVME) should be used if necessary.
 
+In the above we have assumed that the provenance database is being used. However if this component is not in use, the AD will automatically output the provenance data as JSON documents "${STEP}.anomalies.json", "${STEP}.normalexecs.json" and "${STEP}.metadata.json" placed in the directory "${PROV_DIR}/${PROGRAM_IDX}/${RANK}", where STEP is the i/o step; PROGRAM_IDX is the program index; RANK is the rank of the AD instance; and PROV_DIR is set by default to the working directory but can specified manually using the optional argument -prov_outputpath (cf. below). 
+
 The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
 
+- **-prov_outputpath** : The directory in which the provenance data will be output. This can be used in place of or in conjunction with the provenance database. An empty string (default) disables this output.
 - **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
 - **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
 - **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.

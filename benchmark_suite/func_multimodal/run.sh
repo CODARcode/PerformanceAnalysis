@@ -61,7 +61,7 @@ fi
 
 #Run the viz
 using_viz=0
-if (( 1 )); then
+if (( 0 )); then
     using_viz=1
     ip=$(hostname -i)
     run_dir=$(pwd)
@@ -131,7 +131,7 @@ fi
 if (( 1 )); then
     rm -rf 0 *.sst
     echo "Instantiating AD"
-    mpirun --allow-run-as-root -n ${ranks} driver ${TAU_ADIOS2_ENGINE} . tau-metrics-main . ${extra_args} -perf_outputpath . -parser_beginstep_timeout 30 -trace_connect_timeout 30 -perf_step 1 2>&1 | tee ad.log &
+    mpirun --allow-run-as-root -n ${ranks} driver ${TAU_ADIOS2_ENGINE} . tau-metrics-main -prov_outputpath . ${extra_args} -perf_outputpath . -parser_beginstep_timeout 30 -trace_connect_timeout 30 -perf_step 1 2>&1 | tee ad.log &
     ad=$!
     sleep 2
 fi

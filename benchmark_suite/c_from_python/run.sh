@@ -105,7 +105,7 @@ fi
 #Run the AD
 if (( 1 )); then
     echo "Instantiating AD"
-    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-python3.6 . ${extra_args} 2>&1 | tee ad.log &
+    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-python3.6 -prov_outputpath . ${extra_args} 2>&1 | tee ad.log &
     sleep 2
 fi
 

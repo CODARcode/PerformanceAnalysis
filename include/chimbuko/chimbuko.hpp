@@ -28,7 +28,7 @@ namespace chimbuko {
 			      */
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
-    std::string provdata_outdir; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
+    std::string prov_outputpath; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
 #ifdef ENABLE_PROVDB
     //Parameters associated with the provenance database
     std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.

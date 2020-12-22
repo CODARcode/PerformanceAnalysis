@@ -65,7 +65,7 @@ TEST_F(ADTest, BpfileTest)
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.provdata_outdir = ""; //don't write
+    params.prov_outputpath = "./temp"; //have to output somewhere if provdb not in use
 
     params.outlier_sigma = 6.0;
     params.only_one_frame = true; //just analyze first IO frame
@@ -213,7 +213,7 @@ TEST_F(ADTest, BpfileWithNetTest)
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.provdata_outdir = "./temp";
+    params.prov_outputpath = "./temp";
 
     params.anom_win_size = 0;
 

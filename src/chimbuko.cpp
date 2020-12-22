@@ -18,6 +18,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 #ifdef ENABLE_PROVDB
 				  provdb_addr(""), nprovdb_shards(1),
 #endif
+				  prov_outputpath(""),
 				  perf_outputpath(""), perf_step(10),
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
@@ -26,27 +27,30 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 
 
 void ChimbukoParams::print() const{
-  std::cout << "\n" 
-	    << "Program Idx: " << program_idx << "\n"
-	    << "Rank       : " << rank << "\n"
-	    << "Engine     : " << trace_engineType << "\n"
-	    << "BP in dir  : " << trace_data_dir << "\n"
-	    << "BP file    : " << trace_inputFile << "\n"
+  std::cout << "Program Idx: " << program_idx
+	    << "\nRank       : " << rank
+	    << "\nEngine     : " << trace_engineType
+	    << "\nBP in dir  : " << trace_data_dir
+	    << "\nBP file    : " << trace_inputFile
 #ifdef _USE_ZMQNET
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nSigma      : " << outlier_sigma
 	    << "\nWindow size: " << anom_win_size
 	  
-	    << "\nInterval   : " << interval_msec << " msec\n"
-	    << "\nProvenance data outpath: " << provdata_outdir << "\n"
+	    << "\nInterval   : " << interval_msec << " msec"
+	    << "\nPerf. metric outpath : " << perf_outputpath
+	    << "\nPerf. step   : " << perf_step;
 #ifdef ENABLE_PROVDB
-	    << "\nProvDB addr: " << provdb_addr << "\n"
-	    << "\nProvDB shards: " << nprovdb_shards  << "\n"
+  if(provdb_addr.size()){
+    std::cout << "\nProvDB addr: " << provdb_addr
+	      << "\nProvDB shards: " << nprovdb_shards;
+  }
 #endif
-	    << "Perf. metric outpath : " << perf_outputpath << "\n"
-	    << "Perf. step   : " << perf_step << "\n"
-	    << std::endl;
+  if(prov_outputpath.size())
+    std::cout << "\nProvenance outpath : " << prov_outputpath;
+  
+  std::cout << std::endl;
 }
 
 
@@ -67,7 +71,11 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
   if(m_is_initialized) finalize();
   m_params = params;
+
+  //Check parameters
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
+  if(m_params.provdb_addr.size() == 0 && m_params.prov_outputpath.size() == 0) 
+    throw std::runtime_error("Neither provenance database address or provenance output dir are set - no provenance data will be written!");
 
   //Initialize error collection
   if(params.err_outputpath.size())
@@ -113,8 +121,8 @@ void Chimbuko::init_io(){
   m_io->setDispatcher();
   m_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
 
-  if(m_params.provdata_outdir.size())
-    m_io->setOutputPath(m_params.provdata_outdir);
+  if(m_params.prov_outputpath.size())
+    m_io->setOutputPath(m_params.prov_outputpath);
   
 }
 
@@ -352,7 +360,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
   constexpr bool add_outstanding = true;
 
   //Gather provenance data on anomalies and send to provenance database
-  if(m_params.provdata_outdir.length() > 0
+  if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB
      || m_provdb_client->isConnected()
 #endif
@@ -426,7 +434,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 }
 
 void Chimbuko::sendNewMetadataToProvDB(int step) const{
-  if(m_params.provdata_outdir.length() > 0
+  if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB
      || m_provdb_client->isConnected()
 #endif
