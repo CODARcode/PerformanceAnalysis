@@ -83,35 +83,40 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   else
     set_error_output_stream(m_params.rank, &std::cerr);
 
-  // First, init io to make sure file (or connection) handler
-  init_io();
-
-  // Second, init parser because it will hold shared memory with event and outlier object
-  // also, process will be blocked at this line until it finds writer (in SST mode)
-  timer.start();
-  init_parser();
-  m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
-
-  // Thrid, init event and outlier objects	
-  init_event();
-
-  timer.start();
-  init_net_client();
-  m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
-
-  init_outlier();
-  init_counter();
-
+  //Connect to the provenance database and/or initialize provenance IO
 #ifdef ENABLE_PROVDB
   timer.start();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl);
   init_provdb();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl);
   m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
 #endif
-  
+  init_io(); //will write provenance info if provDB not in use
+
+  //Connect to the parameter server
+  timer.start();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl);
+  init_net_client();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl);
+  m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
+
+  //Connect to TAU; process will be blocked at this line until it finds writer (in SST mode)
+  timer.start();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to application trace stream" << std::endl);
+  init_parser();
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl);
+  m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
+
+  //Event and outlier objects must be initialized in order after parser
+  init_event(); //requires parser
+  init_outlier(); //requires event
+  init_counter(); //requires parser
+
   init_metadata_parser();
   
   m_is_initialized = true;
   
+  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " has initialized successfully" << std::endl);
   m_perf.add("ad_initialize_total_us", total_timer.elapsed_us());
 }
 
@@ -122,16 +127,17 @@ void Chimbuko::init_io(){
   m_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
 
   if(m_params.prov_outputpath.size())
-    m_io->setOutputPath(m_params.prov_outputpath);
-  
+    m_io->setOutputPath(m_params.prov_outputpath); 
 }
 
 void Chimbuko::init_parser(){
+  if(!m_net_client) throw std::runtime_error("Net client must be initialized before calling init_parser");
   m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType,
 			  m_params.trace_connect_timeout);
   m_parser->linkPerf(&m_perf);  
   m_parser->setBeginStepTimeout(m_params.parser_beginstep_timeout);
   m_parser->setDataRankOverride(m_params.override_rank);
+  m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
 }
 
 void Chimbuko::init_event(){
@@ -160,8 +166,6 @@ void Chimbuko::init_net_client(){
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
-
-    m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
   }
 }
 

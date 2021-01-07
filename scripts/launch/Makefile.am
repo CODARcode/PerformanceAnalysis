@@ -1,0 +1,7 @@
+scriptdir = $(prefix)/scripts/launch
+
+script_DATA = run_services.sh
+
+install-data-hook:
+	chmod u+x $(DESTDIR)$(scriptdir)/*.sh
+

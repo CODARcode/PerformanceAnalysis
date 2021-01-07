@@ -101,7 +101,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     } 
 
     m_use_ps = true;
-    std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
+    PROGRESS(0, rank, std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl);
 #endif
     //MPI_Barrier(MPI_COMM_WORLD);
 }

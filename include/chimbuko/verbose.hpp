@@ -26,9 +26,15 @@ namespace chimbuko {
   };
 
   /**
-   * @brief Macro enclosing a statement that is to only be printed if verbose mode is active
+   * @brief Macro enclosing a statement that is to only be performed if verbose mode is active
    */
 #define VERBOSE(STATEMENT)			\
   if(Verbose::on()){ STATEMENT; }
+
+  /**
+   * @brief Macro enclosing a statement that is to only be performed if the rank is equal to some head rank or verbose mode is active
+   */
+#define PROGRESS(HEAD_RANK, RANK, STATEMENT)	\
+  if(RANK == HEAD_RANK || Verbose::on() ){ STATEMENT; }
   
 };

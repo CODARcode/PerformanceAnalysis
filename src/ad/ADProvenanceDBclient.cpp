@@ -1,6 +1,10 @@
+#include<atomic>
+#include<chrono>
+#include<thread>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
+
 
 #ifdef ENABLE_PROVDB
 
@@ -108,7 +112,28 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
     VERBOSE(std::cout << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl);
-    m_database = m_client.open(addr, 0, db_name);
+    
+    {
+      //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB
+      std::atomic<bool> ready(false); 
+      int rank = m_rank;
+      int heartbeat_freq = 20;
+      std::thread heartbeat([heartbeat_freq, rank, &ready]{
+	  typedef std::chrono::high_resolution_clock Clock;
+	  typedef std::chrono::seconds Sec;
+	  Clock::time_point start = Clock::now();
+	  while(!ready.load(std::memory_order_relaxed)){
+	    int sec = std::chrono::duration_cast<Sec>(Clock::now() - start).count();
+	    if(sec >= heartbeat_freq && sec % heartbeat_freq == 0) //complain every heartbeat_freq seconds
+	      std::cout << "DB client rank " << rank << " still waiting for provDB connection after " << sec << "s" << std::endl;
+	    std::this_thread::sleep_for(std::chrono::seconds(1));
+	  }
+	});	    
+
+      m_database = m_client.open(addr, 0, db_name);
+      ready.store(true, std::memory_order_relaxed);
+      heartbeat.join();
+    }
     VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
     m_coll_anomalies = m_database.open("anomalies");
     VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
@@ -126,8 +151,8 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     }      
 
     m_is_connected = true;
-    VERBOSE(std::cout << "DB client connected successfully" << std::endl);
-    
+    VERBOSE(std::cout << "DB client rank " << m_rank << " connected successfully to database" << std::endl);
+
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());
   }
