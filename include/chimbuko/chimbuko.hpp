@@ -145,9 +145,8 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     void init_provdb();
 #endif
-
+    void init_normalevent_prov();
     void init_metadata_parser();
-
 
     /**
      * @brief Signal the parser to parse the adios2 timestep
@@ -205,8 +204,9 @@ namespace chimbuko {
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
-    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
 #endif
+    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
+    
     mutable PerfStats m_perf; /**< Performance data */
     mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */
     

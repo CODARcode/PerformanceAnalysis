@@ -57,8 +57,8 @@ void ChimbukoParams::print() const{
 Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
 #ifdef ENABLE_PROVDB
 		      m_provdb_client(nullptr),
-		      m_normalevent_prov(nullptr),
 #endif
+		      m_normalevent_prov(nullptr),
 		      m_metadata_parser(nullptr),
 		      m_is_initialized(false){}
 
@@ -74,9 +74,15 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 
   //Check parameters
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
+
+#ifdef ENABLE_PROVDB
   if(m_params.provdb_addr.size() == 0 && m_params.prov_outputpath.size() == 0) 
     throw std::runtime_error("Neither provenance database address or provenance output dir are set - no provenance data will be written!");
-
+#else
+  if(m_params.prov_outputpath.size() == 0) 
+    throw std::runtime_error("Provenance output dir is not set - no provenance data will be written!");
+#endif  
+  
   //Initialize error collection
   if(params.err_outputpath.size())
     set_error_output_file(m_params.rank, stringize("%s/ad_error.%d", params.err_outputpath.c_str(), m_params.program_idx));
@@ -92,7 +98,8 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
 #endif
   init_io(); //will write provenance info if provDB not in use
-
+  init_normalevent_prov();
+  
   //Connect to the parameter server
   timer.start();
   PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl);
@@ -196,10 +203,13 @@ void Chimbuko::init_provdb(){
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
   if(m_params.provdb_addr.length() > 0)
     m_provdb_client->connect(m_params.provdb_addr, m_params.nprovdb_shards);
-  m_normalevent_prov = new ADNormalEventProvenance;
   m_provdb_client->linkPerf(&m_perf);
 }
 #endif
+
+void Chimbuko::init_normalevent_prov(){
+  m_normalevent_prov = new ADNormalEventProvenance;
+}
 
 void Chimbuko::init_metadata_parser(){
   m_metadata_parser = new ADMetadataParser;
@@ -222,8 +232,9 @@ void Chimbuko::finalize()
 
 #ifdef ENABLE_PROVDB
   if (m_provdb_client) delete m_provdb_client;
-  if (m_normalevent_prov) delete m_normalevent_prov;
 #endif
+
+  if (m_normalevent_prov) delete m_normalevent_prov;
 
   if(m_metadata_parser) delete m_metadata_parser;
 
