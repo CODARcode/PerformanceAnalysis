@@ -18,8 +18,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import math
-import numpy
+#import math
+import numpy as np
 
 from scipy import stats
 
@@ -59,7 +59,7 @@ class RelativeEntropyDetector(AnomalyDetector):
     self.N_bins = 20
 
     # Window size
-    self.W = int(0.05 * len(self.dataSet.data))
+    self.W = int(0.05 * len(self.data))
 
     # Threshold against which the test statistic is compared. It is set to
     # the point in the chi-squared cdf with N-bins -1 degrees of freedom that
@@ -95,7 +95,7 @@ class RelativeEntropyDetector(AnomalyDetector):
     """
 
     anomalyScore = 0.0
-    self.util.append(inputData["value"])
+    self.util.append(inputData["run_time"])
 
     #  This check is for files where self.inputMin == self.input max i.e
     #  all data points are identical and stepSize is 0 e.g
@@ -112,15 +112,16 @@ class RelativeEntropyDetector(AnomalyDetector):
         util_current = self.util[-self.W:]
 
         # Quantize window data points into discretized bin values
-        B_current = [math.ceil((c - self.inputMin) / self.stepSize) for c in
-                     util_current]
+        # B_current = [math.ceil((c - self.inputMin) / self.stepSize) for c in
+        #              util_current]
+        B_current = np.ceil((util_current - self.inputMin) / self.stepSize)
 
         # Create a histogram of empirical frequencies for the current window
         # using B_current
-        P_hat = numpy.histogram(B_current,
-                                bins=self.N_bins,
-                                range=(0, self.N_bins),
-                                density=True)[0]
+        P_hat = np.histogram(B_current,
+                            bins=self.N_bins,
+                            range=(0, self.N_bins),
+                            density=True)[0]
 
         # This is for the first null hypothesis
         if self.m == 0:
@@ -140,7 +141,7 @@ class RelativeEntropyDetector(AnomalyDetector):
             # Check if hypothesis accepted occurs at least as frequently as
             # the given threshold. If not, classify data point as anomolous.
             if self.c[index] <= self.c_th:
-              anomalyScore = 1.0
+                anomalyScore = 1.0
           else:
 
             # If all null hypothesis rejected, create new hypothesis based
@@ -151,8 +152,10 @@ class RelativeEntropyDetector(AnomalyDetector):
             self.m += 1
 
     return [anomalyScore]
-
-
+  
+  def getHeader(self):
+      return list(self.data.columns.values) + list(['anomaly_score'])
+  
   def getAgreementHypothesis(self, P_hat):
     """This function computes multinomial goodness-of-fit test. It calculates
     the relative entropy test statistic between P_hat and all `m` null
@@ -174,50 +177,8 @@ class RelativeEntropyDetector(AnomalyDetector):
     index = -1
     minEntropy = float("inf")
     for i in range(self.m):
-      entropy = 2 * self.W * stats.entropy(P_hat,self.P[i])
-      if entropy < self.T and entropy < minEntropy:
-        minEntropy = entropy
-        index = i
+        entropy = 2 * self.W * stats.entropy(P_hat, self.P[i])
+        if entropy < self.T and entropy < minEntropy:
+            minEntropy = entropy
+            index = i
     return index
-
-# def sample_n_gram(df, n_gram, frac = 0.02):
-#     """Sample a specific call stack
-
-#     Args:
-#         df ([type]): [description]
-#         n_gram ([type]): [description]
-#         frac (float, optional): [description]. Defaults to 0.02.
-
-#     Returns:
-#         [type]: [description]
-#     """    
-#     df_sample = df[df['kl'] == n_gram].sample(frac = 0.02, random_state = 0)
-#     df_sample = df_sample.drop(columns=['kl', 'node_id','thread_id'])
-#     df_sample = df_sample.sort_values('time_by_lasttime').reset_index(drop=True)
-#     df_sample = df_sample.rename(columns={'time_by_lasttime': 'time_stamp', 'time_diff' : 'run_time'})
-#     df_sample.name = n_gram
-    
-#     return df_sample
-
-# import numpy as np
-# import pandas as pd
-# import pickle
-# import os
-# import glob
-# from base import NAB_Dataset
-
-# df_lst = []
-# for file in glob.glob("data/DataFrames/ee*.json.df"):
-#     with open(file, 'rb') as handle:
-#         ldf = pickle.load(handle)
-#         df_lst.append(ldf)
-        
-# df = pd.concat(df_lst)
-# sf = df.kl.value_counts()
-# freq = pd.DataFrame({'n_gram':sf.index, 'numberofcalls':sf.values})
-# func = freq.iloc[0]['n_gram']
-# df_sample = sample_n_gram(df, func)
-
-# dataset = NAB_Dataset(df_sample)
-# re_ad = RelativeEntropyDetector(dataset, 0.1)
-# re_ad.run()

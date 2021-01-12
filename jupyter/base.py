@@ -26,11 +26,14 @@ import sys
 from datetime import datetime
 from util import createPath, getProbationPeriod
 
-class NAB_Dataset:
-    def __init__(self, df):
-        super().__init__()
-        self.data = df.rename(columns={'run_time':'value'})
-        self.func_name = df.name
+# class NAB_Dataset:
+#     def __init__(self, df):
+#         super().__init__()
+#         self.data = df.rename(columns={'run_time':'value'})
+#         try:
+#             self.func_name = df.name
+#         except:
+#             self.func_name = None
         
 
 class AnomalyDetector(object, metaclass=abc.ABCMeta):
@@ -40,16 +43,15 @@ class AnomalyDetector(object, metaclass=abc.ABCMeta):
   """
 
   def __init__(self,
-                dataSet,
+            data,
                 probationaryPercent = 0.1, *args, **kwargs):
 
-    self.dataSet = dataSet
-    self.func_name = self.dataSet.func_name
+    self.data = data
     self.probationaryPeriod = getProbationPeriod(
-      probationaryPercent, dataSet.data.shape[0])
+      probationaryPercent,self.data.shape[0])
 
-    self.inputMin = self.dataSet.data["value"].min()
-    self.inputMax = self.dataSet.data["value"].max()
+    self.inputMin = self.data["run_time"].min()
+    self.inputMax = self.data["run_time"].max()
     self.results = None
     
 
@@ -107,7 +109,7 @@ class AnomalyDetector(object, metaclass=abc.ABCMeta):
     headers = self.getHeader()
 
     rows = []
-    for i, row in self.dataSet.data.iterrows():
+    for i, row in self.data.iterrows():
 
       inputData = row.to_dict()
 
@@ -129,7 +131,10 @@ class AnomalyDetector(object, metaclass=abc.ABCMeta):
     #     print(".", end=' ')
     #     sys.stdout.flush()
 
-    self.results = pandas.DataFrame(rows, columns=headers)
+    try:
+        self.results = pandas.DataFrame(rows, columns=headers)
+    except:
+        self.results = pandas.DataFrame(rows)
     return self.results
 
 
@@ -161,3 +166,4 @@ def detectDataSet(args):
   print("%s: Completed processing %s records at %s" % \
                                         (i, len(results.index), datetime.now()))
   print("%s: Results have been written to %s" % (i, outputPath))
+

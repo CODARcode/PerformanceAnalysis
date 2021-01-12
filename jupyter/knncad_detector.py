@@ -30,7 +30,7 @@ class KnncadDetector(AnomalyDetector):
         """
         inputRow = [inputData["timestamp"], inputData["value"]]
         """
-        self.buf.append(inputData['value'])
+        self.buf.append(inputData['run_time'])
         self.record_count += 1
         
         if len(self.buf) < self.dim:

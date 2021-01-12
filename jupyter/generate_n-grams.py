@@ -61,12 +61,13 @@ def generate_n_grams_ct(file_name = 'trace_entry_exit_0.json', k = 2):
                     thread_id])
                 #n_grams.append(":".join(kl))
 
-    print('len of data = %d', i)
+    print('len of data = {}'.format(i))
     df = pd.DataFrame(list_list,columns = ['kl','time_by_lasttime','time_diff','node_id','thread_id'])
-    with open(file_name+'.df','wb') as handle:
+    with open(file_name+'_'+'n='+str(k)+'.df','wb') as handle:
         pickle.dump(df, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return n_grams
+
 # call seq.
 def generate_n_grams_cs(file_name = 'trace_entry_exit_0.json', k = 2):
     #
