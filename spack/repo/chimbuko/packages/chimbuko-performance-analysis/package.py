@@ -24,6 +24,7 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('googletest')
     depends_on('libzmq')
     depends_on('mochi-sonata')
+    depends_on('curl')
     
     depends_on('autoconf', type='build')
     depends_on('automake', type='build')
