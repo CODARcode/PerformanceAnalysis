@@ -124,12 +124,12 @@ if (( ${use_viz} )); then
 
     #Setup redis
     cp -r $viz_root/redis-stable/redis.conf .
-    sed -i "365s|dir ./|dir ${viz_dir}/|" redis.conf
-    sed -i "68s|bind 127.0.0.1|bind 0.0.0.0|" redis.conf
-    sed -i "224s|daemonize no|daemonize yes|" redis.conf
-    sed -i "247s|pidfile /var/run/redis_6379.pid|pidfile ${viz_dir}/redis.pid|" redis.conf
-    sed -i "260s|logfile "\"\""|logfile ${log_dir}/redis.log|" redis.conf
-    sed -i "264s|syslog-enabled no|syslog-enabled yes|" redis.conf
+    sed -i "s|^dir ./|dir ${viz_dir}/|" redis.conf
+    sed -i "s|^bind 127.0.0.1|bind 0.0.0.0|" redis.conf
+    sed -i "s|^daemonize no|daemonize yes|" redis.conf
+    sed -i "s|^pidfile /var/run/redis_6379.pid|pidfile ${viz_dir}/redis.pid|" redis.conf
+    sed -i "s|^logfile "\"\""|logfile ${log_dir}/redis.log|" redis.conf
+    sed -i "s|.*syslog-enabled no|syslog-enabled yes|" redis.conf
 
     echo "==========================================="
     echo "Chimbuko Services: Launch Chimbuko visualization server"
@@ -140,7 +140,7 @@ if (( ${use_viz} )); then
     python3 manager.py createdb
 
     echo "Chimbuko Services: run redis ..."
-    redis-stable/src/redis-server ${viz_dir}/redis.conf
+    redis-server ${viz_dir}/redis.conf
     sleep 5
 
     echo "Chimbuko Services: run celery ..."
@@ -153,7 +153,7 @@ if (( ${use_viz} )); then
     sleep 2
 
     echo "Chimbuko Services: redis ping-pong ..."
-    redis-stable/src/redis-cli -h $HOST -p ${viz_worker_port} ping
+    redis-cli -h $HOST -p ${viz_worker_port} ping
 
     cd ${base}
 
@@ -162,6 +162,7 @@ if (( ${use_viz} )); then
     
     echo $HOST > ${var_dir}/chimbuko_webserver.host
     echo $viz_port > ${var_dir}/chimbuko_webserver.port
+    echo "Chimbuko Services: Webserver is running on ${HOST}:${viz_port} and is ready for the user to connect"
 fi
 
 if (( 1 )); then
@@ -203,7 +204,7 @@ if (( ${use_viz} == 1 )); then
     cd ${viz_root} 
 
     echo "Chimbuko Services: redis ping-pong"
-    redis-stable/src/redis-cli -h $HOST -p ${viz_worker_port} ping
+    redis-cli -h $HOST -p ${viz_worker_port} ping
 
     sleep 10
 
@@ -216,11 +217,11 @@ if (( ${use_viz} == 1 )); then
     sleep 10
 
     echo "Chimbuko Services: redis ping-pong"
-    redis-stable/src/redis-cli -h $HOST -p ${viz_worker_port} ping
+    redis-cli -h $HOST -p ${viz_worker_port} ping
     sleep 1
 
     echo "Chimbuko Services: shutdown redis server!"
-    redis-stable/src/redis-cli -h $HOST -p ${viz_worker_port} shutdown
+    redis-cli -h $HOST -p ${viz_worker_port} shutdown
 
     cd -
 fi
