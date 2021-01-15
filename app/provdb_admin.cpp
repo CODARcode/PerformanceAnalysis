@@ -140,13 +140,7 @@ int main(int argc, char** argv) {
     engine.define("pserver_hello",pserver_hello).disable_response();
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
 
-
-    //Write address to file
-    std::string addr = (std::string)engine.self();    
-    {
-      std::ofstream f("provider.address");
-      f << addr;
-    }
+    std::string addr = (std::string)engine.self();  //ip and port of admin
 
     { //Scope in which provider is active
 
@@ -192,6 +186,12 @@ int main(int argc, char** argv) {
 	  glob_db.create("counter_stats");
 
 	  std::cout << "ProvDB Admin: initialized collections" << std::endl;
+
+	  //Write address to file; do this after initializing collections so that the existence of the file can be used to signal readiness
+	  {
+	    std::ofstream f("provider.address");
+	    f << addr;
+	  }
 
 	  //Setup a timer to periodically force a database commit
 	  typedef std::chrono::high_resolution_clock Clock;

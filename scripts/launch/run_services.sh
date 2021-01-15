@@ -63,7 +63,17 @@ fi
 rm -f ${TAU_ADIOS2_PATH}/write_check
 
 #Get head node IP
-ip=$(ifconfig 2>&1 ${service_node_iface} | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
+if command -v ip &> /dev/null
+then
+    ip=$(ip -4 addr show ${service_node_iface} | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+elif command -v iconfig &> /dev/null
+then
+    ip=$(ifconfig 2>&1 ${service_node_iface} | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
+else
+    echo "Chimbuko services: Neither ifconfig or ip commands exists; cannot infer ip for interface ${service_node_iface}"
+    exit 1
+fi
+     
 echo "Chimbuko Services: Launching Chimbuko services on interface ${service_node_iface} with host IP" ${ip}
 
 
