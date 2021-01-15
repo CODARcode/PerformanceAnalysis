@@ -42,26 +42,24 @@ pserver_nt=2 #number of worker threads
 #Options for the AD module
 ####################################
 ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. chimbuko/logs is automatically created by services script
-ad_outlier_sigma=12 #number of standard deviations that defines an outlier
+ad_outlier_sigma=6 #number of standard deviations that defines an outlier
 ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this
 
 ####################################
 #Options for TAU
 ####################################
 export TAU_ADIOS2_ENGINE=SST    #online communication engine (alternative BP4 although this goes through the disk system and may be slower unless the BPfiles are stored on a burst disk)
-export TAU_ADIOS2_ONE_FILE=FALSE  #a different connection file for each rank
+export TAU_ADIOS2_ONE_FILE=FALSE  #a different connetion file for each rank
 export TAU_ADIOS2_PERIODIC=1   #enable/disable ADIOS2 periodic output
 export TAU_ADIOS2_PERIOD=1000000  #period in us between ADIOS2 io steps
 export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TAU virtual threads
 export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 
-export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use <------------ ***SET ME***
+export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-python-adios2  #The TAU makefile to use <------------ ***SET ME***
+TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,python,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
+TAU_PYTHON="tau_python -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime
 
-#Note: the following 2 variables are not used by the service script but are included here for use from the user's run script allowing the application to be launched with either "${TAU_EXEC} <app>" or "${TAU_PYTHON} <app>"
-TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
-TAU_PYTHON="tau_python -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime <--- SET ME (if !python3)
-
-export EXE_NAME=main  #the name of the executable (without path) <------------ ***SET ME***
+export EXE_NAME=python3.6  #the name of the executable (without path) <------------ ***SET ME***
 
 TAU_ADIOS2_PATH=chimbuko/adios2  #path where the adios2 files are to be stored. Chimbuko services creates the directory chimbuko/adios2 in the working directory and this should be used by default
 TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp  
