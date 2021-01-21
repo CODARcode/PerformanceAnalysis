@@ -23,7 +23,7 @@ fi
 
 if (( 1 )); then
     echo "Instantiating AD"
-    eval "${ad_cmd} &"
+    eval "mpirun --allow-run-as-root -n ${ranks} ${ad_cmd} &"
     sleep 2
 fi
 
