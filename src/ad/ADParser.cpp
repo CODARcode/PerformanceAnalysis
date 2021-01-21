@@ -76,8 +76,9 @@ int ADParser::beginStep(bool verbose) {
     if (status == adios2::StepStatus::OK){
       m_current_step++;
     }else{
-      if(status == adios2::StepStatus::NotReady){ recoverable_error("Timed out waiting for next step to be ready\n"); }
-      else{ recoverable_error("ADIOS2 BeginStep returned an error\n"); }
+      if(status == adios2::StepStatus::NotReady){ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out waiting for next step to be ready\n"); }
+      else if(status == adios2::StepStatus::EndOfStream){ PROGRESS(0, m_rank, std::cout << "ADParser::beginStep rank 0 detected end of data stream" << std::endl); }
+      else{ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep returned an unknown error\n"); }
       m_status = false;
       m_current_step = -1;
     }

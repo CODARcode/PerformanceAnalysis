@@ -138,7 +138,7 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
-  if(!m_net_client) throw std::runtime_error("Net client must be initialized before calling init_parser");
+  if(m_params.pserver_addr.length() > 0 && !m_net_client) throw std::runtime_error("Net client must be initialized before calling init_parser");
   m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType,
 			  m_params.trace_connect_timeout);
   m_parser->linkPerf(&m_perf);  
@@ -266,9 +266,7 @@ bool Chimbuko::parseInputStep(int &step,
   PerfTimer timer, total_timer;
   total_timer.start();
 
-  static bool first = true;
-  int expect_step = first ? 0 : step+1;
-  first = false;
+  int expect_step = step+1;
 
   if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl;
 
@@ -483,7 +481,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long& frames){
   if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
 
-  int step = 0; 
+  int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
   unsigned long first_event_ts, last_event_ts; //earliest and latest timestamps in io frame
 
   std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";

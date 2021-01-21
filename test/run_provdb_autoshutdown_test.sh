@@ -13,7 +13,10 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port} -autoshutdown true -nshards ${shards} &
     admin=$!
-    sleep 4
+    while [ ! -f provider.address ]; do
+	echo "Waiting for provider address"
+	sleep 1;
+    done
 
     mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address) ${shards}
 

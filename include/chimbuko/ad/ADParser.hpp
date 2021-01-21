@@ -87,6 +87,8 @@ namespace chimbuko {
      * @brief Get the current step (or frame) number
      * 
      * @return int step number
+     *
+     * Returns a value of -1 if beginStep has yet to be called.
      */
     int getCurrentStep() const { return m_current_step; }
 
