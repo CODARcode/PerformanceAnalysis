@@ -1,7 +1,0 @@
-The Brusselator equation solver is in src/simulation/ .
-Analysis codes are in src/analysis/ .
-
-Compilation:
-------------
-cd src/ and follow the README
-
