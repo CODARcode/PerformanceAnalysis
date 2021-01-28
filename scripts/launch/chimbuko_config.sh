@@ -22,6 +22,7 @@ backend_root="infer"  #The root install directory of the PerformanceAnalysis lib
 ####################################
 #Options for the provenance database
 ####################################
+provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database
@@ -47,6 +48,9 @@ ad_win_size=5  #number of events around an anomaly to store; provDB entry size i
 
 ####################################
 #Options for TAU
+#Note: Only the TAU_ADIOS2_PATH, TAU_ADIOS2_FILE_PREFIX, EXE_NAME and TAU_ADIOS2_ENGINE variables are used by the Chimbuko services script and there only to generate the suggested 
+#      command to launch the AD (output to chimbuko/vars/chimbuko_ad_cmdline.var); they can be overridden by the run script if desired providing the appropriate modifications
+#      are made to the AD launch command. The remainder of the variables are used only by TAU and can be freely overridden.
 ####################################
 export TAU_ADIOS2_ENGINE=SST    #online communication engine (alternative BP4 although this goes through the disk system and may be slower unless the BPfiles are stored on a burst disk)
 export TAU_ADIOS2_ONE_FILE=FALSE  #a different connection file for each rank
@@ -58,8 +62,12 @@ export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use <------------ ***SET ME***
 
 #Note: the following 2 variables are not used by the service script but are included here for use from the user's run script allowing the application to be launched with either "${TAU_EXEC} <app>" or "${TAU_PYTHON} <app>"
+#Note: the "binding" -T ... is used by Tau to find the appropriate configuration. It can typically be inferred from the name of the Makefile. If using a non-MPI job the 'mpi' should be changed to 'serial' and a non-MPI build of
+#      ADIOS2/TAU must exist
+#Suggestion: It is useful to test the command without Chimbuko first to ensure TAU picks up the correct binding; this can be done by 'export TAU_ADIOS2_ENGINE=BPFile' and then running the application with Tau but without Chimbuko.
 TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
-TAU_PYTHON="tau_python -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime <--- SET ME (if !python3)
+TAU_PYTHON="tau_python -T papi,mpi,pthread,pdt,adios2 -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it 
+                                                                                                                           #to tee in realtime <--- SET ME (if !python3)
 
 export EXE_NAME=main  #the name of the executable (without path) <------------ ***SET ME***
 

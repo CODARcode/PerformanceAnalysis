@@ -23,6 +23,8 @@
 
 namespace tl = thallium;
 
+using namespace chimbuko;
+
 bool stop_wait_loop = false; //trigger breakout of main thread spin loop
 
 void termSignalHandler( int signum ) {
@@ -84,14 +86,14 @@ int main(int argc, char** argv) {
     //Parse environment variables
     if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
       std::cout << "ProvDB Admin: Enabling verbose debug output" << std::endl;
-      chimbuko::Verbose::set_verbose(true);
+      Verbose::set_verbose(true);
       spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
     }       
 
     //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
     //Using an empty string will cause it to default to Mochi's default ip/port
-    chimbuko::commandLineParser<ProvdbArgs> parser;
+    commandLineParser<ProvdbArgs> parser;
     addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
     addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
     addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
@@ -153,15 +155,15 @@ int main(int argc, char** argv) {
 	sonata::Admin admin(engine);
 	std::cout << "ProvDB Admin: creating global data database" << std::endl;
 	std::string glob_db_name = "provdb.global";
-	std::string glob_db_config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", glob_db_name.c_str());
+	std::string glob_db_config = stringize("{ \"path\" : \"./%s.unqlite\" }", glob_db_name.c_str());
 	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
 	
 	std::cout << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
 
 	std::vector<std::string> db_shard_names(args.nshards);
 	for(int s=0;s<args.nshards;s++){
-	  std::string db_name = chimbuko::stringize("provdb.%d",s);
-	  std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+	  std::string db_name = stringize("provdb.%d",s);
+	  std::string config = stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
 	  std::cout << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
 	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
 	  db_shard_names[s] = db_name;
@@ -206,7 +208,7 @@ int main(int argc, char** argv) {
 
 	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
 	    if(commit_timer_ms >= args.db_commit_freq){
-	      std::cout << "ProvDB Admin: committing database to disk" << std::endl;
+	      VERBOSE(std::cout << "ProvDB Admin: committing database to disk" << std::endl);
 	      for(int s=0;s<args.nshards;s++)
 		db[s].commit();
 	      glob_db.commit();

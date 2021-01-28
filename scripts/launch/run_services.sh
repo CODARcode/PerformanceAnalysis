@@ -39,6 +39,11 @@ source ${CHIMBUKO_CONFIG}
 
 #Create directories; assumed script is executing from work directory
 #rm -rf chimbuko
+if [ -d "chimbuko" ]; then
+    echo "Chimbuko Services: 'chimbuko' directory already exists, please delete or move it!"
+    exit 1
+fi
+
 mkdir chimbuko
 mkdir chimbuko/logs
 mkdir chimbuko/provdb
@@ -96,7 +101,7 @@ if (( 1 )); then
 	provdb_addr="${provdb_domain}/${provdb_addr}"
     fi
 
-    provdb_admin "${provdb_addr}" -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} 2>&1 | tee ${log_dir}/provdb.log &
+    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} 2>&1 | tee ${log_dir}/provdb.log &
     provdb_pid=$!
 
     start_time=$SECONDS
@@ -194,15 +199,19 @@ fi
 
 ############################################
 #Generate the command to launch the AD module
-
-ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size} 2>&1 | tee ${log_dir}/ad.log"
-echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmd.var
+ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size}"
+ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
+echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
 echo "Command to launch AD module: " ${ad_cmd}
 echo "Please execute as:"
 echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmd.var)"
 echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
 echo "Or equivalent"
+
+#For use in other scripts, output the AD cmdline options to file
+echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
+
 
 
 #Wait for pserver to exit, which means it's time to end the viz
