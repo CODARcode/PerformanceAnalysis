@@ -4,6 +4,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/string.hpp"
+#include "chimbuko/util/error.hpp"
 #include <iostream>
 #include <string.h>
 
@@ -62,7 +63,7 @@ public:
 };
 
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1)
 {
   add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
   add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
@@ -165,6 +166,17 @@ void ZMQNet::init_thread_pool(int nt){
   }
 }
 
+void ZMQNet::stop(){
+  //Send a stop command on the stop socket, presumably from a different thread
+  if(m_status == Status::Running){     
+    void* socket = zmq_socket(m_context, ZMQ_REQ);
+    zmq_connect(socket, "inproc://shutdown"); //connect the socket to the worker pool
+    zmq_send(socket, nullptr, 0, 0);
+    zmq_close(socket);
+  }
+}
+
+
 void ZMQNet::finalize()
 {
     if (m_context) zmq_ctx_term(m_context);
@@ -179,155 +191,192 @@ void ZMQNet::run(std::string logdir)
 #else
 void ZMQNet::run()
 #endif
-{    
-    void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
-    void* backend  = zmq_socket(m_context, ZMQ_DEALER);
+{
+  m_status = Status::StartingUp;
+    
+  void* stop_socket = zmq_socket(m_context, ZMQ_REP);
+  void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
+  void* backend  = zmq_socket(m_context, ZMQ_DEALER);
 
-    int zero = 0;
-    zmq_setsockopt(frontend, ZMQ_RCVHWM, &zero, sizeof(int));
-    zmq_setsockopt(frontend, ZMQ_SNDHWM, &zero, sizeof(int));
-    zmq_setsockopt(backend, ZMQ_RCVHWM, &zero, sizeof(int));
-    zmq_setsockopt(backend, ZMQ_SNDHWM, &zero, sizeof(int));
+  int zero = 0;
+  zmq_setsockopt(frontend, ZMQ_RCVHWM, &zero, sizeof(int));
+  zmq_setsockopt(frontend, ZMQ_SNDHWM, &zero, sizeof(int));
+  zmq_setsockopt(backend, ZMQ_RCVHWM, &zero, sizeof(int));
+  zmq_setsockopt(backend, ZMQ_SNDHWM, &zero, sizeof(int));
 
-    std::string tcp_addr = "tcp://*:"+anyToStr(m_port);
-    zmq_bind(frontend, tcp_addr.c_str()); //create a socket for communication with the AD
-    zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
+  std::string tcp_addr = "tcp://*:"+anyToStr(m_port);
+  zmq_bind(frontend, tcp_addr.c_str()); //create a socket for communication with the AD
+  zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
+  zmq_bind(stop_socket, "inproc://shutdown"); //create a socket for communicating shutdown messages
 
-    const int NR_ITEMS = 2; 
-    zmq_pollitem_t items[NR_ITEMS] = 
+  const int NR_ITEMS = 3; 
+  zmq_pollitem_t items[NR_ITEMS] = 
     {
-        { frontend, 0, ZMQ_POLLIN, 0 },
-        { backend , 0, ZMQ_POLLIN, 0 }
+      { frontend, 0, ZMQ_POLLIN, 0 },
+      { backend , 0, ZMQ_POLLIN, 0 },
+      { stop_socket, 0, ZMQ_POLLIN, 0 }
     };
 
-    std::string perf_prefix = "router_";
-    PerfTimer timer, freq_timer;
+  std::string perf_prefix = "router_";
+  PerfTimer timer, freq_timer;
 
 #ifdef _PERF_METRIC
-    m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
+  m_perf.setWriteLocation(logdir, "ps_perf_stats.txt");
 
-    unsigned int n_requests = 0, n_replies = 0;
-    double duration, elapsed;
-    std::ofstream f;
+  unsigned int n_requests = 0, n_replies = 0;
+  double duration, elapsed;
+  std::ofstream f;
 
-    f.open(logdir + "/ps_perf.txt", std::fstream::out | std::fstream::app);
-    if (f.is_open())
-        f << "# PS PERFORMANCE MEASURE" << std::endl;
-    Clock::time_point t_init = Clock::now();
-    Clock::time_point t_start = Clock::now();  
-    Clock::time_point t_end;
+  f.open(logdir + "/ps_perf.txt", std::fstream::out | std::fstream::app);
+  if (f.is_open())
+    f << "# PS PERFORMANCE MEASURE" << std::endl;
+  Clock::time_point t_init = Clock::now();
+  Clock::time_point t_start = Clock::now();  
+  Clock::time_point t_end;
 #endif
     
-    //For measuring receive/response frequency
-    freq_timer.start();
-    size_t freq_n_req = 0, freq_n_reply = 0;
+  
+  m_status = Status::Running;
+  Status stop_status; //record why it stops
 
-    VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
-    m_n_requests = 0;
-    while(true){
-      if(m_client_has_connected && m_clients == 0){
-	if(m_n_requests == 0){
-	  VERBOSE(std::cout << "ZMQnet all clients have disconnected and queue cleared" << std::endl);
-	  break;
-	}else{
-	  VERBOSE(std::cout << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl);	  
-	}
+  //For measuring receive/response frequency
+  freq_timer.start();
+  size_t freq_n_req = 0, freq_n_reply = 0;
+
+  VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
+  m_n_requests = 0;
+  while(true){
+
+    //Autoshutdown
+    if(m_autoshutdown && m_client_has_connected && m_clients == 0){
+      if(m_n_requests == 0){
+	VERBOSE(std::cout << "ZMQnet all clients have disconnected and queue cleared" << std::endl);
+	stop_status = Status::StoppedAutomatically;
+	break;
+      }else{
+	VERBOSE(std::cout << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl);	  
       }
+    }
 
+    timer.start();
+    int err = zmq_poll(items, NR_ITEMS, m_poll_timeout);
+    m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+    
+    //If we either timeout or encounter an error we gracefully exit
+    if(err == 0){ //timed out
+      recoverable_error(std::string("ZMQnet::run polling timed out after ") + anyToStr(m_poll_timeout) + " ms\n");
+      stop_status = Status::StoppedByTimeOut;
+      break;
+    }else if(err == -1){ //actual error
+      if(errno == EINTR){
+	std::cout << "ZMQNet received system signal to stop, shutting down" << std::endl;
+	stop_status == Status::StoppedBySignal;
+      }else{
+	recoverable_error(std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n");
+	stop_status = Status::StoppedByError;
+      }
+      break;
+    }
+
+    VERBOSE(std::cout << "ZMQnet received message" << std::endl);
+
+    //If the message was received from a worker thread, route to the AD
+    //Drain the outgoing queue first to free resources
+    if(items[1].revents & ZMQ_POLLIN) {
       timer.start();
-      int err = zmq_poll(items, NR_ITEMS, -1);  //wait (indefinitely) for comms on both sockets
-      if(err == -1){
-	std::string error = std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n";
-	throw std::runtime_error(error);
-      }
-      m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
-
-      VERBOSE(std::cout << "ZMQnet received message" << std::endl);
-
-      //If the message was received from a worker thread, route to the AD
-      //Drain the outgoing queue first to free resources
-      if(items[1].revents & ZMQ_POLLIN) {
-	timer.start();
-	int nmsg = recvAndSend(backend, frontend, m_max_pollcyc_msg);
-	m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
-	VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from back to front\n");
-	m_n_requests -= nmsg; //decrement number of outstanding requests
+      int nmsg = recvAndSend(backend, frontend, m_max_pollcyc_msg);
+      m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
+      VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from back to front\n");
+      m_n_requests -= nmsg; //decrement number of outstanding requests
 #ifdef _PERF_METRIC
-	m_perf.add(perf_prefix + "route_front_to_back_msg_per_cyc", nmsg);
-	freq_n_reply += nmsg;
-	n_replies += nmsg;
+      m_perf.add(perf_prefix + "route_front_to_back_msg_per_cyc", nmsg);
+      freq_n_reply += nmsg;
+      n_replies += nmsg;
 #endif
-      } 
+    } 
       
-      //If the message was received from the AD, route the message to a worker thread
-      if(items[0].revents & ZMQ_POLLIN) { 
-	timer.start();
-	int nmsg = recvAndSend(frontend, backend, m_max_pollcyc_msg);
-	m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
-	VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from front to back\n");
-	m_n_requests += nmsg;
+    //If the message was received from the AD, route the message to a worker thread
+    if(items[0].revents & ZMQ_POLLIN) { 
+      timer.start();
+      int nmsg = recvAndSend(frontend, backend, m_max_pollcyc_msg);
+      m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
+      VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from front to back\n");
+      m_n_requests += nmsg;
 #ifdef _PERF_METRIC
-	m_perf.add(perf_prefix + "route_back_to_front_msg_per_cyc", nmsg);
-	freq_n_req += nmsg;
-	n_requests += nmsg;
-#endif
-      }
-
-
-#ifdef _PERF_METRIC
-      t_end = Clock::now();
-      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
-      if (duration >= 10000. && f.is_open()) {
-	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
-	f << elapsed << " " 
-	  << n_requests << " " 
-	  << n_replies << " " 
-	  << duration 
-	  << std::endl;
-	t_start = t_end;
-	n_requests = 0;
-	n_replies = 0;
-      }
-
-      double freq_elapsed = freq_timer.elapsed_ms();
-      if(freq_elapsed > 1000){
-	m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
-	m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
-	freq_n_req = freq_n_reply = 0; freq_timer.start();
-      }
+      m_perf.add(perf_prefix + "route_back_to_front_msg_per_cyc", nmsg);
+      freq_n_req += nmsg;
+      n_requests += nmsg;
 #endif
     }
 
-    //Force perf output when exiting
-#ifdef _PERF_METRIC
-      t_end = Clock::now();
-      duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
-      if (f.is_open()) {
-	elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
-	f << elapsed << " " 
-	  << n_requests << " " 
-	  << n_replies << " " 
-	  << duration
-	  << std::endl;
-      }
+    //Stop if asked
+    if(items[2].revents & ZMQ_POLLIN){
+      zmq_recv(stop_socket, nullptr, 0,0);
+      std::cout << "ZMQNet received signal to stop" << std::endl;
+      stop_status = Status::StoppedByRequest;
+      break;
+    }
 
-      double freq_elapsed = freq_timer.elapsed_ms();
+
+#ifdef _PERF_METRIC
+    t_end = Clock::now();
+    duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
+    if (duration >= 10000. && f.is_open()) {
+      elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+      f << elapsed << " " 
+	<< n_requests << " " 
+	<< n_replies << " " 
+	<< duration 
+	<< std::endl;
+      t_start = t_end;
+      n_requests = 0;
+      n_replies = 0;
+    }
+
+    double freq_elapsed = freq_timer.elapsed_ms();
+    if(freq_elapsed > 1000){
       m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
       m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
+      freq_n_req = freq_n_reply = 0; freq_timer.start();
+    }
+#endif
+  }
 
-      //Combine and write out statistics
-      for(auto const &t : m_perf_thr)
-	m_perf += t;
-      m_perf.write();
+  m_status = Status::ShuttingDown;
+
+  //Force perf output when exiting
+#ifdef _PERF_METRIC
+  t_end = Clock::now();
+  duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
+  if (f.is_open()) {
+    elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
+    f << elapsed << " " 
+      << n_requests << " " 
+      << n_replies << " " 
+      << duration
+      << std::endl;
+  }
+
+  double freq_elapsed = freq_timer.elapsed_ms();
+  m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
+  m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
+
+  //Combine and write out statistics
+  for(auto const &t : m_perf_thr)
+    m_perf += t;
+  m_perf.write();
 #endif
 
-    //Close the sockets; this will end the worker threads
-    zmq_close(frontend);
-    zmq_close(backend);
+  //Close the sockets; this will end the worker threads
+  zmq_close(frontend);
+  zmq_close(backend);
+  zmq_close(stop_socket);
+
+  m_status = stop_status;
 
 #ifdef _PERF_METRIC
-    if (f.is_open())
-        f.close();
+  if (f.is_open())
+    f.close();
 #endif
 }
 
@@ -361,15 +410,6 @@ int ZMQNet::recvAndSend(void* skFrom, void* skTo, int max_msg){
   return msg_count;
 }
 
-
-void ZMQNet::stop()
-{
-    int n_tries = 60;
-    while (m_n_requests && n_tries) {
-        n_tries--;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-}
 
 int ZMQNet::send(void* socket, const std::string& strmsg)
 {

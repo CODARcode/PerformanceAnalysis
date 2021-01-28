@@ -14,6 +14,9 @@ namespace chimbuko {
   */
   class ZMQNet : public NetInterface {
   public:
+
+    enum class Status { NotStarted, StartingUp, Running, ShuttingDown, StoppedByRequest, StoppedBySignal, StoppedByTimeOut, StoppedByError, StoppedAutomatically };
+
     ZMQNet();
     ~ZMQNet();
 
@@ -79,6 +82,22 @@ namespace chimbuko {
      */
     void setPort(const int port){ m_port = port; }
 
+    /**
+     * @brief Set the rule for automatic shutdown once all clients have disconnected (default true)
+     */
+    void setAutoShutdown(const bool to){ m_autoshutdown = to; }
+
+
+    /**
+     * @brief Set the timeout on polling for client requests or responses from worker threads (-1 = no timeout [default])
+     */
+    void setTimeOut(const long time_ms){ m_poll_timeout = time_ms; }
+
+    /**
+     * @brief Query the status of the network endpoint (presumably from another thread)
+     */
+    Status getStatus() const{ return m_status; }
+
   protected:
     /**
      * @brief initialize thread pool 
@@ -110,6 +129,9 @@ namespace chimbuko {
     int m_clients; /**< Number of connected clients*/
     bool m_client_has_connected; /**< At least one client has connected previously*/
     int m_port; /**< The port upon which the net connects*/
+    bool m_autoshutdown; /**< The network will shutdown once all clients have disconnected*/
+    Status m_status; /**< Monitoring of status */
+    long m_poll_timeout; /**< The timeout (in ms) after which on no activity the network with shutdown (default -1: infinite)*/
   };
 
 } // end of chimbuko namespace

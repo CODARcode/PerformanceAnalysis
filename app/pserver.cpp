@@ -1,4 +1,5 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
+#include <csignal>
 #include <chimbuko_config.h>
 #include <chimbuko/pserver.hpp>
 
@@ -43,6 +44,7 @@ struct pserverArgs{
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
   int zmq_io_thr;
+  bool autoshutdown;
 #endif
 
 #ifdef ENABLE_PROVDB
@@ -51,7 +53,7 @@ struct pserverArgs{
  
   pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
 #ifdef _USE_ZMQNET
-	       , max_pollcyc_msg(10), zmq_io_thr(1)
+	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
 	       , provdb_addr("")
@@ -74,6 +76,7 @@ struct pserverArgs{
 #ifdef _USE_ZMQNET
       addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
       addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
+      addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
       addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
@@ -84,6 +87,12 @@ struct pserverArgs{
     return p;
   }
 };
+
+
+//Allow for graceful exit on sigterm
+void termSignalHandler( int signum ){
+  std::cout << "Caught SIGTERM, shutting down" << std::endl;
+}
 
 
 int main (int argc, char ** argv){
@@ -125,6 +134,7 @@ int main (int argc, char ** argv){
   net.setMaxMsgPerPollCycle(args.max_pollcyc_msg);
   net.setIOthreads(args.zmq_io_thr);
   net.setPort(args.port);
+  net.setAutoShutdown(args.autoshutdown);
 #endif
 
   PSstatSender stat_sender(args.stat_send_freq);
@@ -174,12 +184,17 @@ int main (int argc, char ** argv){
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
+    //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully
+    signal(SIGTERM, termSignalHandler);
+
     //Start communicating with the AD instances
 #ifdef _PERF_METRIC
     net.run(args.logdir);
 #else
     net.run();
 #endif
+
+    signal(SIGTERM, SIG_DFL); //restore default signal handling
 
     //At this point, all pseudo AD modules finished sending anomaly statistics data
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -210,7 +225,6 @@ int main (int argc, char ** argv){
   catch (std::invalid_argument &e)
     {
       std::cout << e.what() << std::endl;
-      //todo: usages()
     }
   catch (std::ios_base::failure &e)
     {
