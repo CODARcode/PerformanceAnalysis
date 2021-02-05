@@ -79,13 +79,13 @@ static void send_stat(std::string url, std::string stat_save_dir,
       nlohmann::json json_packet;
       bool do_fetch = false;
       //Collect data
-      VERBOSE(std::cout << "PSstatSender building packet from " << payloads.size() << " payloads" << std::endl);
+      verboseStream << "PSstatSender building packet from " << payloads.size() << " payloads" << std::endl;
       for(auto payload : payloads){
 	payload->add_json(json_packet);
 	do_fetch = do_fetch || payload->do_fetch();
       }
-      VERBOSE(std::cout << "PSstatSender packet size " << json_packet.size() << std::endl);
-      VERBOSE(std::cout << "PSstatSender do_fetch=" << do_fetch << std::endl);
+      verboseStream << "PSstatSender packet size " << json_packet.size() << std::endl;
+      verboseStream << "PSstatSender do_fetch=" << do_fetch << std::endl;
 
       if(do_fetch && write_disk) throw std::runtime_error("PSstatSender payload requests callback but this is not possible if writing to disk");
 

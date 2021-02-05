@@ -316,7 +316,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 int main(int argc, char** argv) 
 {
   MPI_Init(&argc, &argv);
-  Verbose::set_verbose(true);
+  chimbuko::enableVerboseLogging() = true;
   assert(argc >= 3);
   addr = argv[1];
   std::cout << "Provenance DB admin is on address: " << addr << std::endl;

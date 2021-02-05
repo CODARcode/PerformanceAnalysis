@@ -38,7 +38,7 @@ size_t AnomalousSendManager::getNoutstanding(){
 
 AnomalousSendManager::~AnomalousSendManager(){
   waitAll();
-  VERBOSE(std::cout << "AnomalousSendManager exiting" << std::endl);
+  verboseStream << "AnomalousSendManager exiting" << std::endl;
 }
 
 
@@ -47,7 +47,7 @@ AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
 ADProvenanceDBclient::~ADProvenanceDBclient(){ 
   disconnect();
-  VERBOSE(std::cout << "ADProvenanceDBclient exiting" << std::endl);
+  verboseStream << "ADProvenanceDBclient exiting" << std::endl;
 }
 
 sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type){ 
@@ -71,17 +71,17 @@ const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceD
 
 void ADProvenanceDBclient::disconnect(){
   if(m_is_connected){
-    VERBOSE(std::cout << "ADProvenanceDBclient disconnecting" << std::endl);
-    VERBOSE(std::cout << "ADProvenanceDBclient is waiting for outstanding calls to complete" << std::endl);
+    verboseStream << "ADProvenanceDBclient disconnecting" << std::endl;
+    verboseStream << "ADProvenanceDBclient is waiting for outstanding calls to complete" << std::endl;
 
     PerfTimer timer;
     anom_send_man.waitAll();
     if(m_stats) m_stats->add("provdb_client_disconnect_wait_all_ms", timer.elapsed_ms());
 
     if(m_perform_handshake){
-      VERBOSE(std::cout << "ADProvenanceDBclient de-registering with server" << std::endl);
+      verboseStream << "ADProvenanceDBclient de-registering with server" << std::endl;
       m_client_goodbye->on(m_server)(m_rank);    
-      VERBOSE(std::cout << "ADProvenanceDBclient deleting handshake RPCs" << std::endl);
+      verboseStream << "ADProvenanceDBclient deleting handshake RPCs" << std::endl;
       
       m_client_hello->deregister();
       m_client_goodbye->deregister();
@@ -91,7 +91,7 @@ void ADProvenanceDBclient::disconnect(){
     }
 
     m_is_connected = false;
-    VERBOSE(std::cout << "ADProvenanceDBclient disconnected" << std::endl);
+    verboseStream << "ADProvenanceDBclient disconnected" << std::endl;
   }
 }
 
@@ -101,7 +101,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
     if(ADProvenanceDBengine::getProtocol().first != protocol){
       int mode = ADProvenanceDBengine::getProtocol().second;
-      VERBOSE(std::cout << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl);
+      verboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
       ADProvenanceDBengine::finalize();
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
@@ -111,7 +111,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    VERBOSE(std::cout << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl);
+    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl;
     
     {
       //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB
@@ -134,24 +134,24 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       ready.store(true, std::memory_order_relaxed);
       heartbeat.join();
     }
-    VERBOSE(std::cout << "DB client opening anomaly collection" << std::endl);
+    verboseStream << "DB client opening anomaly collection" << std::endl;
     m_coll_anomalies = m_database.open("anomalies");
-    VERBOSE(std::cout << "DB client opening metadata collection" << std::endl);
+    verboseStream << "DB client opening metadata collection" << std::endl;
     m_coll_metadata = m_database.open("metadata");
-    VERBOSE(std::cout << "DB client opening normal execution collection" << std::endl);
+    verboseStream << "DB client opening normal execution collection" << std::endl;
     m_coll_normalexecs = m_database.open("normalexecs");
 
     m_server = eng.lookup(addr);
 
     if(m_perform_handshake){
-      VERBOSE(std::cout << "DB client registering RPCs and handshaking with provDB" << std::endl);
+      verboseStream << "DB client registering RPCs and handshaking with provDB" << std::endl;
       m_client_hello = new thallium::remote_procedure(eng.define("client_hello").disable_response());
       m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
       m_client_hello->on(m_server)(m_rank);
     }      
 
     m_is_connected = true;
-    VERBOSE(std::cout << "DB client rank " << m_rank << " connected successfully to database" << std::endl);
+    verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
 
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());

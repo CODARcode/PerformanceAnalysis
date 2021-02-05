@@ -240,10 +240,7 @@ int main(int argc, char** argv)
     int provided;
     ::testing::InitGoogleTest(&argc, argv);
 
-    Verbose::set_verbose(true);
-
-    // for (int i = 1; i < argc; i++)
-    //     printf("arg %2d = %s\n", i, argv[i]);
+    chimbuko::enableVerboseLogging() = true;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     result = RUN_ALL_TESTS();

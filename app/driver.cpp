@@ -160,22 +160,22 @@ int main(int argc, char ** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);    
 
-  VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": waiting at pre-run barrier" << std::endl);
+  //Parse Chimbuko parameters
+  ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
+  if(params.rank == 0) params.print();
+
+  verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
+
+  //Parse environment variables
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
+    headProgressStream(params.rank) << "Driver rank " << params.rank << ": Enabling verbose debug output" << std::endl;
+    enableVerboseLogging() = true;
+  }       
+
 
   try 
     {
-
-      //Parse environment variables
-      if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-	std::cout << "Driver MPI rank " << mpi_world_rank << ": Enabling verbose debug output" << std::endl;
-	Verbose::set_verbose(true);
-      }       
-
-      //Parse Chimbuko parameters
-      ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
-      if(mpi_world_rank == 0) params.print();
-
       //Instantiate Chimbuko
       Chimbuko driver(params);
 
@@ -192,11 +192,9 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
-      if (mpi_world_rank == 0) {
-	std::cout << "Driver MPI rank " << mpi_world_rank 
-		  << ": analysis start " << (driver.use_ps() ? "with": "without") 
-		  << " pserver" << std::endl;
-      }
+      headProgressStream(params.rank) << "Driver rank " << params.rank 
+				  << ": analysis start " << (driver.use_ps() ? "with": "without") 
+				  << " pserver" << std::endl;
 
       t1 = high_resolution_clock::now();
       driver.run(n_func_events, 
@@ -206,15 +204,15 @@ int main(int argc, char ** argv){
 		 frames);
       t2 = high_resolution_clock::now();
         
-      if (mpi_world_rank == 0) {
-	std::cout << "Driver MPI rank " << mpi_world_rank << ": analysis done!\n";
+      if (params.rank == 0) {
+	headProgressStream(params.rank) << "Driver rank " << params.rank << ": analysis done!\n";
 	driver.show_status(true);
       }
 
       // -----------------------------------------------------------------------
       // Average analysis time and total number of outliers
       // -----------------------------------------------------------------------
-      VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": waiting at post-run barrier" << std::endl);
+      verboseStream << "Driver rank " << params.rank << ": waiting at post-run barrier" << std::endl;
       MPI_Barrier(MPI_COMM_WORLD);
       processing_time = duration_cast<milliseconds>(t2 - t1).count();
 
@@ -240,37 +238,34 @@ int main(int argc, char ** argv){
 	total_n_comm_events = global_measures[1];
 	total_n_counter_events = global_measures[2];
       }
-
         
-      if (mpi_world_rank == 0) {
-	std::cout << "Driver MPI rank " << mpi_world_rank << ": Final report\n"
-		  << "Avg. num. frames     : " << (double)total_frames/(double)mpi_world_size << "\n"
-		  << "Avg. processing time : " << (double)total_processing_time/(double)mpi_world_size << " msec\n"
-		  << "Total num. outliers  : " << total_n_outliers << "\n"
-		  << "Total func events    : " << total_n_func_events << "\n"
-		  << "Total comm events    : " << total_n_comm_events << "\n"
-		  << "Total counter events    : " << total_n_counter_events << "\n"
-		  << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
-		  << std::endl;
-      }
+      headProgressStream(params.rank) << "Driver rank " << params.rank << ": Final report\n"
+				  << "Avg. num. frames over MPI ranks : " << (double)total_frames/(double)mpi_world_size << "\n"
+				  << "Avg. processing time over MPI ranks : " << (double)total_processing_time/(double)mpi_world_size << " msec\n"
+				  << "Total num. outliers  : " << total_n_outliers << "\n"
+				  << "Total func events    : " << total_n_func_events << "\n"
+				  << "Total comm events    : " << total_n_comm_events << "\n"
+				  << "Total counter events    : " << total_n_counter_events << "\n"
+				  << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
+				  << std::endl;
     }
   catch (std::invalid_argument &e)
     {
-      std::cout << "Driver MPI rank " << mpi_world_rank << ": caught invalid argument:" << std::endl;
+      std::cout << "Driver rank " << params.rank << ": caught invalid argument:" << std::endl;
       std::cout << e.what() << std::endl;
     }
   catch (std::ios_base::failure &e)
     {
-      std::cout << "Driver MPI rank " << mpi_world_rank << ": I/O base exception caught\n";
+      std::cout << "Driver rank " << params.rank << ": I/O base exception caught\n";
       std::cout << e.what() << std::endl;
     }
   catch (std::exception &e)
     {
-      std::cout << "Driver MPI rank " << mpi_world_rank << ": Exception caught\n";
+      std::cout << "Driver rank " << params.rank << ": Exception caught\n";
       std::cout << e.what() << std::endl;
     }
 
   MPI_Finalize();
-  VERBOSE(std::cout << "Driver MPI rank " << mpi_world_rank << ": driver is exiting" << std::endl);
+  headProgressStream(params.rank) << "Driver is exiting" << std::endl;
   return 0;
 }

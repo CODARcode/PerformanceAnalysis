@@ -12,7 +12,8 @@ using namespace chimbuko;
 //It is used to test options of the provdb_admin
 int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
-  Verbose::set_verbose(true);
+
+  chimbuko::enableVerboseLogging() = true;
   assert(argc >= 3);
   std::string addr = argv[1];
 

@@ -8,7 +8,7 @@ using namespace chimbuko;
 
 PSProvenanceDBclient::~PSProvenanceDBclient(){ 
   disconnect();
-  VERBOSE(std::cout << "PSProvenanceDBclient exiting" << std::endl);
+  verboseStream << "PSProvenanceDBclient exiting" << std::endl;
 }
 
 sonata::Collection & PSProvenanceDBclient::getCollection(const GlobalProvenanceDataType type){ 
@@ -30,12 +30,12 @@ const sonata::Collection & PSProvenanceDBclient::getCollection(const GlobalProve
 
 void PSProvenanceDBclient::disconnect(){
   if(m_is_connected){
-    VERBOSE(std::cout << "PSProvenanceDBclient disconnecting" << std::endl);
+    verboseStream << "PSProvenanceDBclient disconnecting" << std::endl;
 
     if(m_perform_handshake){
-      VERBOSE(std::cout << "PSProvenanceDBclient de-registering with server" << std::endl);
+      verboseStream << "PSProvenanceDBclient de-registering with server" << std::endl;
       m_client_goodbye->on(m_server)();    
-      VERBOSE(std::cout << "PSProvenanceDBclient deleting handshake RPCs" << std::endl);
+      verboseStream << "PSProvenanceDBclient deleting handshake RPCs" << std::endl;
 
       m_client_hello->deregister();
       m_client_goodbye->deregister();
@@ -45,7 +45,7 @@ void PSProvenanceDBclient::disconnect(){
     }
 
     m_is_connected = false;
-    VERBOSE(std::cout << "PSProvenanceDBclient disconnected" << std::endl);
+    verboseStream << "PSProvenanceDBclient disconnected" << std::endl;
   }
 }
 
@@ -55,7 +55,7 @@ void PSProvenanceDBclient::connect(const std::string &addr){
     std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);   
     if(ADProvenanceDBengine::getProtocol().first != protocol){
       int mode = ADProvenanceDBengine::getProtocol().second;
-      VERBOSE(std::cout << "PSProvenanceDBclient reinitializing engine with protocol \"" << protocol << "\"" << std::endl);
+      verboseStream << "PSProvenanceDBclient reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
       ADProvenanceDBengine::finalize();
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
@@ -64,24 +64,24 @@ void PSProvenanceDBclient::connect(const std::string &addr){
 
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    VERBOSE(std::cout << "PSProvenanceDBclient connecting to database " << db_name << " on address " << addr << std::endl);
+    verboseStream << "PSProvenanceDBclient connecting to database " << db_name << " on address " << addr << std::endl;
     m_database = m_client.open(addr, 0, db_name);
-    VERBOSE(std::cout << "PSProvenanceDBclient opening function stats collection" << std::endl);
+    verboseStream << "PSProvenanceDBclient opening function stats collection" << std::endl;
     m_coll_funcstats = m_database.open("func_stats");
-    VERBOSE(std::cout << "PSProvenanceDBclient opening counter stats collection" << std::endl);
+    verboseStream << "PSProvenanceDBclient opening counter stats collection" << std::endl;
     m_coll_counterstats = m_database.open("counter_stats");
     
     m_server = eng.lookup(addr);
 
     if(m_perform_handshake){
-      VERBOSE(std::cout << "PSProvenanceDBclient registering RPCs and handshaking with provDB" << std::endl);
+      verboseStream << "PSProvenanceDBclient registering RPCs and handshaking with provDB" << std::endl;
       m_client_hello = new thallium::remote_procedure(eng.define("pserver_hello").disable_response());
       m_client_goodbye = new thallium::remote_procedure(eng.define("pserver_goodbye").disable_response());
       m_client_hello->on(m_server)();
     }      
 
     m_is_connected = true;
-    VERBOSE(std::cout << "PSProvenanceDBclient connected successfully" << std::endl);
+    verboseStream << "PSProvenanceDBclient connected successfully" << std::endl;
     
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("PSProvenanceDBclient could not connect due to exception: ") + ex.what());

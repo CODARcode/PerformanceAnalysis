@@ -124,11 +124,11 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id, 
 					      std::vector<CallListIterator_t>& data){
   
-  VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
+  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
   
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
-    VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
+    verboseStream << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
     return 0;
   }
   unsigned long n_outliers = 0;
@@ -144,15 +144,15 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
     int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
     itt->set_label(label);
     if (label == -1) {
-      VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+      verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
       n_outliers += 1;
       outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
     }else{
       //Capture maximum of one normal execution per io step
       if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+	verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 
 	outliers.insert(itt, Anomalies::EventType::Normal);      
       }

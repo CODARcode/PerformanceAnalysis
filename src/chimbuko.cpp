@@ -92,9 +92,9 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   //Connect to the provenance database and/or initialize provenance IO
 #ifdef ENABLE_PROVDB
   timer.start();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
   init_provdb();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
   m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
 #endif
   init_io(); //will write provenance info if provDB not in use
@@ -102,16 +102,16 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   
   //Connect to the parameter server
   timer.start();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl;
   init_net_client();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
   m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
 
   //Connect to TAU; process will be blocked at this line until it finds writer (in SST mode)
   timer.start();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " connecting to application trace stream" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to application trace stream" << std::endl;
   init_parser();
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl;
   m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
 
   //Event and outlier objects must be initialized in order after parser
@@ -123,7 +123,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   
   m_is_initialized = true;
   
-  PROGRESS(0, m_params.rank, std::cout << "driver rank " << m_params.rank << " has initialized successfully" << std::endl);
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " has initialized successfully" << std::endl;
   m_perf.add("ad_initialize_total_us", total_timer.elapsed_us());
 }
 
@@ -162,7 +162,7 @@ void Chimbuko::init_net_client(){
     else if(m_params.hpserver_nthr > 1){
       std::string orig = m_params.pserver_addr;
       m_params.pserver_addr = getHPserverIP(m_params.pserver_addr, m_params.hpserver_nthr, m_params.rank);
-      VERBOSE(std::cout << "AD rank " << m_params.rank << " connecting to endpoint " << m_params.pserver_addr << " (base " << orig << ")" << std::endl);
+      verboseStream << "AD rank " << m_params.rank << " connecting to endpoint " << m_params.pserver_addr << " (base " << orig << ")" << std::endl;
     }
 
     m_net_client = new ADNetClient;
@@ -268,12 +268,12 @@ bool Chimbuko::parseInputStep(int &step,
 
   int expect_step = step+1;
 
-  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl;
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl;
 
   timer.start();
   m_parser->beginStep();
   if (!m_parser->getStatus()){
-    VERBOSE(std::cout << "driver parser appears to have disconnected, ending" << std::endl);
+    verboseStream << "driver parser appears to have disconnected, ending" << std::endl;
     return false;
   }
   m_perf.add("ad_parse_input_begin_step_us", timer.elapsed_us());
@@ -282,30 +282,30 @@ bool Chimbuko::parseInputStep(int &step,
   step = m_parser->getCurrentStep();
   if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
     
-  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
 
-  VERBOSE(std::cout << "driver rank " << m_params.rank << " updating attributes" << std::endl);  
+  verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;  
   timer.start();
   m_parser->update_attributes();
   m_perf.add("ad_parse_input_update_attributes_us", timer.elapsed_us());
 
-  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching func data" << std::endl);  
+  verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;  
   timer.start();
   m_parser->fetchFuncData();
   m_perf.add("ad_parse_input_fetch_func_data_us", timer.elapsed_us());
 
-  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching comm data" << std::endl);  
+  verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;  
   timer.start();
   m_parser->fetchCommData();
   m_perf.add("ad_parse_input_fetch_comm_data_us", timer.elapsed_us());
 
-  VERBOSE(std::cout << "driver rank " << m_params.rank << " fetching counter data" << std::endl);  
+  verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;  
   timer.start();
   m_parser->fetchCounterData();
   m_perf.add("ad_parse_input_fetch_counter_data_us", timer.elapsed_us());
 
 
-  VERBOSE(std::cout << "driver rank " << m_params.rank << " finished gathering data" << std::endl);  
+  verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;  
 
 
   // early SST buffer release
@@ -319,7 +319,7 @@ bool Chimbuko::parseInputStep(int &step,
   //Parse the new metadata for any attributes we want to maintain
   m_metadata_parser->addData(m_parser->getNewMetaData());
 
-  VERBOSE(std::cout << "driver completed input parse for step " << step << std::endl);
+  verboseStream << "driver completed input parse for step " << step << std::endl;
   m_perf.add("ad_parse_input_total_us", total_timer.elapsed_us());
 
   return true;
@@ -500,7 +500,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
-    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl;
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl;
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -565,11 +565,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
     
-    if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl;
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl;
   } // end of parser while loop
 
   //Always dump perf at end
   m_perf.write();
   
-  if(m_params.rank == 0 || Verbose::on()) std::cout << "driver rank " << m_params.rank << " run complete" << std::endl;
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 }

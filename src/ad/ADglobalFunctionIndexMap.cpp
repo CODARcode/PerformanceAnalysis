@@ -14,11 +14,11 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
   int rank = m_net_client->get_client_rank();
   auto it = m_idxmap.find(local_idx);
   if(it != m_idxmap.end()){
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " already in map, maps to global index " << it->second << std::endl);
+    verboseStream << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " already in map, maps to global index " << it->second << std::endl;
     return it->second;
   }else{
     //Obtain the index from the pserver
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " obtaining global index corresponding to local index " << local_idx << std::endl);
+    verboseStream << "ADglobalFunctionIndexMap rank " << rank << " obtaining global index corresponding to local index " << local_idx << std::endl;
 
     Message msg;
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_GET, MessageKind::FUNCTION_INDEX);
@@ -34,7 +34,7 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
     unsigned long global_idx = strToAny<unsigned long>(msg.buf());
 
     m_idxmap[local_idx] = global_idx;
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " maps to global idx " << global_idx << std::endl);
+    verboseStream << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " maps to global idx " << global_idx << std::endl;
 
     return global_idx;
   }
@@ -64,11 +64,11 @@ std::vector<unsigned long> ADglobalFunctionIndexMap::lookup(const std::vector<un
   }
   size_t n_lookup = get_remote_offsets.size();
 
-  VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " found stored global indices for " << func_name.size()-n_lookup << " functions and need to look up " << n_lookup << " from pserver" << std::endl);  
+  verboseStream << "ADglobalFunctionIndexMap rank " << rank << " found stored global indices for " << func_name.size()-n_lookup << " functions and need to look up " << n_lookup << " from pserver" << std::endl;  
 
   //Do remote lookup
   if(n_lookup){
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " looking up global indices for " << n_lookup << " functions" << std::endl);
+    verboseStream << "ADglobalFunctionIndexMap rank " << rank << " looking up global indices for " << n_lookup << " functions" << std::endl;
 
     Message msg;
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_GET, MessageKind::FUNCTION_INDEX);
@@ -97,7 +97,7 @@ std::vector<unsigned long> ADglobalFunctionIndexMap::lookup(const std::vector<un
       m_idxmap[local_idx[ get_remote_offsets[i] ] ] = global_indices[i];
     }
 
-    VERBOSE(std::cout << "ADglobalFunctionIndexMap rank " << rank << " received global indices for " << n_lookup << " functions" << std::endl);
+    verboseStream << "ADglobalFunctionIndexMap rank " << rank << " received global indices for " << n_lookup << " functions" << std::endl;
   }
 
   return out;

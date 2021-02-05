@@ -78,12 +78,12 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
     msg.set_msg("Hello!");
 
-    VERBOSE(std::cout << "ADNetClient sending handshake message to server" << std::endl);
+    verboseStream << "ADNetClient sending handshake message to server" << std::endl;
     ZMQNet::send(m_socket, msg.data());
 
     msg.clear();
 
-    VERBOSE(std::cout << "ADNetClient waiting for handshake response from server" << std::endl);
+    verboseStream << "ADNetClient waiting for handshake response from server" << std::endl;
     int ret = ZMQNet::recv(m_socket, strmsg);
     if(ret == -1){
       if(errno == EAGAIN){ recoverable_error("Connect error to parameter server: handshake timed out"); }
@@ -91,7 +91,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
       return;
     }
 
-    VERBOSE(std::cout << "ADNetClient handshake response received" << std::endl);
+    verboseStream << "ADNetClient handshake response received" << std::endl;
     
     msg.set_msg(strmsg, true);
 
@@ -101,7 +101,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     } 
 
     m_use_ps = true;
-    PROGRESS(0, rank, std::cout << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl);
+    headProgressStream(rank) << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
 #endif
     //MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -109,7 +109,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
 void ADNetClient::disconnect_ps() {
     if (!m_use_ps) return;
 
-    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnecting from PS" << std::endl);
+    verboseStream << "ADNetClient rank " << m_rank << " disconnecting from PS" << std::endl;
 #ifdef _USE_MPINET
     MPI_Barrier(MPI_COMM_WORLD);
     if (m_rank == 0)
@@ -122,13 +122,13 @@ void ADNetClient::disconnect_ps() {
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Comm_disconnect(&m_comm);
 #else
-    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl);
+    verboseStream << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl;
     Message msg;
     msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::DEFAULT);
     msg.set_msg("");
     send_and_receive(msg);
 #endif
-    VERBOSE(std::cout << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl);
+    verboseStream << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl;
     m_use_ps = false;
 }
 

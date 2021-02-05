@@ -106,11 +106,13 @@ void execute(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
   }
 
 
-  if(Verbose::on()){
-    std::cout << "Code: \"" << code << "\"" << std::endl;
-    std::cout << "Variables:"; 
-    for(auto &s: vars_v) std::cout << " \"" << s << "\"";
-    std::cout << std::endl;
+  if(enableVerboseLogging()){
+    std::ostringstream os;
+    os << "Code: \"" << code << "\"" << std::endl;
+    os << "Variables:"; 
+    for(auto &s: vars_v) os << " \"" << s << "\"";
+    os << std::endl;
+    verboseStream << os.str();
   }
 
   nlohmann::json result = nlohmann::json::array();
@@ -154,7 +156,7 @@ int main(int argc, char** argv){
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     std::cout << "Pserver: Enabling verbose debug output" << std::endl;
-    Verbose::set_verbose(true);
+    enableVerboseLogging() = true;
   }       
 
   int arg_offset = 1;
@@ -163,7 +165,7 @@ int main(int argc, char** argv){
   while(a < argc){
     std::string arg = argv[a];
     if(arg == "-verbose"){
-      Verbose::set_verbose(true);
+      enableVerboseLogging() = true;
       arg_offset++; a++;
     }else if(arg == "-nshards"){
       nshards = strToAny<int>(argv[a+1]);

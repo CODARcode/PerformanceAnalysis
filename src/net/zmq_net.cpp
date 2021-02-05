@@ -36,7 +36,7 @@ public:
     std::lock_guard<std::mutex> _(m);
     clients++;
     client_has_connected = true;
-    VERBOSE(std::cout << "ZMQNet handshake received, #clients is now " << clients << std::endl);
+    verboseStream << "ZMQNet handshake received, #clients is now " << clients << std::endl;
   };
 };
 
@@ -58,7 +58,7 @@ public:
     clients--;
     if(clients < 0) throw std::runtime_error("ZMQNet registered clients < 0! Likely a client did not perform a handshake");
 
-    VERBOSE(std::cout << "ZMQNet received disconnect notification, #clients is now " << clients << std::endl);
+    verboseStream << "ZMQNet received disconnect notification, #clients is now " << clients << std::endl;
   };
 };
 
@@ -122,7 +122,7 @@ void doWork(void* context,
     ZMQNet::recv(socket, strmsg);
     perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
 
-    VERBOSE(std::cout << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl);
+    verboseStream << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl;
     
     //Parse the message and instantiate a reply message with appropriate sender
     timer.start();
@@ -143,7 +143,7 @@ void doWork(void* context,
     timer.start();
     pit->second->action(msg_reply, msg);
     strmsg = msg_reply.data();
-    VERBOSE(std::cout << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl);
+    verboseStream << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
     perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
 
     //Send the reply
@@ -243,18 +243,18 @@ void ZMQNet::run()
   freq_timer.start();
   size_t freq_n_req = 0, freq_n_reply = 0;
 
-  VERBOSE(std::cout << "ZMQnet starting polling" << std::endl);
+  verboseStream << "ZMQnet starting polling" << std::endl;
   m_n_requests = 0;
   while(true){
 
     //Autoshutdown
     if(m_autoshutdown && m_client_has_connected && m_clients == 0){
       if(m_n_requests == 0){
-	VERBOSE(std::cout << "ZMQnet all clients have disconnected and queue cleared" << std::endl);
+	verboseStream << "ZMQnet all clients have disconnected and queue cleared" << std::endl;
 	stop_status = Status::StoppedAutomatically;
 	break;
       }else{
-	VERBOSE(std::cout << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl);	  
+	verboseStream << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl;	  
       }
     }
 
@@ -278,7 +278,7 @@ void ZMQNet::run()
       break;
     }
 
-    VERBOSE(std::cout << "ZMQnet received message" << std::endl);
+    verboseStream << "ZMQnet received message" << std::endl;
 
     //If the message was received from a worker thread, route to the AD
     //Drain the outgoing queue first to free resources
@@ -286,7 +286,7 @@ void ZMQNet::run()
       timer.start();
       int nmsg = recvAndSend(backend, frontend, m_max_pollcyc_msg);
       m_perf.add(perf_prefix + "route_back_to_front_ms", timer.elapsed_ms());
-      VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from back to front\n");
+      verboseStream << "ZMQnet routed " << nmsg << " messages from back to front\n";
       m_n_requests -= nmsg; //decrement number of outstanding requests
 #ifdef _PERF_METRIC
       m_perf.add(perf_prefix + "route_front_to_back_msg_per_cyc", nmsg);
@@ -300,7 +300,7 @@ void ZMQNet::run()
       timer.start();
       int nmsg = recvAndSend(frontend, backend, m_max_pollcyc_msg);
       m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
-      VERBOSE(std::cout << "ZMQnet routed " << nmsg << " messages from front to back\n");
+      verboseStream << "ZMQnet routed " << nmsg << " messages from front to back\n";
       m_n_requests += nmsg;
 #ifdef _PERF_METRIC
       m_perf.add(perf_prefix + "route_back_to_front_msg_per_cyc", nmsg);

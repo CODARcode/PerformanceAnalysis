@@ -53,10 +53,10 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
 
   // open file
   // for sst engine, is the adios2 internally blocked here until *.sst file is found?  
-  VERBOSE(std::cout << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl);
+  verboseStream << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl;
   m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
 
-  VERBOSE(std::cout << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl);
+  verboseStream << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
 
     
@@ -77,7 +77,7 @@ int ADParser::beginStep(bool verbose) {
       m_current_step++;
     }else{
       if(status == adios2::StepStatus::NotReady){ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out waiting for next step to be ready\n"); }
-      else if(status == adios2::StepStatus::EndOfStream){ PROGRESS(0, m_rank, std::cout << "ADParser::beginStep rank 0 detected end of data stream" << std::endl); }
+      else if(status == adios2::StepStatus::EndOfStream){ headProgressStream(m_rank) << "ADParser::beginStep rank 0 detected end of data stream" << std::endl; }
       else{ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep returned an unknown error\n"); }
       m_status = false;
       m_current_step = -1;
@@ -97,7 +97,7 @@ void ADParser::update_attributes() {
   if (m_engineType == "BPFile" && m_attr_once) return;
 
   const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes(); //adios2::Params is an alias to std::map<std::string,std::string>
-  VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got attributes" << std::endl);
+  verboseStream << "ADParser::update_attributes: rank " << m_rank << " got attributes" << std::endl;
 
   m_new_metadata.clear(); //clear all previously seen metadata
 
@@ -105,13 +105,13 @@ void ADParser::update_attributes() {
   std::vector<std::pair<int, std::string> > func_idx_name_pairs; 
   
   for (const auto attributePair: attributes){
-    if(Verbose::on()){
+    if(enableVerboseLogging()){
       std::stringstream ss;
       ss << "ADParser::update_attributes rank " << m_rank << " parsing attribute: (" << attributePair.first << ", {";
       for(auto const &e : attributePair.second)
 	ss << "[" << e.first << "," << e.second << "]";
       ss << "})";
-      std::cout << ss.str() << std::endl;
+      verboseStream << ss.str() << std::endl;
     }
 
     std::string name = attributePair.first;
@@ -139,7 +139,7 @@ void ADParser::update_attributes() {
 	 	  
 	  m_new_metadata.push_back(MetaData_t(m_program_idx,rank,tid,descr, value));
 	    
-	  VERBOSE(std::cout << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl);
+	  verboseStream << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
 	    
 	  m_metadata_seen.insert(name);
 	}
@@ -181,14 +181,14 @@ void ADParser::update_attributes() {
 	}else if(!m->count(key)){ 	//Append to map
 	  (*m)[key] = value;
 	}else{ 
-	  VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl);
+	  verboseStream << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl;
 	}      	
       }
 
     }//!= metadata && != unknown
     else{
       //Skip attribute if not of known type
-      VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " attribute type not recognized" << std::endl);
+      verboseStream << "ADParser::update_attributes: rank " << m_rank << " attribute type not recognized" << std::endl;
     }
 
   }//attribute pair loop
@@ -203,7 +203,7 @@ void ADParser::update_attributes() {
       loc_idx[i] = func_idx_name_pairs[i].first;
       func_names[i] = func_idx_name_pairs[i].second;
     }
-    VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " global function index lookup of " << n_pairs << " functions" << std::endl);
+    verboseStream << "ADParser::update_attributes: rank " << m_rank << " global function index lookup of " << n_pairs << " functions" << std::endl;
     std::vector<unsigned long> glob_idx = m_global_func_idx_map.lookup(loc_idx, func_names);      
 	
     for(size_t i=0;i<n_pairs;i++){
@@ -211,7 +211,7 @@ void ADParser::update_attributes() {
 	m_funcMap[ glob_idx[i] ] = func_names[i];      
     }
     if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_us", timer.elapsed_us());
-    VERBOSE(std::cout << "ADParser::update_attributes: rank " << m_rank << " got global function indices of " << n_pairs << " of functions" << std::endl);
+    verboseStream << "ADParser::update_attributes: rank " << m_rank << " got global function indices of " << n_pairs << " of functions" << std::endl;
   }
 
   m_attr_once = true;
@@ -352,7 +352,7 @@ ParserError ADParser::fetchFuncData() {
 #define DO_SORT
 #ifdef DO_SORT
       if(!checkEventOrder(EventDataType::FUNC, false)){	
-	VERBOSE(std::cout << "ADParser rank " << m_rank << " sorting func data" << std::endl);  
+	verboseStream << "ADParser rank " << m_rank << " sorting func data" << std::endl;  
 	PerfTimer timer;
 	
 	std::map<unsigned long, std::vector<size_t> > data_sorted_idx; //preserve ordering of events that have the same timestamp
@@ -372,7 +372,7 @@ ParserError ADParser::fetchFuncData() {
 	m_event_timestamps.swap(data_sorted);
 
 	double sort_time_ms = timer.elapsed_ms();
-	VERBOSE(std::cout << "ADParser rank " << m_rank << " finished sorting func data: " << m_timer_event_count << " entries in " << sort_time_ms << "ms" << std::endl);  
+	verboseStream << "ADParser rank " << m_rank << " finished sorting func data: " << m_timer_event_count << " entries in " << sort_time_ms << "ms" << std::endl;  
 	if(m_perf){
 	  m_perf->add("parser_sort_funcdata_ms", sort_time_ms);
 	  m_perf->add("parser_sort_funcdata_ndata", m_timer_event_count);

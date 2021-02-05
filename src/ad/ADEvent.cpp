@@ -99,13 +99,13 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	}
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
 
-	VERBOSE(std::cout << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl);
+	verboseStream << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl;
       }else{
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
 	stackProtectGC(it);
 	m_unmatchedCorrelationID[cid] = it;
 	++m_unmatchedCorrelationID_count[it->get_id()];
-	VERBOSE(std::cout << "Found as-yet unpartnered event with correlation ID " << cid << std::endl);
+	verboseStream << "Found as-yet unpartnered event with correlation ID " << cid << std::endl;
       }
     }
   }
@@ -213,7 +213,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
 	comm.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
-	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto comm stack (Tau likely provided this event out of order)" << std::endl);
+	verboseStream << "Warning: Reinserting " << rit->get_json().dump() << " onto comm stack (Tau likely provided this event out of order)" << std::endl;
 	comm.push(*rit); //reinsert in reverse order (oldest first)
       }
     }
@@ -230,7 +230,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
 	count.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
-	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto counter stack (Tau likely provided this event out of order)" << std::endl);
+	verboseStream << "Warning: Reinserting " << rit->get_json().dump() << " onto counter stack (Tau likely provided this event out of order)" << std::endl;
 	count.push(*rit); //reinsert in reverse order (oldest first)
       }
     }

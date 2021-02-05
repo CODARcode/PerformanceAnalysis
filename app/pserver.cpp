@@ -91,7 +91,7 @@ struct pserverArgs{
 
 //Allow for graceful exit on sigterm
 void termSignalHandler( int signum ){
-  std::cout << "Caught SIGTERM, shutting down" << std::endl;
+  progressStream << "Caught SIGTERM, shutting down" << std::endl;
 }
 
 
@@ -105,8 +105,8 @@ int main (int argc, char ** argv){
 
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-    std::cout << "Pserver: Enabling verbose debug output" << std::endl;
-    Verbose::set_verbose(true);
+    progressStream << "Pserver: Enabling verbose debug output" << std::endl;
+    enableVerboseLogging() = true;
   }       
 
   SstdParam param; //global collection of parameters used to identify anomalies
@@ -116,7 +116,7 @@ int main (int argc, char ** argv){
   
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
-    std::cout << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
+    progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
     std::ifstream in(args.load_params);
     if(!in.good()) throw std::runtime_error("Could not load anomaly algorithm parameters from the file provided");
     nlohmann::json in_p;
@@ -147,7 +147,7 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
     //Connect to the provenance database
     if(args.provdb_addr.size()){
-      std::cout << "Pserver: connecting to provenance database" << std::endl;
+      progressStream << "Pserver: connecting to provenance database" << std::endl;
       provdb_client.connect(args.provdb_addr);
     }
 #endif
@@ -160,14 +160,14 @@ int main (int argc, char ** argv){
 		    );
     }
 
-    std::cout << "PServer: Run parameter server ";
+    progressStream << "PServer: Run parameter server ";
 #ifdef _USE_ZMQNET
     std::cout << "on port " << args.port << " ";
 #endif
     std::cout << "with " << args.nt << " threads" << std::endl;
 
     if (args.ws_addr.size() || args.stat_outputdir.size()){
-      std::cout << "PServer: Run anomaly statistics sender ";
+      progressStream << "PServer: Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
@@ -203,16 +203,16 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database
     if(provdb_client.isConnected()){
-      std::cout << "Pserver: sending final statistics to provDB" << std::endl;
+      progressStream << "Pserver: sending final statistics to provDB" << std::endl;
       provdb_client.sendMultipleData(global_func_stats.collect_func_data(), GlobalProvenanceDataType::FunctionStats);
       provdb_client.sendMultipleData(global_counter_stats.get_json_state(), GlobalProvenanceDataType::CounterStats);
-      std::cout << "Pserver: disconnecting from provDB" << std::endl;      
+      progressStream << "Pserver: disconnecting from provDB" << std::endl;      
       provdb_client.disconnect();
     }
 #endif
 
     // could be output to a file
-    std::cout << "Pserver: Shutdown parameter server ..." << std::endl;
+    progressStream << "Pserver: Shutdown parameter server ..." << std::endl;
     //param.show(std::cout);
     std::ofstream o;
     o.open(args.logdir + "/parameters.txt");
@@ -224,25 +224,25 @@ int main (int argc, char ** argv){
   }
   catch (std::invalid_argument &e)
     {
-      std::cout << e.what() << std::endl;
+      progressStream << e.what() << std::endl;
     }
   catch (std::ios_base::failure &e)
     {
-      std::cout << "I/O base exception caught\n";
-      std::cout << e.what() << std::endl;
+      progressStream << "I/O base exception caught\n";
+      progressStream << e.what() << std::endl;
     }
   catch (std::exception &e)
     {
-      std::cout << "Exception caught\n";
-      std::cout << e.what() << std::endl;
+      progressStream << "Exception caught\n";
+      progressStream << e.what() << std::endl;
     }
 
-  std::cout << "Pserver: finalizing the network" << std::endl;
+  progressStream << "Pserver: finalizing the network" << std::endl;
   net.finalize();
 
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
-    std::cout << "PServer: Saving parameters to output file " << args.save_params << std::endl;   
+    progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;   
     std::ofstream out(args.save_params);
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
@@ -251,6 +251,6 @@ int main (int argc, char ** argv){
     out << out_p;
   }
 
-  std::cout << "Pserver: finished" << std::endl;
+  progressStream << "Pserver: finished" << std::endl;
   return 0;
 }

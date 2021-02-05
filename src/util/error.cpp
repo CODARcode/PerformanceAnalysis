@@ -1,5 +1,6 @@
 #include<chimbuko/util/error.hpp>
 #include<chimbuko/util/string.hpp>
+#include<chimbuko/util/time.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -24,7 +25,7 @@ namespace chimbuko{
   std::string ErrorWriter::getErrStr(const std::string &type, const std::string &msg, const std::string &func, 
 				     const std::string &file,  const unsigned long line) const{
     std::stringstream ss;
-    ss<< "Error (" << type << ")";
+    ss << '[' << getDateTime() << "] Error (" << type << ")";
     if(m_rank != -1) ss << " rank " << m_rank;
     ss << " : " << func << " (" << file << ":" << line << ") : " << msg <<std::endl;
     return ss.str();
