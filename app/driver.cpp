@@ -27,13 +27,36 @@ struct overrideRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
       }
       input_data_rank() = v;
       into.override_rank = true;
-      std::cout << "Driver: Override rank set to true, input data rank is " << input_data_rank() << std::endl;
+      verboseStream << "Driver: Override rank set to true, input data rank is " << input_data_rank() << std::endl;
       return 1;
     }
     return -1;
   }
   void help(std::ostream &os) const{
     os << "-override_rank : Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank.";
+  }
+};
+
+
+//Specialized class for setting the global head rank for logging purposes (doesn't actually set a parameter in the struct)
+struct setLoggingHeadRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
+  int parse(ChimbukoParams &into, const std::string &arg, const char** vals, const int vals_size){
+    if(arg == "-logging_head_rank"){
+      if(vals_size < 1) return -1;
+      int v;
+      try{
+	v = strToAny<int>(vals[0]);
+      }catch(const std::exception &exc){
+	return -1;
+      }
+      progressHeadRank() = v;
+      verboseStream << "Driver: Set global head rank for log output to " << v << std::endl;
+      return 1;
+    }
+    return -1;
+  }
+  void help(std::ostream &os) const{
+    os << "-logging_head_rank : Set the head rank upon which progress logging will be output (default 0)";
   }
 };
 
@@ -64,6 +87,7 @@ optionalArgsParser & getOptionalArgsParser(){
 
     addOptionalCommandLineArg(p, rank, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
     p.addOptionalArg(new overrideRankArg); //-override_rank <idx>
+    p.addOptionalArg(new setLoggingHeadRankArg); //-logging_head_rank <rank>
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
 
@@ -73,7 +97,7 @@ optionalArgsParser & getOptionalArgsParser(){
 };
 
 void printHelp(){
-  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Output location> <Options>\n" 
+  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n" 
 	    << "Where <Trace engine type> : BPFile or SST\n"
 	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
 	    << "      <Trace file prefix> : The prefix of the file eg \"tau-metrics-[mybinary]\"\n"
@@ -83,7 +107,7 @@ void printHelp(){
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_world_rank){
   if(argc < 4){
-    std::cerr << "Expected at least 5 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix>" << std::endl;
+    std::cerr << "Expected at least 4 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix>" << std::endl;
     exit(-1);
   }
 
@@ -160,19 +184,20 @@ int main(int argc, char ** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);    
 
+  //Parse environment variables
+  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE"))
+    enableVerboseLogging() = true;
+
   //Parse Chimbuko parameters
   ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
-  if(params.rank == 0) params.print();
+  if(params.rank == progressHeadRank()) params.print();
+
+  if(enableVerboseLogging())
+    headProgressStream(params.rank) << "Driver rank " << params.rank << ": Enabling verbose debug output" << std::endl;
+
 
   verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
-
-  //Parse environment variables
-  if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
-    headProgressStream(params.rank) << "Driver rank " << params.rank << ": Enabling verbose debug output" << std::endl;
-    enableVerboseLogging() = true;
-  }       
-
 
   try 
     {
@@ -251,17 +276,17 @@ int main(int argc, char ** argv){
     }
   catch (std::invalid_argument &e)
     {
-      std::cout << "Driver rank " << params.rank << ": caught invalid argument:" << std::endl;
+      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument:" << std::endl;
       std::cout << e.what() << std::endl;
     }
   catch (std::ios_base::failure &e)
     {
-      std::cout << "Driver rank " << params.rank << ": I/O base exception caught\n";
+      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught\n";
       std::cout << e.what() << std::endl;
     }
   catch (std::exception &e)
     {
-      std::cout << "Driver rank " << params.rank << ": Exception caught\n";
+      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught\n";
       std::cout << e.what() << std::endl;
     }
 
