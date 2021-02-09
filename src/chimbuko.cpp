@@ -549,7 +549,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     
     //Trim the call list
     timer.start();
-    delete m_event->trimCallList();
+    delete m_event->trimCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
     m_perf.add("ad_run_trim_calllist_us", timer.elapsed_us());
 
     m_perf.add("ad_run_total_step_time_excl_parse_us", step_timer.elapsed_us());

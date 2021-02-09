@@ -272,10 +272,10 @@ namespace chimbuko {
 
     /**
      * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
-     * 
+     * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
      * @return CallListMap_p_t* trimed function calls
      */
-    CallListMap_p_t* trimCallList();
+    CallListMap_p_t* trimCallList(int n_keep_thread = 0);
 
 
     /**
@@ -328,7 +328,7 @@ namespace chimbuko {
     /**
      * @brief  map of process,rank,thread to a list of ExecData_t objects which contain entry/exit timestamps for function calls
      * 
-     * In practise the call list is purged of completed events each IO step through calls to trimCallList
+     * In practise the call list is purged of completed events each IO step through calls to trimCallList unless those elements are marked as non-deletable
      */
     CallListMap_p_t   m_callList;
     /**

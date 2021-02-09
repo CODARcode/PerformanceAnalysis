@@ -298,17 +298,23 @@ static unsigned long nested_map_size(const T& m) {
   return n_elements;
 }
 
-CallListMap_p_t* ADEvent::trimCallList() {
+CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
   //Remove completed entries from the call list
   CallListMap_p_t* cpListMap = new CallListMap_p_t;
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {
       for (auto& it_t: it_r.second) {
 	CallList_t& cl = it_t.second;
+
+	//Are we keeping all events for this thread?
+	if(n_keep_thread >= cl.size()) 
+	  continue;
 	CallList_t cpList;
 
 	auto it = cl.begin();
-	while (it != cl.end()) {
+	auto one_past_last = std::prev(cl.end(),n_keep_thread);
+
+	while (it != one_past_last) {
 	  // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
 	  if (it->can_delete() && it->get_runtime()) {
 	    //Add copy of completed event to output
