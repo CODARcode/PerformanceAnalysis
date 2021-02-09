@@ -55,6 +55,8 @@ namespace chimbuko {
 
     std::string outlier_statistic; /**< Set the statistic used in outlier detection*/
 
+    int step_report_freq; /**<Steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)*/
+
     ChimbukoParams();
 
     void print() const;

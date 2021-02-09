@@ -90,6 +90,7 @@ optionalArgsParser & getOptionalArgsParser(){
     p.addOptionalArg(new setLoggingHeadRankArg); //-logging_head_rank <rank>
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
+    addOptionalCommandLineArg(p, step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
 
     initialized = true;
   }
@@ -139,6 +140,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   params.parser_beginstep_timeout = 30;
   params.rank = -1234; //assign an invalid value as default for use below
   params.outlier_statistic = "exclusive_runtime";
+  params.step_report_freq = 1;
   
   getOptionalArgsParser().parse(params, argc-4, (const char**)(argv+4));
 

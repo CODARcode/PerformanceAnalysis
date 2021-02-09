@@ -22,7 +22,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  perf_outputpath(""), perf_step(10),
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
-				  outlier_statistic("exclusive_runtime")
+                                  outlier_statistic("exclusive_runtime"),
+                                  step_report_freq(1)  
 {}
 
 
@@ -92,9 +93,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   //Connect to the provenance database and/or initialize provenance IO
 #ifdef ENABLE_PROVDB
   timer.start();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
   init_provdb();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
   m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
 #endif
   init_io(); //will write provenance info if provDB not in use
@@ -102,16 +101,12 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   
   //Connect to the parameter server
   timer.start();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl;
   init_net_client();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
   m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
 
   //Connect to TAU; process will be blocked at this line until it finds writer (in SST mode)
   timer.start();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to application trace stream" << std::endl;
   init_parser();
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl;
   m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
 
   //Event and outlier objects must be initialized in order after parser
@@ -138,6 +133,7 @@ void Chimbuko::init_io(){
 }
 
 void Chimbuko::init_parser(){
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to application trace stream" << std::endl;
   if(m_params.pserver_addr.length() > 0 && !m_net_client) throw std::runtime_error("Net client must be initialized before calling init_parser");
   m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType,
 			  m_params.trace_connect_timeout);
@@ -145,6 +141,7 @@ void Chimbuko::init_parser(){
   m_parser->setBeginStepTimeout(m_params.parser_beginstep_timeout);
   m_parser->setDataRankOverride(m_params.override_rank);
   m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl;
 }
 
 void Chimbuko::init_event(){
@@ -157,6 +154,8 @@ void Chimbuko::init_event(){
 
 void Chimbuko::init_net_client(){
   if(m_params.pserver_addr.length() > 0){
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to parameter server" << std::endl;
+
     //If using the hierarchical PS we need to choose the appropriate port to connect to as an offset of the base port
     if(m_params.hpserver_nthr <= 0) throw std::runtime_error("Chimbuko::init_net_client Input parameter hpserver_nthr cannot be <1");
     else if(m_params.hpserver_nthr > 1){
@@ -173,6 +172,8 @@ void Chimbuko::init_net_client(){
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
+
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
   }
 }
 
@@ -201,8 +202,12 @@ void Chimbuko::init_counter(){
 #ifdef ENABLE_PROVDB
 void Chimbuko::init_provdb(){
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
-  if(m_params.provdb_addr.length() > 0)
+  if(m_params.provdb_addr.length() > 0){
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
     m_provdb_client->connect(m_params.provdb_addr, m_params.nprovdb_shards);
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
+  }
+
   m_provdb_client->linkPerf(&m_perf);
 }
 #endif
@@ -268,7 +273,10 @@ bool Chimbuko::parseInputStep(int &step,
 
   int expect_step = step+1;
 
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl;
+  //Decide whether to report step progress
+  bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && expect_step % m_params.step_report_freq == 0);
+  
+  if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl; }
 
   timer.start();
   m_parser->beginStep();
@@ -282,7 +290,7 @@ bool Chimbuko::parseInputStep(int &step,
   step = m_parser->getCurrentStep();
   if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
     
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl;
+  if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl; }
 
   verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;  
   timer.start();
@@ -500,7 +508,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
-    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl;
+    //Decide whether to report step progress
+    bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
+
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl; }
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -565,7 +576,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
     
-    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl;
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl; }
   } // end of parser while loop
 
   //Always dump perf at end
