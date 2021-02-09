@@ -87,16 +87,18 @@ Anomalies ADOutlierSSTD::run(int step) {
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     for (auto itt : it.second) { //loop over events for that function
-      //Update local counts of number of times encountered
-      std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
-      auto encounter_it = m_local_func_exec_count.find(fkey);
-      if(encounter_it == m_local_func_exec_count.end())
-	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
-      else
-	encounter_it->second++;
-
-      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
-	param[func_id].push( this->getStatisticValue(*itt) );
+      if(itt->get_label() == 0){ //has not been analyzed previously
+	//Update local counts of number of times encountered
+	std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+	auto encounter_it = m_local_func_exec_count.find(fkey);
+	if(encounter_it == m_local_func_exec_count.end())
+	  encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+	else
+	  encounter_it->second++;
+	
+	if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
+	  param[func_id].push( this->getStatisticValue(*itt) );
+	}
       }
     }
   }
@@ -140,21 +142,23 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
   const double thr_lo = mean - m_sigma * std;
 
   for (auto itt : data) {
-    const double runtime = this->getStatisticValue(*itt);
-    int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
-    itt->set_label(label);
-    if (label == -1) {
-      verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
-      n_outliers += 1;
-      outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
-    }else{
-      //Capture maximum of one normal execution per io step
-      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
-
-	outliers.insert(itt, Anomalies::EventType::Normal);      
+    if(itt->get_label() == 0){ //only label new events
+      const double runtime = this->getStatisticValue(*itt);
+      int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
+      itt->set_label(label);
+      if (label == -1) {
+	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
+	n_outliers += 1;
+	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
+      }else{
+	//Capture maximum of one normal execution per io step
+	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
+	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
+	  
+	  outliers.insert(itt, Anomalies::EventType::Normal);      
+	}
       }
     }
   }

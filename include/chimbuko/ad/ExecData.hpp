@@ -399,7 +399,7 @@ public:
     /**
      * @brief Get the label of this execution data
      * 
-     * @return int 1 of normal and -1 if anomaly
+     * @return int 1 of normal and -1 if anomaly. Returns 0 if no label has been assigned.
      */
     int get_label() const { return m_label; }
     /**
@@ -433,7 +433,7 @@ public:
     /**
      * @brief Set the label 
      * 
-     * @param label 1 for normal, -1 for anomaly
+     * @param label 1 for normal, -1 for anomaly.
      */
     void set_label(int label) { m_label = label; }
     /**
