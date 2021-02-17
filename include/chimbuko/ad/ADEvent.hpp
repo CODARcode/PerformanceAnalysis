@@ -20,9 +20,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> Commstack_t
    */
-  DEF_MAP3UL(CommStackMap, CommStack_t); 
-  
-
+  typedef mapPRT<CommStack_t> CommStackMap_p_t;
 
   /**
    * @brief a stack of CounterData_t
@@ -33,9 +31,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> Counterstack_t
    */
-  DEF_MAP3UL(CounterStackMap, CounterStack_t); 
-
-
+  typedef mapPRT<CounterStack_t> CounterStackMap_p_t;
 
   /**
    * @brief list of function calls (ExecData_t) in entry time order
@@ -52,8 +48,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> CallList_t
    */
-  DEF_MAP3UL(CallListMap, CallList_t);
-  
+  typedef mapPRT<CallList_t> CallListMap_p_t;
 
 
   /**
@@ -64,7 +59,8 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> CallStack_t
    */
-  DEF_MAP3UL(CallStackMap, CallStack_t);
+  typedef mapPRT<CallStack_t> CallStackMap_p_t;
+
 
   /**
    * @brief hash map of a collection of ExecData_t per function

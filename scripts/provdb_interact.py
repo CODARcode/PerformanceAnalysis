@@ -3,6 +3,7 @@
 import sys
 import json
 import re
+import os
 
 import pymargo
 from pymargo.core import Engine
@@ -12,14 +13,26 @@ from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
 class provDBshard:
-    def __init__(self,client,address,db_name):
+    def __openCollection(self, coll_name, create=False):
+        if(self.database.exists(coll_name) == False):
+            if(create == True):
+                print("Shard %s creating '%s' collection" % (self.db_name, coll_name) )
+                self.database.create(coll_name)
+            else:
+                print("Error: Shard %s, collection '%s' does not exist!" % (self.db_name, coll_name))
+                sys.exit(1)
+        return self.database.open(coll_name)
+
+
+    def __init__(self,client,address,db_name,create=False):
         #Open database as a client
+        self.db_name = db_name
         self.database = client.open(address, 0, db_name)
 
         #Initialize collections
-        self.anomalies = self.database.open('anomalies')
-        self.normalexecs = self.database.open('normalexecs')
-        self.metadata = self.database.open('metadata')
+        self.anomalies = self.__openCollection('anomalies',create=create)
+        self.normalexecs = self.__openCollection('normalexecs',create=create)
+        self.metadata = self.__openCollection('metadata',create=create)
 
     def __del__(self):
         del self.anomalies
@@ -27,9 +40,7 @@ class provDBshard:
         del self.metadata        
         del self.database
 
-        
-    #Apply a jx9 filter to a collection
-    def filter(self, which_coll, query):
+    def getCollection(self, which_coll):
         col = None
         if which_coll == "anomalies":
             col = self.anomalies
@@ -40,15 +51,24 @@ class provDBshard:
         else:
             print("Invalid collection")
             sys.exit(1)
-        return col.filter(query)
+        return col
+        
+    #Apply a jx9 filter to a collection
+    def filter(self, which_coll, query):
+        return self.getCollection(which_coll).filter(query)
 
     def execute(self, code, variables):
         return self.database.execute(code,variables)
 
+    def store(self, which_coll, record):
+        return self.getCollection(which_coll).store(record, commit=True)
+    
+        
 
 class provDBinterface:
     #Filename should contain a '%d' which will be replaced by the shard index
-    def __init__(self,engine,filename,nshards):
+    #If create=True it will create the database if it does not exist
+    def __init__(self,engine,filename,nshards,create=False):
         if not re.search(r'\%d',filename):
             print("Error, filename does not contain \%d")
             sys.exit(1)
@@ -64,12 +84,20 @@ class provDBinterface:
         for s in range(nshards):
             db_name = "provdb.%d" % s
             self.db_names.append(db_name)
+           
+            db_file = re.sub(r'\%d',str(s),filename)
+            if os.path.exists(db_file) == False:
+                if create == True:
+                    print("Creating shard %d as %s from file %s" % (s,db_name,db_file))
+                    self.admin.create_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+                else:
+                    print("Error: File '%s' does not exist!" % db_file)
+                    sys.exit(1)                    
+            else:
+                print("Attaching shard %d as %s from file %s" % (s,db_name,db_file))
+                self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
 
-            db_file = re.sub(r'\%d',str(s),filename)    
-            print("Attaching shard %d as %s from file %s" % (s,db_name,db_file))
-            self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
-
-            self.db_shards.append( provDBshard(self.client, self.address, db_name) )
+            self.db_shards.append( provDBshard(self.client, self.address, db_name, create=create) )
 
     def getNshards(self):
         return len(self.db_shards)

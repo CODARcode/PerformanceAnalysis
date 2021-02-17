@@ -1,11 +1,11 @@
 #pragma once
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/util/map.hpp"
 #include <string>
 #include <vector>
 #include <list>
 #include <stack>
-#include <unordered_map>
 
 namespace chimbuko {
   typedef std::list<CounterData_t> CounterDataList_t;
@@ -16,12 +16,12 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> CounterDataList_t
    */
-  DEF_MAP3UL(CounterDataListMap, CounterDataList_t); 
+  typedef mapPRT<CounterDataList_t> CounterDataListMap_p_t;
 
   /**
    * @brief map of process, rank, thread -> CounterTimeStamps_t
    */
-  DEF_MAP3UL(CounterTimeStampMap, CounterTimeStamps_t); 
+  typedef mapPRT<CounterTimeStamps_t> CounterTimeStampMap_p_t;
 
   
   /**

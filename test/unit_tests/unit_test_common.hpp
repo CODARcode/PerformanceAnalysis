@@ -113,6 +113,24 @@ namespace chimbuko{
     
 
   /**
+   * @brief Setup parent <-> child relationship between GPU event and CPU parent
+   */
+  void bindCPUparentGPUkernel(ExecData_t &cpu_parent, ExecData_t &gpu_kern, unsigned long corridx){
+    assert(cpu_parent.get_pid() == gpu_kern.get_pid());
+    assert(cpu_parent.get_rid() == gpu_kern.get_rid());
+    
+    gpu_kern.add_counter( createCounterData_t(gpu_kern.get_pid(), gpu_kern.get_rid(), gpu_kern.get_tid(), 99, corridx, gpu_kern.get_entry(), "Correlation ID" ) ); //correlation ID counter at start of kernel
+    cpu_parent.add_counter( createCounterData_t(cpu_parent.get_pid(), cpu_parent.get_rid(), cpu_parent.get_tid(), 99, corridx, cpu_parent.get_entry(), "Correlation ID" ) ); //correlation ID counter at start of parent
+    gpu_kern.set_GPU_correlationID_partner(cpu_parent.get_id());
+    cpu_parent.set_GPU_correlationID_partner(gpu_kern.get_id());
+  }
+  void bindCPUparentGPUkernel(ExecData_t &cpu_parent, ExecData_t &gpu_kern){
+    static unsigned long corridx_cnt = 0;
+    bindCPUparentGPUkernel(cpu_parent, gpu_kern, corridx_cnt++);
+  }
+
+
+  /**
    * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
    */
   Event_t createCommEvent_t(unsigned long pid,
