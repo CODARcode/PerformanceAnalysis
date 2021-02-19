@@ -275,6 +275,14 @@ namespace chimbuko {
 
 
     /**
+     * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
+     * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
+     *
+     * Functionality is the same as trimCallList only it doesn't return the trimmed function calls
+     */
+    void purgeCallList(int n_keep_thread = 0);
+
+    /**
      * @brief show current call stack tree status
      * 
      * @param verbose true to see all details

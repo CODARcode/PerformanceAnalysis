@@ -258,6 +258,32 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
   
 }
 
+
+TEST(ADEventTest, purgeCallList){
+  ADFuncEventContainer ad;
+  long time = 100;
+
+  int event_idx = 0;
+  int fid1=0;
+  int fid2=1;
+
+  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,event_idx++,fid1,  0    ));
+  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,event_idx++,fid1,  time ));
+  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",event_idx++,fid2,  time+50   )); //different function
+  ad.initializeAD();
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry2]), EventError::OK );
+
+  ad.event_manager.purgeCallList();
+
+  const CallList_t &call_list = ad.event_manager.getCallListMap()[0][0][0];
+  EXPECT_EQ(call_list.size(), 1);
+  EXPECT_EQ(call_list.begin()->get_fid(), fid2);
+}
+
+
+
 TEST(ADEvent, associatesCommsAndCountersWithFunc){
   ADEvent event_man;
   std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };

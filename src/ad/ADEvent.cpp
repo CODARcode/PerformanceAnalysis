@@ -338,6 +338,40 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
 }
 
 
+void ADEvent::purgeCallList(int n_keep_thread) {
+  //Remove completed entries from the call list
+  for (auto& it_p : m_callList) {
+    for (auto& it_r : it_p.second) {
+      for (auto& it_t: it_r.second) {
+	CallList_t& cl = it_t.second;
+
+	//Are we keeping all events for this thread?
+	if(n_keep_thread >= cl.size()) 
+	  continue;
+
+	auto it = cl.begin();
+	auto one_past_last = std::prev(cl.end(),n_keep_thread);
+
+	while (it != one_past_last) {
+	  if (it->can_delete() && it->get_runtime()) {
+	    //Remove completed event from map of event index string to call list
+	    m_callIDMap.erase(it->get_id());	    
+	    //Remove completed event from call list
+	    it = cl.erase(it);
+	  }
+	  else {
+	    it++;
+	  }                    
+	}
+      }
+    }
+  }    
+  m_execDataMap.clear();
+}
+
+
+
+
 CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{
   auto it = m_callIDMap.find(event_id);
   if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id + " not present in map");

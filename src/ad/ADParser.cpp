@@ -210,7 +210,7 @@ void ADParser::update_attributes() {
       if(!m_funcMap.count(glob_idx[i]))
 	m_funcMap[ glob_idx[i] ] = func_names[i];      
     }
-    if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_us", timer.elapsed_us());
+    if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_ms", timer.elapsed_ms());
     verboseStream << "ADParser::update_attributes: rank " << m_rank << " got global function indices of " << n_pairs << " of functions" << std::endl;
   }
 

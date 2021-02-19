@@ -94,7 +94,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 #ifdef ENABLE_PROVDB
   timer.start();
   init_provdb();
-  m_perf.add("ad_initialize_provdb_us", timer.elapsed_us());
+  m_perf.add("ad_initialize_provdb_ms", timer.elapsed_ms());
 #endif
   init_io(); //will write provenance info if provDB not in use
   init_normalevent_prov();
@@ -102,12 +102,12 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   //Connect to the parameter server
   timer.start();
   init_net_client();
-  m_perf.add("ad_initialize_net_client_us", timer.elapsed_us());
+  m_perf.add("ad_initialize_net_client_ms", timer.elapsed_ms());
 
   //Connect to TAU; process will be blocked at this line until it finds writer (in SST mode)
   timer.start();
   init_parser();
-  m_perf.add("ad_initialize_parser_us", timer.elapsed_us());
+  m_perf.add("ad_initialize_parser_ms", timer.elapsed_ms());
 
   //Event and outlier objects must be initialized in order after parser
   init_event(); //requires parser
@@ -119,7 +119,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_is_initialized = true;
   
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " has initialized successfully" << std::endl;
-  m_perf.add("ad_initialize_total_us", total_timer.elapsed_us());
+  m_perf.add("ad_initialize_total_ms", total_timer.elapsed_ms());
 }
 
 
@@ -256,7 +256,7 @@ void Chimbuko::finalize()
 
   m_is_initialized = false;
 
-  m_perf.add("ad_finalize_total_us", timer.elapsed_us());
+  m_perf.add("ad_finalize_total_ms", timer.elapsed_ms());
   m_perf.write();
 }
 
@@ -284,7 +284,7 @@ bool Chimbuko::parseInputStep(int &step,
     verboseStream << "driver parser appears to have disconnected, ending" << std::endl;
     return false;
   }
-  m_perf.add("ad_parse_input_begin_step_us", timer.elapsed_us());
+  m_perf.add("ad_parse_input_begin_step_ms", timer.elapsed_ms());
     
   // get trace data via SST
   step = m_parser->getCurrentStep();
@@ -295,22 +295,22 @@ bool Chimbuko::parseInputStep(int &step,
   verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;  
   timer.start();
   m_parser->update_attributes();
-  m_perf.add("ad_parse_input_update_attributes_us", timer.elapsed_us());
+  m_perf.add("ad_parse_input_update_attributes_ms", timer.elapsed_ms());
 
   verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;  
   timer.start();
   m_parser->fetchFuncData();
-  m_perf.add("ad_parse_input_fetch_func_data_us", timer.elapsed_us());
+  m_perf.add("ad_parse_input_fetch_func_data_ms", timer.elapsed_ms());
 
   verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;  
   timer.start();
   m_parser->fetchCommData();
-  m_perf.add("ad_parse_input_fetch_comm_data_us", timer.elapsed_us());
+  m_perf.add("ad_parse_input_fetch_comm_data_ms", timer.elapsed_ms());
 
   verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;  
   timer.start();
   m_parser->fetchCounterData();
-  m_perf.add("ad_parse_input_fetch_counter_data_us", timer.elapsed_us());
+  m_perf.add("ad_parse_input_fetch_counter_data_ms", timer.elapsed_ms());
 
 
   verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;  
@@ -328,7 +328,7 @@ bool Chimbuko::parseInputStep(int &step,
   m_metadata_parser->addData(m_parser->getNewMetaData());
 
   verboseStream << "driver completed input parse for step " << step << std::endl;
-  m_perf.add("ad_parse_input_total_us", total_timer.elapsed_us());
+  m_perf.add("ad_parse_input_total_ms", total_timer.elapsed_ms());
 
   return true;
 }
@@ -345,11 +345,11 @@ void Chimbuko::extractEvents(unsigned long &first_event_ts,
 			     int step){
   PerfTimer timer;
   std::vector<Event_t> events = m_parser->getEvents();
-  m_perf.add("ad_extract_events_get_events_us", timer.elapsed_us());
+  m_perf.add("ad_extract_events_get_events_ms", timer.elapsed_ms());
   timer.start();
   for(auto &e : events)
     m_event->addEvent(e);
-  m_perf.add("ad_extract_events_register_us", timer.elapsed_us());
+  m_perf.add("ad_extract_events_register_ms", timer.elapsed_ms());
   m_perf.add("ad_extract_events_event_count", events.size());
   if(events.size()){
     first_event_ts = events.front().ts();
@@ -369,7 +369,7 @@ void Chimbuko::extractCounters(int rank, int step){
 	       generate_event_id(rank, step, c));    
     m_counter->addCounter(ev);
   }
-  m_perf.add("ad_extract_counters_get_register_us", timer.elapsed_us());
+  m_perf.add("ad_extract_counters_get_register_ms", timer.elapsed_ms());
 } 
 
 
@@ -396,14 +396,14 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
 				       step, first_event_ts, last_event_ts);
       m_normalevent_prov->addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
-      m_perf.add("ad_extract_send_prov_normalevent_update_per_event_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
     }
-    m_perf.add("ad_extract_send_prov_normalevent_update_total_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
 
     //Get any outstanding normal events from previous timesteps that we couldn't previously provide
     timer.start();
     std::vector<nlohmann::json> normalevent_prov = m_normalevent_prov->getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
-    m_perf.add("ad_extract_send_prov_normalevent_get_outstanding_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
 
     //Gather provenance of anomalies and for each one try to obtain a normal execution
     timer.start();
@@ -415,7 +415,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
 				       step, first_event_ts, last_event_ts);
       anomaly_prov[i++] = extract_prov.get_json();
-      m_perf.add("ad_extract_send_prov_anom_data_generation_per_anom_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
       
       //Get the associated normal event
       //if normal event not available put into the list of outstanding requests
@@ -423,31 +423,31 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       timer2.start();
       auto nev = m_normalevent_prov->getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete); 
       if(nev.second) normalevent_prov.push_back(std::move(nev.first));
-      m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_us", timer2.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
     }
-    m_perf.add("ad_extract_send_prov_provenance_data_generation_total_us", timer.elapsed_us());
+    m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
     if(anomaly_prov.size() > 0){
       timer.start();
       m_io->writeJSON(anomaly_prov, step, "anomalies");
-      m_perf.add("ad_extract_send_prov_anom_data_io_write_us", timer.elapsed_us());
+      m_perf.add("ad_extract_send_prov_anom_data_io_write_ms", timer.elapsed_ms());
 
 #ifdef ENABLE_PROVDB      
       timer.start();
       m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
-      m_perf.add("ad_extract_send_prov_anom_data_send_async_us", timer.elapsed_us());
+      m_perf.add("ad_extract_send_prov_anom_data_send_async_ms", timer.elapsed_ms());
 #endif
     }
 
     if(normalevent_prov.size() > 0){
       timer.start();
       m_io->writeJSON(normalevent_prov, step, "normalexecs");
-      m_perf.add("ad_extract_send_prov_normalexec_data_io_write_us", timer.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalexec_data_io_write_ms", timer.elapsed_ms());
 
 #ifdef ENABLE_PROVDB      
       timer.start();
       m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
-      m_perf.add("ad_extract_send_prov_normalexec_data_send_async_us", timer.elapsed_us());
+      m_perf.add("ad_extract_send_prov_normalexec_data_send_async_ms", timer.elapsed_ms());
 #endif
     }
 
@@ -465,17 +465,17 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
     std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
     for(size_t i=0;i<new_metadata.size();i++)
       new_metadata_j[i] = new_metadata[i].get_json();
-    m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_us", timer.elapsed_us());
+    m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_ms", timer.elapsed_ms());
 
     if(new_metadata_j.size() > 0){
       timer.start();
       m_io->writeJSON(new_metadata_j, step, "metadata");
-      m_perf.add("ad_send_new_metadata_to_provdb_io_write_us", timer.elapsed_us());
+      m_perf.add("ad_send_new_metadata_to_provdb_io_write_ms", timer.elapsed_ms());
       
 #ifdef ENABLE_PROVDB
       timer.start();
       m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
-      m_perf.add("ad_send_new_metadata_to_provdb_send_async_us", timer.elapsed_us());
+      m_perf.add("ad_send_new_metadata_to_provdb_send_async_ms", timer.elapsed_ms());
 #endif
     }
 
@@ -515,44 +515,56 @@ void Chimbuko::run(unsigned long long& n_func_events,
     step_timer.start();
 
     //Extract counters and put into counter manager
+    timer.start();
     extractCounters(m_params.rank, step);
+    m_perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
 
     //Extract parsed events into event manager
+    timer.start();
     extractEvents(first_event_ts, last_event_ts, step);
+    m_perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
 
     //Run the outlier detection algorithm on the events
     timer.start();
     Anomalies anomalies = m_outlier->run(step);
-    m_perf.add("ad_run_anom_detection_time_us", timer.elapsed_us());
+    m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
 
     n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
     frames++;
     
     //Generate anomaly provenance for detected anomalies and send to DB
+    timer.start();
     extractAndSendProvenance(anomalies, step, first_event_ts, last_event_ts);
-    
+    m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
+
     //Send any new metadata to the DB
+    timer.start();
     sendNewMetadataToProvDB(step);
-    
+    m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
+
     if(m_net_client && m_net_client->use_ps()){
       //Gather function profile and anomaly statistics and send to the pserver
+      timer.start();
       ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
       prof_stats.updateGlobalStatistics(*m_net_client);
+      m_perf.add("ad_run_gather_update_profile_stats_time_ms", timer.elapsed_ms());
 
       //Gather counter statistics and send to pserver
+      timer.start();
       ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
       count_stats.gatherStatistics(m_counter->getCountersByIndex());
       count_stats.updateGlobalStatistics(*m_net_client);
+      m_perf.add("ad_run_gather_update_counter_stats_time_ms", timer.elapsed_ms());
     }
     
     //Trim the call list
     timer.start();
-    delete m_event->trimCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
-    m_perf.add("ad_run_trim_calllist_us", timer.elapsed_us());
+    m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
+    m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
 
-    m_perf.add("ad_run_total_step_time_excl_parse_us", step_timer.elapsed_us());
+    m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
     //Record periodic performance data
     if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0){

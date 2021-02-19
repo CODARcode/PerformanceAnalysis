@@ -109,7 +109,7 @@ Anomalies ADOutlierSSTD::run(int step) {
   std::pair<size_t, size_t> msgsz = sync_param(&param);
 
   if(m_perf != nullptr){
-    m_perf->add("param_update_us", timer.elapsed_us());
+    m_perf->add("param_update_ms", timer.elapsed_ms());
     m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
