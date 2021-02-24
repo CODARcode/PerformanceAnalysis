@@ -35,8 +35,8 @@ namespace chimbuko {
     /**
      * @brief Update the internal run statistics with those included in the serialized input map
      * @param parameters The parameters in serialized format
-     * @param return_update Controls return format
-     * @return An empty string if return_update==False, otherwise the serialized updated parameters
+     * @param return_update Indicates that the function should return a serialized copy of the updated parameters
+     * @return An empty string or a serialized copy of the updated parameters depending on return_update
      */
     std::string update(const std::string& parameters, bool return_update=false) override;
 
