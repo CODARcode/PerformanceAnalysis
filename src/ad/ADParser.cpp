@@ -541,31 +541,46 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
 }
 
 std::vector<Event_t> ADParser::getEvents() const{
-  std::vector<Event_t> out;
+  PerfTimer get_event_type_timer(false), get_earliest_timer(false), create_insert_timer(false), 
+    other_timer(false), loop_timer(false), total_timer(true), gen_timer(false);
 
   //During the timestep a number of function and perhaps also comm and counter events occurred
   //The parser stores these events separately in order of their timestamp
   //We want to iterate through these events in order of their timestamp in order to correlate them
+  other_timer.unpause();
   size_t idx_funcData=0, idx_commData = 0, idx_counterData = 0;
   const unsigned long *funcData = nullptr;
   const unsigned long *commData = nullptr;
   const unsigned long *counterData = nullptr;
   int step = m_current_step;
+  other_timer.pause();
 
+  //Get the pointers
+  gen_timer.start();
   funcData = this->getFuncData(idx_funcData);
   commData = this->getCommData(idx_commData);
   counterData = this->getCounterData(idx_counterData);
+  if(m_perf != nullptr) m_perf->add("parser_get_events_getdata_ms", gen_timer.elapsed_ms());
+
+  //Reserve memory for output
+  other_timer.unpause();
+  std::vector<Event_t> out;
+  out.reserve( getNumFuncData() + getNumCommData() + getNumCounterData() ); 
 
   //Maintain latest timestamps to check ordering is correct
   typedef std::unordered_map<unsigned long, std::unordered_map< unsigned long, std::unordered_map< unsigned long, unsigned long> > > TSmap;
   TSmap latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts;
+  other_timer.pause();
 
+
+  loop_timer.unpause();
   while (funcData != nullptr || commData != nullptr || counterData != nullptr){
     // Determine event to handle
     //If multiple events have the same timestamp and one is a function entry/exit, we want the entry to be inserted first and the exit last
     //such that the comm/counter events are correctly associated with the function
 
     //Determine what kind of func event it is (if !nullptr)
+    get_event_type_timer.unpause();
     static const int ENTRY(0), EXIT(1), NA(2);
     int func_event_type = NA;
     if(funcData != nullptr){
@@ -575,7 +590,9 @@ std::vector<Event_t> ADParser::getEvents() const{
 	else if(it->second == "EXIT") func_event_type = EXIT;
       }
     }
-
+    get_event_type_timer.pause();
+	
+    get_earliest_timer.unpause();
     const unsigned long *data;
     //When timestamps are equal we need to decide on a priority for the ordering
     //For entry event, funcData takes highest priority so comm and counter events are included in the function execution
@@ -585,8 +602,10 @@ std::vector<Event_t> ADParser::getEvents() const{
       //Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
       data = getEarliest( {commData, counterData, funcData}, {COMM_IDX_TS, COUNTER_IDX_TS, FUNC_IDX_TS} );
     }
+    get_earliest_timer.pause();
 
     //Create and insert the event
+    create_insert_timer.unpause();
     if(data == funcData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
 							   generate_event_id(m_rank, step, idx_funcData));
@@ -641,7 +660,20 @@ std::vector<Event_t> ADParser::getEvents() const{
     }else{
       fatal_error("Unexpected pointer");
     }
+    create_insert_timer.pause();
+    
   }//while loop over func and comm data
+  loop_timer.pause();
+
+  if(m_perf != nullptr){
+    m_perf->add("parser_get_events_get_event_type_ms", get_event_type_timer.elapsed_ms());
+    m_perf->add("parser_get_events_get_earliest_time_ms", get_earliest_timer.elapsed_ms());
+    m_perf->add("parser_get_events_create_insert_time_ms", create_insert_timer.elapsed_ms());
+    m_perf->add("parser_get_events_other_time_ms", other_timer.elapsed_ms());
+    m_perf->add("parser_get_events_loop_time_ms", loop_timer.elapsed_ms());
+    m_perf->add("parser_get_events_total_ms", total_timer.elapsed_ms());
+  }
+
   return out;
 }
 
