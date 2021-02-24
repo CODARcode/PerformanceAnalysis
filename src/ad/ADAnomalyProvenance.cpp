@@ -122,7 +122,7 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 
 
 
-ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
+ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &algo_params,
 					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size,
 					 const int io_step, 
 					 const unsigned long io_step_tstart, const unsigned long io_step_tend): 
@@ -130,7 +130,7 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   m_io_step(io_step), m_io_step_tstart(io_step_tstart), m_io_step_tend(io_step_tend)
 {
   getStackInformation(call, event_man); //get call stack
-  m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();   //Get the function statistics
+  m_algo_params = algo_params.get_algorithm_params(call.get_fid());   //Get the algorithm parameters
   getWindowCounters(call); //counters in window 
   getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
   getExecutionWindow(call, event_man, window_size);
@@ -155,7 +155,7 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 		      {"runtime_total", m_call.get_runtime()},
 			{"runtime_exclusive", m_call.get_exclusive()},
 			  {"call_stack", m_callstack},
-			    {"func_stats", m_func_stats},
+			    {"algo_params", m_algo_params},
 			      {"counter_events", m_counters},
 				{"is_gpu_event", m_is_gpu_event},
 				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() },

@@ -52,9 +52,9 @@ namespace chimbuko {
     virtual void show(std::ostream& os) const = 0;
 
     /**
-     * @brief Get the statistics associated with a given function
+     * @brief Get the algorithm parameters associated with a given function. Format is algorithm dependent
      */
-    virtual const RunStats & get_function_stats(const unsigned long func_id) const = 0;
+    virtual nlohmann::json get_algorithm_params(const unsigned long func_id) const = 0;
 
   protected:
     mutable std::mutex m_mutex; // used to update parameters

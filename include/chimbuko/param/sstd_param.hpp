@@ -122,11 +122,9 @@ namespace chimbuko {
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
 
     /**
-     * @brief Get the statistical distribution associated with a given function
-     * 
-     * Functionality is identical to operator[] only it will throw an error if the function does not exist
+     * @brief Get the algorithm parameters associated with a given function
      */
-    const RunStats & get_function_stats(const unsigned long func_id) const override;
+    nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
 
   protected:

@@ -16,7 +16,7 @@ namespace chimbuko{
      * @brief Extract the provenance information and store in internal JSON fields
      * @param call The anomalous execution
      * @param event_man The event manager
-     * @param func_stats The function statistics
+     * @param algo_params The algorithm parameters that resulted in the event classification
      * @param counters The counter manager
      * @param metadata The metadata manager
      * @param window_size The number of events (on this process/rank/thread) either side of the anomalous event that are captured in the window field
@@ -26,7 +26,7 @@ namespace chimbuko{
      */     
     ADAnomalyProvenance(const ExecData_t &call,
 			const ADEvent &event_man, //for stack trace
-			const ParamInterface &func_stats, //for func stats
+			const ParamInterface &algo_params, //algorithm parameters
 			const ADCounter &counters, //for counters
 			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
 			const int window_size,
@@ -65,7 +65,7 @@ namespace chimbuko{
 
     ExecData_t m_call; /**< The anomalous event*/
     std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
-    nlohmann::json m_func_stats; /**< JSON object containing run statistics of the anomalous function */
+    nlohmann::json m_algo_params; /**< JSON object containing the algorithm parameters used to classify the anomaly*/
     std::vector<nlohmann::json> m_counters; /**< A list of counter events that occurred during the execution of the anomalous function*/
     bool m_is_gpu_event; /**< Is this an anomaly that occurred on a GPU? */
     nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
