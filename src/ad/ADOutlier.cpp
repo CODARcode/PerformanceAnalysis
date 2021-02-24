@@ -10,7 +10,7 @@ using namespace chimbuko;
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
-ADOutlier::ADOutlier(OutlierStatistic stat) 
+ADOutlier::ADOutlier(OutlierStatistic stat)
   : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat)
 {
 }
@@ -36,7 +36,7 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
     throw std::runtime_error("Invalid statistic");
   }
 }
- 
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
@@ -80,8 +80,8 @@ Anomalies ADOutlierSSTD::run(int step) {
   bool cuda_jit_workaround = true;
   if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
     cuda_jit_workaround = false;
-  }     
-  
+  }
+
   //Generate the statistics based on this IO step
   SstdParam param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
@@ -95,7 +95,7 @@ Anomalies ADOutlierSSTD::run(int step) {
       else
 	encounter_it->second++;
 
-      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
+      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
 	param[func_id].push( this->getStatisticValue(*itt) );
       }
     }
@@ -121,11 +121,11 @@ Anomalies ADOutlierSSTD::run(int step) {
 }
 
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
-					      const unsigned long func_id, 
+					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
-  
+
   VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
-  
+
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
     VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
@@ -154,10 +154,42 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
 
-	outliers.insert(itt, Anomalies::EventType::Normal);      
+	outliers.insert(itt, Anomalies::EventType::Normal);
       }
     }
   }
 
   return n_outliers;
+}
+
+/* ---------------------------------------------------------------------------
+ * Implementation of ADOutlierHBOS class
+ * --------------------------------------------------------------------------- */
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat) : ADOutlier(stat), m_alpha(0.00001), {
+    m_param = new HbosParam();
+}
+
+ADOutlierHBOS::~ADOutlierHBOS() {
+}
+
+std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
+{
+  HbosParam& g = *(HbosParam*)m_param; //global parameter set
+  const HbosParam & l = *(HbosParam const*)param; //local parameter set
+
+    if (!m_use_ps) {
+        g.update(l);
+        return std::make_pair(0, 0);
+    }
+    else {
+        Message msg;
+        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
+        msg.set_msg(l.serialize(), false);
+        size_t sent_sz = msg.size();
+
+	      m_net_client->send_and_receive(msg, msg);
+        size_t recv_sz = msg.size();
+        g.assign(msg.buf());
+        return std::make_pair(sent_sz, recv_sz);
+    }
 }

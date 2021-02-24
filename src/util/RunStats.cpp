@@ -5,7 +5,7 @@
 
 using namespace chimbuko;
 
-RunStats::RunStats(bool do_accumulate) 
+RunStats::RunStats(bool do_accumulate)
 : m_do_accumulate(do_accumulate)
 {
     clear();
@@ -161,23 +161,23 @@ RunStats chimbuko::operator+(const RunStats a, const RunStats b)
     );
 
     double sum_rho = (
-        a.m_state.rho + b.m_state.rho 
+        a.m_state.rho + b.m_state.rho
         + delta2 * a.m_state.count * b.m_state.count / sum_count
     );
 
     double sum_tau = (
-        a.m_state.tau + b.m_state.tau 
+        a.m_state.tau + b.m_state.tau
         + delta3 * a.m_state.count * b.m_state.count * (a.m_state.count - b.m_state.count) / (sum_count * sum_count)
         + 3.0 * delta * (a.m_state.count * b.m_state.rho - b.m_state.count * a.m_state.rho) / sum_count
     );
 
     double sum_phi = (
         a.m_state.phi + b.m_state.phi
-        + delta4 * a.m_state.count * b.m_state.count 
-        * (a.m_state.count * a.m_state.count - a.m_state.count * b.m_state.count + b.m_state.count * b.m_state.count) 
+        + delta4 * a.m_state.count * b.m_state.count
+        * (a.m_state.count * a.m_state.count - a.m_state.count * b.m_state.count + b.m_state.count * b.m_state.count)
         / (sum_count * sum_count * sum_count)
         + 6.0 * delta2 * (
-            a.m_state.count * a.m_state.count * b.m_state.rho 
+            a.m_state.count * a.m_state.count * b.m_state.rho
             + b.m_state.count * b.m_state.count * a.m_state.rho) / (sum_count * sum_count)
         + 4.0 * delta * (a.m_state.count * b.m_state.tau - b.m_state.count * a.m_state.tau) / sum_count
     );
@@ -252,7 +252,7 @@ nlohmann::json RunStats::get_json_state() const {
 
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 {
-    return 
+    return
         std::abs(a.m_state.count - b.m_state.count) < 1e-6 &&
         std::abs(a.m_state.eta - b.m_state.eta) < 1e-3 &&
         std::abs(a.m_state.rho - b.m_state.rho) < 1e-3 &&
@@ -264,7 +264,7 @@ bool chimbuko::operator==(const RunStats& a, const RunStats& b)
 
 bool chimbuko::operator!=(const RunStats& a, const RunStats& b)
 {
-    return 
+    return
         std::abs(a.m_state.count - b.m_state.count) > 1e-6 ||
         std::abs(a.m_state.eta - b.m_state.eta) > 1e-3 ||
         std::abs(a.m_state.rho - b.m_state.rho) > 1e-3 ||
@@ -281,7 +281,7 @@ double chimbuko::static_mean(const std::vector<double>& data, double ddof)
     double sum = 0.0;
     for (const double d : data)
         sum += d;
-    
+
     return sum / (data.size() - ddof);
 }
 
@@ -293,7 +293,7 @@ double chimbuko::static_std(const std::vector<double>& data, double ddof)
     double var = 0.0;
     for (const double d : data)
         var += std::pow(d - mean, 2.0);
-    
+
     var /= data.size() - ddof;
     return std::sqrt(std::abs(var));
 }
