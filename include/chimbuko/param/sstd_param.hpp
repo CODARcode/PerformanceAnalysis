@@ -167,6 +167,15 @@ namespace chimbuko {
         counts.clear();
         bin_edges.clear();
       }
+
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+	archive(glob_threshold, counts, bin_edges);
+      }
+
     } data;
 
     void clear();
