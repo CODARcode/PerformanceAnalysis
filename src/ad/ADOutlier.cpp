@@ -233,11 +233,11 @@ Anomalies ADOutlierHBOS::run(int step) {
       }
     }
     if (!g.find(func_id)) { // If func_id does not exist
-      param[func_id].create_histogram(runtimes);
+      param.get_hist(func_id).create_histogram(runtimes);
     }
     else { //merge with exisiting func_id, not overwrite
       //param[func_id] += g[func_id];
-      param[func_id].merge_histograms(g[func_id], runtimes);
+      param.get_hist(func_id).merge_histograms(g.get_hist(func_id), runtimes);
     }
   }
 
