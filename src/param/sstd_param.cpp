@@ -275,7 +275,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  {
    Histogram combined;
    if (g.get_histogram().bin_edges.size() == 0) {
-     combined.set_glob_threshold(l.get_threshold().glob_threshold);
+     combined.set_glob_threshold(l.get_histogram().glob_threshold);
      combined.data.counts = l.data.counts;
      combined.data.bin_edges = l.data.bin_edges;
    }
