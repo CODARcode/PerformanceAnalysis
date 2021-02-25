@@ -3,7 +3,7 @@
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/access.hpp>
-#include <cereal/type/vector.hpp>
+#include <cereal/types/vector.hpp>
 
 
 using namespace chimbuko;
