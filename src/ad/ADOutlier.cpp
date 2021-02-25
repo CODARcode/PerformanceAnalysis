@@ -168,13 +168,13 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat) : ADOutlier(stat), m_alpha(0.00001), {
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat) : ADOutlier(stat), m_alpha(0.00001) {
     m_param = new HbosParam();
 }
 
 ADOutlierHBOS::~ADOutlierHBOS() {
   if (m_param)
-    m_param.clear();
+    m_param->clear();
 }
 
 std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
