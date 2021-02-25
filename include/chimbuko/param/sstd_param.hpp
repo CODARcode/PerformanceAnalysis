@@ -172,14 +172,15 @@ namespace chimbuko {
 
 
 
+
     } data;
 
     /**
      * @brief Serialize using cereal
      */
     template<class Archive>
-    void serialize(Archive & ar){
-       ar(m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges);
+    void serialize(Archive & archive, Data & d){
+       archive(d.glob_threshold, d.counts, d.bin_edges);
     }
 
     void clear();
