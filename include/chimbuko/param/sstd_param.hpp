@@ -140,6 +140,67 @@ namespace chimbuko {
   };
 
 
+  
+  /**
+   * @brief Histogram Implementation
+   */
+  class Histogram {
+
+  public:
+    Histogram();
+    ~Histogram();
+
+    struct Data {
+      //std::vector<double> runtimes;
+      double glob_threshold;
+      std::vector<int> counts;
+      std::vector<double> bin_edges;
+    };
+
+    void clear();
+
+    void push (double x);
+
+    const Data &get_histogram() const{ return m_histogram; }
+
+    /**
+     * @brief Set the internal variables from an instance of Histogram Data
+     */
+    void set_hist_data(const Data& d);
+
+    /**
+     * @brief Create an instance of this class from a Histogram Data instance
+     */
+    static Histogram from_hist_data(const Data& d) {
+      Histogram histdata;
+      histdata.set_hist_data(d);
+      return histdata;
+    }
+
+    void create_histogram(std::vector<double>& runtimes);
+
+    void merge_histograms(Histogram& g, std::vector<double>& runtimes);
+    /**
+     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
+     */
+    friend Histogram operator+(const Histogram a, const Histogram b);
+
+    /**
+     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
+     */
+    Histogram& operator+=(const Histogram& rs);
+
+    double _scott_binWidth(std::vector<double> & vals);
+
+    /**
+     * @brief Get the current statistics as a JSON object
+     */
+    nlohmann::json get_json() const;
+
+  private:
+    Data m_histogram;
+  };
+
   /**
    * @@brief Implementation of ParamInterface for HBOS based anomaly detection
    */
@@ -233,63 +294,5 @@ namespace chimbuko {
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };
 
-  /**
-   * @brief Histogram Implementation
-   */
-  class Histogram {
 
-  public:
-    Histogram();
-    ~Histogram();
-
-    struct Data {
-      //std::vector<double> runtimes;
-      double glob_threshold;
-      std::vector<int> counts;
-      std::vector<double> bin_edges;
-    };
-
-    void clear();
-
-    void push (double x);
-
-    const Data &get_histogram() const{ return m_histogram; }
-
-    /**
-     * @brief Set the internal variables from an instance of Histogram Data
-     */
-    void set_hist_data(const Data& d);
-
-    /**
-     * @brief Create an instance of this class from a Histogram Data instance
-     */
-    static Histogram from_hist_data(const Data& d) {
-      Histogram histdata;
-      histdata.set_hist_data(d);
-      return histdata;
-    }
-
-    void create_histogram(std::vector<double>& runtimes);
-
-    void merge_histograms(Histogram& g, std::vector<double>& runtimes);
-    /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
-     */
-    friend Histogram operator+(const Histogram a, const Histogram b);
-
-    /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
-     */
-    Histogram& operator+=(const Histogram& rs);
-
-    double _scott_binWidth(std::vector<double> & vals);
-
-    /**
-     * @brief Get the current statistics as a JSON object
-     */
-    nlohmann::json get_json() const;
-
-  private:
-    Data m_histogram;
-  };
 } // end of chimbuko namespace
