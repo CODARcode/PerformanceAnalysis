@@ -276,43 +276,43 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
    }
    else {
      //unwrap both histograms into values
-     std::vector<double> runtimes;
+     //std::vector<double> runtimes;
 
      for (int i = 0; i < g.bin_edges.size() - 1; i++) {
        for(int j = 0; j < g.counts.at(i); j++){
-         runtimes.push_back(g.bin_edges.at(i));
+         combined.runtimes.push_back(g.bin_edges.at(i));
        }
      }
      for (int i = 0; i < l.bin_edges.size() - 1; i++) {
        for(int j = 0; j < l.counts.at(i); j++){
-         runtimes.push_back(l.bin_edges.at(i));
+         combined.runtimes.push_back(l.bin_edges.at(i));
        }
      }
 
-     double bin_width = Histogram::_scott_binWidth(runtimes);
-     std::sort(runtimes.begin(), runtimes.end());
-     int h = runtimes.size() - 1;
+     const double bin_width = Histogram::_scott_binWidth(combined.runtimes);
+     std::sort(combined.runtimes.begin(), combined.runtimes.end());
+     const int h = combined.runtimes.size() - 1;
 
-     combined.bin_edges.push_back(runtimes.at(0));
+     combined.bin_edges.push_back(combined.runtimes.at(0));
 
      double prev = combined.bin_edges.at(0);
-     while(prev < runtimes.at(h)){
+     while(prev < combined.runtimes.at(h)){
        combined.bin_edges.push_back(prev + bin_width);
        prev += bin_width;
      }
      VERBOSE(std::cout << "Number of bins: " << combined.bin_edges.size()-1 << std::endl);
 
      combined.counts = std::vector<double>(combined.bin_edges.size()-1, 0.0);
-     for ( int i=0; i < runtimes.size(); i++) {
+     for ( int i=0; i < combined.runtimes.size(); i++) {
        for ( int j=1; j < combined.bin_edges.size(); j++) {
-         if ( runtimes.at(i) < combined.bin_edges.at(j) ) {
+         if ( combined.runtimes.at(i) < combined.bin_edges.at(j) ) {
            combined.counts[j-1] += 1;
            break;
          }
        }
      }
      VERBOSE(std::cout << "Size of counts: " << combined.counts.size() << std::endl);
-
+     combined.runtimes.clear();
      combined.set_hist_data(Histogram::Data( combined.runtimes, combined.counts, combined.bin_edges ));
 
      return combined;
@@ -355,9 +355,10 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
 
  void Histogram::create_histogram()
  {
-   double bin_width = Histogram::_scott_binWidth(m_histogram.runtimes);
+
+   const double bin_width = Histogram::_scott_binWidth(m_histogram.runtimes);
    std::sort(m_histogram.runtimes.begin(), m_histogram.runtimes.end());
-   int h = m_histogram.runtimes.size() - 1;
+   const int h = m_histogram.runtimes.size() - 1;
 
    m_histogram.bin_edges.push_back(m_histogram.runtimes.at(0));
 
@@ -378,6 +379,10 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
      }
    }
    VERBOSE(std::cout << "Size of counts: " << m_histogram.counts.size() << std::endl);
+
+   m_histogram.runtimes.clear();
+   m_histogram.set_hist_data(Histogram::Data( m_histogram.runtimes, m_histogram.counts, m_histogram.bin_edges ));
+
  }
 
  nlohmann::json Histogram::get_json() const {

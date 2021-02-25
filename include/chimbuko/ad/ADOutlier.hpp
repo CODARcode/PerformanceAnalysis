@@ -195,7 +195,7 @@ namespace chimbuko {
     /**
      * @brief Set the alpha value
      *
-     * @param sigma alpha value
+     * @param regularizer alpha value
      */
     void set_alpha(double alpha) { m_alpha = alpha; }
 
@@ -231,9 +231,11 @@ namespace chimbuko {
      */
     double _scott_binWidth(std::vector<double>& vals);
 
+    int np_digitize_get_bin_inds(double& X, std::vector<double>& bin_edges);
+
   private:
     double m_alpha; /**< alpha */
-    double m_threshold; /** sync with global threshold */
+    //double m_threshold; /** sync with global threshold */
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
 
   };

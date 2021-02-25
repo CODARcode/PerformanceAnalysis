@@ -162,6 +162,9 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
   return n_outliers;
 }
 
+
+
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
@@ -170,6 +173,8 @@ ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat) : ADOutlier(stat), m_alpha(0
 }
 
 ADOutlierHBOS::~ADOutlierHBOS() {
+  if (m_param)
+    m_param.clear();
 }
 
 std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
@@ -192,4 +197,210 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
         g.assign(msg.buf());
         return std::make_pair(sent_sz, recv_sz);
     }
+}
+
+Anomalies ADOutlierHBOS::run(int step) {
+  Anomalies outliers;
+  if (m_execDataMap == nullptr) return outliers;
+
+  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
+  //Python scripts also appear to take longer executing a function the first time
+  //This is worked around by ignoring the first time a function is encountered (per device)
+  //Set this environment variable to disable the workaround
+  bool cuda_jit_workaround = true;
+  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
+    cuda_jit_workaround = false;
+  }
+
+  //Generate the statistics based on this IO step
+  HbosParam param;
+  HbosParam& g = *(HbosParam*)m_param;
+  for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+    unsigned long func_id = it.first;
+    for (auto itt : it.second) { //loop over events for that function
+      //Update local counts of number of times encountered
+      std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+      auto encounter_it = m_local_func_exec_count.find(fkey);
+      if(encounter_it == m_local_func_exec_count.end())
+	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+      else
+	encounter_it->second++;
+
+      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
+	param[func_id].push( this->getStatisticValue(*itt) );
+      }
+    }
+    if (g.find(func_id) == g.end()) { // If func_id does not exist
+      param[func_id].create_histogram();
+    }
+    else { //merge with exisiting func_id, not overwrite
+      param[func_id] += g[func_id];
+    }
+  }
+
+  //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
+  PerfTimer timer;
+  timer.start();
+  std::pair<size_t, size_t> msgsz = sync_param(&param);
+
+  if(m_perf != nullptr){
+    m_perf->add("param_update_us", timer.elapsed_us());
+    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
+  }
+
+  //Run anomaly detection algorithm
+  for (auto it : *m_execDataMap) { //loop over function index
+    const unsigned long func_id = it.first;
+    const unsigned long n = compute_outliers(outliers,func_id, it.second);
+  }
+
+  return outliers;
+}
+
+unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
+					      const unsigned long func_id,
+					      std::vector<CallListIterator_t>& data){
+
+  VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
+
+  HbosParam& param = *(HbosParam*)m_param;
+  //if (param[func_id].count() < 2){
+  //  VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
+  //  return 0;
+  //}
+  unsigned long n_outliers = 0;
+
+  //probability of runtime counts
+  std::vector<double> prob_counts = std::vector<double>(param[func_id].counts.size(), 0.0);
+  double tot_runtimes = std::accumulate(param[func_id].counts.begin(), param[func_id].counts.end(), 0.0);
+
+  for(int i=0; i < param[func_id].counts.size(); i++){
+    double p = param[func_id].counts.at(i) / tot_runtimes;
+    prob_counts.at(i) += p;
+  }
+
+  //Create HBOS score vector
+  std::vector<double> out_scores_i;
+  double min_score = -1 * log2(0.0 + m_alpha);
+  double max_score = -1 * log2(1.0 + m_alpha);
+
+  for(int i=0; i < prob_counts.size(); i++){
+    double l = -1 * log2(prob_counts.at(i) + m_alpha);
+    out_score_i.push_back(l);
+
+    if(l < min_score){
+      min_score = l;
+    }
+    if(l > max_score){
+      max_score = l;
+    }
+  }
+
+  //compute threshold
+  double l_threshold = min_score + (0.99 * (max_score - min_score));
+  // For each datapoint get its corresponding bin index
+  //std::vector<int> bin_inds = ADOutlierHBOS::np_digitize(param[func_id].runtimes, param[func_id].bin_edges);
+  //if (bin_inds.size() < param[func_id].runtimes.size()) {
+  //  VERBOSE(std::cout << "INCORRECT bin_inds.size() < param[func_id].runtimes.size()\t: " << bin_inds.size() << " < " << param[func_id].runtimes.size() << std::endl);
+  //  return 0;
+  //}
+
+  //Compute HBOS based score for each datapoint
+  //std::vector<double> ad_scores(tot_runtimes, 0.0);
+  const double bin_width = param[func_id].bin_edges.at(1) - param[func_id].bin_edges.at(0);
+  const int num_bins = param[func_id].counts.size();
+
+  //std::vector<double> runtimes;
+
+  for (auto itt : data) {
+    const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
+    double ad_score;
+
+    if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges) == 0){ //
+      if(param[func_id].bin_edge.at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
+
+        ad_score = out_score_i.at(0);
+      }
+      else{
+
+        ad_score = min_score;
+
+      }
+    }
+    else if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges) == num_bins + 1){
+      int last_idx = param[func_id].bin_edges.size() - 1;
+      if(param[func_id].bin_edges.at(last_idx) <= runtime_i){
+
+        ad_score = out_score_i.at(num_bins - 1);
+      }
+      else{
+
+        ad_score = min_score;
+      }
+    }
+    else {
+
+      ad_score = out_score_i.at( ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges) );
+    }
+
+    //Compare the ad_score with the threshold
+    if (ad_score > l_threshold) {
+      VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime << std::endl);
+      outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
+      n_outliers += 1;
+    }
+    else {
+      //Capture maximum of one normal execution per io step
+      if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
+    	   VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime << std::endl);
+
+    	outliers.insert(itt, Anomalies::EventType::Normal);
+      }
+    }
+  }
+
+  return n_outliers;
+}
+  //   int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
+  //   itt->set_label(label);
+  //   if (label == -1) {
+  //     VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	//       << " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+  //     n_outliers += 1;
+  //     outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
+  //   }else{
+  //     //Capture maximum of one normal execution per io step
+  //     if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
+	// VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	// 	<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
+  //
+	// outliers.insert(itt, Anomalies::EventType::Normal);
+  //     }
+  //   }
+  // }
+
+
+
+
+int ADOutlierHBOS::np_digitize_get_bin_inds(double& X, std::vector<double>& bin_edges) {
+  //std::vector<int> b_inds(X.size(), 0);
+
+  if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
+    return 0; //std::vector<int>(1);
+  }
+
+  //for(int i=0; i < X.size(); i++){
+  for(int j=1; j < bin_edges.size(); j++){
+
+    if(X <= bin_edges.at(j)){
+      //b_inds.at(i) += j-1;
+      //break;
+      return (j-1);
+    }
+  }
+  //}
+  //Should not reach here
+  VERBOSE(std::cout << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl);
+  return -1; //b_inds;
 }
