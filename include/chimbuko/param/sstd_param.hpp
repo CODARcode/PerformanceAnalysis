@@ -170,15 +170,17 @@ namespace chimbuko {
         bin_edges.clear();
       }
 
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & ar){
-	       ar(glob_threshold, counts, bin_edges);
-      }
+
 
     } data;
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & ar){
+       ar(m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges);
+    }
 
     void clear();
 
