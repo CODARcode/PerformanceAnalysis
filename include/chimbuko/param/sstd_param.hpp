@@ -259,7 +259,7 @@ namespace chimbuko {
      * @brief Get an element of the internal map
      * @param id The global function index
      */
-    Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
+    //Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
 
     /**
      * @brief Convert a run statistics Cereal portable binary representation string into a map
