@@ -280,11 +280,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   unsigned long n_outliers = 0;
 
   //probability of runtime counts
-  std::vector<double> prob_counts = std::vector<double>(param[func_id].data.counts.size(), 0.0);
-  double tot_runtimes = std::accumulate(param[func_id].data.counts.begin(), param[func_id].data.counts.end(), 0.0);
+  std::vector<double> prob_counts = std::vector<double>(param[func_id].get_histogram().counts.size(), 0.0);
+  double tot_runtimes = std::accumulate(param[func_id].get_histogram().counts.begin(), param[func_id].get_histogram().counts.end(), 0.0);
 
-  for(int i=0; i < param[func_id].data.counts.size(); i++){
-    double p = param[func_id].data.counts.at(i) / tot_runtimes;
+  for(int i=0; i < param[func_id].get_histogram().counts.size(); i++){
+    double p = param[func_id].get_histogram().counts.at(i) / tot_runtimes;
     prob_counts.at(i) += p;
   }
 
@@ -307,10 +307,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   double l_threshold = min_score + (0.99 * (max_score - min_score));
-  if(l_threshold < param[func_id].data.glob_threshold) {
-    l_threshold = param[func_id].data.glob_threshold;
+  if(l_threshold < param[func_id].get_histogram().glob_threshold) {
+    l_threshold = param[func_id].get_histogram().glob_threshold;
   } else {
-    param[func_id].data.glob_threshold = l_threshold;
+    param[func_id].get_histogram().glob_threshold = l_threshold;
   }
 
   // For each datapoint get its corresponding bin index
@@ -322,8 +322,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //Compute HBOS based score for each datapoint
   //std::vector<double> ad_scores(tot_runtimes, 0.0);
-  const double bin_width = param[func_id].data.bin_edges.at(1) - param[func_id].data.bin_edges.at(0);
-  const int num_bins = param[func_id].data.counts.size();
+  const double bin_width = param[func_id].get_histogram().bin_edges.at(1) - param[func_id].get_histogram().bin_edges.at(0);
+  const int num_bins = param[func_id].get_histogram().counts.size();
 
   //std::vector<double> runtimes;
 
@@ -331,8 +331,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
     double ad_score;
 
-    if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].data.bin_edges) == 0){ //
-      if(param[func_id].data.bin_edges.at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
+    if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges) == 0){ //
+      if(param[func_id].get_histogram().bin_edges.at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
 
         ad_score = out_scores_i.at(0);
       }
@@ -342,9 +342,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       }
     }
-    else if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].data.bin_edges) == num_bins + 1){
-      int last_idx = param[func_id].data.bin_edges.size() - 1;
-      if(param[func_id].data.bin_edges.at(last_idx) <= runtime_i){
+    else if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges) == num_bins + 1){
+      int last_idx = param[func_id].get_histogram().bin_edges.size() - 1;
+      if(param[func_id].get_histogram().bin_edges.at(last_idx) <= runtime_i){
 
         ad_score = out_scores_i.at(num_bins - 1);
       }
@@ -355,7 +355,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     }
     else {
 
-      ad_score = out_scores_i.at( ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].data.bin_edges) );
+      ad_score = out_scores_i.at( ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges) );
     }
 
     //Compare the ad_score with the threshold

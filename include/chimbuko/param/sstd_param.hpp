@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <iostream>
-#include <cereal/access.hpp>
+
 
 namespace chimbuko {
 
@@ -171,19 +171,20 @@ namespace chimbuko {
         bin_edges.clear();
       }
 
+      /**
+       * @brief Serialize using cereal
+       */
+      template<class Archive>
+      void serialize(Archive & archive){
+         archive(glob_threshold, counts, bin_edges);
+      }
 
 
 
-    } data;
+    };
 
-    friend class cereal::access;
-    /**
-     * @brief Serialize using cereal
-     */
-    template<class Archive>
-    void serialize(Archive & archive, Data & d){
-       archive(d.glob_threshold, d.counts, d.bin_edges);
-    }
+    //friend class cereal::access;
+
 
     void clear();
 
