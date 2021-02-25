@@ -180,7 +180,7 @@ const nlohmann::json & SstdParam::get_function_stats(const unsigned long func_id
      }
  }
 
- void SstdParam::assign(const std::string& parameters)
+ void HbosParam::assign(const std::string& parameters)
  {
      std::unordered_map<unsigned long, Histogram> hbosstats;
      //deserialize_json(parameters, runstats);

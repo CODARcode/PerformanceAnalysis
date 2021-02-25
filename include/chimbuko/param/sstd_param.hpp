@@ -256,6 +256,12 @@ namespace chimbuko {
     static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
+     * @brief Get an element of the internal map
+     * @param id The global function index
+     */
+    Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
+
+    /**
      * @brief Convert a run statistics Cereal portable binary representation string into a map
      * @param[in] parameters The parameter string
      * @param[out] runstats The map between global function index and statistics
