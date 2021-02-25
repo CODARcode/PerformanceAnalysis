@@ -8,7 +8,8 @@
 using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose) 
-  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose)
+  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose),
+    m_eidx_func_entry(-1), m_eidx_func_exit(-1), m_eidx_comm_send(-1), m_eidx_comm_recv(-1)
 {
 
 }
@@ -123,31 +124,49 @@ CallListIterator_t ADEvent::addCall(const ExecData_t &exec){
 
 
 EventError ADEvent::addFunc(const Event_t& event) {
+  //Determine the event type. Use the known event indices if previously determined, otherwise find them
   if (m_eventType == nullptr) {
     std::cerr << "Uninitialized eventType\n";
     return EventError::UnknownEvent;
   }
-
-  std::string eventType;
   int eid = static_cast<int>(event.eid());
-  if (m_eventType->count(eid) == 0) {
-    std::cerr << "Unknown event in eventType: " << eid << std::endl;
-    return EventError::UnknownEvent;
+
+  bool is_entry(false), is_exit(false);
+
+  if(eid == m_eidx_func_entry){
+    is_entry = true;
+  }else if(eid == m_eidx_func_exit){
+    is_exit = true;
+  }else{
+    //Event might be an unknown type *or* the m_eidx* members have not yet been set
+    auto it = m_eventType->find(eid);
+    if(it == m_eventType->end()){ //event index is not in the map??
+      std::cerr << "Unknown event in eventType: " << eid << std::endl;
+      return EventError::UnknownEvent;
+    }
+    if(m_eidx_func_entry == -1 && it->second == "ENTRY"){
+      m_eidx_func_entry = eid;
+      is_entry = true;
+    }else if(m_eidx_func_exit == -1 && it->second == "EXIT"){
+      m_eidx_func_exit = eid;
+      is_exit = true;
+    }
   }
 
+  //Get the iterator to the function name
   if (m_funcMap == nullptr) {
     std::cerr << "Uninitialized function map\n";
     return EventError::UnknownEvent;
   }
-    
-  if (m_funcMap->count(event.fid()) == 0) {
+  auto func_name_it = m_funcMap->find(event.fid());
+
+  if(func_name_it == m_funcMap->end()){
     std::cerr << "Unknown function event\n";
     return EventError::UnknownFunc;
   }
+  const std::string &func_name = func_name_it->second;
 
-  eventType = m_eventType->find(eid)->second;
-
-  if (eventType.compare("ENTRY") == 0){
+  if(is_entry){
     //Create a new ExecData_t object with function entry information and push onto the call list
     CallList_t& cl = m_callList[event.pid()][event.rid()][event.tid()];
 
@@ -159,20 +178,20 @@ EventError ADEvent::addFunc(const Event_t& event) {
       it->set_parent(cs.top()->get_id());
       cs.top()->inc_n_children();
     }
-    it->set_funcname(m_funcMap->find(event.fid())->second);
+    it->set_funcname(func_name);
     cs.push(it);
 
     //Add the new call to the map of call index string
     m_callIDMap[it->get_id()] = it;
 
     return EventError::OK;
-  }else if (eventType.compare("EXIT") == 0){
+  }else if(is_exit){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
     if (cs.size() == 0) { //Expect to have at least one entry; that created when the ENTRY was encountered
       std::stringstream ss;
       ss << "\n***** Empty call stack! *****" << std::endl
 	 << "Event information: " << event.get_json().dump() << std::endl
-	 << "Event type: " << m_eventType->find(event.eid())->second << "  Function name: " << m_funcMap->find(event.fid())->second << std::endl;
+	 << "Event type: EXIT  Function name: " << func_name << std::endl;
       recoverable_error(ss.str());
       return EventError::EmptyCallStack;
     }
@@ -183,13 +202,8 @@ EventError ADEvent::addFunc(const Event_t& event) {
       std::stringstream ss;
       ss << "\n***** Invalid EXIT event! *****" << std::endl
 	 << "Event information: " << event.get_json().dump() << std::endl
-	 << "Event type: " << m_eventType->find(event.eid())->second << "  Function name: " << m_funcMap->find(event.fid())->second << std::endl;
+	 << "Event type: EXIT  Function name: " << func_name << std::endl;
       recoverable_error(ss.str());
-      
-      // while (!cs.empty()) {
-      //     std::cerr << *cs.top() << std::endl;
-      //     cs.pop();
-      // }            
       return EventError::CallStackViolation;
     }
     //Remove the object from the stack (it still lives in the CallList)
@@ -249,22 +263,41 @@ EventError ADEvent::addFunc(const Event_t& event) {
 }
 
 EventError ADEvent::addComm(const Event_t& event) {
-  if (m_eventType == nullptr)
+  if (m_eventType == nullptr) {
+    std::cerr << "Uninitialized eventType\n";
     return EventError::UnknownEvent;
-
-  int eid = static_cast<int>(event.eid());
-  if (m_eventType->count(eid) == 0)
-    return EventError::UnknownEvent;
-
-  std::string eventType = m_eventType->find(eid)->second;
-
-  if (eventType.compare("SEND") == 0 || eventType.compare("RECV") == 0) {
-    CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
-    cs.push(CommData_t(event, eventType));
   }
-  else return EventError::UnknownEvent;
+  int eid = static_cast<int>(event.eid());
 
-  return EventError::OK;
+  bool is_send(false), is_recv(false);
+
+  if(eid == m_eidx_comm_send){
+    is_send = true;
+  }else if(eid == m_eidx_comm_recv){
+    is_recv = true;
+  }else{
+    //Event might be an unknown type *or* the m_eidx* members have not yet been set
+    auto it = m_eventType->find(eid);
+    if(it == m_eventType->end()){ //event index is not in the map??
+      std::cerr << "Unknown event in eventType: " << eid << std::endl;
+      return EventError::UnknownEvent;
+    }
+    if(m_eidx_comm_send == -1 && it->second == "SEND"){
+      m_eidx_comm_send = eid;
+      is_send = true;
+    }else if(m_eidx_comm_recv == -1 && it->second == "RECV"){
+      m_eidx_comm_recv = eid;
+      is_recv = true;
+    }
+  }
+
+  if (is_send || is_recv) {
+    CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
+    cs.push(CommData_t(event, is_send ? "SEND" : "RECV"));
+    return EventError::OK;
+  }
+  
+  return EventError::UnknownEvent;
 }
 
 EventError ADEvent::addCounter(const Event_t& event){
@@ -278,7 +311,7 @@ EventError ADEvent::addCounter(const Event_t& event){
   if (it == m_counterMap->end())
     return EventError::UnknownEvent;
   
-  std::string counterName = it->second;
+  const std::string &counterName = it->second;
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
 

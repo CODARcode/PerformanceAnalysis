@@ -312,6 +312,12 @@ namespace chimbuko {
      */
     const std::unordered_map<int, std::string> *m_counterMap;
 
+    int m_eidx_func_entry; /**< If previously seen, the eid corresponding to the function entry event (-1 otherwise)*/
+    int m_eidx_func_exit; /**< If previously seen, the eid corresponding to the function exit event (-1 otherwise)*/
+    int m_eidx_comm_send; /**< If previously seen, the eid corresponding to the comm send event (-1 otherwise)*/
+    int m_eidx_comm_recv; /**< If previously seen, the eid corresponding to the comm recv event (-1 otherwise)*/
+
+
 
     /**
      * @brief communication event stack. Once a function call has exited, all comms events are associated with that call and the stack is cleared

@@ -38,10 +38,20 @@ struct ADFuncEventContainer{
   int addEvent(const FuncEvent &ev){ events.push_back(ev); return events.size() - 1; } //returns index of last added event
   
   void registerEvents(){
-    for(int i=0;i<events.size();i++) event_types[ events[i].data[IDX_E] ] = events[i].event_type;
+    for(int i=0;i<events.size();i++){
+      int eid = events[i].data[IDX_E];
+      if(event_types.count(eid) && event_types[eid] != events[i].event_type)
+	throw("registerEvents: multiple event types have same eid!");
+      event_types[eid] = events[i].event_type;
+    }
   }
   void registerFuncs(){
-    for(int i=0;i<events.size();i++) func_map[ events[i].data[FUNC_IDX_F] ] = events[i].func_name;
+    for(int i=0;i<events.size();i++){
+      int fid = events[i].data[FUNC_IDX_F];
+      if(func_map.count(fid) && func_map[fid] != events[i].func_name)
+	throw("registerFuncs: multiple funcs have same fid!");      
+      func_map[fid] = events[i].func_name;
+    }
   }
   void linkEventType(){
     event_manager.linkEventType(&event_types);
@@ -221,13 +231,15 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
   ADFuncEventContainer ad;
   long time = 100;
 
-  int event_idx = 0;
   int fid1=0;
   int fid2=1;
 
-  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,event_idx++,fid1,  0    ));
-  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,event_idx++,fid1,  time ));
-  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",event_idx++,fid2,  time+50   )); //different function
+  int eid_entry = 0;
+  int eid_exit = 1;
+
+  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,eid_entry,fid1,  0    ));
+  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,eid_exit,fid1,  time ));
+  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC2",eid_entry,fid2,  time+50   )); //different function
   ad.initializeAD();
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
@@ -263,13 +275,15 @@ TEST(ADEventTest, purgeCallList){
   ADFuncEventContainer ad;
   long time = 100;
 
-  int event_idx = 0;
   int fid1=0;
   int fid2=1;
 
-  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,event_idx++,fid1,  0    ));
-  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,event_idx++,fid1,  time ));
-  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",event_idx++,fid2,  time+50   )); //different function
+  int eid_entry = 0;
+  int eid_exit = 1;
+
+  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,eid_entry,fid1,  0    ));
+  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,eid_exit,fid1,  time ));
+  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC2",eid_entry,fid2,  time+50   )); //different function
   ad.initializeAD();
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
