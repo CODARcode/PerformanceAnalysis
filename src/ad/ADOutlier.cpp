@@ -327,7 +327,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     double ad_score;
 
     if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].data.bin_edges) == 0){ //
-      if(param[func_id].data.bin_edge.at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
+      if(param[func_id].data.bin_edges.at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
 
         ad_score = out_scores_i.at(0);
       }
@@ -373,7 +373,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 }
 
 
-const int ADOutlierHBOS::np_digitize_get_bin_inds(double& X, std::vector<double>& bin_edges) {
+const int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_edges) {
   //std::vector<int> b_inds(X.size(), 0);
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
