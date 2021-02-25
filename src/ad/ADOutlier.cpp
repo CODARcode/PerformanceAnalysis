@@ -310,7 +310,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   if(l_threshold < param[func_id].get_histogram().glob_threshold) {
     l_threshold = param[func_id].get_histogram().glob_threshold;
   } else {
-    param[func_id].get_histogram().glob_threshold = l_threshold;
+    param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
   }
 
   // For each datapoint get its corresponding bin index
