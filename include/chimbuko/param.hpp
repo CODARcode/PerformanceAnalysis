@@ -54,7 +54,7 @@ namespace chimbuko {
     /**
      * @brief Get the statistics associated with a given function
      */
-    nlohmann::json & get_function_stats(const unsigned long func_id) const = 0;
+    virtual nlohmann::json & get_function_stats(const unsigned long func_id) const = 0;
 
   protected:
     mutable std::mutex m_mutex; // used to update parameters
