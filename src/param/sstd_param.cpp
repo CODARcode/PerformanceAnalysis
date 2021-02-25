@@ -265,55 +265,59 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
  {
    Histogram combined;
    if (g.bin_edges.size() == 0) {
-     combined.runtimes = l.runtimes;
+     combined.glob_threshold = l.glob_threshold;
      combined.counts = l.counts;
      combined.bin_edges = l.bin_edges;
    }
    else if (l.bin_edges.size() == 0) {
-     combined.runtimes = g.runtimes;
+     combined.glob_threshold = g.glob_threshold;
      combined.counts = g.counts;
      combined.bin_edges = g.bin_edges;
    }
    else {
      //unwrap both histograms into values
-     //std::vector<double> runtimes;
+     std::vector<double> runtimes;
 
      for (int i = 0; i < g.bin_edges.size() - 1; i++) {
        for(int j = 0; j < g.counts.at(i); j++){
-         combined.runtimes.push_back(g.bin_edges.at(i));
+         runtimes.push_back(g.bin_edges.at(i));
        }
      }
      for (int i = 0; i < l.bin_edges.size() - 1; i++) {
        for(int j = 0; j < l.counts.at(i); j++){
-         combined.runtimes.push_back(l.bin_edges.at(i));
+         runtimes.push_back(l.bin_edges.at(i));
        }
      }
 
-     const double bin_width = Histogram::_scott_binWidth(combined.runtimes);
-     std::sort(combined.runtimes.begin(), combined.runtimes.end());
-     const int h = combined.runtimes.size() - 1;
+     const double bin_width = Histogram::_scott_binWidth(runtimes);
+     std::sort(runtimes.begin(), runtimes.end());
+     const int h = runtimes.size() - 1;
 
-     combined.bin_edges.push_back(combined.runtimes.at(0));
+     combined.bin_edges.push_back(runtimes.at(0));
 
      double prev = combined.bin_edges.at(0);
-     while(prev < combined.runtimes.at(h)){
+     while(prev < runtimes.at(h)){
        combined.bin_edges.push_back(prev + bin_width);
        prev += bin_width;
      }
      VERBOSE(std::cout << "Number of bins: " << combined.bin_edges.size()-1 << std::endl);
 
      combined.counts = std::vector<double>(combined.bin_edges.size()-1, 0.0);
-     for ( int i=0; i < combined.runtimes.size(); i++) {
+     for ( int i=0; i < runtimes.size(); i++) {
        for ( int j=1; j < combined.bin_edges.size(); j++) {
-         if ( combined.runtimes.at(i) < combined.bin_edges.at(j) ) {
+         if ( runtimes.at(i) < combined.bin_edges.at(j) ) {
            combined.counts[j-1] += 1;
            break;
          }
        }
      }
      VERBOSE(std::cout << "Size of counts: " << combined.counts.size() << std::endl);
-     combined.runtimes.clear();
-     combined.set_hist_data(Histogram::Data( combined.runtimes, combined.counts, combined.bin_edges ));
+     if(l.glob_threshold > g.glob_threshold)
+      combined.glob_threshold = l.glob_threshold;
+     else
+      combined.glob_threshold = g.glob_threshold;
+
+     combined.set_hist_data(Histogram::Data( combined.glob_threshold, combined.counts, combined.bin_edges ));
 
      return combined;
    }
@@ -343,36 +347,36 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
 
  void Histogram::set_hist_data(const Histogram::Data& d)
  {
-     m_histogram.runtimes = d.runtimes;
+     m_histogram.glob_threshold = d.glob_threshold;
      m_histogram.counts = d.counts;
      m_histogram.bin_edges = d.bin_edges;
  }
 
- void Histogram::push (double x)
+ //void Histogram::push (double x)
+ //{
+  // m_histogram.runtimes.push_back(x);
+ //}
+
+ void Histogram::create_histogram(std::vector<double>& runtimes)
  {
-   m_histogram.runtimes.push_back(x);
- }
 
- void Histogram::create_histogram()
- {
+   const double bin_width = Histogram::_scott_binWidth(runtimes);
+   std::sort(runtimes.begin(), runtimes.end());
+   const int h = runtimes.size() - 1;
 
-   const double bin_width = Histogram::_scott_binWidth(m_histogram.runtimes);
-   std::sort(m_histogram.runtimes.begin(), m_histogram.runtimes.end());
-   const int h = m_histogram.runtimes.size() - 1;
-
-   m_histogram.bin_edges.push_back(m_histogram.runtimes.at(0));
+   m_histogram.bin_edges.push_back(runtimes.at(0));
 
    double prev = m_histogram.bin_edges.at(0);
-   while(prev < m_histogram.runtimes.at(h)){
+   while(prev < runtimes.at(h)){
      m_histogram.bin_edges.push_back(prev + bin_width);
      prev += bin_width;
    }
    VERBOSE(std::cout << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl);
 
    m_histogram.counts = std::vector<double>(m_histogram.bin_edges.size()-1, 0.0);
-   for ( int i=0; i < m_histogram.runtimes.size(); i++) {
+   for ( int i=0; i < runtimes.size(); i++) {
      for ( int j=1; j < m_histogram.bin_edges.size(); j++) {
-       if ( m_histogram.runtimes.at(i) < m_histogram.bin_edges.at(j) ) {
+       if ( runtimes.at(i) < m_histogram.bin_edges.at(j) ) {
          m_histogram.counts[j-1] += 1;
          break;
        }
@@ -380,8 +384,30 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
    }
    VERBOSE(std::cout << "Size of counts: " << m_histogram.counts.size() << std::endl);
 
-   m_histogram.runtimes.clear();
-   m_histogram.set_hist_data(Histogram::Data( m_histogram.runtimes, m_histogram.counts, m_histogram.bin_edges ));
+   //m_histogram.runtimes.clear();
+   const double min_threshold = -1 * log2(1.00001);
+   if (!(m_histogram.glob_threshold > min_threshold)) {
+     m_histogram.glob_threshold = min_threshold;
+   }
+   m_histogram.set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
+
+ }
+
+ void Histogram::merge_histograms(Histogram& g, std::vector<double>& runtimes)
+ {
+   Histogram merged_h;
+   std::vector<double> r_times = runtimes;
+
+   for (int i = 0; i < g.bin_edges.size() - 1; i++) {
+     for(int j = 0; j < g.counts.at(i); j++){
+       r_times.push_back(g.bin_edges.at(i));
+     }
+   }
+
+   m_histogram.glob_threshold = g.glob_threshold;
+
+   m_histogram.create_histogram(r_times);
+   m_histogram.set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 
  }
 

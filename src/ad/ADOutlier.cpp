@@ -217,6 +217,7 @@ Anomalies ADOutlierHBOS::run(int step) {
   HbosParam& g = *(HbosParam*)m_param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
+    std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       //Update local counts of number of times encountered
       std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
@@ -227,14 +228,16 @@ Anomalies ADOutlierHBOS::run(int step) {
 	encounter_it->second++;
 
       if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
-	param[func_id].push( this->getStatisticValue(*itt) );
+	       //param[func_id].push( this->getStatisticValue(*itt) );
+         runtimes.push_back(this->getStatisticValue(*itt));
       }
     }
     if (g.find(func_id) == g.end()) { // If func_id does not exist
-      param[func_id].create_histogram();
+      param[func_id].create_histogram(runtimes);
     }
     else { //merge with exisiting func_id, not overwrite
-      param[func_id] += g[func_id];
+      //param[func_id] += g[func_id];
+      param[func_id].merge_histograms(g[func_id], runtimes);
     }
   }
 
@@ -299,6 +302,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   double l_threshold = min_score + (0.99 * (max_score - min_score));
+  if(l_threshold < m_param[func_id].glob_threshold) {
+    l_threshold = m_param[func_id].glob_threshold;
+  } else {
+    m_param[func_id].glob_threshold = l_threshold;
+  }
+
   // For each datapoint get its corresponding bin index
   //std::vector<int> bin_inds = ADOutlierHBOS::np_digitize(param[func_id].runtimes, param[func_id].bin_edges);
   //if (bin_inds.size() < param[func_id].runtimes.size()) {
@@ -362,28 +371,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   return n_outliers;
 }
-  //   int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
-  //   itt->set_label(label);
-  //   if (label == -1) {
-  //     VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	//       << " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
-  //     n_outliers += 1;
-  //     outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
-  //   }else{
-  //     //Capture maximum of one normal execution per io step
-  //     if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	// VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-	// 	<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl);
-  //
-	// outliers.insert(itt, Anomalies::EventType::Normal);
-  //     }
-  //   }
-  // }
 
 
-
-
-int ADOutlierHBOS::np_digitize_get_bin_inds(double& X, std::vector<double>& bin_edges) {
+const int ADOutlierHBOS::np_digitize_get_bin_inds(double& X, std::vector<double>& bin_edges) {
   //std::vector<int> b_inds(X.size(), 0);
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram

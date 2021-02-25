@@ -243,7 +243,8 @@ namespace chimbuko {
     ~Histogram();
 
     struct Data {
-      std::vector<double> runtimes;
+      //std::vector<double> runtimes;
+      double glob_threshold;
       std::vector<int> counts;
       std::vector<double> bin_edges;
     };
@@ -268,8 +269,9 @@ namespace chimbuko {
       return histdata;
     }
 
-    void create_histogram();
+    void create_histogram(std::vector<double>& runtimes);
 
+    void merge_histograms(Histogram& g, std::vector<double>& runtimes);
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */

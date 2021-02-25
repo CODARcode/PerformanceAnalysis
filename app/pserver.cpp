@@ -48,7 +48,7 @@ struct pserverArgs{
 #ifdef ENABLE_PROVDB
   std::string provdb_addr;
 #endif
- 
+
   pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1)
@@ -76,7 +76,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
 #endif
 
       init = true;
@@ -98,13 +98,13 @@ int main (int argc, char ** argv){
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     std::cout << "Pserver: Enabling verbose debug output" << std::endl;
     Verbose::set_verbose(true);
-  }       
+  }
 
-  SstdParam param; //global collection of parameters used to identify anomalies
+  HbosParam param; //global collection of parameters used to identify anomalies
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
-  
+
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     std::cout << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
@@ -192,7 +192,7 @@ int main (int argc, char ** argv){
       std::cout << "Pserver: sending final statistics to provDB" << std::endl;
       provdb_client.sendMultipleData(global_func_stats.collect_func_data(), GlobalProvenanceDataType::FunctionStats);
       provdb_client.sendMultipleData(global_counter_stats.get_json_state(), GlobalProvenanceDataType::CounterStats);
-      std::cout << "Pserver: disconnecting from provDB" << std::endl;      
+      std::cout << "Pserver: disconnecting from provDB" << std::endl;
       provdb_client.disconnect();
     }
 #endif
@@ -232,7 +232,7 @@ int main (int argc, char ** argv){
 
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
-    std::cout << "PServer: Saving parameters to output file " << args.save_params << std::endl;   
+    std::cout << "PServer: Saving parameters to output file " << args.save_params << std::endl;
     std::ofstream out(args.save_params);
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
