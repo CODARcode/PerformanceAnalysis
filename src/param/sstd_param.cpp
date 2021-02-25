@@ -268,7 +268,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
   /**
    * @brief Merge Histogram
    */
- Histogram& Histogram::combine_two_histograms(const Histogram g, const Histogram l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
+ Histogram Histogram::combine_two_histograms(const Histogram g, const Histogram l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
  {
    Histogram combined;
    if (g.data.bin_edges.size() == 0) {
@@ -309,7 +309,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
 
-     combined.data.counts = std::vector<double>(combined.data.bin_edges.size()-1, 0.0);
+     combined.data.counts = std::vector<int>(combined.data.bin_edges.size()-1, 0);
      for ( int i=0; i < runtimes.size(); i++) {
        for ( int j=1; j < combined.data.bin_edges.size(); j++) {
          if ( runtimes.at(i) < combined.data.bin_edges.at(j) ) {
