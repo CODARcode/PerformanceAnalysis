@@ -4,6 +4,8 @@
 #include "chimbuko/util/RunStats.hpp"
 #include <unordered_map>
 #include <nlohmann/json.hpp>
+#include <vector>
+#include <iostream>
 
 namespace chimbuko {
 
