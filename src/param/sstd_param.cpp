@@ -247,7 +247,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      }
  }
 
- nlohmann::json & HbosParam::get_function_stats(const unsigned long func_id) const{
+ nlohmann::json & HbosParam::get_algorithm_params(const unsigned long func_id) const{
    auto it = m_hbosstats.find(func_id);
    if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
    return it->second.get_json();

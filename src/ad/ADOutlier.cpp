@@ -95,8 +95,8 @@ Anomalies ADOutlierSSTD::run(int step) {
 	  encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
 	else
 	  encounter_it->second++;
-	
-	if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels	
+
+	if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
 	  param[func_id].push( this->getStatisticValue(*itt) );
 	}
 
@@ -127,7 +127,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
-  
+
 
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
@@ -157,8 +157,8 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
 	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
-	  
-	  outliers.insert(itt, Anomalies::EventType::Normal);      
+
+	  outliers.insert(itt, Anomalies::EventType::Normal);
 	}
       }
     }
@@ -270,7 +270,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
 
-  VERBOSE(std::cout << "Finding outliers in events for func " << func_id << std::endl);
+  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
   //if (param[func_id].count() < 2){
@@ -360,14 +360,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
     //Compare the ad_score with the threshold
     if (ad_score > l_threshold) {
-      VERBOSE(std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl);
+      verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
       n_outliers += 1;
     }
     else {
       //Capture maximum of one normal execution per io step
       if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-    	   VERBOSE(std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl);
+    	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
 
     	outliers.insert(itt, Anomalies::EventType::Normal);
       }
@@ -396,6 +396,6 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_ed
   }
   //}
   //Should not reach here
-  VERBOSE(std::cout << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl);
+  verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
   return -1; //b_inds;
 }

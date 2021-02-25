@@ -292,8 +292,8 @@ namespace chimbuko {
     void update_and_return(HbosParam& other) { update_and_return(other.m_hbosstats); }
 
 
-
-    nlohmann::json & get_function_stats(const unsigned long func_id) const override;
+    nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
+    //nlohmann::json get_function_stats(const unsigned long func_id) const override;
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };
