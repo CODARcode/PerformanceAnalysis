@@ -222,7 +222,7 @@ namespace chimbuko {
     double _scott_binWidth(std::vector<double> & vals);
 
 
-    void set_glob_threshold(double& l) { m_threshold.glob_threshold = l;}
+    void set_glob_threshold(double& l) { m_histogram.glob_threshold = l;}
     /**
      * @brief Get the current statistics as a JSON object
      */
