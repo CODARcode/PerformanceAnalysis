@@ -190,7 +190,7 @@ namespace chimbuko {
 
     void push (double x);
 
-    const Data &get_histogram() const{ return m_histogram; }
+    Data &get_histogram() { return m_histogram; } //const Data &get_histogram() const{ return m_histogram; }
 
     /**
      * @brief Set the internal variables from an instance of Histogram Data
@@ -223,6 +223,8 @@ namespace chimbuko {
 
 
     void set_glob_threshold(double& l) { m_histogram.glob_threshold = l;}
+    //void set_counts(std::vector<int>& c) { m_histogram.counts = c; }
+    //void set_bin_edges(std::vector<double>& be) {m_histogram.bin_edges = be;}
     /**
      * @brief Get the current statistics as a JSON object
      */
