@@ -2,6 +2,8 @@
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/unordered_map.hpp>
+#include <cereal/access.hpp>
+
 
 using namespace chimbuko;
 
