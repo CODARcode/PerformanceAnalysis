@@ -568,8 +568,8 @@ std::vector<Event_t> ADParser::getEvents() const{
   out.reserve( getNumFuncData() + getNumCommData() + getNumCounterData() ); 
 
   //Maintain latest timestamps to check ordering is correct
-  typedef std::unordered_map<unsigned long, std::unordered_map< unsigned long, std::unordered_map< unsigned long, unsigned long> > > TSmap;
-  TSmap latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts;
+  //Validation ensures all entries have the same pid and rid as those of this AD process
+  std::vector<long> latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts; //vector over threads
   other_timer.pause();
 
 
@@ -610,12 +610,16 @@ std::vector<Event_t> ADParser::getEvents() const{
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
 							   generate_event_id(m_rank, step, idx_funcData));
       if(evp.second){
-	unsigned long* latest_func_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_func_ts);
-	if(latest_func_ts_val != nullptr && evp.first.ts() < *latest_func_ts_val){
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_func_ts.size() < rid+1) latest_func_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+	
+	if(latest_func_ts[rid] != -1 && ts < latest_func_ts[rid]){
 	  std::stringstream ss;
 	  ss << "ADParser::getEvents parsed function data is not in time order: Event " << evp.first.get_json().dump() 
 	     << " for function \"" << m_funcMap.find(evp.first.fid())->second
-	     << "\" has timestamp " << evp.first.ts() << " < " << *latest_func_ts_val << " of previous func insertion\n";
+	     << "\" has timestamp " << evp.first.ts() << " < " << latest_func_ts[rid] << " of previous func insertion\n";
 	  
 	  auto rit = out.rbegin();
 	  while(rit != out.rend()){
@@ -626,10 +630,10 @@ std::vector<Event_t> ADParser::getEvents() const{
 	  }
 	  fatal_error(ss.str());
 	}
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [func]");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [func]");
+
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_func_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_func_ts[rid] = ts;
       }
       funcData = this->getFuncData(++idx_funcData);
     }else if(data == commData){
@@ -637,24 +641,30 @@ std::vector<Event_t> ADParser::getEvents() const{
 							   generate_event_id(m_rank, step, idx_commData));
 
       if(evp.second){
-	unsigned long* latest_comm_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_comm_ts);
-	if(latest_comm_ts_val != nullptr && evp.first.ts() < *latest_comm_ts_val) fatal_error("parsed comm data is not in time order");
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [comm]");
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_comm_ts.size() < rid+1) latest_comm_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+
+	if(latest_comm_ts[rid] != -1 && ts < latest_comm_ts[rid]) fatal_error("parsed comm data is not in time order");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [comm]");
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_comm_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_comm_ts[rid] = ts;
       }
       commData = this->getCommData(++idx_commData);
     }else if(data == counterData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, 
 							   generate_event_id(m_rank, step, idx_counterData));
       if(evp.second){
-	unsigned long* latest_count_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_count_ts);
-	if(latest_count_ts_val != nullptr && evp.first.ts() < *latest_count_ts_val) fatal_error("parsed counter data is not in time order");
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [counter]");
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_count_ts.size() < rid+1) latest_count_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+
+	if(latest_count_ts[rid] != -1 && ts < latest_count_ts[rid]) fatal_error("parsed counter data is not in time order");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [counter]");
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_count_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_count_ts[rid] = ts;
       }
       counterData = this->getCounterData(++idx_counterData);
     }else{
