@@ -210,7 +210,7 @@ namespace chimbuko {
      */
     void clear() override;
 
-    const int& find(const unsigned long& func_id);
+    const int find(const unsigned long& func_id);
 
     /**
      * @brief Get the number of functions for which statistics are being collected
