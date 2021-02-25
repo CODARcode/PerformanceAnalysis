@@ -126,7 +126,7 @@ namespace chimbuko {
      *
      * Functionality is identical to operator[] only it will throw an error if the function does not exist
      */
-    const RunStats & get_function_stats(const unsigned long func_id) const override;
+    const nlohmann::json & get_function_stats(const unsigned long func_id) const override;
 
 
   protected:
@@ -213,6 +213,7 @@ namespace chimbuko {
      */
     void clear() override;
 
+    const int& find(const unsigned long& func_id);
 
     /**
      * @brief Get the number of functions for which statistics are being collected
@@ -289,7 +290,7 @@ namespace chimbuko {
 
 
 
-    nlohmann::json & get_function_stats(const unsigned long func_id) const override;
+    const nlohmann::json & get_function_stats(const unsigned long func_id) const override;
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };

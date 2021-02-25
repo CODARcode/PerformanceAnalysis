@@ -134,10 +134,10 @@ void SstdParam::show(std::ostream& os) const
 }
 
 
-const RunStats & SstdParam::get_function_stats(const unsigned long func_id) const{
+const nlohmann::json & SstdParam::get_function_stats(const unsigned long func_id) const{
   auto it = m_runstats.find(func_id);
   if(it == m_runstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
-  return it->second;
+  return it->second.get_json();
 }
 
 
@@ -251,6 +251,13 @@ const RunStats & SstdParam::get_function_stats(const unsigned long func_id) cons
    auto it = m_hbosstats.find(func_id);
    if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
    return it->second.get_json();
+ }
+
+ const int& HbosParam::find(const unsigned long& func_id) {
+   if(m_hbosstats.find(func_id) == m_hbosstats.end()) { // func_id not in map
+     return 0;
+   }
+   return 1;
  }
 
 
