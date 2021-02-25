@@ -41,7 +41,7 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
  //Determine if it is a GPU event, and if so get the context
   m_is_gpu_event = metadata.isGPUthread(call.get_tid());
   if(m_is_gpu_event){
-    VERBOSE(std::cout << "Call is a GPU event" << std::endl);
+    verboseStream << "Call is a GPU event" << std::endl;
     m_gpu_location = metadata.getGPUthreadInfo(call.get_tid()).get_json();
 
     //Find out information about the CPU event that spawned it
@@ -49,7 +49,7 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
       //Note a GPU event can only be partnered to one CPU event but a CPU event can be partnered to multiple GPU events
       if(call.n_GPU_correlationID_partner() != 1) throw std::runtime_error("ADAnomalyProvenance::getGPUeventInfo GPU event has multiple correlation ID partners??");
 
-      VERBOSE(std::cout << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0) << std::endl);
+      verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0) << std::endl;
 
       std::string gpu_event_parent = call.get_GPU_correlationID_partner(0);
       m_gpu_event_parent_info["event_id"] = gpu_event_parent;
@@ -122,7 +122,7 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 
 
 
-ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &func_stats,
+ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &algo_params,
 					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size,
 					 const int io_step, 
 					 const unsigned long io_step_tstart, const unsigned long io_step_tend): 
@@ -130,7 +130,7 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &
   m_io_step(io_step), m_io_step_tstart(io_step_tstart), m_io_step_tend(io_step_tend)
 {
   getStackInformation(call, event_man); //get call stack
-  m_func_stats = func_stats.get_function_stats(call.get_fid()).get_json();   //Get the function statistics
+  m_algo_params = algo_params.get_algorithm_params(call.get_fid());   //Get the algorithm parameters
   getWindowCounters(call); //counters in window 
   getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
   getExecutionWindow(call, event_man, window_size);
@@ -155,7 +155,7 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 		      {"runtime_total", m_call.get_runtime()},
 			{"runtime_exclusive", m_call.get_exclusive()},
 			  {"call_stack", m_callstack},
-			    {"func_stats", m_func_stats},
+			    {"algo_params", m_algo_params},
 			      {"counter_events", m_counters},
 				{"is_gpu_event", m_is_gpu_event},
 				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() },

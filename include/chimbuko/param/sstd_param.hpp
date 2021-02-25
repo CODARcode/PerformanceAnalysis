@@ -35,8 +35,8 @@ namespace chimbuko {
     /**
      * @brief Update the internal run statistics with those included in the serialized input map
      * @param parameters The parameters in serialized format
-     * @param return_update Controls return format
-     * @return An empty string if return_update==False, otherwise the serialized updated parameters
+     * @param return_update Indicates that the function should return a serialized copy of the updated parameters
+     * @return An empty string or a serialized copy of the updated parameters depending on return_update
      */
     std::string update(const std::string& parameters, bool return_update=false) override;
 
@@ -120,13 +120,10 @@ namespace chimbuko {
      * @brief Get the internal map between global function index and statistics
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
-
     /**
-     * @brief Get the statistical distribution associated with a given function
-     *
-     * Functionality is identical to operator[] only it will throw an error if the function does not exist
+     * @brief Get the algorithm parameters associated with a given function
      */
-    const nlohmann::json & get_function_stats(const unsigned long func_id) const override;
+    nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
 
   protected:
@@ -296,7 +293,7 @@ namespace chimbuko {
 
 
 
-    const nlohmann::json & get_function_stats(const unsigned long func_id) const override;
+    nlohmann::json & get_function_stats(const unsigned long func_id) const override;
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };

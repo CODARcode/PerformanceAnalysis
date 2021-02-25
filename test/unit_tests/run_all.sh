@@ -25,3 +25,4 @@ set -o pipefail
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
 ./net/ZMQMENet
+./net/ZMQNet

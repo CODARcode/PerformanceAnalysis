@@ -47,17 +47,7 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |    **"event_id"**: *Event label (see above)*,
 |    **"fid"**: *Global function index (can be used as a key instead of function name)*,
 |    **"func"**: *function name*,
-|    **"func_stats"**:   *Statistics of function execution time*
-|    {
-|        **"accumulate"**: *not used at present*,
-|        **"count"**: *number of times function encountered (global)*,
-|        **"kurtosis"**: *kurtosis of distribution*,
-|        **"maximum"**: *maximum of distribution*,
-|        **"mean"**: *mean of distribution*,
-|        **"minimum"**: *minimum of distribution*,
-|        **"skewness"**: *skewness of distribution*,
-|        **"stddev"**: *standard deviation of distribution*
-|    },
+|    **"algo_params"**:   *The parameters used by the outlier detection algorithm to classify this event (format is algorithm dependent, see below)*,
 |    **"is_gpu_event"**: *true or false depending on whether function executed on a GPU*
 |    **"gpu_location"**: *if a GPU event, a JSON description of the context (see below), otherwise null*,
 |    **"gpu_parent"**: *if a GPU event, a JSON description of the parent CPU function (see below), otherwise null*,
@@ -104,6 +94,22 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 | } *end of schema*
 
 ----------
+
+For the SSTD (original) algorithm, the **algo_params** field has the following format:
+
+|    {
+|        **"accumulate"**: *not used at present*,
+|        **"count"**: *number of times function encountered (global)*,
+|        **"kurtosis"**: *kurtosis of distribution*,
+|        **"maximum"**: *maximum of distribution*,
+|        **"mean"**: *mean of distribution*,
+|        **"minimum"**: *minimum of distribution*,
+|        **"skewness"**: *skewness of distribution*,
+|        **"stddev"**: *standard deviation of distribution*
+|    }
+
+
+---------
 
 The schema for the **gpu_location** field is as follows:
 

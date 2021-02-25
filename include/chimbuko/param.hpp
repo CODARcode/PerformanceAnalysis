@@ -38,10 +38,12 @@ namespace chimbuko {
     /**
      * @brief Update the internal run statistics with those included in the serialized input map
      * @param parameters The parameters in serialized format
-     * @param flag The meaning of the flag is dependent on the implementation
-     * @return Returned contents dependent on implementation
+     * @param return_update Indicates that the function should return a serialized copy of the updated parameters
+     * @return An empty string or a serialized copy of the updated parameters depending on return_update
+     *
+     * Note: we combine update and serialize here in order to avoid having to acquire 2 successive mutex locks on the pserver
      */
-    virtual std::string update(const std::string& parameters, bool flag=false) = 0;
+    virtual std::string update(const std::string& parameters, bool return_update=false) = 0;
 
     /**
      * @brief Set the internal run statistics to match those included in the serialized input map. Overwrite performed only for those keys in input.
@@ -52,9 +54,9 @@ namespace chimbuko {
     virtual void show(std::ostream& os) const = 0;
 
     /**
-     * @brief Get the statistics associated with a given function
+     * @brief Get the algorithm parameters associated with a given function. Format is algorithm dependent
      */
-    virtual const nlohmann::json & get_function_stats(const unsigned long func_id) const = 0;
+    virtual nlohmann::json get_algorithm_params(const unsigned long func_id) const = 0;
 
   protected:
     mutable std::mutex m_mutex; // used to update parameters
@@ -79,9 +81,9 @@ namespace chimbuko {
     void action(Message &response, const Message &message) override{
       check(message);
       //Response message is a copy of the updated statistics in JSON form
-      response.set_msg(m_freeze ?
-		       m_param->serialize() :
-		       m_param->update(message.buf(), true),
+      response.set_msg(m_freeze ? 
+		       m_param->serialize() : 
+		       m_param->update(message.buf(), true),  //second argument indicates that a serialized copy of the updated params should be returned
 		       false);
     }
   };

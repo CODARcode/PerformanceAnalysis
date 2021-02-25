@@ -4,23 +4,44 @@
 namespace chimbuko{
 
 
-  PerfTimer::PerfTimer(bool start_now){
+  PerfTimer::PerfTimer(bool start_now) : m_running(false), m_add(Clock::duration::zero()){
 #ifdef _PERF_METRIC
-    if(start_now) 
-      m_start = Clock::now();
+    if(start_now) start();
 #endif
   }
 
   void PerfTimer::start(){
 #ifdef _PERF_METRIC
     m_start = Clock::now();
+    m_add = Clock::duration::zero();
+    m_running = true;
+#endif
+  }
+
+  void PerfTimer::pause(){
+#ifdef _PERF_METRIC
+    if(m_running){
+      Clock::time_point now = Clock::now();    
+      m_add += now - m_start;
+      m_running = false;
+    }
+#endif
+  }
+
+  void PerfTimer::unpause(){
+#ifdef _PERF_METRIC
+    assert(!m_running);
+    m_start = Clock::now();
+    m_running = true;
 #endif
   }
 
   double PerfTimer::elapsed_us() const{
 #ifdef _PERF_METRIC
-    Clock::time_point now = Clock::now();
-    return std::chrono::duration_cast<MicroSec>(now - m_start).count();
+    if(m_running){
+      Clock::time_point now = Clock::now();
+      return std::chrono::duration_cast<MicroSec>(now - m_start + m_add).count();
+    }else return std::chrono::duration_cast<MicroSec>(m_add).count();
 #else 
     return 0;
 #endif
@@ -28,8 +49,7 @@ namespace chimbuko{
 
   double PerfTimer::elapsed_ms() const{
 #ifdef _PERF_METRIC
-    Clock::time_point now = Clock::now();
-    return double(std::chrono::duration_cast<MicroSec>(now - m_start).count())/1000.;
+    return elapsed_us()/1000.;
 #else 
     return 0;
 #endif

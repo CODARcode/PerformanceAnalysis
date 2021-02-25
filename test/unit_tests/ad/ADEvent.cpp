@@ -258,6 +258,32 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
   
 }
 
+
+TEST(ADEventTest, purgeCallList){
+  ADFuncEventContainer ad;
+  long time = 100;
+
+  int event_idx = 0;
+  int fid1=0;
+  int fid2=1;
+
+  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,event_idx++,fid1,  0    ));
+  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,event_idx++,fid1,  time ));
+  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC",event_idx++,fid2,  time+50   )); //different function
+  ad.initializeAD();
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
+  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry2]), EventError::OK );
+
+  ad.event_manager.purgeCallList();
+
+  const CallList_t &call_list = ad.event_manager.getCallListMap()[0][0][0];
+  EXPECT_EQ(call_list.size(), 1);
+  EXPECT_EQ(call_list.begin()->get_fid(), fid2);
+}
+
+
+
 TEST(ADEvent, associatesCommsAndCountersWithFunc){
   ADEvent event_man;
   std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
@@ -360,6 +386,12 @@ TEST(ADEvent, trimsCallListCorrectly){
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
   EXPECT_NE(calls_p_r_t_ptr, nullptr);
   const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
+  EXPECT_EQ(calls_p_r_t.size(), 2);
+
+  //Check trim with n_keep >= #elems does nothing
+  event_man.trimCallList(2);
+  EXPECT_EQ(calls_p_r_t.size(), 2);
+  event_man.trimCallList(3);
   EXPECT_EQ(calls_p_r_t.size(), 2);
 
   //Check purged events are correct
@@ -560,5 +592,26 @@ TEST(ADEvent, testIteratorWindowDetermination){
   it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 4); //should stop at edge of map
   EXPECT_EQ(it_p.first, begin); 
   EXPECT_EQ(it_p.second, end); 
+
+  //Check that trimming but keeping 4 events per thread means we get the full upper half of the window view
+  event_man.trimCallList(4);
+  EXPECT_EQ(call_list->size(), 4);
+  
+  it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 3);
+  EXPECT_EQ(it_p.first->get_id(), execs[3].get_id());
+  EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[7].get_id());
+
+  //Add some more data simulating the next io step
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 9, "func9", 1000, 100)); //execs[8]
+  execs.push_back(createFuncExecData_t(pid, rid, tid_func, 10, "func10", 1100, 100)); //execs[9]
+
+  for(int i=8;i<execs.size();i++)
+    event_man.addCall(execs[i]);
+  
+
+  it_p = event_man.getCallWindowStartEnd(execs[8].get_id(), 1); //window of 1 around execs[8]
+  EXPECT_EQ(it_p.first->get_id(), execs[7].get_id());
+  EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[9].get_id());
+  
 }
   

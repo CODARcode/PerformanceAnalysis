@@ -20,9 +20,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> Commstack_t
    */
-  DEF_MAP3UL(CommStackMap, CommStack_t); 
-  
-
+  typedef mapPRT<CommStack_t> CommStackMap_p_t;
 
   /**
    * @brief a stack of CounterData_t
@@ -33,9 +31,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> Counterstack_t
    */
-  DEF_MAP3UL(CounterStackMap, CounterStack_t); 
-
-
+  typedef mapPRT<CounterStack_t> CounterStackMap_p_t;
 
   /**
    * @brief list of function calls (ExecData_t) in entry time order
@@ -52,8 +48,7 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> CallList_t
    */
-  DEF_MAP3UL(CallListMap, CallList_t);
-  
+  typedef mapPRT<CallList_t> CallListMap_p_t;
 
 
   /**
@@ -64,7 +59,8 @@ namespace chimbuko {
   /**
    * @brief map of process, rank, thread -> CallStack_t
    */
-  DEF_MAP3UL(CallStackMap, CallStack_t);
+  typedef mapPRT<CallStack_t> CallStackMap_p_t;
+
 
   /**
    * @brief hash map of a collection of ExecData_t per function
@@ -272,11 +268,19 @@ namespace chimbuko {
 
     /**
      * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
-     * 
+     * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
      * @return CallListMap_p_t* trimed function calls
      */
-    CallListMap_p_t* trimCallList();
+    CallListMap_p_t* trimCallList(int n_keep_thread = 0);
 
+
+    /**
+     * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
+     * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
+     *
+     * Functionality is the same as trimCallList only it doesn't return the trimmed function calls
+     */
+    void purgeCallList(int n_keep_thread = 0);
 
     /**
      * @brief show current call stack tree status
@@ -328,7 +332,7 @@ namespace chimbuko {
     /**
      * @brief  map of process,rank,thread to a list of ExecData_t objects which contain entry/exit timestamps for function calls
      * 
-     * In practise the call list is purged of completed events each IO step through calls to trimCallList
+     * In practise the call list is purged of completed events each IO step through calls to trimCallList unless those elements are marked as non-deletable
      */
     CallListMap_p_t   m_callList;
     /**

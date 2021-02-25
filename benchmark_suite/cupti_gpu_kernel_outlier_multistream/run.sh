@@ -121,7 +121,7 @@ fi
 #Instantiate the AD
 if (( 1 )); then
     echo "Instantiating AD"
-    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-main . ${extra_args} 2>&1 | tee ad.log &
+    mpirun --allow-run-as-root -n 1 driver SST . tau-metrics-main -prov_outputpath . ${extra_args} 2>&1 | tee ad.log &
     #mpirun --allow-run-as-root -n 1 sst_view tau-metrics-main-0.bp -nsteps_show_variable_values -1 2>&1 | tee view.log &
     sleep 2
 fi

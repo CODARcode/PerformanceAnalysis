@@ -79,7 +79,7 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNet
   auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
   
   if(m_perf != nullptr){
-    m_perf->add("counter_stats_stream_update_us", timer.elapsed_us());
+    m_perf->add("counter_stats_stream_update_ms", timer.elapsed_ms());
     m_perf->add("counter_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("counter_stats_stream_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }  

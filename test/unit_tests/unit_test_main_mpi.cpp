@@ -6,7 +6,7 @@
 int main(int argc, char **argv) {
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
-  chimbuko::Verbose::set_verbose(true);
+  chimbuko::enableVerboseLogging() = true;
   ::testing::InitGoogleTest(&argc, argv);
   int ret = RUN_ALL_TESTS();
   

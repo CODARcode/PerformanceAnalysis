@@ -1,34 +1,49 @@
 #pragma once
 
+#include<chimbuko/util/time.hpp>
+#include<iostream>
+
 namespace chimbuko {
 
   /**
-   * @brief Static class to control verbose output
+   * @brief Global control of whether verbose logging is active (default false)
    */
-  class Verbose{
-  private:
-    /**
-     * @brief Access static verbose static bool
-     */
-    inline static bool & vrb(){ static bool v=false; return v; }
-  public:
-    /**
-     * @brief Set verbose flag
-     * @param val The value
-     */
-    inline static void set_verbose(bool val){ vrb() = val; }
-
-    /**
-     * @brief Determine if verbose mode is activated
-     * @return Bool indicating whether verbose mode is active
-     */    
-    inline static bool on(){ return vrb(); }
-  };
+  inline bool & enableVerboseLogging(){ static bool v = false; return v; }
 
   /**
-   * @brief Macro enclosing a statement that is to only be printed if verbose mode is active
+   * @brief Macro for log output that appears when verbose logging is enabled
+   *
+   * Example usage:  verboseStream << "Hello world!" << std::endl; 
    */
-#define VERBOSE(STATEMENT)			\
-  if(Verbose::on()){ STATEMENT; }
+#define verboseStream \
+  if(!enableVerboseLogging()){} \
+  else std::cout << '[' << getDateTime() << "] "
+
+
+  /**
+   * @brief Macro for log output that includes the date and time, intended for reporting progress on service components for which there is only one rank
+   *
+   * Example usage:  progressStream << "Hello world!" << std::endl; 
+   */
+#define progressStream \
+  std::cout << '[' << getDateTime() << "] "
+
+
+
+  /**
+   * @brief Choose the rank designated as head rank upon which progress output will be reported; default 0
+   */
+  inline int & progressHeadRank(){ static int rank = 0; return rank; }
+
+
+  /**
+   * @brief Macro for log output that appears when either the rank is equal to the head rank or verbose logging is enabled
+   * @param rank The rank of the current process
+   * Example usage:  progressStream(rank) << "Hello world!" << std::endl; 
+   */
+#define headProgressStream(rank)	\
+  if(rank != progressHeadRank() && !enableVerboseLogging()){}	\
+  else std::cout << '[' << getDateTime() << ", rank " << rank << "] "
+
   
 };

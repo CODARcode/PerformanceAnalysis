@@ -64,7 +64,7 @@ int main (int argc, char ** argv){
   
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     std::cout << "HPServer enabling verbose debug output" << std::endl;
-    Verbose::set_verbose(true);
+    enableVerboseLogging() = true;
   }       
 
 

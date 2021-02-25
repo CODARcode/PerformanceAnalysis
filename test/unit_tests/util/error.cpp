@@ -4,6 +4,13 @@
 
 using namespace chimbuko;
 
+std::string removeDateTime(const std::string &from){
+  size_t pos = from.find_first_of(']');
+  if(pos == std::string::npos) return from;
+  return from.substr(pos+2);
+}
+  
+
 TEST(TestError, runTests){
   //Test with default rank
   {
@@ -11,7 +18,7 @@ TEST(TestError, runTests){
     g_error.setStream(&ss);
     g_error.recoverable("hello", "test_func", "this_file", 129);
 
-    std::string e = ss.str();
+    std::string e = removeDateTime(ss.str());
     EXPECT_EQ(e, "Error (recoverable) : test_func (this_file:129) : hello\n");
   }
 
@@ -21,7 +28,7 @@ TEST(TestError, runTests){
     set_error_output_stream(22, &ss);
     g_error.recoverable("hello", "test_func", "this_file", 129);
 
-    std::string e = ss.str();
+    std::string e = removeDateTime(ss.str());
     EXPECT_EQ(e, "Error (recoverable) rank 22 : test_func (this_file:129) : hello\n");
   }
 
@@ -32,8 +39,8 @@ TEST(TestError, runTests){
     unsigned long line = __LINE__ + 1;
     recoverable_error("hello");
 
-    std::string e = ss.str();
-
+    std::string e = removeDateTime(ss.str());
+    
     std::stringstream expect;
     expect << "Error (recoverable) rank 22 : " << __func__ << " (" << __FILE__ << ":" << line <<") : hello\n";
     
@@ -51,13 +58,13 @@ TEST(TestError, runTests){
     try{
       fatal_error("hello");
     }catch(std::exception &e){
-      thrown_err = e.what();
+      thrown_err = removeDateTime(e.what());
       caught = true;
     }
 
     EXPECT_EQ(caught, true);
 
-    std::string e = ss.str();
+    std::string e = removeDateTime(ss.str());
 
     std::stringstream expect;
     expect << "Error (FATAL) rank 22 : " << __func__ << " (" << __FILE__ << ":" << line <<") : hello\n";

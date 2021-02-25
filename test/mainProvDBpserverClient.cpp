@@ -124,7 +124,8 @@ TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
 int main(int argc, char** argv) 
 {
   MPI_Init(&argc, &argv);
-  Verbose::set_verbose(true);
+  chimbuko::enableVerboseLogging() = true;
+
   assert(argc >= 2);
   addr = argv[1];
 

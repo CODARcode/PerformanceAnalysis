@@ -127,8 +127,8 @@ if (( 1 )); then
     echo "Instantiating AD"
     #The two components should be differentiated adding a program index
     #The program names are different (main1, main2) and thus have different tau trace files
-    mpirun --allow-run-as-root -n ${ranks} driver SST . tau-metrics-main1 . -program_idx 1 ${extra_args} 2>&1 | tee ad1.log &
-    mpirun --allow-run-as-root -n ${ranks} driver SST . tau-metrics-main2 . -program_idx 2 ${extra_args} 2>&1 | tee ad2.log &
+    mpirun --allow-run-as-root -n ${ranks} driver SST . tau-metrics-main1 -prov_outputpath . -program_idx 1 ${extra_args} 2>&1 | tee ad1.log &
+    mpirun --allow-run-as-root -n ${ranks} driver SST . tau-metrics-main2 -prov_outputpath . -program_idx 2 ${extra_args} 2>&1 | tee ad2.log &
     sleep 2
 fi
 

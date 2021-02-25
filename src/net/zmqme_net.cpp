@@ -41,7 +41,7 @@ public:
     response.set_msg(std::string("Hello!I am NET!"), false);
     clients++;
     client_has_connected = 1;
-    VERBOSE(std::cout << "ZMQMENet thread " << thr_idx << " received handshake, #clients is now " << clients << std::endl);
+    verboseStream << "ZMQMENet thread " << thr_idx << " received handshake, #clients is now " << clients << std::endl;
   };
 };
 
@@ -58,7 +58,7 @@ public:
     response.set_msg("", false);
     clients--;
     if(clients < 0) throw std::runtime_error("ZMQMENet registered clients < 0! Likely a client did not perform a handshake");
-    VERBOSE(std::cout << "ZMQMENet thread " << thr_idx << " received disconnect notification, #clients is now " << clients << std::endl);
+    verboseStream << "ZMQMENet thread " << thr_idx << " received disconnect notification, #clients is now " << clients << std::endl;
   };
 };
 
@@ -93,7 +93,7 @@ void doWork(std::unordered_map<int,
   std::stringstream addr;
   addr << "tcp://*:" << port;
 
-  VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " binding to " << addr.str() << std::endl);
+  verboseStream << "ZMQMENet worker thread " << thr_idx << " binding to " << addr.str() << std::endl;
 
   zmq_bind(socket, addr.str().c_str()); //create a socket for communication with the AD
 
@@ -106,7 +106,7 @@ void doWork(std::unordered_map<int,
   while(true){
     //Check if the exit flag has been set either by the client or by the server, if so exit now
     if(client_has_connected && clients == 0){
-      VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " exiting poll loop because all clients disconnected" << std::endl);    
+      verboseStream << "ZMQMENet worker thread " << thr_idx << " exiting poll loop because all clients disconnected" << std::endl;    
       break;
     }
 
@@ -128,7 +128,7 @@ void doWork(std::unordered_map<int,
 	break; //no messages on queue
       perf.add(perf_prefix + "receive_ms", timer.elapsed_ms());
      
-      VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl);
+      verboseStream << "ZMQMENet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl;
     
       //Parse the message and instantiate a reply message with appropriate sender
       Message msg, msg_reply;
@@ -146,7 +146,7 @@ void doWork(std::unordered_map<int,
       //Apply the payload
       timer.start();
       pit->second->action(msg_reply, msg);
-      VERBOSE(std::cout << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << msg_reply.data().size() << std::endl);
+      verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << msg_reply.data().size() << std::endl;
       perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
 
       //Send the reply
@@ -157,10 +157,10 @@ void doWork(std::unordered_map<int,
 
   }//while(<receiving messages>)
 
-  VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " is exiting" << std::endl);
+  verboseStream << "ZMQMENet worker thread " << thr_idx << " is exiting" << std::endl;
   zmq_close(socket);
   zmq_ctx_term(context);
-  VERBOSE(std::cout << "ZMQMENet worker thread " << thr_idx << " has finished" << std::endl);
+  verboseStream << "ZMQMENet worker thread " << thr_idx << " has finished" << std::endl;
 }
 
 void ZMQMENet::finalize()
@@ -172,9 +172,9 @@ void ZMQMENet::finalize()
   int tidx=0;
   for(auto& t: m_threads){
     if (t.joinable()){
-      VERBOSE(std::cout << "ZMQMENet joining thread " << tidx << std::endl);
+      verboseStream << "ZMQMENet joining thread " << tidx << std::endl;
       t.join();
-      VERBOSE(std::cout << "ZMQMENet joined thread " << tidx << std::endl);
+      verboseStream << "ZMQMENet joined thread " << tidx << std::endl;
     }
     ++tidx;
   }
@@ -190,7 +190,7 @@ void ZMQMENet::finalize()
   m_perf_thr.clear();
 
   m_finalized = true;
-  VERBOSE(std::cout << "ZMQMENet finalize completed" << std::endl);
+  verboseStream << "ZMQMENet finalize completed" << std::endl;
 }
 
 void ZMQMENet::init_thread_pool(int nt){

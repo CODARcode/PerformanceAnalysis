@@ -115,7 +115,7 @@ do
     if (( 1 )); then
 	#We will ask Chimbuko to associate a rank index with the trace data according to the instance index
 	#This can be achieved by combining -rank with -override_rank <orig rank index = 0>
-	driver ${TAU_ADIOS2_ENGINE} . ${fn_driver} . ${extra_args} -rank ${i} -override_rank 0 2>&1 | tee ad_${i}.log &
+	driver ${TAU_ADIOS2_ENGINE} . ${fn_driver} -prov_outputpath . ${extra_args} -rank ${i} -override_rank 0 2>&1 | tee ad_${i}.log &
     fi
 
     cycles=5000

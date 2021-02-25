@@ -13,7 +13,7 @@ namespace chimbuko {
   class ADNormalEventProvenance {
   public:
     /**
-     * @brief Add a normal event
+     * @brief Add a normal event. If a normal event already exists with this pid,rid,tid,fid it will be overwritten
      */
     void addNormalEvent(const unsigned long pid, const unsigned long rid, const unsigned long tid, const unsigned long fid, const nlohmann::json &event);
     

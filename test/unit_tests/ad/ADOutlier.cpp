@@ -215,6 +215,10 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
 
   EXPECT_EQ(nout, 1);
   EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
+
+  //Check that running again on the same data does not report new outliers
+  nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+  EXPECT_EQ(nout, 0);
 }
 
 
@@ -311,6 +315,13 @@ TEST(ADOutlierTestRunWithoutPS, OutlierStatisticSelection){
     EXPECT_EQ(nout_par, 0);
     size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_child, 1);
+  }
+
+  //Unlabel all the data so we can run afresh with different settings
+  for(auto fit=data_map.begin(); fit != data_map.end(); fit++){
+    std::vector<CallListIterator_t> &fdata = fit->second;
+    for(auto &e: fdata)
+      e->set_label(0);
   }
 
   //Check using the include runtime; the parent should also be anomalous

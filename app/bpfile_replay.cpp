@@ -19,7 +19,7 @@ using namespace chimbuko;
 int main(int argc, char** argv){
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     std::cout << "Enabling verbose debug output" << std::endl;
-    Verbose::set_verbose(true);
+    enableVerboseLogging() = true;
   }       
 
   MPI_Init(&argc, &argv);
@@ -131,7 +131,7 @@ int main(int argc, char** argv){
 	const std::map<std::string, adios2::Params> attributes = io_in.AvailableAttributes(); 
 	for (const auto attributePair: attributes){
 	  if(!attribs_seen.count(attributePair.first)){
-	    VERBOSE(std::cout << "Defining attribute " << attributePair.first << std::endl);
+	    verboseStream << "Defining attribute " << attributePair.first << std::endl;
 	    std::string key = attributePair.first;
 	    if(spoof_rank){ //spoof rank index
 	      key = std::regex_replace(key, std::regex(R"(MetaData\:(\d+)\:)"), stringize("MetaData:%d:", spoof_rank_val));
@@ -150,7 +150,7 @@ int main(int argc, char** argv){
 	const std::map<std::string, adios2::Params> variables = io_in.AvailableVariables(); 
 	for (const auto variablePair: variables){
 	  std::string name = variablePair.first;
-	  VERBOSE(std::cout << "Found variable " << name << std::endl);
+	  verboseStream << "Found variable " << name << std::endl;
 	  varBase* var = parseVariable(name, variablePair.second, io_in, rd);
 	  
 	  //Apply rank spoofing if required
@@ -187,7 +187,7 @@ int main(int argc, char** argv){
 
 	  //Write to SST output
 	  if(var != NULL){
-	    VERBOSE(std::cout << " Value : " << var->value() << std::endl);
+	    verboseStream << " Value : " << var->value() << std::endl;
 	    var->put(io_out, wr);
 	    delete var;
 	  }

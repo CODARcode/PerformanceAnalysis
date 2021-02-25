@@ -117,7 +117,7 @@ do
     filename_chimbuko=tau-metrics-${i}-python3.6
 
     #Overwrite the rank index in the data (which is always 0 here) with a new rank index labeling the instances
-    driver ${TAU_ADIOS2_ENGINE} . ${filename_chimbuko} . ${extra_args} -perf_outputpath . -rank ${i} -override_rank 0 2>&1 | tee ad_${i}.log &
+    driver ${TAU_ADIOS2_ENGINE} . ${filename_chimbuko} -prov_outputpath . ${extra_args} -perf_outputpath . -rank ${i} -override_rank 0 2>&1 | tee ad_${i}.log &
     #sstSinker ${TAU_ADIOS2_ENGINE} . ${filename_chimbuko} 0 2>&1 | tee sinker_${i}.log &
     sleep 1
     TAU_ADIOS2_FILENAME=${filename_tau} CUDA_DEVICE=$i tau_python -T serial,papi,pthread,python,cupti,pdt,adios2 -cupti -um -v -tau-python-interpreter=python3 -adios2_trace runMainForPerformanceMeasure.py -n ${ntasks} -i $i 2>&1 | tee main_${i}.log &

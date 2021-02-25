@@ -193,7 +193,7 @@ if [ "$ADIOS_MODE" == "SST" ]
 then
     echo "Launch Application with anomaly detectors"
     mpirun --allow-run-as-root -n $NMPIS driver $ADIOS_MODE \
-           ${BP_DIR} $BP_PREFIX "${BATCH_DIR}/executions" ${extra_args} -outlier_sigma ${AD_SIGMA} -anom_win_size ${AD_WINSZ} 2>&1 | tee ${LOG_DIR}/ad.log  &
+           ${BP_DIR} $BP_PREFIX -prov_outputdir "${BATCH_DIR}/executions" ${extra_args} -outlier_sigma ${AD_SIGMA} -anom_win_size ${AD_WINSZ} 2>&1 | tee ${LOG_DIR}/ad.log  &
     ad_pid=$!
     sleep 5
 
@@ -212,7 +212,7 @@ else
     echo "Run anomaly detectors"
     cd $WORK_DIR/ad
     mpirun --allow-run-as-root -n $NMPIS driver $ADIOS_MODE \
-	$WORK_DIR/BP $BP_PREFIX "${WORK_DIR}/executions" ${extra_args} -outlier_sigma ${AD_SIGMA} -anom_win_size ${AD_WINSZ} -interval_msec ${AD_INTERVAL} 2>&1 | tee ${LOG_DIR}/ad.log
+	$WORK_DIR/BP $BP_PREFIX -prov_outputdir "${WORK_DIR}/executions" ${extra_args} -outlier_sigma ${AD_SIGMA} -anom_win_size ${AD_WINSZ} -interval_msec ${AD_INTERVAL} 2>&1 | tee ${LOG_DIR}/ad.log
 fi
 
 echo "Waiting for services to finish"

@@ -19,7 +19,7 @@ TEST(ADTestWithProvDB, BpfileTest)
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.provdata_outdir = ""; //don't write
+    params.prov_outputpath = ""; //don't output
 
     params.outlier_sigma = 6.0;
     params.only_one_frame = true; //just analyze first IO frame

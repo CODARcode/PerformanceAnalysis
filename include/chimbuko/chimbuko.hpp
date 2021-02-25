@@ -28,7 +28,7 @@ namespace chimbuko {
 			      */
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
-    std::string provdata_outdir; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
+    std::string prov_outputpath; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
 #ifdef ENABLE_PROVDB
     //Parameters associated with the provenance database
     std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
@@ -54,6 +54,8 @@ namespace chimbuko {
     bool override_rank; /**<Set Chimbuko to overwrite the rank index in the parsed data with its own rank parameter. This disables verification of the data rank.*/
 
     std::string outlier_statistic; /**< Set the statistic used in outlier detection*/
+
+    int step_report_freq; /**<Steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)*/
 
     ChimbukoParams();
 
@@ -145,9 +147,8 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     void init_provdb();
 #endif
-
+    void init_normalevent_prov();
     void init_metadata_parser();
-
 
     /**
      * @brief Signal the parser to parse the adios2 timestep
@@ -205,8 +206,9 @@ namespace chimbuko {
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
-    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
 #endif
+    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
+    
     mutable PerfStats m_perf; /**< Performance data */
     mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */
     

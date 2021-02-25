@@ -99,13 +99,13 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	}
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
 
-	VERBOSE(std::cout << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl);
+	verboseStream << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl;
       }else{
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
 	stackProtectGC(it);
 	m_unmatchedCorrelationID[cid] = it;
 	++m_unmatchedCorrelationID_count[it->get_id()];
-	VERBOSE(std::cout << "Found as-yet unpartnered event with correlation ID " << cid << std::endl);
+	verboseStream << "Found as-yet unpartnered event with correlation ID " << cid << std::endl;
       }
     }
   }
@@ -213,7 +213,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
 	comm.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
-	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto comm stack (Tau likely provided this event out of order)" << std::endl);
+	verboseStream << "Warning: Reinserting " << rit->get_json().dump() << " onto comm stack (Tau likely provided this event out of order)" << std::endl;
 	comm.push(*rit); //reinsert in reverse order (oldest first)
       }
     }
@@ -230,7 +230,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
 	count.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
-	VERBOSE(std::cout << "Warning: Reinserting " << rit->get_json().dump() << " onto counter stack (Tau likely provided this event out of order)" << std::endl);
+	verboseStream << "Warning: Reinserting " << rit->get_json().dump() << " onto counter stack (Tau likely provided this event out of order)" << std::endl;
 	count.push(*rit); //reinsert in reverse order (oldest first)
       }
     }
@@ -298,17 +298,23 @@ static unsigned long nested_map_size(const T& m) {
   return n_elements;
 }
 
-CallListMap_p_t* ADEvent::trimCallList() {
+CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
   //Remove completed entries from the call list
   CallListMap_p_t* cpListMap = new CallListMap_p_t;
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {
       for (auto& it_t: it_r.second) {
 	CallList_t& cl = it_t.second;
+
+	//Are we keeping all events for this thread?
+	if(n_keep_thread >= cl.size()) 
+	  continue;
 	CallList_t cpList;
 
 	auto it = cl.begin();
-	while (it != cl.end()) {
+	auto one_past_last = std::prev(cl.end(),n_keep_thread);
+
+	while (it != one_past_last) {
 	  // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
 	  if (it->can_delete() && it->get_runtime()) {
 	    //Add copy of completed event to output
@@ -330,6 +336,40 @@ CallListMap_p_t* ADEvent::trimCallList() {
   m_execDataMap.clear();
   return cpListMap;
 }
+
+
+void ADEvent::purgeCallList(int n_keep_thread) {
+  //Remove completed entries from the call list
+  for (auto& it_p : m_callList) {
+    for (auto& it_r : it_p.second) {
+      for (auto& it_t: it_r.second) {
+	CallList_t& cl = it_t.second;
+
+	//Are we keeping all events for this thread?
+	if(n_keep_thread >= cl.size()) 
+	  continue;
+
+	auto it = cl.begin();
+	auto one_past_last = std::prev(cl.end(),n_keep_thread);
+
+	while (it != one_past_last) {
+	  if (it->can_delete() && it->get_runtime()) {
+	    //Remove completed event from map of event index string to call list
+	    m_callIDMap.erase(it->get_id());	    
+	    //Remove completed event from call list
+	    it = cl.erase(it);
+	  }
+	  else {
+	    it++;
+	  }                    
+	}
+      }
+    }
+  }    
+  m_execDataMap.clear();
+}
+
+
 
 
 CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{

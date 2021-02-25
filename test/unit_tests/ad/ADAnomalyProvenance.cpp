@@ -80,7 +80,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
 
 
   //Test statistics
-  EXPECT_EQ(output["func_stats"], stats.get_json());
+  EXPECT_EQ(output["algo_params"], stats.get_json());
   
   //Check step info
   EXPECT_EQ(output["io_step"], step);
