@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <iostream>
+#include <cereal/access.hpp>
 
 namespace chimbuko {
 
@@ -175,6 +176,7 @@ namespace chimbuko {
 
     } data;
 
+    friend class cereal::access;
     /**
      * @brief Serialize using cereal
      */
