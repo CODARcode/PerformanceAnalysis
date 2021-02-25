@@ -152,6 +152,21 @@ namespace chimbuko {
       double glob_threshold;
       std::vector<int> counts;
       std::vector<double> bin_edges;
+
+      Data(){
+        clear();
+      }
+      Data(double& g_threshold, std::vector<int>& h_counts, std::vector<double>& h_bin_edges ) {
+        global_threshold = g_threshold;
+        counts = h_counts;
+        bin_edges = h_bin_edges;
+      }
+
+      void clear() {
+        glob_threshold = -1 * log2(1.00001);
+        counts.clear();
+        bin_edges.clear();
+      }
     } data;
 
     void clear();

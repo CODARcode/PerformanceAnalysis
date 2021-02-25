@@ -307,7 +307,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
        combined.data.bin_edges.push_back(prev + bin_width);
        prev += bin_width;
      }
-     verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
+     //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
 
      combined.data.counts = std::vector<double>(combined.data.bin_edges.size()-1, 0.0);
      for ( int i=0; i < runtimes.size(); i++) {
@@ -318,7 +318,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
          }
        }
      }
-     verboseStream << "Size of counts: " << combined.data.counts.size() << std::endl;
+     //verboseStream << "Size of counts: " << combined.data.counts.size() << std::endl;
      if(l.data.glob_threshold > g.data.glob_threshold)
       combined.data.glob_threshold = l.data.glob_threshold;
      else
@@ -378,7 +378,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      m_histogram.bin_edges.push_back(prev + bin_width);
      prev += bin_width;
    }
-   verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
+   //verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
 
    m_histogram.counts = std::vector<double>(m_histogram.bin_edges.size()-1, 0.0);
    for ( int i=0; i < runtimes.size(); i++) {
@@ -389,7 +389,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
        }
      }
    }
-   verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
+   //verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
 
    //m_histogram.runtimes.clear();
    const double min_threshold = -1 * log2(1.00001);
@@ -420,9 +420,6 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
  nlohmann::json Histogram::get_json() const {
      return {
-         {"Histogram", {
-           {"Bin Counts", m_histogram.counts},
-           {"Bin Edges", m_histogram.bin_edges}
-         }
-       };
+         {"Histogram Bin Counts", m_histogram.counts},
+         {"Histogram Bin Edges", m_histogram.bin_edges}};
  }
