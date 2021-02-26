@@ -359,13 +359,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     else if(bin_ind == num_bins + 1){
       int last_idx = param[func_id].bin_edges().size() - 1;
       double last_bin_edge = param[func_id].bin_edges().at(last_idx);
-      if(last_bin_edge <= runtime_i && runtime_i <= (last_bin_edge + (bin_width * 0.05))) {
+      if(last_bin_edge < runtime_i) { //<= runtime_i ) { // && runtime_i <= (last_bin_edge + (bin_width * 0.05))) {
 
-        ad_score = out_scores_i.at(num_bins - 1);
+        ad_score = max_score; //out_scores_i.at(num_bins - 1);
       }
       else{
 
-        ad_score = max_score; //min_score;
+        ad_score = out_scores_i.at(num_bins - 1); //max_score; //min_score;
       }
       std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
