@@ -330,7 +330,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      else
       combined.set_glob_threshold(g.get_threshold());
 
-     combined.set_hist_data(Histogram::Data( combined.get_threshold(), combined.counts(), combined.bin_edges() ));
+     const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
+     combined.set_hist_data(d_tmp);
 
      return combined;
    }
