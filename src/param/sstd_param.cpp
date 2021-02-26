@@ -336,7 +336,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    }
  }
 
- Histogram& Histogram::operator+=(const Histogram& h)
+ Histogram& Histogram::operator+=(Histogram& h)
  {
     Histogram combined = combine_two_histograms(*this, h); //*this + h
     *this = combined;

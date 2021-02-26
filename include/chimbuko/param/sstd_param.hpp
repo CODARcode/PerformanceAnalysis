@@ -217,7 +217,7 @@ namespace chimbuko {
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram& operator+=(const Histogram& rs);
+    Histogram& operator+=(Histogram& rs);
 
     double _scott_binWidth(std::vector<double> & vals);
 
