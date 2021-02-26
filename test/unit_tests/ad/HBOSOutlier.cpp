@@ -84,7 +84,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   std::cout << "Stats: " << stats_state << std::endl;
 
-  //Generate some events with an outlier
+  //Generate some events with an outlier itr 1
   runtimes.clear();
   std::list<ExecData_t> call_list;  //aka CallList_t
   for(int i=0;i<N;i++){

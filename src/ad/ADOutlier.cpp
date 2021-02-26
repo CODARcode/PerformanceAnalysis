@@ -313,6 +313,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     }
   }
   std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
+  std::cout << "min_score = " << min_score << std::endl;
+  std::cout << "max_score = " << max_score << std::endl;
   //compute threshold
   double l_threshold = min_score + (0.99 * (max_score - min_score));
   if(l_threshold < param[func_id].get_threshold()) {
@@ -356,7 +358,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       int last_idx = param[func_id].bin_edges().size() - 1;
       if(param[func_id].bin_edges().at(last_idx) <= runtime_i){
 
-        ad_score = out_scores_i.at(num_bins - 1);
+        ad_score = max_score; //out_scores_i.at(num_bins - 1);
       }
       else{
 
@@ -373,6 +375,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     }
 
     //Compare the ad_score with the threshold
+
     if (ad_score > l_threshold) {
       verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
