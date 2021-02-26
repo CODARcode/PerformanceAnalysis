@@ -67,8 +67,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::normal_distribution<double> dist(420.,10.);
   int N = 50;
   int func_id = 1234;
-  HbosParam stats, stats2;
-  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id];
+  HbosParam stats, stats2, stats3;
+  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id];
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
@@ -104,6 +104,36 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::string stats_state2 = outlier.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state2 << std::endl;
+
+  std::vector<CallListIterator_t> call_list_its;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    call_list_its.push_back(it);
+
+  Anomalies outliers;
+  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+
+  std::cout << "# outliers detected: " << nout << std::endl;
+
+  //Generate some events with an outlier itr 2 same outlier val:800
+  runtimes.clear();
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    double val = i==N-1 ? 800 : double(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    runtimes.push_back(val);
+    //std::cout << call_list.back().get_json().dump() << std::endl;
+  }
+  long ts_end = 1000*N + 800;
+  stats_r3.create_histogram(runtimes);
+  //bin_edges.clear();
+  std::vector<double> bin_edges3 = stats_r3.bin_edges();
+  std::cout << "Bin edges 3:" << std::endl;
+  for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
+  outlier.sync_param_test(&stats3);
+
+  std::string stats_state3 = outlier.get_global_parameters()->serialize();
+
+  std::cout << "Stats: " << stats_state3 << std::endl;
 
   std::vector<CallListIterator_t> call_list_its;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
