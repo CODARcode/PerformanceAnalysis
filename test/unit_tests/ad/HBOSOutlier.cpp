@@ -80,7 +80,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   ADOutlierHBOSTest outlier;
   outlier.sync_param_test(&stats);
 
-  std::string stats_state = outlier.get_global_parameters()->get_json(); //->serialize();
+  std::string stats_state = outlier.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state << std::endl;
 
@@ -101,7 +101,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(int i=0; i<bin_edges2.size(); i++) std::cout << bin_edges2[i] << std::endl;
   outlier.sync_param_test(&stats2);
 
-  std::string stats_state2 = outlier.get_global_parameters()->get_json(); //->serialize();
+  std::string stats_state2 = outlier.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state2 << std::endl;
 
