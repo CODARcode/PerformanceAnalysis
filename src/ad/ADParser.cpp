@@ -317,7 +317,7 @@ ParserError ADParser::fetchFuncData() {
 	  }catch(const std::exception &e){
 	    //Sometimes tau gives us malformed (nonsense) data entries, and this can cause the lookup to fail
 	    //We need to work around that here
-	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
+	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, eventID(), false);
 	    if(!ev.second){
 	      recoverable_error("caught local index lookup error but appears to be associated with malformed event: " + ev.first.get_json().dump());
 	      fidx_p += FUNC_EVENT_DIM;
@@ -337,7 +337,7 @@ ParserError ADParser::fetchFuncData() {
 	      *pidx_p = m_program_idx + 99999999; //give it an invalid program index
 
 	      //Check invalidation worked
-	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
+	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, eventID(), false);
 	      if(ev.second) fatal_error("invalidation check failed!??");
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
@@ -494,7 +494,7 @@ bool ADParser::validateEvent(const unsigned long* e) const{
 }
 
 
-std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id, bool log_error) const{
+std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, const eventID &id, bool log_error) const{
   // Create event
   Event_t ev(data, t, idx, id);
 
@@ -608,7 +608,7 @@ std::vector<Event_t> ADParser::getEvents() const{
     create_insert_timer.unpause();
     if(data == funcData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
-							   generate_event_id(m_rank, step, idx_funcData));
+							   eventID(m_rank, step, idx_funcData));
       if(evp.second){
 	unsigned long rid = evp.first.rid();
 	unsigned long ts = evp.first.ts();
@@ -638,7 +638,7 @@ std::vector<Event_t> ADParser::getEvents() const{
       funcData = this->getFuncData(++idx_funcData);
     }else if(data == commData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, 
-							   generate_event_id(m_rank, step, idx_commData));
+							   eventID(m_rank, step, idx_commData));
 
       if(evp.second){
 	unsigned long rid = evp.first.rid();
@@ -654,7 +654,7 @@ std::vector<Event_t> ADParser::getEvents() const{
       commData = this->getCommData(++idx_commData);
     }else if(data == counterData){
       std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, 
-							   generate_event_id(m_rank, step, idx_counterData));
+							   eventID(m_rank, step, idx_counterData));
       if(evp.second){
 	unsigned long rid = evp.first.rid();
 	unsigned long ts = evp.first.ts();

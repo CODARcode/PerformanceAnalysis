@@ -59,20 +59,20 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   
   //Check call stack
   EXPECT_EQ(output["call_stack"].size(), 3);
-  EXPECT_EQ(output["call_stack"][0]["event_id"], exec2.get_id());
+  EXPECT_EQ(output["call_stack"][0]["event_id"], exec2.get_id().toString());
   EXPECT_EQ(output["call_stack"][0]["func"], "thechild");
   EXPECT_EQ(output["call_stack"][0]["entry"], 1050);
   EXPECT_EQ(output["call_stack"][0]["exit"], 1100);
   EXPECT_EQ(output["call_stack"][0]["is_anomaly"], true);
 
 
-  EXPECT_EQ(output["call_stack"][1]["event_id"], exec1.get_id());
+  EXPECT_EQ(output["call_stack"][1]["event_id"], exec1.get_id().toString());
   EXPECT_EQ(output["call_stack"][1]["func"], "theparent");
   EXPECT_EQ(output["call_stack"][1]["entry"], 1000);
   EXPECT_EQ(output["call_stack"][1]["exit"], 1100);
   EXPECT_EQ(output["call_stack"][1]["is_anomaly"], false);
 
-  EXPECT_EQ(output["call_stack"][2]["event_id"], exec0.get_id());
+  EXPECT_EQ(output["call_stack"][2]["event_id"], exec0.get_id().toString());
   EXPECT_EQ(output["call_stack"][2]["func"], "theroot");
   EXPECT_EQ(output["call_stack"][2]["entry"], 100);
   EXPECT_EQ(output["call_stack"][2]["exit"], 0);
@@ -302,11 +302,11 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
   EXPECT_EQ(ewin.size(), 4);
   EXPECT_EQ(cwin.size(), 2);
   for(int i=0;i<4;i++){
-    EXPECT_EQ(ewin[i]["event_id"], execs[i]->get_id());
+    EXPECT_EQ(ewin[i]["event_id"], execs[i]->get_id().toString());
     EXPECT_EQ(ewin[i]["entry"], execs[i]->get_entry());
     EXPECT_EQ(ewin[i]["exit"], execs[i]->get_exit());
     EXPECT_EQ(ewin[i]["is_anomaly"], execs[i]->get_label() == -1);
-    EXPECT_EQ(ewin[i]["parent_event_id"], execs[i]->get_parent());
+    EXPECT_EQ(ewin[i]["parent_event_id"], execs[i]->get_parent().toString());
   }
 
   for(int i=0;i<2;i++)

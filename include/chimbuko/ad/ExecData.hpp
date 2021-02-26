@@ -1,5 +1,6 @@
 #pragma once
-#include "chimbuko/ad/ADDefine.hpp"
+#include <chimbuko/ad/ADDefine.hpp>
+#include <chimbuko/ad/utils.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -26,9 +27,9 @@ public:
      * @param data pointer to raw performance event vector
      * @param t event type
      * @param idx event index
-     * @param id event (string) id
+     * @param id event id
      */
-    Event_t(const unsigned long * data, EventDataType t, size_t idx, std::string id="event_id") 
+   Event_t(const unsigned long * data, EventDataType t, size_t idx, const eventID &id = eventID()) 
         : m_data(data), m_t(t), m_id(id), m_idx(idx) {}
     /**
      * @brief Destroy the Event_t object
@@ -45,7 +46,7 @@ public:
     /**
      * @brief return event id
      */
-    std::string id() const { return m_id; }
+    const eventID &id() const { return m_id; }
     /**
      * @brief return event index, typically the index of the event in the input array for the timestep on which it was spawned
      */
@@ -141,7 +142,7 @@ public:
 private:
     const unsigned long * m_data;   /**< pointer to raw performance trace data vector */
     EventDataType m_t;              /**< event type */
-    std::string m_id;               /**< event id */
+    eventID m_id;               /**< event id */
     size_t m_idx;                   /**< event index */
 };
 
@@ -172,7 +173,7 @@ public:
      * @param ev constant reference to a Event_t object
      * @param commType communication type (e.g. SEND/RECV)
      */
-    CommData_t(const Event_t& ev, std::string commType);
+    CommData_t(const Event_t& ev, const std::string &commType);
     /**
      * @brief Destroy the CommData_t object
      * 
@@ -206,12 +207,12 @@ public:
      * 
      * @param key execution id
      */
-    void set_exec_key(std::string key) { m_execkey = key; }
+    void set_exec_key(const eventID &key) { m_execkey = key; }
 
     /**
      * @brief Get the execution key id. This is equal to the "id" string associated with a parent ExecData_t object
      */
-    const std::string & get_exec_key() const { return m_execkey; }
+    const eventID & get_exec_key() const { return m_execkey; }
 
     /**
      * @brief compare two communication data
@@ -239,7 +240,7 @@ private:
         m_bytes,                        /**< communication data size in bytes */
         m_tag;                          /**< communication tag */
     unsigned long m_ts;                 /**< communication timestamp */
-    std::string m_execkey;              /**< execution key (or id) where this communication event occurs */
+    eventID m_execkey;              /**< execution key (or id) where this communication event occurs */
 };
 
 
@@ -306,12 +307,12 @@ private:
      * 
      * @param key execution id
      */
-    void set_exec_key(std::string key) { m_execkey = key; }
+    void set_exec_key(const eventID &key) { m_execkey = key; }
 
     /**
      * @brief Get the execution key id. This is equal to the "id" string associated with a parent ExecData_t object
      */
-    const std::string & get_exec_key() const { return m_execkey; }
+    const eventID & get_exec_key() const { return m_execkey; }
 
     private:
     std::string m_countername;             /**< counter name */
@@ -322,7 +323,7 @@ private:
       m_cid,                          /**< counted id */
       m_value,                        /**< counter value */
       m_ts;                           /**< counter timestamp */
-    std::string m_execkey;              /**< execution key (or id) where this counter event occurs */
+     eventID m_execkey;              /**< execution key (or id) where this counter event occurs */
   };
 
 
@@ -355,7 +356,7 @@ public:
     /**
      * @brief Get the id of this execution data
      */
-    const std::string &get_id() const { return m_id; }
+    const eventID &get_id() const { return m_id; }
     /**
      * @brief Get the function name of this execution data
      */
@@ -405,7 +406,7 @@ public:
     /**
      * @brief Get the parent function id of this execution data
      */
-    std::string get_parent() const { return m_parent; }
+    const eventID & get_parent() const { return m_parent; }
     /**
      * @brief Get a list of communication data occured in this execution data
      */
@@ -441,7 +442,7 @@ public:
      * 
      * @param parent the parent execution id
      */
-    void set_parent(std::string parent) { m_parent = parent; }
+    void set_parent(const eventID &parent) { m_parent = parent; }
     /**
      * @brief Set the function name of this execution
      * 
@@ -521,7 +522,7 @@ public:
     /**
      * @brief Set the partner event linked by a GPU correlation ID
      */
-    void set_GPU_correlationID_partner(const std::string event_id){ m_gpu_correlation_id_partner.push_back(event_id); }
+    void set_GPU_correlationID_partner(const eventID &event_id){ m_gpu_correlation_id_partner.push_back(event_id); }
 
     /**
      * @brief Return true if this event has been matched to a partner event by a GPU correlation ID
@@ -539,10 +540,10 @@ public:
      *
      * Throws error if index out of range
      */  
-    const std::string & get_GPU_correlationID_partner(const size_t i) const;
+    const eventID & get_GPU_correlationID_partner(const size_t i) const;
 
 private:
-    std::string m_id;                    /**< execution id */                           
+    eventID m_id;                        /**< execution id */                           
     std::string m_funcname;              /**< function name */
     unsigned long 
         m_pid,                           /**< program id */
@@ -555,13 +556,13 @@ private:
         m_runtime,                       /**< inclusive running time (i.e. including time of child calls) */
         m_exclusive;                     /**< exclusive running time (i.e. excluding time of child calls) */
     int m_label;                         /**< 1 for normal, -1 for abnormal execution */
-    std::string m_parent;                /**< parent execution */
+    eventID m_parent;                    /**< parent execution */
     unsigned long m_n_children;          /**< the number of childrent executions */
     unsigned long m_n_messages;          /**< the number of messages */
     std::deque<CommData_t> m_messages;  /**< a vector of all messages */
     std::deque<CounterData_t> m_counters; /**< a vector of all counters */
     bool m_can_delete; /**< Flag indicating that the event is deletable by the garbage collection */
-    std::vector<std::string> m_gpu_correlation_id_partner;  /**< The event ids partner events linked by a correlation ID, either the launching CPU event or the GPU kernel event */
+    std::vector<eventID> m_gpu_correlation_id_partner;  /**< The event ids partner events linked by a correlation ID, either the launching CPU event or the GPU kernel event */
 };
 
 

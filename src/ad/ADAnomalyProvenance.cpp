@@ -5,19 +5,19 @@
 using namespace chimbuko;
 
 inline nlohmann::json getCallStackEntry(const ExecData_t &call){
-  return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry",call.get_entry()}, {"exit", call.get_exit()}, {"event_id", call.get_id()}, {"is_anomaly", call.get_label() == -1} };
+  return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry",call.get_entry()}, {"exit", call.get_exit()}, {"event_id", call.get_id().toString()}, {"is_anomaly", call.get_label() == -1} };
 };
 
 void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEvent &event_man){
   //Get stack information
   m_callstack.push_back(getCallStackEntry(call));
-  std::string parent = call.get_parent();
-  while(parent != "root"){
+  eventID parent = call.get_parent();
+  while(parent != eventID::root()){
     CallListIterator_t call_it;
     try{
       call_it = event_man.getCallData(parent);
     }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
@@ -49,10 +49,10 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
       //Note a GPU event can only be partnered to one CPU event but a CPU event can be partnered to multiple GPU events
       if(call.n_GPU_correlationID_partner() != 1) throw std::runtime_error("ADAnomalyProvenance::getGPUeventInfo GPU event has multiple correlation ID partners??");
 
-      verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0) << std::endl;
+      verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0).toString() << std::endl;
 
-      std::string gpu_event_parent = call.get_GPU_correlationID_partner(0);
-      m_gpu_event_parent_info["event_id"] = gpu_event_parent;
+      const eventID &gpu_event_parent = call.get_GPU_correlationID_partner(0);
+      m_gpu_event_parent_info["event_id"] = gpu_event_parent.toString();
 
       //Get the parent event
       CallListIterator_t pit;
@@ -60,7 +60,7 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
       try{
 	pit = event_man.getCallData(gpu_event_parent);
       }catch(const std::exception &e){
-	recoverable_error("Could not find GPU parent " + gpu_event_parent + " in call list due to : " + e.what());
+	recoverable_error("Could not find GPU parent " + gpu_event_parent.toString() + " in call list due to : " + e.what());
 	got_parent = false;
       }
 
@@ -71,13 +71,13 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
 	nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
 	gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
 
-	std::string parent = pit->get_parent();
-	while(parent != "root"){
+	eventID parent = pit->get_parent();
+	while(parent != eventID::root()){
 	  CallListIterator_t call_it;
 	  try{
 	    call_it = event_man.getCallData(parent);
 	  }catch(const std::exception &e){
-	    recoverable_error("Could not find GPU stack event parent " + parent + " in call list due to : " + e.what());
+	    recoverable_error("Could not find GPU stack event parent " + parent.toString() + " in call list due to : " + e.what());
 	    break;
 	  }
 	  gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
@@ -100,7 +100,7 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
   try{
     win = event_man.getCallWindowStartEnd(call.get_id(), window_size);
   }catch(const std::exception &e){
-    recoverable_error("Could not get call window for event " + call.get_id());
+    recoverable_error("Could not get call window for event " + call.get_id().toString());
     return;
   }
 
@@ -108,10 +108,10 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
     m_exec_window["exec_window"].push_back( { 
 	{"fid", it->get_fid()}, 
 	  {"func", it->get_funcname() }, 
-	    {"event_id", it->get_id()}, 
+	    {"event_id", it->get_id().toString()}, 
 	      {"entry", it->get_entry()},
 		{"exit", it->get_exit()},    //is 0 if function has not exited
-		  {"parent_event_id", it->get_parent()},
+		  {"parent_event_id", it->get_parent().toString()},
 		    {"is_anomaly", it->get_label() == -1}
       });
     for(CommData_t const &comm : it->get_messages())
@@ -147,7 +147,7 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
       {"pid", m_call.get_pid()},
 	{"rid", m_call.get_rid()},
 	  {"tid", m_call.get_tid()},
-	    {"event_id", m_call.get_id()},
+	    {"event_id", m_call.get_id().toString()},
 	      {"fid", m_call.get_fid()},
 		{"func", m_call.get_funcname()},
 		  {"entry", m_call.get_entry()},

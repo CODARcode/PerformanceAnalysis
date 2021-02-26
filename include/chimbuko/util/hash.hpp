@@ -1,9 +1,9 @@
 #pragma once
 
 #include<array>
+#include<boost/functional/hash.hpp>
 
 namespace chimbuko{
-
   /**
    * @brief Hash function for std::array
    */
@@ -11,10 +11,8 @@ namespace chimbuko{
   struct ArrayHasher {
     std::size_t operator()(const std::array<T, N>& a) const{
       std::size_t h = 0;
-      
-      for (auto e : a) {
-	h ^= std::hash<T>{}(e)  + 0x9e3779b9 + (h << 6) + (h >> 2); 
-      }
+      for (auto e : a)
+	boost::hash_combine(h, e);
       return h;
     }   
   };

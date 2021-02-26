@@ -16,6 +16,7 @@ set -o pipefail
 ./ad/ADglobalFunctionIndexMap
 ./ad/ADNormalEventProvenance
 ./ad/ADAnomalyProvenance
+./ad/utils
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

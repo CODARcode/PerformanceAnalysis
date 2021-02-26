@@ -74,7 +74,7 @@ namespace chimbuko {
    * @brief A type that stores some information about an event whose data may have been deleted
    */
   struct EventInfo{
-    std::string id;
+    eventID id;
     EventDataType type;
     unsigned long ts;
 
@@ -110,7 +110,7 @@ namespace chimbuko {
       case EventDataType::COUNT:
 	os << "COUNT, "; break;
       }
-      os << id << ", " << ts << "}";
+      os << id.toString() << ", " << ts << "}";
       return os.str();
     }
 
@@ -212,13 +212,13 @@ namespace chimbuko {
      *
      * throws a runtime error if the call is not present in the call-list
      */
-    CallListIterator_t getCallData(const std::string &event_id) const;     
+    CallListIterator_t getCallData(const eventID &event_id) const;     
 
     /**
      * @brief Get a pair of iterators marking the start and one-past-the-end of a window of size (up to) win_size events
      *        on either size around the given event occurring on the same thread
      */
-    std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const std::string &event_id, const int win_size) const;
+    std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const;
     
     /**
      * @brief clear 
@@ -354,7 +354,7 @@ namespace chimbuko {
      *
      * Completed calls are removed from this list every IO step by calls to trimCallList
      */
-    std::unordered_map<std::string, CallListIterator_t> m_callIDMap;
+    std::unordered_map<eventID, CallListIterator_t> m_callIDMap;
 
 
     /**
@@ -368,7 +368,7 @@ namespace chimbuko {
     /**
      * @brief Map of event index to the number of unmatched correlation IDs
      */
-    std::unordered_map<std::string,size_t> m_unmatchedCorrelationID_count; 
+    std::unordered_map<eventID,size_t> m_unmatchedCorrelationID_count; 
     
     /**
      * @brief verbose

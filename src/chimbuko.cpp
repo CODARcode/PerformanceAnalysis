@@ -366,7 +366,7 @@ void Chimbuko::extractCounters(int rank, int step){
     Event_t ev(m_parser->getCounterData(c),
 	       EventDataType::COUNT,
 	       c,
-	       generate_event_id(rank, step, c));    
+	       eventID(rank, step, c));    
     m_counter->addCounter(ev);
   }
   m_perf.add("ad_extract_counters_get_register_ms", timer.elapsed_ms());

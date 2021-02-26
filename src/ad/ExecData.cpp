@@ -6,10 +6,10 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-  : m_id(""), m_pid(0), m_rid(0), m_tid(0), m_fid(0), 
+  : m_pid(0), m_rid(0), m_tid(0), m_fid(0), 
     m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
     m_n_children(0), m_n_messages(0),
-    m_label(0), m_parent("-1"), m_can_delete(true), m_gpu_correlation_id_partner(0){}
+    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0){}
 
 ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
@@ -19,7 +19,7 @@ ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
     m_tid = ev.tid();
     m_fid = ev.fid();
     m_entry = (long)ev.ts();
-    m_parent = "root";
+    m_parent = eventID::root();
 }
 
 ExecData_t::~ExecData_t() {
@@ -88,13 +88,13 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
 nlohmann::json ExecData_t::get_json(bool with_message) const
 {
     nlohmann::json j{
-        {"key", m_id},
+        {"key", m_id.toString()},
         {"name", m_funcname},
         {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
         {"entry", m_entry}, {"exit", m_exit}, 
         {"runtime", m_runtime}, {"exclusive", m_exclusive},
         {"label", m_label}, 
-        {"parent", m_parent},
+        {"parent", m_parent.toString()},
         {"n_children", m_n_children}, {"n_messages", m_n_messages}
     };
     if (with_message)
@@ -107,7 +107,7 @@ nlohmann::json ExecData_t::get_json(bool with_message) const
 }
 
 
-const std::string & ExecData_t::get_GPU_correlationID_partner(const size_t i) const{
+const eventID & ExecData_t::get_GPU_correlationID_partner(const size_t i) const{
   if(i>=m_gpu_correlation_id_partner.size()) throw std::runtime_error("ExecData_t::get_GPU_correlationID_partner index out of range");
   return m_gpu_correlation_id_partner[i];
 }
@@ -229,7 +229,7 @@ nlohmann::json Event_t::get_json() const
     return {};
 
   nlohmann::json j{
-		   {"id", id()}, {"idx", idx()}, {"type", strtype()},
+                   {"id", id().toString()}, {"idx", idx()}, {"type", strtype()},
 		   {"pid", pid()}, {"rid", rid()}, {"tid", tid()}, {"ts", ts()}
   };
   if (m_t == EventDataType::FUNC) {
@@ -258,7 +258,7 @@ CommData_t::CommData_t()
 
 }
 
-CommData_t::CommData_t(const Event_t& ev, std::string commType) 
+CommData_t::CommData_t(const Event_t& ev, const std::string &commType) 
 : m_commType(commType)
 {
     m_pid = ev.pid();
@@ -276,8 +276,6 @@ CommData_t::CommData_t(const Event_t& ev, std::string commType)
     m_bytes = ev.bytes();
     m_tag = ev.tag();
     m_ts = ev.ts();
-
-    m_execkey = "unknown";
 }
 
 bool CommData_t::is_same(const CommData_t& other) const 
@@ -302,7 +300,7 @@ nlohmann::json CommData_t::get_json() const
         {"src", m_src}, {"tar", m_tar},
         {"bytes", m_bytes}, {"tag", m_tag},
         {"timestamp", m_ts},
-        {"execdata_key", m_execkey}
+        {"execdata_key", m_execkey.toString()}
     };
 }
 

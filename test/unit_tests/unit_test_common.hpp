@@ -22,8 +22,7 @@ namespace chimbuko{
 				      unsigned long func_id,
 				      unsigned long ts){
     static size_t event_idx = -1;
-    event_idx++;
-    std::stringstream ss; ss << "event" << event_idx;
+    eventID id(rid, 0, event_idx++);
   
     static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, FUNC_EVENT_DIM> ev;
@@ -35,7 +34,7 @@ namespace chimbuko{
     ev[FUNC_IDX_TS] = ts;
     todelete.push_back(ev);
 
-    return Event_t(todelete.back().data(), EventDataType::FUNC, event_idx, ss.str());
+    return Event_t(todelete.back().data(), EventDataType::FUNC, event_idx, id);
   }
 
   /**
@@ -81,8 +80,7 @@ namespace chimbuko{
 					 unsigned long value,
 					 unsigned long ts){
     static size_t event_idx = -1;
-    event_idx++;
-    std::stringstream ss; ss << "counter_event" << event_idx;
+    eventID id(rid, 0, event_idx++);
   
     static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COUNTER_EVENT_DIM> ev;
@@ -94,7 +92,7 @@ namespace chimbuko{
     ev[COUNTER_IDX_TS] = ts;
     todelete.push_back(ev);
 
-    return Event_t(todelete.back().data(), EventDataType::COUNT, event_idx, ss.str());
+    return Event_t(todelete.back().data(), EventDataType::COUNT, event_idx, id);
   }
 
 
@@ -142,8 +140,7 @@ namespace chimbuko{
 			    unsigned long comm_bytes,
 			    unsigned long ts){
     static size_t event_idx = -1;
-    event_idx++;
-    std::stringstream ss; ss << "comm_event" << event_idx;
+    eventID id(rid, 0, event_idx++);
   
     static std::list< std::array<unsigned long, COMM_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COMM_EVENT_DIM> ev;
@@ -157,7 +154,7 @@ namespace chimbuko{
     ev[COMM_IDX_TS] = ts;
     todelete.push_back(ev);
 
-    return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, ss.str());
+    return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, id);
   }
 
   /**

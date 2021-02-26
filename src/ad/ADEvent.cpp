@@ -34,13 +34,13 @@ EventError ADEvent::addEvent(const Event_t& event) {
 void ADEvent::stackProtectGC(CallListIterator_t it){
   it->can_delete(false);
 
-  std::string parent = it->get_parent();
-  while(parent != "root"){
+  eventID parent = it->get_parent();
+  while(parent != eventID::root()){
     CallListIterator_t pit;
     try{
       pit = getCallData(parent);
     }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
@@ -56,13 +56,13 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
     it->can_delete(true);
   else return; //stop here, the stack will be needed
 
-  std::string parent = it->get_parent();
-  while(parent != "root"){
+  eventID parent = it->get_parent();
+  while(parent != eventID::root()){
     CallListIterator_t pit;
     try{
       pit = getCallData(parent);
     }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
@@ -88,8 +88,8 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
       //Does a partner already exist?
       auto m = m_unmatchedCorrelationID.find(cid);
       if(m != m_unmatchedCorrelationID.end()){
-	std::string current_event_id = it->get_id();
-	std::string partner_event_id = m->second->get_id();
+	eventID current_event_id = it->get_id();
+	eventID partner_event_id = m->second->get_id();
 	it->set_GPU_correlationID_partner(partner_event_id);
 	m->second->set_GPU_correlationID_partner(current_event_id);
 
@@ -100,7 +100,7 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	}
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
 
-	verboseStream << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl;
+	verboseStream << "Found partner event " << current_event_id.toString() << " to previous unmatched event " << partner_event_id.toString() << " with correlation ID " << cid << std::endl;
       }else{
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
 	stackProtectGC(it);
@@ -405,13 +405,13 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 
 
 
-CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{
+CallListIterator_t ADEvent::getCallData(const eventID &event_id) const{
   auto it = m_callIDMap.find(event_id);
-  if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id + " not present in map");
+  if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id.toString() + " not present in map");
   else return it->second;
 }
 
-std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd(const std::string &event_id, const int win_size) const{
+std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd(const eventID &event_id, const int win_size) const{
   CallListIterator_t it = getCallData(event_id);
   CallList_t* cl = getElemPRT(it->get_pid(), it->get_rid(), it->get_tid(), const_cast<CallListMap_p_t&>(m_callList)); //need non-const iterator
   if(cl == nullptr)  throw std::runtime_error("ADEvent::getCallWindowStartEnd event has unknown pid/rid/tid");

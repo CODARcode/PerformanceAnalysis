@@ -363,7 +363,7 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   EXPECT_EQ(myfunc_calls.size(), 1);
 
   const ExecData_t &myfunc_exec = *myfunc_calls[0];
-  std::string exec_id = myfunc_exec.get_id();
+  eventID exec_id = myfunc_exec.get_id();
 
   EXPECT_EQ(myfunc_exec.get_funcname(), "MYFUNC");
   EXPECT_EQ(myfunc_exec.get_n_message(), 2);
