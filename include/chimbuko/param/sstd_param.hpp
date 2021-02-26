@@ -321,7 +321,7 @@ namespace chimbuko {
      * @brief Update the internal statistics with those included in another SstdParam instance.
      * @param[in] other The other SstdParam instance
      */
-    void update(const HbosParam& other) { update(other.m_hbosstats); }
+    void update(HbosParam& other) { update(other.m_hbosstats); }
 
     /**
      * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
