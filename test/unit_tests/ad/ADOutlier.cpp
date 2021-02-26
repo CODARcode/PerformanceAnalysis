@@ -40,6 +40,7 @@ public:
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
+  
 
   std::default_random_engine gen;
   std::normal_distribution<double> dist(500.,100.);
@@ -51,7 +52,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
     std::vector<double> runtime;
     for(int i=0;i<N;i++) runtime.push_back(dist(gen));
     h.create_histogram(runtime);
-    std::cout << "Created Histogram" << std::endl;
+    std::cout << "Created Histogram 1" << std::endl;
 
     runtime.clear();
     for(int i=0;i<100;i++) runtime.push_back(dist(gen));
