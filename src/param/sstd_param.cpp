@@ -303,9 +303,9 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      std::sort(runtimes.begin(), runtimes.end());
      const int h = runtimes.size() - 1;
 
-     combined.set_bin_edges.push_back(runtimes.at(0));
+     combined.bin_edges.push_back(runtimes.at(0));
 
-     double prev = combined.data.bin_edges.at(0);
+     double prev = combined.bin_edges.at(0);
      while(prev < runtimes.at(h)){
        combined.data.bin_edges.push_back(prev + bin_width);
        prev += bin_width;
