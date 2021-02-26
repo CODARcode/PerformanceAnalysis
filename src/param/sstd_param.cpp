@@ -307,7 +307,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
      double prev = runtimes.at(0); // combined.bin_edges().at(0);
      while(prev < runtimes.at(h)){
-       double b = bin_width + prev
+       double b = bin_width + prev;
        combined.add2binedges(b);
        prev = b;
        //prev += bin_width;
