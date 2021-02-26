@@ -271,7 +271,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
   /**
    * @brief Merge Histogram
    */
- Histogram Histogram::combine_two_histograms(Histogram& g, Histogram& l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
+ Histogram Histogram::combine_two_histograms(Histogram& g, const Histogram& l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
  {
    Histogram combined;
    if (g.bin_edges().size() == 0) {
@@ -336,7 +336,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    }
  }
 
- Histogram& Histogram::operator+=(Histogram& h)
+ Histogram& Histogram::operator+=(const Histogram& h)
  {
     Histogram combined = combine_two_histograms(*this, h); //*this + h
     *this = combined;
