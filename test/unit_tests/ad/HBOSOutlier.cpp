@@ -93,7 +93,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
-  long ts_end = 1000*N + 800;
+  //long ts_end = 1000*N + 800;
   stats_r2.create_histogram(runtimes);
   //bin_edges.clear();
   std::vector<double> bin_edges2 = stats_r2.bin_edges();
@@ -123,7 +123,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
-  long ts_end = 1000*N + 800;
+  //long ts_end2 = 1000*N + 800;
   stats_r3.create_histogram(runtimes);
   //bin_edges.clear();
   std::vector<double> bin_edges3 = stats_r3.bin_edges();
@@ -139,10 +139,10 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
     call_list_its2.push_back(it);
 
-  Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its2);
+  Anomalies outliers2;
+  unsigned long nout2 = outlier2.compute_outliers_test(outliers, func_id, call_list_its2);
 
-  std::cout << "# outliers detected: " << nout << std::endl;
+  std::cout << "# outliers detected: " << nout2 << std::endl;
 
   //EXPECT_EQ(nout, 1);
   //EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
