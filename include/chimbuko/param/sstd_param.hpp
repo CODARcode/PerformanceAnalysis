@@ -222,14 +222,14 @@ namespace chimbuko {
     double _scott_binWidth(std::vector<double> & vals);
 
 
-    void set_glob_threshold(double& l) { m_histogram.glob_threshold = l;}
+    void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
     void set_counts(std::vector<int>& c) { m_histogram.counts = c; }
     void set_bin_edges(std::vector<double>& be) {m_histogram.bin_edges = be;}
     void add2counts(int& count) {m_histogram.counts.push_back(count);}
     void add2counts(int& id, int& count) {m_histogram.counts[id] += count;}
     void add2binedges(double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
-    double& get_threshold() {return m_histogram.glob_threshold;}
+    const double& get_threshold() const {return m_histogram.glob_threshold;}
     std::vector<int>& counts() {return m_histogram.counts;}
     const std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
 
