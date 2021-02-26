@@ -358,7 +358,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     else {
 
       int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges);
-      std::cout << "bin_index = " << bin_index << std:endl;
+      std::cout << "bin_index = " << bin_index << std::endl;
       ad_score = out_scores_i.at( bin_index );
       std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
