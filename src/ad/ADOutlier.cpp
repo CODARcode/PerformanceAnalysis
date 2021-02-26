@@ -389,7 +389,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_ed
   //for(int i=0; i < X.size(); i++){
   std::cout << bin_edges[0] << std::endl;
   for(int j=1; j < bin_edges.size(); j++){
-    std::cout << bin_edges[i] << std::endl;
+    std::cout << bin_edges[j] << std::endl;
     if(X <= bin_edges.at(j)){
       //b_inds.at(i) += j-1;
       //break;
