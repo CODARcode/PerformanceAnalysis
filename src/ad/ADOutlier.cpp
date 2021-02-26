@@ -341,6 +341,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         ad_score = min_score;
 
       }
+      std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
     else if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges) == num_bins + 1){
       int last_idx = param[func_id].get_histogram().bin_edges.size() - 1;
@@ -352,10 +353,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
         ad_score = min_score;
       }
+      std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
     else {
 
-      ad_score = out_scores_i.at( ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges) );
+      int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].get_histogram().bin_edges);
+      std::cout << "bin_index = " << bin_index << std:endl;
+      ad_score = out_scores_i.at( bin_index );
+      std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
 
     //Compare the ad_score with the threshold
