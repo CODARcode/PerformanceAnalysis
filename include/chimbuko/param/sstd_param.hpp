@@ -212,12 +212,12 @@ namespace chimbuko {
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram combine_two_histograms(Histogram& a, Histogram& b); //friend Histogram operator+(const Histogram a, const Histogram b);
+    Histogram combine_two_histograms(const Histogram& a, const Histogram& b); //friend Histogram operator+(const Histogram a, const Histogram b);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram& operator+=(Histogram& rs);
+    Histogram& operator+=(const Histogram& rs);
 
     double _scott_binWidth(std::vector<double> & vals);
 
@@ -315,13 +315,13 @@ namespace chimbuko {
      * @brief Update the internal run statistics with those included in the input map
      * @param[in] runstats The map between global function index and statistics
      */
-    void update(std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void update(const std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
      * @brief Update the internal statistics with those included in another SstdParam instance.
      * @param[in] other The other SstdParam instance
      */
-    void update(HbosParam& other) { update(other.m_hbosstats); }
+    void update(const HbosParam& other) { update(other.m_hbosstats); }
 
     /**
      * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
