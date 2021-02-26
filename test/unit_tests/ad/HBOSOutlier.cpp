@@ -60,3 +60,50 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
   EXPECT_EQ(local_params_ps.serialize(), in_state);
 }
+
+TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+  HbosParam stats;
+  Histogram &stats_r = stats[func_id];
+  std::vector<double> runtimes;
+  for(int i=0;i<N;i++) runtimes.push(dist(gen));
+  stats_r.create_histogram(runtimes);
+
+  ADOutlierHBOSTest outlier;
+  outlier.sync_param_test(&stats);
+
+  std::string stats_state = outlier.get_global_parameters()->serialize();
+
+  std::cout << "Stats: " << stats_state << std::endl;
+
+  //Generate some events with an outlier
+
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    //std::cout << call_list.back().get_json().dump() << std::endl;
+  }
+  long ts_end = 1000*N + 800;
+
+
+  std::vector<CallListIterator_t> call_list_its;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    call_list_its.push_back(it);
+
+  Anomalies outliers;
+  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+
+  std::cout << "# outliers detected: " << nout << std::endl;
+
+  EXPECT_EQ(nout, 1);
+  EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
+
+  //Check that running again on the same data does not report new outliers
+  nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+  EXPECT_EQ(nout, 0);
+}
