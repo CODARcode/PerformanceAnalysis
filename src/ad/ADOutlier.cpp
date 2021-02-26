@@ -345,13 +345,15 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     // If the sample does not belong to any bins
     // bin_ind == 0 (fall outside since it is too small)
     if( bin_ind == 0){ //
-      if(param[func_id].bin_edges().at(0) <= runtime_i && runtime_i <= (bin_width * 0.05) ){
+      double first_bin_edge = param[func_id].bin_edges().at(0);
+      double dist = first_bin_edge - runtime_i;
+      if( dist <= (bin_width * 0.05) ){
 
         ad_score = out_scores_i.at(0);
       }
       else{
 
-        ad_score = min_score;
+        ad_score = max_score; //min_score;
 
       }
       std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
@@ -359,13 +361,15 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     else if(bin_ind == num_bins + 1){
       int last_idx = param[func_id].bin_edges().size() - 1;
       double last_bin_edge = param[func_id].bin_edges().at(last_idx);
-      if(last_bin_edge < runtime_i) { //<= runtime_i ) { // && runtime_i <= (last_bin_edge + (bin_width * 0.05))) {
+      double dist = runtime_i - last_bin_edge;
 
-        ad_score = max_score; //out_scores_i.at(num_bins - 1);
+      if (dist <= (bin_width * 0.05)) {  //last_bin_edge < runtime_i) { //<= runtime_i ) { // && runtime_i <= (last_bin_edge + (bin_width * 0.05))) {
+
+        ad_score = out_scores_i.at(num_bins - 1);
       }
       else{
 
-        ad_score = out_scores_i.at(num_bins - 1); //max_score; //min_score;
+        ad_score = max_score; //out_scores_i.at(num_bins - 1); //max_score; //min_score;
       }
       std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
