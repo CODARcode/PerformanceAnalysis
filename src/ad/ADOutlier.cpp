@@ -296,7 +296,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   }
 
   //Create HBOS score vector
-
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
@@ -317,6 +316,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
   std::cout << "min_score = " << min_score << std::endl;
   std::cout << "max_score = " << max_score << std::endl;
+
   //compute threshold
   double l_threshold = min_score + (0.99 * (max_score - min_score));
   if(l_threshold < param[func_id].get_threshold()) {
@@ -360,6 +360,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
       std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
+    // If the sample does not belong to any bins
+    // bin_ind == n_bins+1 (fall outside since it is too large)
     else if(bin_ind == num_bins + 1){
       int last_idx = param[func_id].bin_edges().size() - 1;
       double last_bin_edge = param[func_id].bin_edges().at(last_idx);
