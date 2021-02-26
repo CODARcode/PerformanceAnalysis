@@ -358,7 +358,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       int last_idx = param[func_id].bin_edges().size() - 1;
       if(param[func_id].bin_edges().at(last_idx) <= runtime_i){
 
-        ad_score = max_score; //out_scores_i.at(num_bins - 1);
+        ad_score = out_scores_i.at(num_bins - 1);
       }
       else{
 
