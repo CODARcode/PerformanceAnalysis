@@ -51,6 +51,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
     std::vector<double> runtime;
     for(int i=0;i<N;i++) runtime.push_back(dist(gen));
     h.create_histogram(runtime);
+    std::cout << "Created Histogram" << std::endl;
   }
   local_params_ps.assign(local_params_ps_in);
 
