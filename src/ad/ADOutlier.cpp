@@ -305,11 +305,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
     std::cout<<l<<std::endl;
-    if(l < min_score){
-      min_score = l;
-    }
-    if(l > max_score){
-      max_score = l;
+    if(prob_counts.at(i) > 0) {
+      if(l < min_score){
+        min_score = l;
+      }
+      if(l > max_score){
+        max_score = l;
+      }
     }
   }
   std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
