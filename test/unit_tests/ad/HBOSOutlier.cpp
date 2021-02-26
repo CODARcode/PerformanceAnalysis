@@ -73,6 +73,10 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
 
+  std::vector<double> bin_edges = stats_r.bin_edges();
+  std::cout << "Bin edges:" << std::endl;
+  for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
+
   ADOutlierHBOSTest outlier;
   outlier.sync_param_test(&stats);
 
@@ -91,6 +95,10 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   }
   long ts_end = 1000*N + 800;
   stats_r.merge_histograms(stats_r, runtimes);
+  bin_edges.clear();
+  bin_edges = stats_r.bin_edges();
+  std::cout << "Bin edges after merge:" << std::endl;
+  for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
   outlier.sync_param_test(&stats);
 
   std::vector<CallListIterator_t> call_list_its;
