@@ -25,11 +25,13 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('libzmq')
     depends_on('mochi-sonata')
     depends_on('curl')
+    depends_on('boost')
     
     depends_on('autoconf', type='build')
     depends_on('automake', type='build')
     depends_on('libtool',  type='build')
     depends_on('m4',       type='build')
+
 
     def setup_environment(self, spack_env, run_env):
         spack_env.set('CXX', self.spec['mpi'].mpicxx)
