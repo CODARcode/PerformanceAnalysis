@@ -140,7 +140,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     call_list_its2.push_back(it);
 
   Anomalies outliers2;
-  unsigned long nout2 = outlier2.compute_outliers_test(outliers, func_id, call_list_its2);
+  unsigned long nout2 = outliers2.compute_outliers_test(outliers2, func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
 
