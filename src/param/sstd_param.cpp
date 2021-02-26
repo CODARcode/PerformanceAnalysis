@@ -318,8 +318,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      for ( int i=0; i < runtimes.size(); i++) {
        for ( int j=1; j < combined.bin_edges().size(); j++) {
          if ( runtimes.at(i) < combined.bin_edges().at(j) ) {
-           int id = j-1;
-           combined.add2counts(id, 1);
+           int id = j-1, inc = 1;
+           combined.add2counts(id, inc);
            break;
          }
        }
