@@ -84,13 +84,14 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   runtimes.clear();
   std::list<ExecData_t> call_list;  //aka CallList_t
   for(int i=0;i<N;i++){
-    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    double val = i==N-1 ? 800 : double(dist(gen)); //outlier on N-1
     call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
   long ts_end = 1000*N + 800;
   stats_r.merge_histograms(stats_r, runtimes);
+  outlier.sync_param_test(&stats);
 
   std::vector<CallListIterator_t> call_list_its;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
