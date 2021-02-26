@@ -274,28 +274,28 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  Histogram Histogram::combine_two_histograms(Histogram& g, Histogram& l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
  {
    Histogram combined;
-   if (g.get_histogram().bin_edges.size() == 0) {
+   if (g.bin_edges().size() == 0) {
      combined.set_glob_threshold(l.get_threshold());
-     combined.data.counts = l.data.counts;
-     combined.data.bin_edges = l.data.bin_edges;
+     combined.set_counts(l.counts());
+     combined.set_bin_edges(l.bin_edges());
    }
-   else if (l.data.bin_edges.size() == 0) {
+   else if (l.bin_edges().size() == 0) {
      combined.set_glob_threshold(g.get_threshold());
-     combined.data.counts = g.data.counts;
-     combined.data.bin_edges = g.data.bin_edges;
+     combined.set_counts(g.counts());
+     combined.set_bin_edges(g.bin_edges());
    }
    else {
      //unwrap both histograms into values
      std::vector<double> runtimes;
 
-     for (int i = 0; i < g.data.bin_edges.size() - 1; i++) {
-       for(int j = 0; j < g.data.counts.at(i); j++){
-         runtimes.push_back(g.data.bin_edges.at(i));
+     for (int i = 0; i < g.bin_edges().size() - 1; i++) {
+       for(int j = 0; j < g.counts().at(i); j++){
+         runtimes.push_back(g.bin_edges().at(i));
        }
      }
-     for (int i = 0; i < l.data.bin_edges.size() - 1; i++) {
-       for(int j = 0; j < l.data.counts.at(i); j++){
-         runtimes.push_back(l.data.bin_edges.at(i));
+     for (int i = 0; i < l.bin_edges().size() - 1; i++) {
+       for(int j = 0; j < l.counts().at(i); j++){
+         runtimes.push_back(l.bin_edges().at(i));
        }
      }
 
@@ -303,7 +303,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      std::sort(runtimes.begin(), runtimes.end());
      const int h = runtimes.size() - 1;
 
-     combined.data.bin_edges.push_back(runtimes.at(0));
+     combined.set_bin_edges.push_back(runtimes.at(0));
 
      double prev = combined.data.bin_edges.at(0);
      while(prev < runtimes.at(h)){
