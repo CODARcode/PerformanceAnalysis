@@ -67,8 +67,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::normal_distribution<double> dist(420.,10.);
   int N = 50;
   int func_id = 1234;
-  HbosParam stats, stats2, stats3;
-  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id];
+  HbosParam stats, stats2, stats3, stats4;
+  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id];
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
@@ -77,7 +77,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "Bin edges 1:" << std::endl;
   for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
 
-  ADOutlierHBOSTest outlier, outlier2;
+  ADOutlierHBOSTest outlier, outlier2, outlier3;
+  
   outlier.sync_param_test(&stats);
 
   std::string stats_state = outlier.get_global_parameters()->serialize();
@@ -144,6 +145,38 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   unsigned long nout2 = outlier2.compute_outliers_test(outliers2, func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
+
+
+  //Generate some events with an outlier itr 3 different outlier val:10000
+  runtimes.clear();
+  std::list<ExecData_t> call_list3;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    double val = i==N-1 ? 10000 : double(dist(gen)); //outlier on N-1
+    call_list3.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    runtimes.push_back(val);
+    //std::cout << call_list.back().get_json().dump() << std::endl;
+  }
+  //long ts_end2 = 1000*N + 800;
+  stats_r4.create_histogram(runtimes);
+  //bin_edges.clear();
+  std::vector<double> bin_edges4 = stats_r4.bin_edges();
+  std::cout << "Bin edges 4:" << std::endl;
+  for(int i=0; i<bin_edges4.size(); i++) std::cout << bin_edges4[i] << std::endl;
+
+  outlier3.sync_param_test(&stats4);
+
+  std::string stats_state4 = outlier3.get_global_parameters()->serialize();
+
+  std::cout << "Stats: " << stats_state4 << std::endl;
+
+  std::vector<CallListIterator_t> call_list_its3;
+  for(CallListIterator_t it=call_list3.begin(); it != call_list3.end(); ++it)
+    call_list_its3.push_back(it);
+
+  Anomalies outliers3;
+  unsigned long nout3 = outlier3.compute_outliers_test(outliers3, func_id, call_list_its3);
+
+  std::cout << "# outliers detected: " << nout3 << std::endl;
 
   //EXPECT_EQ(nout, 1);
   //EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
