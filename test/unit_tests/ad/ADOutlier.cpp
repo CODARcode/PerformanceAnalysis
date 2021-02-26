@@ -40,10 +40,11 @@ public:
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
-  
+
 
   std::default_random_engine gen;
-  std::normal_distribution<double> dist(500.,100.);
+  std::normal_distribution<double> dist(500.,100.), dist2(1000.,200.);
+
   int N = 50;
 
   std::unordered_map<unsigned long, Histogram> local_params_ps_in;
@@ -55,7 +56,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
     std::cout << "Created Histogram 1" << std::endl;
 
     runtime.clear();
-    for(int i=0;i<100;i++) runtime.push_back(dist(gen));
+    for(int i=0;i<100;i++) runtime.push_back(dist2(gen));
     h.merge_histograms(h, runtime);
     std::cout << "Merged Histogram" << std::endl;
 
