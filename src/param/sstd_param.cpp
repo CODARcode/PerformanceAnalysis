@@ -314,11 +314,12 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
 
-     combined.set_counts(std::vector<int>(combined.data.bin_edges.size()-1, 0));
+     combined.set_counts(std::vector<int>(combined.bin_edges().size()-1, 0));
      for ( int i=0; i < runtimes.size(); i++) {
        for ( int j=1; j < combined.bin_edges().size(); j++) {
          if ( runtimes.at(i) < combined.bin_edges().at(j) ) {
-           combined.add2counts(j-1, 1);
+           int id = j-1;
+           combined.add2counts(id, 1);
            break;
          }
        }
@@ -416,7 +417,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      }
    }
 
-   m_histogram.set_glob_threshold(g.get_threshold());
+   m_histogram.glob_threshold = g.get_threshold();
 
    this->create_histogram(r_times);
    this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
