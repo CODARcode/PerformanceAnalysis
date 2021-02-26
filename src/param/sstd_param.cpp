@@ -303,31 +303,31 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      std::sort(runtimes.begin(), runtimes.end());
      const int h = runtimes.size() - 1;
 
-     combined.bin_edges.push_back(runtimes.at(0));
+     combined.set_bin_edges(runtimes.at(0));
 
-     double prev = combined.bin_edges.at(0);
+     double prev = runtimes.at(0); // combined.bin_edges().at(0);
      while(prev < runtimes.at(h)){
-       combined.data.bin_edges.push_back(prev + bin_width);
+       combined.add2binedges(prev + bin_width);
        prev += bin_width;
      }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
 
-     combined.data.counts = std::vector<int>(combined.data.bin_edges.size()-1, 0);
+     combined.set_counts(std::vector<int>(combined.data.bin_edges.size()-1, 0));
      for ( int i=0; i < runtimes.size(); i++) {
-       for ( int j=1; j < combined.data.bin_edges.size(); j++) {
-         if ( runtimes.at(i) < combined.data.bin_edges.at(j) ) {
-           combined.data.counts[j-1] += 1;
+       for ( int j=1; j < combined.bin_edges().size(); j++) {
+         if ( runtimes.at(i) < combined.bin_edges().at(j) ) {
+           combined.add2counts(j-1, 1);
            break;
          }
        }
      }
      //verboseStream << "Size of counts: " << combined.data.counts.size() << std::endl;
-     if(l.data.glob_threshold > g.data.glob_threshold)
-      combined.data.glob_threshold = l.data.glob_threshold;
+     if(l.get_threshold() > g.get_threshold())
+      combined.set_glob_threshold(l.get_threshold());
      else
-      combined.data.glob_threshold = g.data.glob_threshold;
+      combined.set_glob_threshold(g.get_threshold());
 
-     combined.set_hist_data(Histogram::Data( combined.data.glob_threshold, combined.data.counts, combined.data.bin_edges ));
+     combined.set_hist_data(Histogram::Data( combined.get_threshold(), combined.counts(), combined.bin_edges() ));
 
      return combined;
    }
@@ -408,13 +408,13 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    Histogram merged_h;
    std::vector<double> r_times = runtimes;
 
-   for (int i = 0; i < g.data.bin_edges.size() - 1; i++) {
-     for(int j = 0; j < g.data.counts.at(i); j++){
-       r_times.push_back(g.data.bin_edges.at(i));
+   for (int i = 0; i < g.bin_edges().size() - 1; i++) {
+     for(int j = 0; j < g.counts().at(i); j++){
+       r_times.push_back(g.bin_edges().at(i));
      }
    }
 
-   m_histogram.glob_threshold = g.data.glob_threshold;
+   m_histogram.set_glob_threshold(g.get_threshold());
 
    this->create_histogram(r_times);
    this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
