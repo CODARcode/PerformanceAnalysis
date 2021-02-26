@@ -212,12 +212,12 @@ namespace chimbuko {
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram combine_two_histograms(Histogram& a, const Histogram& b); //friend Histogram operator+(const Histogram a, const Histogram b);
+    Histogram combine_two_histograms(Histogram& a, Histogram& b); //friend Histogram operator+(const Histogram a, const Histogram b);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram& operator+=(const Histogram& rs);
+    Histogram& operator+=(Histogram& rs);
 
     double _scott_binWidth(std::vector<double> & vals);
 
