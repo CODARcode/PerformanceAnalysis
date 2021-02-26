@@ -400,6 +400,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_ed
   }
   //}
   //Should not reach here
-  verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
-  return -1; //b_inds;
+  //verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
+  std::cout << X <<" is Outside histogram limit" << std::endl;
+  return bin_edges.size() + 1; //b_inds;
 }
