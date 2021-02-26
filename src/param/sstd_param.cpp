@@ -233,7 +233,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      return (return_update) ? serialize_cerealpb(hbosstats): "";
  }
 
- void HbosParam::update(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void HbosParam::update(std::unordered_map<unsigned long, Histogram>& hbosstats)
  {
      std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {

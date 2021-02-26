@@ -315,7 +315,7 @@ namespace chimbuko {
      * @brief Update the internal run statistics with those included in the input map
      * @param[in] runstats The map between global function index and statistics
      */
-    void update(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void update(std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
      * @brief Update the internal statistics with those included in another SstdParam instance.
