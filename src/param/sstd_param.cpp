@@ -275,7 +275,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
    }
    Histogram::~Histogram(){
-     
+
    }
  Histogram Histogram::combine_two_histograms(const Histogram& g, const Histogram& l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
  {
@@ -384,6 +384,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    std::sort(runtimes.begin(), runtimes.end());
    const int h = runtimes.size() - 1;
 
+   if (m_histogram.bin_edges.size() > 0) m_histogram.bin_edges.clear();
+
    m_histogram.bin_edges.push_back(runtimes.at(0));
 
    double prev = m_histogram.bin_edges.at(0);
@@ -393,6 +395,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    }
    //verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
 
+   if (m_histogram.counts.size() > 0) m_histogram.counts.clear();
    m_histogram.counts = std::vector<int>(m_histogram.bin_edges.size()-1, 0);
    for ( int i=0; i < runtimes.size(); i++) {
      for ( int j=1; j < m_histogram.bin_edges.size(); j++) {
@@ -415,7 +418,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
  void Histogram::merge_histograms(Histogram& g, std::vector<double>& runtimes)
  {
-   Histogram merged_h;
+   //Histogram merged_h;
    std::vector<double> r_times = runtimes;
 
    for (int i = 0; i < g.bin_edges().size() - 1; i++) {
@@ -425,7 +428,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    }
 
    m_histogram.glob_threshold = g.get_threshold();
-
+   std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
    this->create_histogram(r_times);
    this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 
