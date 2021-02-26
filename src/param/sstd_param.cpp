@@ -430,7 +430,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    m_histogram.glob_threshold = g.get_threshold();
    std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
    this->create_histogram(r_times);
-   this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
+   //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 
  }
 
