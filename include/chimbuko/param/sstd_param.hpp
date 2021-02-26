@@ -227,6 +227,8 @@ namespace chimbuko {
     void set_bin_edges(std::vector<double>& be) {m_histogram.bin_edges = be;}
     void add2counts(int& count) {m_histogram.counts.push_back(count);}
     void add2binedges(double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
+
+    double& get_threshold() {return m_histogram.glob_threshold;}
     /**
      * @brief Get the current statistics as a JSON object
      */

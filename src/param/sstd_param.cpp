@@ -275,12 +275,12 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  {
    Histogram combined;
    if (g.get_histogram().bin_edges.size() == 0) {
-     combined.set_glob_threshold(l.get_histogram().glob_threshold);
+     combined.set_glob_threshold(l.get_threshold());
      combined.data.counts = l.data.counts;
      combined.data.bin_edges = l.data.bin_edges;
    }
    else if (l.data.bin_edges.size() == 0) {
-     combined.data.glob_threshold = g.data.glob_threshold;
+     combined.set_glob_threshold(g.get_threshold());
      combined.data.counts = g.data.counts;
      combined.data.bin_edges = g.data.bin_edges;
    }
