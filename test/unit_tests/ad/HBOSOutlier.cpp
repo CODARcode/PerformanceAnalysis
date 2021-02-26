@@ -70,7 +70,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   HbosParam stats;
   Histogram &stats_r = stats[func_id];
   std::vector<double> runtimes;
-  for(int i=0;i<N;i++) runtimes.push(dist(gen));
+  for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
 
   ADOutlierHBOSTest outlier;
