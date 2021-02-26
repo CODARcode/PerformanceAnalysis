@@ -116,10 +116,10 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   //Generate some events with an outlier itr 2 same outlier val:800
   runtimes.clear();
-  std::list<ExecData_t> call_list;  //aka CallList_t
+  std::list<ExecData_t> call_list2;  //aka CallList_t
   for(int i=0;i<N;i++){
     double val = i==N-1 ? 800 : double(dist(gen)); //outlier on N-1
-    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    call_list2.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
@@ -135,12 +135,12 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   std::cout << "Stats: " << stats_state3 << std::endl;
 
-  std::vector<CallListIterator_t> call_list_its;
-  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
-    call_list_its.push_back(it);
+  std::vector<CallListIterator_t> call_list_its2;
+  for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
+    call_list_its2.push_back(it);
 
   Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout << std::endl;
 
