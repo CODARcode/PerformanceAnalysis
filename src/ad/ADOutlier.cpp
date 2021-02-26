@@ -338,8 +338,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   for (auto itt : data) {
     const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
     double ad_score;
+    int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
 
-    if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges()) == 0){ //
+    if( bin_ind == 0){ //
       if(param[func_id].bin_edges().at(0) <= runtime_i && runtime_i <= (bin_width * 0.1) ){
 
         ad_score = out_scores_i.at(0);
@@ -351,7 +352,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
       std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
-    else if(ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges()) == num_bins + 1){
+    else if(bin_ind == num_bins + 1){
       int last_idx = param[func_id].bin_edges().size() - 1;
       if(param[func_id].bin_edges().at(last_idx) <= runtime_i){
 
@@ -365,9 +366,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     }
     else {
 
-      int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      std::cout << "bin_index = " << bin_index << std::endl;
-      ad_score = out_scores_i.at( bin_index );
+      //int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
+      std::cout << "bin_index = " << bin_ind << std::endl;
+      ad_score = out_scores_i.at( bin_ind );
       std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
 
@@ -391,7 +392,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 }
 
 
-int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_edges) {
+int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
   //std::vector<int> b_inds(X.size(), 0);
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
@@ -414,6 +415,8 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(double X, std::vector<double> bin_ed
   //}
   //Should not reach here
   //verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
-  std::cout << X <<" is Outside histogram limit" << std::endl;
-  return bin_edges.size() + 1; //b_inds;
+
+  int ret_val = bin_edges.size() + 1;
+  std::cout << X <<" is Outside histogram limit. The ret_val = " << ret_val << std::endl;
+  return  ret_val;//b_inds;
 }
