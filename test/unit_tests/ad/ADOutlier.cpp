@@ -16,7 +16,8 @@ using namespace chimbuko;
 //Derived class to allow access to protected member functions
 class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
-  ADOutlierSSTDTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierSSTD(stat){
+  ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime;
+  ADOutlierSSTDTest(stat): ADOutlierSSTD(stat){
 
   }
 
@@ -30,8 +31,9 @@ public:
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
 public:
-  ADOutlierSSTDTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierHBOS(stat){
-    
+  ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime;
+  ADOutlierSSTDTest(stat): ADOutlierHBOS(stat){
+
   }
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
