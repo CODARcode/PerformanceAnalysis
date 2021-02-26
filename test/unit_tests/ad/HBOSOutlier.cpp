@@ -129,9 +129,10 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::vector<double> bin_edges3 = stats_r3.bin_edges();
   std::cout << "Bin edges 3:" << std::endl;
   for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
-  outlier.sync_param_test(&stats3);
 
-  std::string stats_state3 = outlier.get_global_parameters()->serialize();
+  outlier2.sync_param_test(&stats3);
+
+  std::string stats_state3 = outlier2.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state3 << std::endl;
 
