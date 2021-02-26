@@ -231,7 +231,7 @@ namespace chimbuko {
 
     double& get_threshold() {return m_histogram.glob_threshold;}
     std::vector<int>& counts() {return m_histogram.counts;}
-    std::vector<double>& bin_edges() {return m_histogram.bin_edges;}
+    std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
 
     /**
      * @brief Get the current statistics as a JSON object
