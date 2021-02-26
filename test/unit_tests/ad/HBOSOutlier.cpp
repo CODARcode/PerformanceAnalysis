@@ -77,7 +77,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "Bin edges 1:" << std::endl;
   for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
 
-  ADOutlierHBOSTest outlier;
+  ADOutlierHBOSTest outlier, outlier2;
   outlier.sync_param_test(&stats);
 
   std::string stats_state = outlier.get_global_parameters()->serialize();
@@ -140,7 +140,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     call_list_its2.push_back(it);
 
   Anomalies outliers2;
-  unsigned long nout2 = outliers2.compute_outliers_test(outliers2, func_id, call_list_its2);
+  unsigned long nout2 = outlier2.compute_outliers_test(outliers2, func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
 
