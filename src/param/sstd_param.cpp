@@ -303,12 +303,14 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      std::sort(runtimes.begin(), runtimes.end());
      const int h = runtimes.size() - 1;
 
-     combined.set_bin_edges(runtimes.at(0));
+     combined.add2binedges(runtimes.at(0));
 
      double prev = runtimes.at(0); // combined.bin_edges().at(0);
      while(prev < runtimes.at(h)){
-       combined.add2binedges(prev + bin_width);
-       prev += bin_width;
+       double b = bin_width + prev
+       combined.add2binedges(b);
+       prev = b;
+       //prev += bin_width;
      }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
 
