@@ -159,7 +159,7 @@ namespace chimbuko {
       Data(){
         clear();
       }
-      Data(double& g_threshold, std::vector<int>& h_counts, std::vector<double>& h_bin_edges ) {
+      Data(const double& g_threshold, const std::vector<int>& h_counts, const std::vector<double>& h_bin_edges ) {
         glob_threshold = g_threshold;
         counts = h_counts;
         bin_edges = h_bin_edges;
