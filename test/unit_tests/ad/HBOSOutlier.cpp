@@ -67,7 +67,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::normal_distribution<double> dist(420.,10.);
   int N = 50;
   int func_id = 1234;
-  HbosParam stats, stats2, stats3, stats4, stat5;
+  HbosParam stats, stats2, stats3, stats4, stats5;
   Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id], &stats_r5 = stats5[func_id];
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
