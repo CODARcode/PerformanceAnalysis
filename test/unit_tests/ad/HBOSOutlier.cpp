@@ -185,3 +185,86 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   //nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
   //EXPECT_EQ(nout, 0);
 }
+
+
+TEST(HBOSADOutlierTestSyncParamWithPS, Works){
+  HbosParam global_params_ps; //parameters held in the parameter server
+  HbosParam local_params_ad; //parameters collected by AD
+
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(500.,100.);
+  int N = 50;
+
+  {
+    RunStats &r = global_params_ps[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+
+  {
+    RunStats &r = local_params_ad[0];
+    for(int i=0;i<N;i++) r.push(dist(gen));
+  }
+
+  std::cout << global_params_ps[0].get_json().dump();
+  std::cout << local_params_ad[0].get_json().dump();
+
+  HbosParam combined_params_ps; //what we expect
+  combined_params_ps.assign(global_params_ps.get_hbosstats());
+  combined_params_ps.update(local_params_ad.get_hbosstats());
+
+
+#ifdef _USE_MPINET
+#warning "Testing with MPINET not available"
+#elif defined(_USE_ZMQNET)
+  std::cout << "Using ZMQ net" << std::endl;
+
+  Barrier barrier2(2);
+
+  std::string sinterface = "tcp://*:5559";
+  std::string sname = "tcp://localhost:5559";
+
+  int argc; char** argv = nullptr;
+  std::cout << "Initializing PS thread" << std::endl;
+  std::thread ps_thr([&]{
+      ZMQNet ps;
+      ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
+      ps.add_payload(new NetPayloadGetParams(&global_params_ps));
+      ps.init(&argc, &argv, 4); //4 workers
+      ps.run(".");
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      barrier2.wait();
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::string glob_params_comb_ad;
+  std::cout << "Initializing AD thread" << std::endl;
+  std::thread out_thr([&]{
+			try{
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
+			  ADOutlierHBOSTest outlier;
+			  outlier.linkNetworkClient(&net_client);
+			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
+			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+
+			  std::cout << "AD thread terminating connection" << std::endl;
+			  net_client.disconnect_ps();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
+			}catch(const std::exception &e){
+			  std::cerr << e.what() << std::endl;
+			}
+			//barrier2.wait();
+		      });
+
+  ps_thr.join();
+  out_thr.join();
+
+  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+
+#else
+#error "Requires compiling with MPI or ZMQ net"
+#endif
+}

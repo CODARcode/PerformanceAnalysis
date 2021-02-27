@@ -257,6 +257,11 @@ namespace chimbuko {
     const int find(const unsigned long& func_id);
 
     /**
+     * @brief Get the internal map between global function index and statistics
+     */
+    const std::unordered_map<unsigned long, Histogram> & get_hbosstats() const{ return m_hbosstats; }
+
+    /**
      * @brief Get the number of functions for which statistics are being collected
     */
     size_t size() const override { return m_hbosstats.size(); }
