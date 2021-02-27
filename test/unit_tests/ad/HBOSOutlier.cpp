@@ -131,9 +131,9 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "Bin edges 3:" << std::endl;
   for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
 
-  outlier2.sync_param_test(&stats3);
+  outlier.sync_param_test(&stats3);
 
-  std::string stats_state3 = outlier2.get_global_parameters()->serialize();
+  std::string stats_state3 = outlier.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state3 << std::endl;
 
@@ -142,7 +142,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     call_list_its2.push_back(it);
 
   Anomalies outliers2;
-  unsigned long nout2 = outlier2.compute_outliers_test(outliers2, func_id, call_list_its2);
+  unsigned long nout2 = outlier.compute_outliers_test(outliers2, func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
 
@@ -163,9 +163,9 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "Bin edges 4:" << std::endl;
   for(int i=0; i<bin_edges4.size(); i++) std::cout << bin_edges4[i] << std::endl;
 
-  outlier3.sync_param_test(&stats4);
+  outlier.sync_param_test(&stats4);
 
-  std::string stats_state4 = outlier3.get_global_parameters()->serialize();
+  std::string stats_state4 = outlier.get_global_parameters()->serialize();
 
   std::cout << "Stats: " << stats_state4 << std::endl;
 
@@ -174,7 +174,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     call_list_its3.push_back(it);
 
   Anomalies outliers3;
-  unsigned long nout3 = outlier3.compute_outliers_test(outliers3, func_id, call_list_its3);
+  unsigned long nout3 = outlier.compute_outliers_test(outliers3, func_id, call_list_its3);
 
   std::cout << "# outliers detected: " << nout3 << std::endl;
 
