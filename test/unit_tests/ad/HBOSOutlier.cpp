@@ -196,13 +196,17 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   int N = 50;
 
   {
+    std::vector<double> runtimes;
     Histogram &r = global_params_ps[0];
-    for(int i=0;i<N;i++) r.push(dist(gen));
+    for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
+    r.create_histogram(runtimes);
   }
 
   {
+    std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
-    for(int i=0;i<N;i++) r.push(dist(gen));
+    for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
+    r.create_histogram(runtimes);
   }
 
   std::cout << global_params_ps[0].get_json().dump();
