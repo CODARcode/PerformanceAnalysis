@@ -67,8 +67,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::normal_distribution<double> dist(420.,10.);
   int N = 50;
   int func_id = 1234;
-  HbosParam stats, stats2, stats3, stats4;
-  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id];
+  HbosParam stats, stats2, stats3, stats4, stat5;
+  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id], &stats_r5 = stats5[func_id];
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
@@ -77,8 +77,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::cout << "Bin edges 1:" << std::endl;
   for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
 
-  ADOutlierHBOSTest outlier, outlier2, outlier3;
-  
+  ADOutlierHBOSTest outlier, outlier2, outlier3, outlier4;
+
   outlier.sync_param_test(&stats);
 
   std::string stats_state = outlier.get_global_parameters()->serialize();

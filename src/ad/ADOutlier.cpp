@@ -289,10 +289,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //probability of runtime counts
   std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
-
+  std::cout << "Count and its Probability:" << std::endl;
   for(int i=0; i < param[func_id].counts().size(); i++){
-    double p = param[func_id].counts().at(i) / tot_runtimes;
+    int count = param[func_id].counts().at(i);
+    double p = count / tot_runtimes;
     prob_counts.at(i) += p;
+    std::cout << "Count: " << count << ", Probability: " << prob_counts.at(i) << std::endl;
   }
 
   //Create HBOS score vector
