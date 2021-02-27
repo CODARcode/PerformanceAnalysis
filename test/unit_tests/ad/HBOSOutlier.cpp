@@ -196,12 +196,12 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   int N = 50;
 
   {
-    RunStats &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0];
     for(int i=0;i<N;i++) r.push(dist(gen));
   }
 
   {
-    RunStats &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) r.push(dist(gen));
   }
 
