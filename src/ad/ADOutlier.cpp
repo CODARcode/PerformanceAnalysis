@@ -320,6 +320,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::cout << "max_score = " << max_score << std::endl;
 
   //compute threshold
+  std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
   double l_threshold = min_score + (0.99 * (max_score - min_score));
   if(l_threshold < param[func_id].get_threshold()) {
     l_threshold = param[func_id].get_threshold();
