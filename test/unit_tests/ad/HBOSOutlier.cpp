@@ -377,7 +377,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  outlier.linkNetworkClient(&net_client);
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
-        comb_params_serialize = combined_params_ps.serialize();
+        //comb_params_serialize = combined_params_ps.serialize();
 
         Anomalies outliers;
         unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
@@ -407,7 +407,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  outlier.linkNetworkClient(&net_client);
 			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
-        comb_params_serialize2 = combined_params_ps.serialize();
+        //comb_params_serialize2 = combined_params_ps.serialize();
 
         Anomalies outliers;
         unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its2);
@@ -432,9 +432,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   ps_thr.join();
 
 
-  EXPECT_EQ(glob_params_comb_ad, comb_params_serialize); //combined_params_ps.serialize());
-  EXPECT_EQ(glob_params_comb_ad2, comb_params_serialize2); //combined_params_ps.serialize());
-  
+  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+  EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
+
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
