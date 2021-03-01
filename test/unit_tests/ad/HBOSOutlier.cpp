@@ -326,9 +326,13 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::cout << local_params_ad[0].get_json().dump();
   std::cout << local_params_ad2[0].get_json().dump();
 
-  HbosParam combined_params_ps; //what we expect
+  HbosParam combined_params_ps, combined_params_ps2; //what we expect
   combined_params_ps.assign(global_params_ps.get_hbosstats());
   combined_params_ps.update(local_params_ad.get_hbosstats());
+
+  combined_params_ps2.assign(global_params_ps.get_hbosstats());
+  combined_params_ps2.update(local_params_ad.get_hbosstats());
+  combined_params_ps2.update(local_params_ad2.get_hbosstats());
 
   std::vector<CallListIterator_t> call_list_its, call_list_its2;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
@@ -393,7 +397,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   //std::this_thread::sleep_for(std::chrono::milliseconds(500));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
-  combined_params_ps.update(local_params_ad2.get_hbosstats());
+
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
 			try{
@@ -429,7 +433,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 
   EXPECT_EQ(glob_params_comb_ad, comb_params_serialize); //combined_params_ps.serialize());
-  //EXPECT_EQ(glob_params_comb_ad2, comb_params_serialize2); //combined_params_ps.serialize());
+  EXPECT_EQ(glob_params_comb_ad2, comb_params_serialize2); //combined_params_ps.serialize());
+  
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
