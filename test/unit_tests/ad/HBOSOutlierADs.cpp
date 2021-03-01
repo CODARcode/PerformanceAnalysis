@@ -132,7 +132,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before Outlier detection in AD 1"
+        std::cout << "Global and local histograms before Outlier detection in AD 1" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
@@ -146,7 +146,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
-        std::cout << "Global and local histograms after Outlier detection in AD 1"
+        std::cout << "Global and local histograms after Outlier detection in AD 1" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
@@ -173,7 +173,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before Outlier detection in AD 2"
+        std::cout << "Global and local histograms before Outlier detection in AD 2" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
@@ -186,7 +186,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
 
         std::cout << "# outliers detected: " << nout << std::endl;
-        std::cout << "Global and local histograms after Outlier detection in AD 2"
+        std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
