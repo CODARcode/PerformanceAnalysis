@@ -132,12 +132,18 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before Outlier detection in AD 1" << std::endl;
+        std::cout << "Global and local histograms before sync_param in AD 1" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
+
+        std::cout << "Global and local histograms after sync_param in AD 1" << std::endl;
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
         //comb_params_serialize = combined_params_ps.serialize();
 
@@ -173,12 +179,18 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before Outlier detection in AD 2" << std::endl;
+        std::cout << "Global and local histograms before sync_param in AD 2" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
+
+        std::cout << "Global and local histograms after sync_param in AD 2" << std::endl;
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
         //comb_params_serialize2 = combined_params_ps.serialize();
 

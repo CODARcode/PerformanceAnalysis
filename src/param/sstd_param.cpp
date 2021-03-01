@@ -180,6 +180,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
          m_hbosstats[pair.first] = pair.second;
+         Histogram::Data d = pair.second.get_histogram();
+         m_hbosstats[pair.first].set_hist_data(d);
      }
  }
 
@@ -293,7 +295,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    else {
      //unwrap both histograms into values
      std::vector<double> runtimes;
-
+     std::cout << "Global and Local Histogram are non-empty" << std::endl;
+     
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
          runtimes.push_back(g.bin_edges().at(i));

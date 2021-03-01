@@ -53,6 +53,7 @@ std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
   const SstdParam & l = *(SstdParam const*)param; //local parameter set
 
     if (!m_use_ps) {
+
         g.update(l);
         return std::make_pair(0, 0);
     }
@@ -188,6 +189,7 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
   const HbosParam & l = *(HbosParam const*)param; //local parameter set
 
     if (!m_use_ps) {
+        std::cout << "m_use_ps not USED!" << std::endl;
         g.update(l);
         return std::make_pair(0, 0);
     }
