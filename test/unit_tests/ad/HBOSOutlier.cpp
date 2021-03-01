@@ -279,7 +279,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   HbosParam local_params_ad; //parameters collected by AD
 
   std::default_random_engine gen;
-  std::normal_distribution<double> dist(500.,100.);
+  std::normal_distribution<double> dist(500.,10.);
   int N = 50;
 
   {
