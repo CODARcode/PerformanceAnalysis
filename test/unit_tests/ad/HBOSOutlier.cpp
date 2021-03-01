@@ -420,6 +420,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000);
   std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std::endl;}});
   out_thr2.join();
   out_thr.join();
