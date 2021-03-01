@@ -353,8 +353,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   Barrier barrier2(3);
 
-  std::string sinterface = "tcp://*:5559";
-  std::string sname = "tcp://localhost:5559";
+  std::string sinterface = "tcp://*:5558";
+  std::string sname = "tcp://localhost:5558";
   ZMQNet ps;
   unsigned long nout, nout2; //number of outliers
 
