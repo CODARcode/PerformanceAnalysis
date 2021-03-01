@@ -346,11 +346,11 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
-
+  ZMQNet ps;
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-      ZMQNet ps;
+      //ZMQNet ps;
       ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
       ps.add_payload(new NetPayloadGetParams(&global_params_ps));
       ps.setAutoShutdown(false);
@@ -359,7 +359,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
       std::cout << "PS thread waiting at barrier" << std::endl;
       barrier2.wait();
       std::cout << "PS thread terminating connection" << std::endl;
-      ps.finalize();
+      ps.finalize(); ps.stop();
     });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -390,7 +390,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(500));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
   combined_params_ps.update(local_params_ad2.get_hbosstats());
@@ -420,8 +420,10 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
+  std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std:endl;}});
   out_thr2.join();
   out_thr.join();
+  stop_ps.join();
   ps_thr.join();
 
 
