@@ -362,7 +362,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-  std::string glob_params_comb_ad; //, glob_params_comb_ad2;
+  std::string glob_params_comb_ad, glob_params_comb_ad2, comb_params_serialize, comb_params_serialize2;
   std::cout << "Initializing AD thread 1" << std::endl;
   std::thread out_thr([&]{
 			try{
@@ -372,6 +372,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  outlier.linkNetworkClient(&net_client);
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+        comb_params_serialize = combined_params_ps.serialize();
 
         Anomalies outliers;
         unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
@@ -389,7 +390,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 		      });
 
 
-  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
   combined_params_ps.update(local_params_ad2.get_hbosstats());
   std::cout << "Initializing AD thread 2" << std::endl;
@@ -400,7 +401,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
-			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
+        comb_params_serialize2 = combined_params_ps.serialize();
 
         Anomalies outliers;
         unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its2);
@@ -421,8 +423,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   out_thr.join();
   out_thr2.join();
 
-  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
-
+  EXPECT_EQ(glob_params_comb_ad, comb_params_serialize); //combined_params_ps.serialize());
+  EXPECT_EQ(glob_params_comb_ad2, comb_params_serialize2); //combined_params_ps.serialize());
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
