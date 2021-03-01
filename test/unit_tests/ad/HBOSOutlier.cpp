@@ -308,7 +308,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   {
     // Second local AD instance
-    runtimes.clear();
+    std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 3000 : double(dist(gen));
