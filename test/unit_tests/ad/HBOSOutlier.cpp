@@ -381,8 +381,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
-			  //std::cout << "AD thread waiting at barrier" << std::endl;
-			  //barrier2.wait();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
@@ -420,8 +420,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 		      });
 
   ps_thr.join();
-  out_thr.join();
   out_thr2.join();
+  out_thr.join();
+
 
   EXPECT_EQ(glob_params_comb_ad, comb_params_serialize); //combined_params_ps.serialize());
   //EXPECT_EQ(glob_params_comb_ad2, comb_params_serialize2); //combined_params_ps.serialize());
