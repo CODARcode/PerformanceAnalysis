@@ -398,7 +398,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
-  //std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
 
