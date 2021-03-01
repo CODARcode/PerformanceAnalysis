@@ -33,7 +33,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 
   std::default_random_engine gen;
   std::normal_distribution<double> dist(500.,10.);
-  std::lognormal_distribution<double> dist_lognorm(100.,50.);
+  std::lognormal_distribution<double> dist_lognorm(100.,10.);
 
   int N = 50;
 
