@@ -420,9 +420,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
-  ps_thr.join();
   out_thr2.join();
   out_thr.join();
+  ps_thr.join();
 
 
   EXPECT_EQ(glob_params_comb_ad, comb_params_serialize); //combined_params_ps.serialize());
