@@ -280,7 +280,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //for(int i=0; i<tmp_b_edges.size(); i++){
   //  std::cout << tmp_b_edges.at(i) << std::endl;
   //}
-  
+
   //if (param[func_id].count() < 2){
   //  VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
   //  return 0;
@@ -329,7 +329,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
     std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
   }
-  std::cout << "local threshold = " << l_threshold << " global_threshold = " << param[func_id].get_threshold() << std::endl;
+  std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;
   // For each datapoint get its corresponding bin index
   //std::vector<int> bin_inds = ADOutlierHBOS::np_digitize(param[func_id].runtimes, param[func_id].bin_edges);
   //if (bin_inds.size() < param[func_id].runtimes.size()) {
@@ -423,7 +423,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
   //std::cout << "Bin_edges.size : " << bin_edges.size() << std::endl;
   //std::cout << "First: " << bin_edges[0] << std::endl;
   for(int j=1; j < bin_edges.size(); j++){
-    std::cout << bin_edges[j] << std::endl;
+    //std::cout << bin_edges[j] << std::endl;
     if(X <= bin_edges.at(j)){
       //b_inds.at(i) += j-1;
       //break;
