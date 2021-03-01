@@ -131,6 +131,12 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
+
+        std::cout << "Global and local histograms before Outlier detection in AD 1"
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
         //comb_params_serialize = combined_params_ps.serialize();
@@ -140,6 +146,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
+        std::cout << "Global and local histograms after Outlier detection in AD 1"
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
@@ -165,6 +172,12 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
+
+        std::cout << "Global and local histograms before Outlier detection in AD 2"
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+
 			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
         //comb_params_serialize2 = combined_params_ps.serialize();
@@ -173,11 +186,11 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
 
         std::cout << "# outliers detected: " << nout << std::endl;
-
+        std::cout << "Global and local histograms after Outlier detection in AD 2"
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
-        
+
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
