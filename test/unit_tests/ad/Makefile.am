@@ -7,7 +7,7 @@ test_PROGRAMS = HBOSOutlier ADEvent ADio ADParser ADOutlier ADNetClient ADLocalF
 HBOSOutlier_SOURCES = HBOSOutlier.cpp ../unit_test_main_mpi.cpp
 HBOSOutlier_LDADD = $(LDADD)
 
-HBOSMultipleAD_SOURCES = HBOSOutlierMultipleAD.cpp ../unit_test_main_mpi.cpp
+HBOSMultipleAD_SOURCES = HBOSOutlierADs.cpp ../unit_test_main_mpi.cpp
 HBOSMultipleAD_LDADD = $(LDADD)
 
 ADEvent_SOURCES = ADEvent.cpp ../unit_test_main.cpp
