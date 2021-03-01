@@ -276,7 +276,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 
 TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   HbosParam global_params_ps; //parameters held in the parameter server
-  HbosParam local_params_ad; //parameters collected by AD
+  HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
   std::normal_distribution<double> dist(500.,10.);
@@ -289,16 +289,32 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     r.create_histogram(runtimes);
   }
 
-  std::list<ExecData_t> call_list;
+  std::list<ExecData_t> call_list, call_list2;
   {
-
+    // First local AD instance
     std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(dist(gen));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
-      std::cout << "vals in localhist: " << val << std::endl;
+      std::cout << "vals in localhist 1: " << val << std::endl;
+    }
+    r.create_histogram(runtimes);
+    std::vector<double> local_bin_edges = r.bin_edges();
+    std::cout << "Bin edges local:" << std::endl;
+    for(int i=0; i < local_bin_edges.size(); i++) std::cout << local_bin_edges[i] << std::endl;
+  }
+
+  {
+    // Second local AD instance
+    runtimes.clear();
+    Histogram &r = local_params_ad2[0];
+    for(int i=0;i<N;i++) {
+      double val = i==N-1 ? 3000 : double(dist(gen));
+      call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
+      runtimes.push_back(val);
+      std::cout << "vals in localhist 2: " << val << std::endl;
     }
     r.create_histogram(runtimes);
     std::vector<double> local_bin_edges = r.bin_edges();
@@ -308,14 +324,18 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   std::cout << global_params_ps[0].get_json().dump();
   std::cout << local_params_ad[0].get_json().dump();
+  std::cout << local_params_ad2[0].get_json().dump();
 
   HbosParam combined_params_ps; //what we expect
   combined_params_ps.assign(global_params_ps.get_hbosstats());
   combined_params_ps.update(local_params_ad.get_hbosstats());
 
-  std::vector<CallListIterator_t> call_list_its;
+  std::vector<CallListIterator_t> call_list_its, call_list_its2;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
+
+  for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
+    call_list_its2.push_back(it);
 
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
@@ -342,8 +362,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-  std::string glob_params_comb_ad;
-  std::cout << "Initializing AD thread" << std::endl;
+  std::string glob_params_comb_ad; //, glob_params_comb_ad2;
+  std::cout << "Initializing AD thread 1" << std::endl;
   std::thread out_thr([&]{
 			try{
 			  ADNetClient net_client;
@@ -368,8 +388,35 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
+  combined_params_ps.update(local_params_ad2.get_hbosstats());
+  std::cout << "Initializing AD thread 2" << std::endl;
+  std::thread out_thr2([&]{
+			try{
+			  ADNetClient net_client;
+			  net_client.connect_ps(0, 0, sname);
+			  ADOutlierHBOSTest outlier;
+			  outlier.linkNetworkClient(&net_client);
+			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
+			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+
+        Anomalies outliers;
+        unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+
+        std::cout << "# outliers detected: " << nout << std::endl;
+
+			  std::cout << "AD thread terminating connection" << std::endl;
+			  net_client.disconnect_ps();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
+			}catch(const std::exception &e){
+			  std::cerr << e.what() << std::endl;
+			}
+			//barrier2.wait();
+		      });
+
   ps_thr.join();
   out_thr.join();
+  out_thr2.join();
 
   EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
