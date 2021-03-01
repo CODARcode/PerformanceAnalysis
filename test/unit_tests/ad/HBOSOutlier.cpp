@@ -334,6 +334,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   combined_params_ps2.update(local_params_ad.get_hbosstats());
   combined_params_ps2.update(local_params_ad2.get_hbosstats());
 
+
+
   std::vector<CallListIterator_t> call_list_its, call_list_its2;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
@@ -351,6 +353,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
   ZMQNet ps;
+  unsigned long nout, nout2; //number of outliers
+
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
@@ -380,7 +384,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         //comb_params_serialize = combined_params_ps.serialize();
 
         Anomalies outliers;
-        unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
+        nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
@@ -410,7 +414,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         //comb_params_serialize2 = combined_params_ps.serialize();
 
         Anomalies outliers;
-        unsigned long nout = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+        nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
