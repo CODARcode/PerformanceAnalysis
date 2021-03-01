@@ -353,6 +353,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
       ZMQNet ps;
       ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
       ps.add_payload(new NetPayloadGetParams(&global_params_ps));
+      ps.setAutoShutdown(false);
       ps.init(&argc, &argv, 4); //4 workers
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
@@ -389,7 +390,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
   combined_params_ps.update(local_params_ad2.get_hbosstats());
