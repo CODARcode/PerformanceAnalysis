@@ -388,6 +388,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			//barrier2.wait();
 		      });
 
+  out_thr.join();
+  EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+
   combined_params_ps.update(local_params_ad2.get_hbosstats());
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
@@ -415,7 +418,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 		      });
 
   ps_thr.join();
-  out_thr.join();
+
   out_thr2.join();
 
   EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
