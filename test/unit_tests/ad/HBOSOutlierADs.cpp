@@ -140,6 +140,10 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
@@ -170,6 +174,10 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
+        std::cout << global_params_ps[0].get_json().dump();
+        std::cout << local_params_ad[0].get_json().dump();
+        std::cout << local_params_ad2[0].get_json().dump();
+        
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
