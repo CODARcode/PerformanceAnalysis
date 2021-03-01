@@ -362,7 +362,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         ad_score = max_score; //min_score;
 
       }
-      std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+      //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
     // If the sample does not belong to any bins
     // bin_ind == n_bins+1 (fall outside since it is too large)
@@ -379,14 +379,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
         ad_score = max_score; //out_scores_i.at(num_bins - 1); //max_score; //min_score;
       }
-      std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+      //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
     else {
 
       //int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      std::cout << "bin_index = " << bin_ind << std::endl;
+      //std::cout << "bin_index = " << bin_ind << std::endl;
       ad_score = out_scores_i.at( bin_ind );
-      std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+      //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
     }
 
     //Compare the ad_score with the threshold
@@ -417,16 +417,16 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
     return 0; //std::vector<int>(1);
   }
 
-  std::cout << "Bin edges in np_digitize_get_bin_inds: " << std::endl;
+  //std::cout << "Bin edges in np_digitize_get_bin_inds: " << std::endl;
   //for(int i=0; i < X.size(); i++){
-  std::cout << "Bin_edges.size : " << bin_edges.size() << std::endl;
-  std::cout << "First: " << bin_edges[0] << std::endl;
+  //std::cout << "Bin_edges.size : " << bin_edges.size() << std::endl;
+  //std::cout << "First: " << bin_edges[0] << std::endl;
   for(int j=1; j < bin_edges.size(); j++){
     std::cout << bin_edges[j] << std::endl;
     if(X <= bin_edges.at(j)){
       //b_inds.at(i) += j-1;
       //break;
-      std::cout << "Index of bin found for input X: " << j-1 << std::endl;
+      //std::cout << "Index of bin found for input X: " << j-1 << std::endl;
       return (j-1);
     }
   }
@@ -435,6 +435,6 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
   //verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
 
   int ret_val = bin_edges.size(); // + 1;
-  std::cout << X <<" is Outside histogram limit. The ret_val = " << ret_val << std::endl;
+  //std::cout << X <<" is Outside histogram limit. The ret_val = " << ret_val << std::endl;
   return  ret_val;//b_inds;
 }
