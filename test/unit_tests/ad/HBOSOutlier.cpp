@@ -311,7 +311,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 3000 : double(dist(gen));
+      double val = i==N-1 ? 1200 : double(dist(gen));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 2: " << val << std::endl;
@@ -439,7 +439,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
   //EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
   EXPECT_EQ(nout, 1);
-  EXPECT_EQ(nout2, 1);
+  EXPECT_EQ(nout2, 0);
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
