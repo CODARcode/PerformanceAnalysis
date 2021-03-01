@@ -275,11 +275,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   HbosParam& param = *(HbosParam*)m_param;
 
   //Display global bin_edges
-  std::vector<double> tmp_b_edges = param[func_id].bin_edges();
-  std::cout << "global bin_edges in compute_outliers: Size: " << tmp_b_edges.size() << std::endl;
-  for(int i=0; i<tmp_b_edges.size(); i++){
-    std::cout << tmp_b_edges.at(i) << std::endl;
-  }
+  //std::vector<double> tmp_b_edges = param[func_id].bin_edges();
+  //std::cout << "global bin_edges in compute_outliers: Size: " << tmp_b_edges.size() << std::endl;
+  //for(int i=0; i<tmp_b_edges.size(); i++){
+  //  std::cout << tmp_b_edges.at(i) << std::endl;
+  //}
+  
   //if (param[func_id].count() < 2){
   //  VERBOSE(std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl);
   //  return 0;
