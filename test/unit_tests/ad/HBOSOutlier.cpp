@@ -342,7 +342,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 #elif defined(_USE_ZMQNET)
   std::cout << "Using ZMQ net" << std::endl;
 
-  Barrier barrier2(2);
+  Barrier barrier2(3);
 
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
