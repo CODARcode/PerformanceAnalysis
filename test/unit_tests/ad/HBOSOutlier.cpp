@@ -226,11 +226,11 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
-
+  ZMQNet ps;
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-      ZMQNet ps;
+      //ZMQNet ps;
       ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
       ps.add_payload(new NetPayloadGetParams(&global_params_ps));
       ps.init(&argc, &argv, 4); //4 workers
@@ -263,6 +263,9 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 			//barrier2.wait();
 		      });
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std::endl;}});
+  stop_ps.join();
   ps_thr.join();
   out_thr.join();
 
