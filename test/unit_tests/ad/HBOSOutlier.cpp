@@ -297,7 +297,8 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(dist(gen));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
-      runtimes.push_back(dist(gen));
+      runtimes.push_back(val);
+      std::cout << "vals in localhist: " << val << std::endl;
     }
     r.create_histogram(runtimes);
     std::vector<double> local_bin_edges = r.bin_edges();
