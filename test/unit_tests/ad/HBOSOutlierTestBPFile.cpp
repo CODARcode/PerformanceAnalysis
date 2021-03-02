@@ -74,7 +74,7 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   int file_suffix = 1;
   ChimbukoParams params;
-  int mpi_rank_bp = 0; // used for BPFile
+  int mpi_rank_bp = 1; // used for BPFile
 
   //Parameters for the connection to the instrumented binary trace output
   params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
