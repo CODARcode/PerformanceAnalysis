@@ -3,11 +3,11 @@
 #include "chimbuko/util/map.hpp"
 #include "chimbuko/util/error.hpp"
 #include <iostream>
-#include <sstream> 
+#include <sstream>
 
 using namespace chimbuko;
 
-ADEvent::ADEvent(bool verbose) 
+ADEvent::ADEvent(bool verbose)
   : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose)
 {
 
@@ -24,8 +24,8 @@ EventError ADEvent::addEvent(const Event_t& event) {
   switch (event.type())
     {
     case EventDataType::FUNC: return addFunc(event);
-    case EventDataType::COMM: return addComm(event);    
-    case EventDataType::COUNT: return addCounter(event);    
+    case EventDataType::COMM: return addComm(event);
+    case EventDataType::COUNT: return addCounter(event);
     default: return EventError::UnknownEvent;
     }
 }
@@ -83,7 +83,7 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
   for(auto const &c : it->get_counters()){
     if(c.get_countername() == "Correlation ID"){
       unsigned long cid = c.get_value();
-	
+
       //Does a partner already exist?
       auto m = m_unmatchedCorrelationID.find(cid);
       if(m != m_unmatchedCorrelationID.end()){
@@ -139,7 +139,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     std::cerr << "Uninitialized function map\n";
     return EventError::UnknownEvent;
   }
-    
+
   if (m_funcMap->count(event.fid()) == 0) {
     std::cerr << "Unknown function event\n";
     return EventError::UnknownFunc;
@@ -185,16 +185,16 @@ EventError ADEvent::addFunc(const Event_t& event) {
 	 << "Event information: " << event.get_json().dump() << std::endl
 	 << "Event type: " << m_eventType->find(event.eid())->second << "  Function name: " << m_funcMap->find(event.fid())->second << std::endl;
       recoverable_error(ss.str());
-      
+
       // while (!cs.empty()) {
       //     std::cerr << *cs.top() << std::endl;
       //     cs.pop();
-      // }            
+      // }
       return EventError::CallStackViolation;
     }
     //Remove the object from the stack (it still lives in the CallList)
     cs.pop(); //I'm surprised this doesn't invalidate the iterator
-    //Tell the former parent function to subtract the child runtime from its exclusive runtime 
+    //Tell the former parent function to subtract the child runtime from its exclusive runtime
     if (!cs.empty()) {
       cs.top()->update_exclusive(it->get_runtime());
     }
@@ -204,7 +204,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
       //Sometimes Tau sends comm events out of order with the func events on io step boundaries
       //Prevent this by reinserting onto the stack comm events with a timestamp larger than the exit event
       std::vector<CommData_t> reinsert;
-      
+
       //Flush the entire comm stack including events that occurred before the func entry (these can no longer be used)
       CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
       while (!comm.empty()) {
@@ -222,7 +222,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     {
       //Treat the same as the comm events above
       std::vector<CounterData_t> reinsert;
-      
+
       CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
       while (!count.empty()) {
 	if(count.top().get_ts() > event.ts()) reinsert.push_back(count.top());
@@ -236,6 +236,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     }
 
     //Add the now complete event to the map
+    verboseStream << "Event fid(): " << event.fid() << std::endl;
     m_execDataMap[event.fid()].push_back(it);
 
     //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
@@ -272,17 +273,17 @@ EventError ADEvent::addCounter(const Event_t& event){
     return EventError::UnknownEvent;
 
   //Maybe add a filter to only include select counters
-  
+
   int eid = event.counter_id();
   auto it = m_counterMap->find(eid);
   if (it == m_counterMap->end())
     return EventError::UnknownEvent;
-  
+
   std::string counterName = it->second;
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
 
-  return EventError::OK;  
+  return EventError::OK;
 }
 
 
@@ -290,9 +291,9 @@ template <typename T>
 static unsigned long nested_map_size(const T& m) {
   size_t n_elements = 0;
 
-  for (auto it: m) 
-    for (auto itt: it.second) 
-      for (auto ittt: itt.second) 
+  for (auto it: m)
+    for (auto itt: it.second)
+      for (auto ittt: itt.second)
 	n_elements += ittt.second.size();
 
   return n_elements;
@@ -307,7 +308,7 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
 	CallList_t& cl = it_t.second;
 
 	//Are we keeping all events for this thread?
-	if(n_keep_thread >= cl.size()) 
+	if(n_keep_thread >= cl.size())
 	  continue;
 	CallList_t cpList;
 
@@ -320,19 +321,19 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
 	    //Add copy of completed event to output
 	    cpList.push_back(*it);
 	    //Remove completed event from map of event index string to call list
-	    m_callIDMap.erase(it->get_id());	    
+	    m_callIDMap.erase(it->get_id());
 	    //Remove completed event from call list
 	    it = cl.erase(it);
 	  }
 	  else {
 	    it++;
-	  }                    
+	  }
 	}
 	if (cpList.size())
 	  (*cpListMap)[it_p.first][it_r.first][it_t.first] = std::move(cpList); //save a copy
       }
     }
-  }    
+  }
   m_execDataMap.clear();
   return cpListMap;
 }
@@ -346,7 +347,7 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 	CallList_t& cl = it_t.second;
 
 	//Are we keeping all events for this thread?
-	if(n_keep_thread >= cl.size()) 
+	if(n_keep_thread >= cl.size())
 	  continue;
 
 	auto it = cl.begin();
@@ -355,17 +356,17 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 	while (it != one_past_last) {
 	  if (it->can_delete() && it->get_runtime()) {
 	    //Remove completed event from map of event index string to call list
-	    m_callIDMap.erase(it->get_id());	    
+	    m_callIDMap.erase(it->get_id());
 	    //Remove completed event from call list
 	    it = cl.erase(it);
 	  }
 	  else {
 	    it++;
-	  }                    
+	  }
 	}
       }
     }
-  }    
+  }
   m_execDataMap.clear();
 }
 
@@ -382,18 +383,18 @@ std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd
   CallListIterator_t it = getCallData(event_id);
   CallList_t* cl = getElemPRT(it->get_pid(), it->get_rid(), it->get_tid(), const_cast<CallListMap_p_t&>(m_callList)); //need non-const iterator
   if(cl == nullptr)  throw std::runtime_error("ADEvent::getCallWindowStartEnd event has unknown pid/rid/tid");
-    
+
   CallListIterator_t beg = cl->begin();
   CallListIterator_t end = cl->end();
 
   CallListIterator_t prev_n = it;
   for (unsigned int i = 0; i < win_size && prev_n != beg; i++)
     prev_n = std::prev(prev_n);
-  
+
   CallListIterator_t next_n = it;
   for (unsigned int i = 0; i < win_size + 1 && next_n != end; i++)
     next_n = std::next(next_n);
-  
+
   return {prev_n, next_n};
 }
 
@@ -404,7 +405,7 @@ void ADEvent::show_status(bool verbose) const {
   size_t n_comm_remained = nested_map_size<CommStackMap_p_t>(m_commStack);
   size_t n_exec_remained = nested_map_size<CallStackMap_p_t>(m_callStack);
   size_t n_exec = nested_map_size<CallListMap_p_t>(m_callList);
-    
+
   std::cout << "***** EVENT STATUS *****" << std::endl;
   std::cout << "Num. comm (remained): " << n_comm_remained << std::endl;
   std::cout << "Num. exec (remained): " << n_exec_remained << std::endl;
