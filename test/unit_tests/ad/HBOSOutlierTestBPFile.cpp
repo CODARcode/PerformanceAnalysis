@@ -195,9 +195,11 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     HbosParam &global_params_ad = *(HbosParam *)testHbos.get_global_parametersTest();
 
     const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
+    verboseStream << "Starting OUtlier Detection" << std::endl;
     if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
 
     for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+      verboseStream << "Looping over m_execDataMap" << std::endl;
       unsigned long func_id = it.first;
       std::vector<double> runtimes;
       for (auto itt : it.second) { //loop over events for that function
