@@ -72,9 +72,10 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
 }
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
-
+  int file_suffix = 0;
   ChimbukoParams params;
   int mpi_rank_bp = 0; // used for BPFile
+
   //Parameters for the connection to the instrumented binary trace output
   params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
   params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
@@ -110,7 +111,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   params.verbose = params.rank == 0; //head node produces verbose output
 
   //Assume the rank index of the data is the same as the driver rank parameter
-  params.trace_inputFile = bp_prefix + "-" + std::to_string(params.rank) + ".bp";
+  params.trace_inputFile = bp_prefix + "-" + file_suffix + ".bp"; //std::to_string(params.rank) + ".bp";
 
   //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
   //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
