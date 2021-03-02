@@ -354,10 +354,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     std::cout << param[func_id].bin_edges().at(i) << std::endl;
   }
   //std::vector<double> runtimes;
-
+  int top_out = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
-      int top_out = 0;
+
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
       int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
