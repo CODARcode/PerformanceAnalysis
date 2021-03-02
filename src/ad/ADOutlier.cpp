@@ -226,25 +226,29 @@ Anomalies ADOutlierHBOS::run(int step) {
     unsigned long func_id = it.first;
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
-      //Update local counts of number of times encountered
-      std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
-      auto encounter_it = m_local_func_exec_count.find(fkey);
-      if(encounter_it == m_local_func_exec_count.end())
-	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
-      else
-	encounter_it->second++;
+      if (itt->get_label() == 0) {
+        //Update local counts of number of times encountered
+        std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+        auto encounter_it = m_local_func_exec_count.find(fkey);
+        if(encounter_it == m_local_func_exec_count.end())
+  	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+        else
+  	encounter_it->second++;
 
-      if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
-	       //param[func_id].push( this->getStatisticValue(*itt) );
-         runtimes.push_back(this->getStatisticValue(*itt));
+        if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
+  	       //param[func_id].push( this->getStatisticValue(*itt) );
+           runtimes.push_back(this->getStatisticValue(*itt));
+        }
       }
     }
-    if (!g.find(func_id)) { // If func_id does not exist
-      param[func_id].create_histogram(runtimes);
-    }
-    else { //merge with exisiting func_id, not overwrite
-      //param[func_id] += g[func_id];
-      param[func_id].merge_histograms(g[func_id], runtimes);
+    if (runtimes.size() > 0) {
+      if (!g.find(func_id)) { // If func_id does not exist
+        param[func_id].create_histogram(runtimes);
+      }
+      else { //merge with exisiting func_id, not overwrite
+        //param[func_id] += g[func_id];
+        param[func_id].merge_histograms(g[func_id], runtimes);
+      }
     }
   }
 
@@ -353,6 +357,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   for (auto itt : data) {
     if (itt->get_label() == 0) {
+      int top_out = 0;
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
       int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
@@ -401,11 +406,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //Compare the ad_score with the threshold
 
       if (ad_score > l_threshold) {
-        itt->set_label(-1);
-        verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-        outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
-        n_outliers += 1;
-
+        if(++top_out <= 10){
+          itt->set_label(-1);
+          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
+          n_outliers += 1;
+        }
       }
       else {
         //Capture maximum of one normal execution per io step
