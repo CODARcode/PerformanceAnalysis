@@ -75,160 +75,165 @@ bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &pa
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //int file_suffix = 1;
   int ranks = 4;
-  int mpi_rank_bp = 3; // used for BPFile
-  ChimbukoParams params;
-  //Parameters for the connection to the instrumented binary trace output
-  params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
-  params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
-  std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
+  for(int mpi_rank_bp = 0; mpi_rank_bp < ranks; mpi_rank_bp++) { // used for BPFile
+    ChimbukoParams params;
+    //Parameters for the connection to the instrumented binary trace output
+    params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
+    params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
+    std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
-  //The remainder are optional arguments. Enable using the appropriate command line switch
-  params.program_idx = 0;
-  params.pserver_addr = "";  //don't use pserver by default
-  params.hpserver_nthr = 1;
-  params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
-  params.anom_win_size = 10; // size of window of events captured around anomaly
-  params.perf_outputpath = ""; //don't use perf output by default
-  params.perf_step = 10;   // make output every 10 steps
-  params.prov_outputpath = "";
-#ifdef ENABLE_PROVDB
-  params.nprovdb_shards = 1;
-  params.provdb_addr = ""; //don't use provDB by default
-#endif
-  params.err_outputpath = ""; //use std::cerr for errors by default
-  params.trace_connect_timeout = 60;
-  params.parser_beginstep_timeout = 30;
-  params.rank = -1234; //assign an invalid value as default for use below
-  params.outlier_statistic = "exclusive_runtime";
-  params.step_report_freq = 1;
+    //The remainder are optional arguments. Enable using the appropriate command line switch
+    params.program_idx = 0;
+    params.pserver_addr = "";  //don't use pserver by default
+    params.hpserver_nthr = 1;
+    params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
+    params.anom_win_size = 10; // size of window of events captured around anomaly
+    params.perf_outputpath = ""; //don't use perf output by default
+    params.perf_step = 10;   // make output every 10 steps
+    params.prov_outputpath = "";
+  #ifdef ENABLE_PROVDB
+    params.nprovdb_shards = 1;
+    params.provdb_addr = ""; //don't use provDB by default
+  #endif
+    params.err_outputpath = ""; //use std::cerr for errors by default
+    params.trace_connect_timeout = 60;
+    params.parser_beginstep_timeout = 30;
+    params.rank = -1234; //assign an invalid value as default for use below
+    params.outlier_statistic = "exclusive_runtime";
+    params.step_report_freq = 1;
 
-  //getOptionalArgsParser().parse(params, argc-4, (const char**)(argv+4));
+    //getOptionalArgsParser().parse(params, argc-4, (const char**)(argv+4));
 
-  //By default assign the rank index of the trace data as the MPI rank of the AD process
-  //Allow override by user
-  if(params.rank < 0)
-    params.rank = mpi_rank_bp; //mpi_world_rank;
+    //By default assign the rank index of the trace data as the MPI rank of the AD process
+    //Allow override by user
+    if(params.rank < 0)
+      params.rank = mpi_rank_bp; //mpi_world_rank;
 
-  params.verbose = params.rank == 0; //head node produces verbose output
+    params.verbose = params.rank == 0; //head node produces verbose output
 
-  //Assume the rank index of the data is the same as the driver rank parameter
-  params.trace_inputFile = bp_prefix + "-" + std::to_string(mpi_rank_bp) + ".bp"; //std::to_string(params.rank) + ".bp";
+    //Assume the rank index of the data is the same as the driver rank parameter
+    params.trace_inputFile = bp_prefix + "-" + std::to_string(mpi_rank_bp) + ".bp"; //std::to_string(params.rank) + ".bp";
 
-  //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
-  //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
-  //if(params.override_rank)
-  //  params.trace_inputFile = bp_prefix + "-" + std::to_string(overrideRankArg::input_data_rank()) + ".bp";
+    //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
+    //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
+    //if(params.override_rank)
+    //  params.trace_inputFile = bp_prefix + "-" + std::to_string(overrideRankArg::input_data_rank()) + ".bp";
 
-  //If neither the provenance database or the provenance output path are set, default to outputting to pwd
-  if(params.prov_outputpath.size() == 0
-#ifdef ENABLE_PROVDB
-     && params.provdb_addr.size() == 0
-#endif
-     ){
-    params.prov_outputpath = "./bpfile_test_results";
+    //If neither the provenance database or the provenance output path are set, default to outputting to pwd
+    if(params.prov_outputpath.size() == 0
+  #ifdef ENABLE_PROVDB
+       && params.provdb_addr.size() == 0
+  #endif
+       ){
+      params.prov_outputpath = "./bpfile_test_results";
+    }
+    std::cout << "ChimbukoParams configuration:" << std::endl;
+    params.print();
+
+    //Initialize
+    ADParser *parser = new ADParser(params.trace_data_dir + "/" + params.trace_inputFile, params.program_idx, params.rank, params.trace_engineType,
+  			  params.trace_connect_timeout);
+
+    parser->setBeginStepTimeout(params.parser_beginstep_timeout);
+    parser->setDataRankOverride(false); //params.override_rank);
+
+    ADEvent *event = new ADEvent(params.verbose);
+    event->linkFuncMap(parser->getFuncMap());
+    event->linkEventType(parser->getEventType());
+    event->linkCounterMap(parser->getCounterMap());
+
+    ADOutlierHBOSTest *outlier = new ADOutlierHBOSTest();
+    outlier->linkExecDataMap(event->getExecDataMap());
+
+    ADCounter *counter = new ADCounter();
+    counter->linkCounterMap(parser->getCounterMap());
+
+    //run now
+    int step = parser->getCurrentStep();
+    unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
+    unsigned long n_outliers = 0, n_tot_events = 0; //n_executions = 0,
+    std::set<unsigned long> n_functions;
+
+    ASSERT_EQ(step, -1);
+
+    unsigned long first_event_ts, last_event_ts;
+
+    int io_steps = 0;
+    while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
+      std::cout << ++io_steps << std::endl;
+
+      //extract counters
+      for(size_t c=0;c < parser->getNumCounterData();c++){
+        Event_t ev(parser->getCounterData(c),
+    	       EventDataType::COUNT,
+    	       c,
+    	       generate_event_id(params.rank, step, c));
+        counter->addCounter(ev);
+      }
+
+      //extract events
+      std::vector<Event_t> events = parser->getEvents();
+      for(auto &e : events)
+        event->addEvent(e);
+      if(events.size()){
+        first_event_ts = events.front().ts();
+        last_event_ts = events.back().ts();
+      }else{
+        first_event_ts = last_event_ts = -1; //no events!
+      }
+
+      //outlier detection run
+      Anomalies anomalies;
+      ADOutlierHBOSTest testHbos;
+      HbosParam local_params_ad;
+      HbosParam &global_params_ad = *(HbosParam *)testHbos.get_global_parametersTest();
+
+      const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
+      verboseStream << "Starting OUtlier Detection" << std::endl;
+      if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
+
+      for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+        verboseStream << "Looping over m_execDataMap" << std::endl;
+        unsigned long func_id = it.first;
+        n_functions.insert(func_id);
+        std::vector<double> runtimes;
+        for (auto itt : it.second) { //loop over events for that function
+          runtimes.push_back(testHbos.getStatisticValueTest(*itt));
+        }
+        if (!global_params_ad.find(func_id)) { // If func_id does not exist
+          local_params_ad[func_id].create_histogram(runtimes);
+        }
+        else { //merge with exisiting func_id, not overwrite
+          //param[func_id] += g[func_id];
+          local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
+        }
+
+        n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
+      }
+
+      std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
+
+      //Run anomaly detection algorithm
+      for (auto it : *m_execDataMap) { //loop over function index
+        const unsigned long func_id = it.first;
+        const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
+        n_outliers += n;
+        //++n_executions;
+      }
+
+    }
+
+    std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
+    std::cout << "Number of IO steps: " << io_steps << std::endl;
+    std::cout << "Number of Functions: " << n_functions.size() << std::endl;
+    std::cout << "Number of Events: " << n_tot_events << std::endl;
+    //std::cout << "Number of Executions: " << n_executions << std::endl;
+    std::cout << "Number of Anomalies: " << n_outliers << std::endl;
+
+    parser.~ADParser();
+    event.~ADEvent();
+    counter.~ADCounter();
   }
-  std::cout << "ChimbukoParams configuration:" << std::endl;
-  params.print();
-
-  //Initialize
-  ADParser *parser = new ADParser(params.trace_data_dir + "/" + params.trace_inputFile, params.program_idx, params.rank, params.trace_engineType,
-			  params.trace_connect_timeout);
-
-  parser->setBeginStepTimeout(params.parser_beginstep_timeout);
-  parser->setDataRankOverride(false); //params.override_rank);
-
-  ADEvent *event = new ADEvent(params.verbose);
-  event->linkFuncMap(parser->getFuncMap());
-  event->linkEventType(parser->getEventType());
-  event->linkCounterMap(parser->getCounterMap());
-
-  ADOutlierHBOSTest *outlier = new ADOutlierHBOSTest();
-  outlier->linkExecDataMap(event->getExecDataMap());
-
-  ADCounter *counter = new ADCounter();
-  counter->linkCounterMap(parser->getCounterMap());
-
-  //run now
-  int step = parser->getCurrentStep();
-  unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
-  unsigned long n_outliers = 0, n_tot_events = 0; //n_executions = 0, 
-  std::set<unsigned long> n_functions;
-
-  ASSERT_EQ(step, -1);
-
-  unsigned long first_event_ts, last_event_ts;
-
-  int io_steps = 0;
-  while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
-    std::cout << ++io_steps << std::endl;
-
-    //extract counters
-    for(size_t c=0;c < parser->getNumCounterData();c++){
-      Event_t ev(parser->getCounterData(c),
-  	       EventDataType::COUNT,
-  	       c,
-  	       generate_event_id(params.rank, step, c));
-      counter->addCounter(ev);
-    }
-
-    //extract events
-    std::vector<Event_t> events = parser->getEvents();
-    for(auto &e : events)
-      event->addEvent(e);
-    if(events.size()){
-      first_event_ts = events.front().ts();
-      last_event_ts = events.back().ts();
-    }else{
-      first_event_ts = last_event_ts = -1; //no events!
-    }
-
-    //outlier detection run
-    Anomalies anomalies;
-    ADOutlierHBOSTest testHbos;
-    HbosParam local_params_ad;
-    HbosParam &global_params_ad = *(HbosParam *)testHbos.get_global_parametersTest();
-
-    const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
-    verboseStream << "Starting OUtlier Detection" << std::endl;
-    if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
-
-    for (auto it : *m_execDataMap) { //loop over functions (key is function index)
-      verboseStream << "Looping over m_execDataMap" << std::endl;
-      unsigned long func_id = it.first;
-      n_functions.insert(func_id);
-      std::vector<double> runtimes;
-      for (auto itt : it.second) { //loop over events for that function
-        runtimes.push_back(testHbos.getStatisticValueTest(*itt));
-      }
-      if (!global_params_ad.find(func_id)) { // If func_id does not exist
-        local_params_ad[func_id].create_histogram(runtimes);
-      }
-      else { //merge with exisiting func_id, not overwrite
-        //param[func_id] += g[func_id];
-        local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
-      }
-
-      n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
-    }
-
-    std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
-
-    //Run anomaly detection algorithm
-    for (auto it : *m_execDataMap) { //loop over function index
-      const unsigned long func_id = it.first;
-      const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
-      n_outliers += n;
-      //++n_executions;
-    }
-
-  }
-
-  std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
-  std::cout << "Number of IO steps: " << io_steps << std::endl;
-  std::cout << "Number of Functions: " << n_functions.size() << std::endl;
-  std::cout << "Number of Events: " << n_tot_events << std::endl;
-  //std::cout << "Number of Executions: " << n_executions << std::endl;
-  std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
   //std::cout << "Final i: " << i << std::endl;
 } //End Test
