@@ -43,7 +43,7 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
   }
 
   step = (*m_parser)->getCurrentStep();
-  if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
+  if(step != expect_step){ verboseStream << "Got step " << step << " expected " << expect_step << std::endl; }
 
   verboseStream << "driver rank 0" << " updating attributes" << std::endl;
   (*m_parser)->update_attributes();
@@ -58,9 +58,9 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
   (*m_parser)->endStep();
 
   // count total number of events
-  n_func_events += (unsigned long long)*m_parser->getNumFuncData();
-  n_comm_events += (unsigned long long)*m_parser->getNumCommData();
-  n_counter_events += (unsigned long long)*m_parser->getNumCounterData();
+  n_func_events += (unsigned long long)(*m_parser)->getNumFuncData();
+  n_comm_events += (unsigned long long)(*m_parser)->getNumCommData();
+  n_counter_events += (unsigned long long)(*m_parser)->getNumCounterData();
 
   verboseStream << "driver completed input parse for step " << step << std::endl;
   return true;
