@@ -230,9 +230,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     //std::cout << "Number of Executions: " << n_executions << std::endl;
     std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
-    parser.~ADParser();
-    event.~ADEvent();
-    counter.~ADCounter();
+    parser->~ADParser();
+    event->~ADEvent();
+    counter->~ADCounter();
   }
 
   //std::cout << "Final i: " << i << std::endl;
