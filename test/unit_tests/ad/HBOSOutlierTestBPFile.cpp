@@ -151,7 +151,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //run now
   int step = parser->getCurrentStep();
   unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
-  unsigned long n_outliers = 0, n_executions = 0;
+  unsigned long n_outliers = 0, n_executions = 0, n_tot_events = 0;
   std::set<unsigned long> n_functions;
 
   ASSERT_EQ(step, -1);
@@ -207,6 +207,8 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         //param[func_id] += g[func_id];
         local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
       }
+
+      n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
     }
 
     std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
@@ -221,9 +223,10 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   }
 
-  std::cout << "Test Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
+  std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
   std::cout << "Number of IO steps: " << io_steps << std::endl;
   std::cout << "Number of Functions: " << n_functions.size() << std::endl;
+  std::cout << "Number of Events: " << n_tot_events << std::endl;
   std::cout << "Number of Executions: " << n_executions << std::endl;
   std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
