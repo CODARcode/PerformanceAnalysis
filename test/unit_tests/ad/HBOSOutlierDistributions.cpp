@@ -32,15 +32,15 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
-  std::normal_distribution<double> dist(500.,10.);
-  std::lognormal_distribution<double> dist_lognorm(100.,10.);
+  //std::normal_distribution<double> dist(500.,10.);
+  std::lognormal_distribution<double> dist_lognorm(2.,0.5);
 
   int N = 50;
 
   {
     std::vector<double> runtimes;
     Histogram &r = global_params_ps[0];
-    for(int i=0;i<N;i++) runtimes.push_back(dist_lognorm(gen));
+    for(int i=0;i<N;i++) runtimes.push_back(std::round(dist_lognorm(gen)));
     r.create_histogram(runtimes);
   }
 
@@ -50,7 +50,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
     std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
-      double val = double(dist(gen)); //i==N-1 ? 1000 : double(dist(gen));
+      double val = i==N-1 ? 100 : double(std::round(dist_lognorm(gen)));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 1: " << val << std::endl;
@@ -66,7 +66,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
     std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
-      double val = double(dist_lognorm(gen)); //i==N-1 ? 1000 : double(dist_lognorm(gen));
+      double val = i==N-1 ? 200 : double(std::round(dist_lognorm(gen)));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 2: " << val << std::endl;
