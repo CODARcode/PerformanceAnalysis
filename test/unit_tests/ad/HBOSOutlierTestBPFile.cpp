@@ -151,7 +151,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //run now
   int step = parser->getCurrentStep();
   unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
-  unsigned long n_outliers = 0, n_executions = 0, n_tot_events = 0;
+  unsigned long n_outliers = 0, n_tot_events = 0; //n_executions = 0, 
   std::set<unsigned long> n_functions;
 
   ASSERT_EQ(step, -1);
@@ -218,7 +218,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       const unsigned long func_id = it.first;
       const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
       n_outliers += n;
-      ++n_executions;
+      //++n_executions;
     }
 
   }
@@ -227,7 +227,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   std::cout << "Number of IO steps: " << io_steps << std::endl;
   std::cout << "Number of Functions: " << n_functions.size() << std::endl;
   std::cout << "Number of Events: " << n_tot_events << std::endl;
-  std::cout << "Number of Executions: " << n_executions << std::endl;
+  //std::cout << "Number of Executions: " << n_executions << std::endl;
   std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
   //std::cout << "Final i: " << i << std::endl;
