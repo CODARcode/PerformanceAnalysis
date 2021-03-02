@@ -210,10 +210,13 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         n_functions.insert(func_id);
         std::vector<double> runtimes;
         for (auto itt : it.second) { //loop over events for that function
+          verboseStream << "Looping 1" << std::endl;
           if (itt->get_label() == 0) {
+            verboseStream << "Looping 2" << std::endl;
             runtimes.push_back(testHbos.getStatisticValueTest(*itt));
           }
         }
+        verboseStream << "Looping out 1" << std::endl;
         if (!global_params_ad.find(func_id)) { // If func_id does not exist
           local_params_ad[func_id].create_histogram(runtimes);
         }
@@ -221,8 +224,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
           //param[func_id] += g[func_id];
           local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
         }
-
+        verboseStream << "Looping out 2" << std::endl;
         n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
+        runtimes.clear();
       }
 
       std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
