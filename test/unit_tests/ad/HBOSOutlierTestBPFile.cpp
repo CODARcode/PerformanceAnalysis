@@ -246,7 +246,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   std::cout << "\n\n------------------------------\nTest Summary for all BPFile runs\n------------------------------" << std::endl;
   for(int i=0;i<ranks;i++) {
-    std::cout<< "Summary for rank " << i << " usinf BPFile " << "tau-metrics-" << i << ".bp" << std:endl;
+    std::cout<< "Summary for rank " << i << " usinf BPFile " << "tau-metrics-" << i << ".bp" << std::endl;
     std::cout << "Number of IO steps: " << v_io_steps.at(i) << std::endl;
     std::cout << "Number of Functions: " << v_functions.at(i) << std::endl;
     std::cout << "Number of Events: " << v_tot_events.at(i) << std::endl;
