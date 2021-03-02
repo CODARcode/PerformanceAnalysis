@@ -32,35 +32,35 @@ public:
 
 bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
 
-  if (!m_parser->getStatus()) return false;
+  if (!*m_parser->getStatus()) return false;
 
   int expect_step = step+1;
 
-  m_parser->beginStep();
-  if (!m_parser->getStatus()){
+  *m_parser->beginStep();
+  if (!*m_parser->getStatus()){
     verboseStream << "driver parser appears to have disconnected, ending" << std::endl;
     return false;
   }
 
-  step = m_parser->getCurrentStep();
+  step = *m_parser->getCurrentStep();
   if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
 
-  verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;
-  m_parser->update_attributes();
-  verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;
-  m_parser->fetchFuncData();
-  verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;
-  m_parser->fetchCommData();
-  verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;
-  m_parser->fetchCounterData();
-  verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;
+  verboseStream << "driver rank 0" << " updating attributes" << std::endl;
+  *m_parser->update_attributes();
+  verboseStream << "driver rank 0" << " fetching func data" << std::endl;
+  *m_parser->fetchFuncData();
+  verboseStream << "driver rank 0" << " fetching comm data" << std::endl;
+  *m_parser->fetchCommData();
+  verboseStream << "driver rank 0" << " fetching counter data" << std::endl;
+  *m_parser->fetchCounterData();
+  verboseStream << "driver rank 0" << " finished gathering data" << std::endl;
 
-  m_parser->endStep();
+  *m_parser->endStep();
 
   // count total number of events
-  n_func_events += (unsigned long long)m_parser->getNumFuncData();
-  n_comm_events += (unsigned long long)m_parser->getNumCommData();
-  n_counter_events += (unsigned long long)m_parser->getNumCounterData();
+  n_func_events += (unsigned long long)*m_parser->getNumFuncData();
+  n_comm_events += (unsigned long long)*m_parser->getNumCommData();
+  n_counter_events += (unsigned long long)*m_parser->getNumCounterData();
 
   verboseStream << "driver completed input parse for step " << step << std::endl;
   return true;
