@@ -111,7 +111,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   params.verbose = params.rank == 0; //head node produces verbose output
 
   //Assume the rank index of the data is the same as the driver rank parameter
-  params.trace_inputFile = bp_prefix + "-" + file_suffix + ".bp"; //std::to_string(params.rank) + ".bp";
+  params.trace_inputFile = bp_prefix + "-" + std::to_string(file_suffix) + ".bp"; //std::to_string(params.rank) + ".bp";
 
   //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
   //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
