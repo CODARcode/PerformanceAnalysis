@@ -30,7 +30,7 @@ public:
   }
 };
 
-bool parseInputStepTest(int &step, ADParser &m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
+bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
 
   if (!m_parser->getStatus()) return false;
 
@@ -160,7 +160,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   unsigned long first_event_ts, last_event_ts;
 
   int i = 0;
-  while(parseInputStepTest(step, parser, n_func_events, n_comm_events, n_counter_events)) {
+  while(parseInputStepTest(step, &parser, n_func_events, n_comm_events, n_counter_events)) {
     std::cout << ++i << std::endl;
 
     //extract counters
