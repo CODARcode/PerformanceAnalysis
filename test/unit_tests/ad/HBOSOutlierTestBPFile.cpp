@@ -75,6 +75,10 @@ bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &pa
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //int file_suffix = 1;
   int ranks = 4;
+  std::vector<int> v_io_steps(ranks);
+  std::vector<int> v_functions(ranks);
+  std::vector<unsigned long> v_outliers(ranks), v_tot_events(ranks);
+
   for(int mpi_rank_bp = 0; mpi_rank_bp < ranks; mpi_rank_bp++) { // used for BPFile
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
@@ -223,6 +227,11 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
     }
 
+    v_io_steps[mpi_rank_bp] = io_steps;
+    v_tot_events[mpi_rank_bp] = n_tot_events;
+    v_functions[mpi_rank_bp] = n_functions.size();
+    v_outliers[mpi_rank_bp] = n_outliers;
+
     std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
     std::cout << "Number of IO steps: " << io_steps << std::endl;
     std::cout << "Number of Functions: " << n_functions.size() << std::endl;
@@ -233,6 +242,16 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     parser->~ADParser();
     event->~ADEvent();
     counter->~ADCounter();
+  }
+
+  std::cout << "\n\n------------------------------\nTest Summary for all BPFile runs\n------------------------------" << std::endl;
+  for(int i=0;i<ranks;i++) {
+    std::cout<< "Summary for rank " << i << " usinf BPFile " << "tau-metrics-" << i << ".bp" << std:endl;
+    std::cout << "Number of IO steps: " << v_io_steps.at(i) << std::endl;
+    std::cout << "Number of Functions: " << v_functions.at(i) << std::endl;
+    std::cout << "Number of Events: " << v_tot_events.at(i) << std::endl;
+    std::cout << "Number of Anomalies: " << v_outliers.at(i) << std::endl;
+    std::cout << "------------------------------" << std::endl;
   }
 
   //std::cout << "Final i: " << i << std::endl;
