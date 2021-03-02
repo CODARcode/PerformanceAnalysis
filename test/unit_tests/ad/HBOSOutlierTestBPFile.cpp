@@ -89,7 +89,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   params.print();
 
   //Initialize
-  Chimbuko driver(params);
+  //Chimbuko driver(params);
 
   headProgressStream(params.rank) << "Driver rank " << params.rank
       << ": analysis start " << (driver.use_ps() ? "with": "without")
@@ -104,11 +104,21 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   parser->setBeginStepTimeout(params.parser_beginstep_timeout);
   parser->setDataRankOverride(false); //params.override_rank);
 
+  ADEvent event = new ADEvent(params.verbose);
+  event->linkFuncMap(parser->getFuncMap());
+  event->linkEventType(parser->getEventType());
+  event->linkCounterMap(parser->getCounterMap());
+
+  ADOutlierHBOSTest outlier = new ADOutlierHBOSTest();
+  outlier->linkExecDataMap(event->getExecDataMap());
+
+  ADCounter counter = new ADCounter();
+  counter->linkCounterMap(parser->getCounterMap());
+
+  //run now
   int step = parser->getCurrentStep();
 
   ASSERT_EQ(step, -1);
-
   
-
 
 }
