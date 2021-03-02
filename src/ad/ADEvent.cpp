@@ -236,7 +236,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
     }
 
     //Add the now complete event to the map
-    verboseStream << "Event fid(): " << event.fid() << std::endl;
+    //verboseStream << "Event fid(): " << event.fid() << std::endl;
     m_execDataMap[event.fid()].push_back(it);
 
     //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
