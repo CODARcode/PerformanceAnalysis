@@ -278,7 +278,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     std::cout << "Number of Functions: " << v_functions.at(i) << std::endl;
     std::cout << "Number of Events: " << v_tot_events.at(i) << std::endl;
     std::cout << "Number of Anomalies: " << v_outliers.at(i) << std::endl;
-    std::cout << "Average Time taken by HBOS: " << v_tot_time[i][0] << " seconds" << std::endl;
+    std::cout << "Average Time taken by SSTD: " << v_tot_time[i][0] << " seconds" << std::endl;
     std::cout << "Total Time: " << v_tot_time[i][1] << " seconds" << std::endl;
     std::cout << "--------------------------------------------" << std::endl;
   }
