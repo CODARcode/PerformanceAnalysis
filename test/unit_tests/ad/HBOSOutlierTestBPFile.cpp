@@ -28,6 +28,8 @@ public:
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
     return this->compute_outliers(anomalies,func_id, data);
   }
+
+  double getStatisticValueTest(const ExecData_t &e) const { return this->getStatisticValue(e);}
 };
 
 bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
@@ -191,13 +193,13 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     HbosParam &global_params_ad = *(HbosParam*)m_param;
 
     ExecDataMap_t* m_execDataMap = event->getExecDataMap();
-    if (m_execDataMap == nullptr) verboseStream << "Empyty ExecDataMap_t" << std::endl;
+    if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
 
     for (auto it : *m_execDataMap) { //loop over functions (key is function index)
       unsigned long func_id = it.first;
       std::vector<double> runtimes;
       for (auto itt : it.second) { //loop over events for that function
-        runtimes.push_back(itt.get_exclusive());
+        runtimes.push_back(testHbos.getStatisticValueTest(*itt));
       }
       if (!global_params_ad.find(func_id)) { // If func_id does not exist
         local_params_ad[func_id].create_histogram(runtimes);
