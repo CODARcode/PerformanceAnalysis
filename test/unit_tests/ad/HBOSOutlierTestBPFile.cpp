@@ -72,7 +72,7 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
 }
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
-  int file_suffix = 0;
+  int file_suffix = 1;
   ChimbukoParams params;
   int mpi_rank_bp = 0; // used for BPFile
 
