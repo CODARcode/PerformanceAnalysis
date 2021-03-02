@@ -106,6 +106,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   int step = parser->getCurrentStep();
 
-  EXPECT_EQ(step, 0);
+  ASSERT_EQ(step, -1);
+
+  
+
 
 }
