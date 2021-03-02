@@ -120,5 +120,12 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   ASSERT_EQ(step, -1);
 
+  unsigned long first_event_ts, last_event_ts;
 
+  int i = 0;
+  while(parser->getStatus()) {
+    ++i;
+  }
+
+  std::cout << "Final i: " << i << std::endl;
 }
