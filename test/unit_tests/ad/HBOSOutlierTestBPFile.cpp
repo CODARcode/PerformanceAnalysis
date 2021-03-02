@@ -30,6 +30,42 @@ public:
   }
 };
 
+bool parseInputStepTest(int &step, ADParser &m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
+
+  if (!m_parser->getStatus()) return false;
+
+  int expect_step = step+1;
+
+  m_parser->beginStep();
+  if (!m_parser->getStatus()){
+    verboseStream << "driver parser appears to have disconnected, ending" << std::endl;
+    return false;
+  }
+
+  step = m_parser->getCurrentStep();
+  if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
+
+  verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;
+  m_parser->update_attributes();
+  verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;
+  m_parser->fetchFuncData();
+  verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;
+  m_parser->fetchCommData();
+  verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;
+  m_parser->fetchCounterData();
+  verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;
+
+  m_parser->endStep();
+
+  // count total number of events
+  n_func_events += (unsigned long long)m_parser->getNumFuncData();
+  n_comm_events += (unsigned long long)m_parser->getNumCommData();
+  n_counter_events += (unsigned long long)m_parser->getNumCounterData();
+
+  verboseStream << "driver completed input parse for step " << step << std::endl;
+  return true;
+
+}
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
@@ -117,14 +153,36 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   //run now
   int step = parser->getCurrentStep();
+  unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
 
   ASSERT_EQ(step, -1);
 
   unsigned long first_event_ts, last_event_ts;
 
   int i = 0;
-  while(parser->getStatus()) {
+  while(parseInputStepTest(step, parser, n_func_events, n_comm_events, n_counter_events)) {
     std::cout << ++i << std::endl;
+
+    //extract counters
+    for(size_t c=0;c < parser->getNumCounterData();c++){
+      Event_t ev(parser->getCounterData(c),
+  	       EventDataType::COUNT,
+  	       c,
+  	       generate_event_id(params.rank, step, c));
+      counter->addCounter(ev);
+    }
+
+    //extract events
+    std::vector<Event_t> events = parser->getEvents();
+    for(auto &e : events)
+      event->addEvent(e);
+    if(events.size()){
+      first_event_ts = events.front().ts();
+      last_event_ts = events.back().ts();
+    }else{
+      first_event_ts = last_event_ts = -1; //no events!
+    }
+
   }
 
   std::cout << "Final i: " << i << std::endl;
