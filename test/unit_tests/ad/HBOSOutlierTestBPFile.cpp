@@ -192,9 +192,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     Anomalies anomalies;
     ADOutlierHBOSTest testHbos;
     HbosParam local_params_ad;
-    HbosParam &global_params_ad = (HbosParam &)testHbos.get_global_parametersTest();
+    HbosParam &global_params_ad = testHbos.get_global_parametersTest();
 
-    ExecDataMap_t* m_execDataMap = event->getExecDataMap();
+    const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
     if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
 
     for (auto it : *m_execDataMap) { //loop over functions (key is function index)
