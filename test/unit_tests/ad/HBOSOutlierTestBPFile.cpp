@@ -15,6 +15,7 @@
 #include <mutex>
 #include <cstring>
 #include <random>
+#include <set>
 
 using namespace chimbuko;
 
@@ -151,14 +152,15 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   int step = parser->getCurrentStep();
   unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
   unsigned long n_outliers = 0;
+  std::set<unsigned long> n_functions;
 
   ASSERT_EQ(step, -1);
 
   unsigned long first_event_ts, last_event_ts;
 
-  int i = 0;
+  int io_steps = 0;
   while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
-    std::cout << ++i << std::endl;
+    std::cout << ++io_steps << std::endl;
 
     //extract counters
     for(size_t c=0;c < parser->getNumCounterData();c++){
@@ -193,6 +195,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     for (auto it : *m_execDataMap) { //loop over functions (key is function index)
       verboseStream << "Looping over m_execDataMap" << std::endl;
       unsigned long func_id = it.first;
+      n_functions.insert(func_id);
       std::vector<double> runtimes;
       for (auto itt : it.second) { //loop over events for that function
         runtimes.push_back(testHbos.getStatisticValueTest(*itt));
@@ -212,9 +215,15 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     for (auto it : *m_execDataMap) { //loop over function index
       const unsigned long func_id = it.first;
       const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
+      n_outliers += n;
     }
 
   }
+
+  std::cout << "Test Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
+  std::cout << "Number of IO steps: " << io_steps << std::endl;
+  std::cout << "Number of Functions: " << n_functions.size() << std::endl;
+  std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
   //std::cout << "Final i: " << i << std::endl;
 } //End Test
