@@ -250,12 +250,12 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     double rank_time = (std::clock() - ti) / (double) CLOCKS_PER_SEC;
     v_tot_time[mpi_rank_bp].push_back(rank_time);
 
-    // std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
-    // std::cout << "Number of IO steps: " << io_steps << std::endl;
-    // std::cout << "Number of Functions: " << n_functions.size() << std::endl;
-    // std::cout << "Number of Events: " << n_tot_events << std::endl;
-    // //std::cout << "Number of Executions: " << n_executions << std::endl;
-    // std::cout << "Number of Anomalies: " << n_outliers << std::endl;
+    std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
+    std::cout << "Number of IO steps: " << io_steps << std::endl;
+    std::cout << "Number of Functions: " << n_functions.size() << std::endl;
+    std::cout << "Number of Events: " << n_tot_events << std::endl;
+    //std::cout << "Number of Executions: " << n_executions << std::endl;
+    std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
     parser->~ADParser();
     event->~ADEvent();
