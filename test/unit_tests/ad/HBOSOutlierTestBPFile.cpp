@@ -16,6 +16,7 @@
 #include <cstring>
 #include <random>
 #include <set>
+#include <ctime>
 
 using namespace chimbuko;
 
@@ -79,7 +80,13 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   std::vector<int> v_functions(ranks);
   std::vector<unsigned long> v_outliers(ranks), v_tot_events(ranks);
 
+  std::vector<std::vector<double> > v_tot_time(ranks);
+  std::vector<double> v_ad_compute_time;
+  std::clock_t ts, ti, tad;
+
+  ts = std::clock();
   for(int mpi_rank_bp = 0; mpi_rank_bp < ranks; mpi_rank_bp++) { // used for BPFile
+    ti = std::clock();
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
@@ -218,10 +225,14 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
 
       //Run anomaly detection algorithm
+      //tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over function index
         const unsigned long func_id = it.first;
+        tad = std::clock();
         const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
         n_outliers += n;
+        double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
+        v_ad_compute_time.push_back(tad_taken);
         //++n_executions;
       }
 
@@ -232,12 +243,19 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     v_functions[mpi_rank_bp] = n_functions.size();
     v_outliers[mpi_rank_bp] = n_outliers;
 
-    std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
-    std::cout << "Number of IO steps: " << io_steps << std::endl;
-    std::cout << "Number of Functions: " << n_functions.size() << std::endl;
-    std::cout << "Number of Events: " << n_tot_events << std::endl;
-    //std::cout << "Number of Executions: " << n_executions << std::endl;
-    std::cout << "Number of Anomalies: " << n_outliers << std::endl;
+    //Average time to compute AD using HBOS
+    double avg_time = std::accumulate(v_ad_compute_time.begin(), v_ad_compute_time.end(), 0.0) / v_ad_compute_time.size();
+    v_tot_time[mpi_rank_bp].push_back(avg_time);
+    v_ad_compute_time.clear();
+    double rank_time = (std::clock() - ti) / (double) CLOCKS_PER_SEC;
+    v_tot_time[mpi_rank_bp].push_back(rank_time);
+
+    // std::cout << "\n\nTest Summary for rank " << params.rank <<  " in file " << params.trace_inputFile << std::endl;
+    // std::cout << "Number of IO steps: " << io_steps << std::endl;
+    // std::cout << "Number of Functions: " << n_functions.size() << std::endl;
+    // std::cout << "Number of Events: " << n_tot_events << std::endl;
+    // //std::cout << "Number of Executions: " << n_executions << std::endl;
+    // std::cout << "Number of Anomalies: " << n_outliers << std::endl;
 
     parser->~ADParser();
     event->~ADEvent();
@@ -246,13 +264,16 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
   std::cout << "\n\n--------------------------------------------\nTest Summary for all BPFile runs\n--------------------------------------------" << std::endl;
   for(int i=0;i<ranks;i++) {
-    std::cout<< "Summary for rank " << i << " usinf BPFile " << "tau-metrics-" << i << ".bp" << std::endl;
+    std::cout<< "Summary for rank " << i << " using BPFile " << "tau-metrics-" << i << ".bp" << std::endl;
     std::cout << "Number of IO steps: " << v_io_steps.at(i) << std::endl;
     std::cout << "Number of Functions: " << v_functions.at(i) << std::endl;
     std::cout << "Number of Events: " << v_tot_events.at(i) << std::endl;
     std::cout << "Number of Anomalies: " << v_outliers.at(i) << std::endl;
+    std::cout << "Average Time taken by HBOS: " << v_tot_time[i][0] << " seconds" << std::endl;
+    std::cout << "Total Time: " << v_tot_time[i][1] << " seconds" << std::endl;
     std::cout << "--------------------------------------------" << std::endl;
   }
-
+  double final_time = (std::clock() - ts) / (double) CLOCKS_PER_SEC;
+  std::cout << "Total Time for all ranks: " << final_time << " seconds" << std::endl;
   //std::cout << "Final i: " << i << std::endl;
 } //End Test
