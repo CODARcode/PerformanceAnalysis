@@ -154,6 +154,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //run now
   int step = parser->getCurrentStep();
   unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
+  unsigned long n_outliers = 0;
 
   ASSERT_EQ(step, -1);
 
@@ -183,7 +184,39 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       first_event_ts = last_event_ts = -1; //no events!
     }
 
+    //outlier detection run
+    Anomalies anomalies;
+    ADOutlierHBOSTest testHbos;
+    HbosParam local_params_ad;
+    HbosParam &global_params_ad = *(HbosParam*)m_param;
+
+    ExecDataMap_t* m_execDataMap = event->getExecDataMap();
+    if (m_execDataMap == nullptr) verboseStream << "Empyty ExecDataMap_t" << std::endl;
+
+    for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+      unsigned long func_id = it.first;
+      std::vector<double> runtimes;
+      for (auto itt : it.second) { //loop over events for that function
+        runtimes.push_back(itt.get_exclusive());
+      }
+      if (!global_params_ad.find(func_id)) { // If func_id does not exist
+        local_params_ad[func_id].create_histogram(runtimes);
+      }
+      else { //merge with exisiting func_id, not overwrite
+        //param[func_id] += g[func_id];
+        local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
+      }
+    }
+
+    std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
+
+    //Run anomaly detection algorithm
+    for (auto it : *m_execDataMap) { //loop over function index
+      const unsigned long func_id = it.first;
+      const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
+    }
+
   }
 
-  std::cout << "Final i: " << i << std::endl;
-}
+  //std::cout << "Final i: " << i << std::endl;
+} //End Test
