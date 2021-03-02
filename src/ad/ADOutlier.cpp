@@ -322,7 +322,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::cout << "min_score = " << min_score << std::endl;
   std::cout << "max_score = " << max_score << std::endl;
   if (out_scores_i.size() == 0) return 0;
-  
+
   //compute threshold
   std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
   double l_threshold = min_score + (0.99 * (max_score - min_score));
@@ -344,7 +344,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //std::vector<double> ad_scores(tot_runtimes, 0.0);
   const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
   const int num_bins = param[func_id].counts().size();
-
+  std::cout << "Bin width: " << bin_width << std::endl;
+  std::cout << "Bin edges: " << std::endl;
+  for (int i=0; i< param[func_id].bin_edges().size(); i++){
+    std::cout << param[func_id].bin_edges().at(i) << std::endl;
+  }
   //std::vector<double> runtimes;
 
   for (auto itt : data) {
