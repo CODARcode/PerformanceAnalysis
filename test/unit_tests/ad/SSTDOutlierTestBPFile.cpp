@@ -214,7 +214,8 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
         //std::vector<double> runtimes;
         for (auto itt : it.second) { //loop over events for that function
           if(itt->get_label() == 0){
-            local_params_ad[func_id].push_back(testSstd.getStatisticValueTest(*itt)); //runtimes.push_back(testSstd.getStatisticValueTest(*itt));
+            local_params_ad[func_id].push(testSstd.getStatisticValueTest(*itt)); //runtimes.push_back(testSstd.getStatisticValueTest(*itt));
+            ++n_tot_events;
           }
         }
         // if (!global_params_ad.find(func_id)) { // If func_id does not exist
@@ -225,7 +226,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
         //   local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
         // }
 
-        n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
+        //n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
       }
 
       std::pair<size_t, size_t> msgsz = testSstd.sync_param_test(&local_params_ad);
