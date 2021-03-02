@@ -170,7 +170,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 			//barrier2.wait();
 		      });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(100));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
 
@@ -380,7 +380,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 			//barrier2.wait();
 		      });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
 
 
