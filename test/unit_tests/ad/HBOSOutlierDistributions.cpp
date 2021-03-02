@@ -243,7 +243,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 
   std::default_random_engine gen;
   //std::normal_distribution<double> dist(500.,10.);
-  std::lognormal_distribution<double> dist_gamma(10.,20.);
+  std::lognormal_distribution<double> dist_gamma(1,2);
 
   int N = 50;
 
