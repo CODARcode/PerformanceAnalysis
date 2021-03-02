@@ -91,12 +91,12 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //Initialize
   //Chimbuko driver(params);
 
-  headProgressStream(params.rank) << "Driver rank " << params.rank
-      << ": analysis start " << (driver.use_ps() ? "with": "without")
-      << " pserver" << std::endl;
-  std::cout << params.rank << "Driver rank " << params.rank
-      << ": analysis start " << (driver.use_ps() ? "with": "without")
-      << " pserver" << std::endl;
+  // headProgressStream(params.rank) << "Driver rank " << params.rank
+  //     << ": analysis start " << (driver.use_ps() ? "with": "without")
+  //     << " pserver" << std::endl;
+  // std::cout << params.rank << "Driver rank " << params.rank
+  //     << ": analysis start " << (driver.use_ps() ? "with": "without")
+  //     << " pserver" << std::endl;
 
   ADParser *parser = new ADParser(params.trace_data_dir + "/" + params.trace_inputFile, params.program_idx, params.rank, params.trace_engineType,
 			  params.trace_connect_timeout);
@@ -104,21 +104,21 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   parser->setBeginStepTimeout(params.parser_beginstep_timeout);
   parser->setDataRankOverride(false); //params.override_rank);
 
-  ADEvent event = new ADEvent(params.verbose);
+  ADEvent *event = new ADEvent(params.verbose);
   event->linkFuncMap(parser->getFuncMap());
   event->linkEventType(parser->getEventType());
   event->linkCounterMap(parser->getCounterMap());
 
-  ADOutlierHBOSTest outlier = new ADOutlierHBOSTest();
+  ADOutlierHBOSTest *outlier = new ADOutlierHBOSTest();
   outlier->linkExecDataMap(event->getExecDataMap());
 
-  ADCounter counter = new ADCounter();
+  ADCounter *counter = new ADCounter();
   counter->linkCounterMap(parser->getCounterMap());
 
   //run now
   int step = parser->getCurrentStep();
 
   ASSERT_EQ(step, -1);
-  
+
 
 }
