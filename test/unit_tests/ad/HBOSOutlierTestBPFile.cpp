@@ -97,4 +97,15 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   std::cout << params.rank << "Driver rank " << params.rank
       << ": analysis start " << (driver.use_ps() ? "with": "without")
       << " pserver" << std::endl;
+
+  parser = new ADParser(params.trace_data_dir + "/" + params.trace_inputFile, params.program_idx, params.rank, params.trace_engineType,
+			  params.trace_connect_timeout);
+
+  parser->setBeginStepTimeout(params.parser_beginstep_timeout);
+  parser->setDataRankOverride(false); //params.override_rank);
+
+  int step = m_parser->getCurrentStep();
+
+  EXPECT_EQ(step, 0);
+
 }
