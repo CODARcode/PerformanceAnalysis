@@ -203,6 +203,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       verboseStream << "Starting OUtlier Detection" << std::endl;
       if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
 
+      tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over functions (key is function index)
         verboseStream << "Looping over m_execDataMap" << std::endl;
         unsigned long func_id = it.first;
@@ -228,13 +229,15 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       //tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over function index
         const unsigned long func_id = it.first;
-        tad = std::clock();
+        //tad = std::clock();
         const unsigned long n = testHbos.compute_outliers_test(anomalies,func_id, it.second);
         n_outliers += n;
-        double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
-        v_ad_compute_time.push_back(tad_taken);
+        //double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
+        //v_ad_compute_time.push_back(tad_taken);
         //++n_executions;
       }
+      double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
+      v_ad_compute_time.push_back(tad_taken);
 
     }
 
