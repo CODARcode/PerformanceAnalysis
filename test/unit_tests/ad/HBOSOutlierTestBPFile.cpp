@@ -32,7 +32,7 @@ public:
 
 bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
 
-  if (!**m_parser.getStatus()) return false;
+  if (!(*m_parser)->getStatus()) return false;
 
   int expect_step = step+1;
 
