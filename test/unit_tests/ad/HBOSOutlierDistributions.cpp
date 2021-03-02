@@ -260,7 +260,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
     std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 100 : double(std::round(dist_gamma(gen)));
+      double val = i==N-1 ? 1000 : double(std::round(dist_gamma(gen)));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 1: " << val << std::endl;
@@ -276,7 +276,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
     std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 20 : double(std::round(dist_gamma(gen)));
+      double val = i==N-1 ? 500 : double(std::round(dist_gamma(gen)));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 2: " << val << std::endl;
