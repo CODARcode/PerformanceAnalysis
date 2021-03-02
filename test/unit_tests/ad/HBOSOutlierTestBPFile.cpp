@@ -210,7 +210,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         n_functions.insert(func_id);
         std::vector<double> runtimes;
         for (auto itt : it.second) { //loop over events for that function
-          runtimes.push_back(testHbos.getStatisticValueTest(*itt));
+          if (itt->get_label() == 0) {
+            runtimes.push_back(testHbos.getStatisticValueTest(*itt));
+          }
         }
         if (!global_params_ad.find(func_id)) { // If func_id does not exist
           local_params_ad[func_id].create_histogram(runtimes);
