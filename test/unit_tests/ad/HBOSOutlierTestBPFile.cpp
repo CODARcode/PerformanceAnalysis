@@ -34,7 +34,7 @@ public:
   ParamInterface const* get_global_parametersTest() const{ return this->get_global_parameters();}
 };
 
-bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
+bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &params, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
 
   if (!(*m_parser)->getStatus()) return false;
 
@@ -49,15 +49,15 @@ bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_fu
   step = (*m_parser)->getCurrentStep();
   if(step != expect_step){ verboseStream << "Got step " << step << " expected " << expect_step << std::endl; }
 
-  verboseStream << "driver rank 0" << " updating attributes" << std::endl;
+  verboseStream << "driver rank " << params.rank << " updating attributes" << std::endl;
   (*m_parser)->update_attributes();
-  verboseStream << "driver rank 0" << " fetching func data" << std::endl;
+  verboseStream << "driver rank " << params.rank << " fetching func data" << std::endl;
   (*m_parser)->fetchFuncData();
-  verboseStream << "driver rank 0" << " fetching comm data" << std::endl;
+  verboseStream << "driver rank " << params.rank << " fetching comm data" << std::endl;
   (*m_parser)->fetchCommData();
-  verboseStream << "driver rank 0" << " fetching counter data" << std::endl;
+  verboseStream << "driver rank " << params.rank << " fetching counter data" << std::endl;
   (*m_parser)->fetchCounterData();
-  verboseStream << "driver rank 0" << " finished gathering data" << std::endl;
+  verboseStream << "driver rank " << params.rank << " finished gathering data" << std::endl;
 
   (*m_parser)->endStep();
 
@@ -130,15 +130,6 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   params.print();
 
   //Initialize
-  //Chimbuko driver(params);
-
-  // headProgressStream(params.rank) << "Driver rank " << params.rank
-  //     << ": analysis start " << (driver.use_ps() ? "with": "without")
-  //     << " pserver" << std::endl;
-  // std::cout << params.rank << "Driver rank " << params.rank
-  //     << ": analysis start " << (driver.use_ps() ? "with": "without")
-  //     << " pserver" << std::endl;
-
   ADParser *parser = new ADParser(params.trace_data_dir + "/" + params.trace_inputFile, params.program_idx, params.rank, params.trace_engineType,
 			  params.trace_connect_timeout);
 
@@ -166,7 +157,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   unsigned long first_event_ts, last_event_ts;
 
   int i = 0;
-  while(parseInputStepTest(step, &parser, n_func_events, n_comm_events, n_counter_events)) {
+  while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
     std::cout << ++i << std::endl;
 
     //extract counters
