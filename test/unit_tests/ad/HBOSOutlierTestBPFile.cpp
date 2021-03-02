@@ -30,6 +30,8 @@ public:
   }
 
   double getStatisticValueTest(const ExecData_t &e) const { return this->getStatisticValue(e);}
+
+  HbosParam const* get_global_parametersTest() const{ return this->get_global_parameters();}
 };
 
 bool parseInputStepTest(int &step, ADParser **m_parser, unsigned long long& n_func_events,unsigned long long& n_comm_events,unsigned long long& n_counter_events) {
@@ -190,7 +192,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     Anomalies anomalies;
     ADOutlierHBOSTest testHbos;
     HbosParam local_params_ad;
-    HbosParam &global_params_ad = *(HbosParam*)m_param;
+    HbosParam &global_params_ad = testHbos.get_global_parametersTest();
 
     ExecDataMap_t* m_execDataMap = event->getExecDataMap();
     if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
