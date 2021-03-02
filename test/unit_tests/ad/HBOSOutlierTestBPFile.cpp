@@ -94,4 +94,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   headProgressStream(params.rank) << "Driver rank " << params.rank
       << ": analysis start " << (driver.use_ps() ? "with": "without")
       << " pserver" << std::endl;
+  std::cout << params.rank << "Driver rank " << params.rank
+      << ": analysis start " << (driver.use_ps() ? "with": "without")
+      << " pserver" << std::endl;
 }
