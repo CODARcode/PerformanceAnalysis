@@ -205,7 +205,7 @@ echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
 echo "Command to launch AD module: " ${ad_cmd}
 echo "Please execute as:"
-echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmd.var)"
+echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmdline.var)"
 echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
 echo "Or equivalent"
 
