@@ -37,7 +37,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   int mpi_rank_bp = 0; // used for BPFile
   //Parameters for the connection to the instrumented binary trace output
   params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
-  params.trace_data_dir = "../../data/"; // argv[2]; // *.bp location
+  params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
   std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
   //The remainder are optional arguments. Enable using the appropriate command line switch
@@ -88,6 +88,10 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   std::cout << "ChimbukoParams configuration:" << std::endl;
   params.print();
 
-  //Initialize 
+  //Initialize
   Chimbuko driver(params);
+
+  headProgressStream(params.rank) << "Driver rank " << params.rank
+      << ": analysis start " << (driver.use_ps() ? "with": "without")
+      << " pserver" << std::endl;
 }
