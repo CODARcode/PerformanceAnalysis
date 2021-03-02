@@ -85,7 +85,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
      ){
     params.prov_outputpath = "./bpfile_test_results";
   }
-
+  std::cout << "ChimbukoParams configuration:" << std::endl;
   params.print();
 
+  //Initialize 
+  Chimbuko driver(params);
 }
