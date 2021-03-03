@@ -40,7 +40,7 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(3.0) { //m_sigma(6.0)
+ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(1.0) { //m_sigma(6.0)
     m_param = new SstdParam();
 }
 
