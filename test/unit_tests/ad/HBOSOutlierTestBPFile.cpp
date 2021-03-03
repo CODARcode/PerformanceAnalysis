@@ -74,7 +74,7 @@ bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &pa
 
 }
 
-void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, int &rank) const {
+void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, int &rank) {
   nlohmann::json j(data);
   std::string fname = "all_data-" + std::to_string(rank) + ".json";
   std::ofstream ofile(fname);
