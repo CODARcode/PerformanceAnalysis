@@ -5,6 +5,7 @@
 #include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/message.hpp>
+#include <nlohmann/json.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -70,6 +71,14 @@ bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &pa
 
   verboseStream << "driver completed input parse for step " << step << std::endl;
   return true;
+
+}
+
+void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, int &rank) const {
+  nlohmann::json j(data);
+  std::string fname = "all_data-" + std::to_string(rank) + ".json";
+  std::ofstream ofile(fname);
+  ofile << j;
 
 }
 
@@ -170,6 +179,8 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     unsigned long first_event_ts, last_event_ts;
 
     int io_steps = 0;
+
+    std::unordered_map<unsigned long, std::vector<double> > save_data;
     while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
       std::cout << ++io_steps << std::endl;
 
@@ -224,8 +235,17 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
           }
 
           n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
+
+          //prep to save data to json at the end of execution of a BPFile
+          if(save_data.find(func_id) == save_data.end()){
+            save_data[func_id] = runtimes;
+          }
+          else{
+            for(int i=0; i<runtimes.size(); i++)
+              save_data[func_id].push_back(runtimes.at(i));
+          }
         }
-        
+
       }
 
       std::pair<size_t, size_t> msgsz = testHbos.sync_param_test(&local_params_ad);
@@ -245,6 +265,8 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       v_ad_compute_time.push_back(tad_taken);
 
     }
+
+    create_save_json(save_data, mpi_rank_bp);
 
     v_io_steps[mpi_rank_bp] = io_steps;
     v_tot_events[mpi_rank_bp] = n_tot_events;
