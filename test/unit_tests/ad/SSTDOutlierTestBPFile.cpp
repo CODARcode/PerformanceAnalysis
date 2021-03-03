@@ -259,6 +259,11 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
         if(outs_map.find(func_id) == outs_map.end()){
           outs_map[func_id] = r_times;
         }
+        else{
+          for(int i=0; i<r_times.size(); i++) {
+            outs_map[func_id].push_back(r_times.at(i));
+          }
+        }
         r_times.clear();
       }
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
