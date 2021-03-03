@@ -275,7 +275,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         //  for(int i=0; i<r_times.size(); i++) {
         //    outs_map[func_id].push_back(r_times.at(i));
         //  }
-        }
+        //}
 
       }
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
