@@ -20,7 +20,7 @@ namespace chimbuko{
     /**
      * @brief Insert used in HBOS
      */
-    void insert(CallListIterator_t event, EventType type, double hbos_score, double threshold);
+    void insert(CallListIterator_t event, EventType type, double runtime, double hbos_score, double threshold);
 
     const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allHbosScores() const{return m_func_outliers_hbos_scores_and_threshold;}
 

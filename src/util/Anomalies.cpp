@@ -17,16 +17,17 @@ void Anomalies::insert(CallListIterator_t event, EventType type){
   }
 }
 
-void Anomalies::insert(CallListIterator_t event, EventType type, double hbos_score, double threshold) {
+void Anomalies::insert(CallListIterator_t event, EventType type, double runtime, double hbos_score, double threshold) {
   switch(type){
   case EventType::Outlier:
     m_all_outliers.push_back(event);
     m_func_outliers[event->get_fid()].push_back(event);
     if(m_func_outliers_hbos_scores_and_threshold[event->get_fid()].size() == 0) {
-      m_func_outliers_hbos_scores_and_threshold[event->get_fid()] = std::vector<std::vector<double> >(2);
+      m_func_outliers_hbos_scores_and_threshold[event->get_fid()] = std::vector<std::vector<double> >(3);
     }
-    m_func_outliers_hbos_scores_and_threshold[event->get_fid()].at(0).push_back(hbos_score);
-    m_func_outliers_hbos_scores_and_threshold[event->get_fid()].at(1).push_back(threshold);
+    m_func_outliers_hbos_scores_and_threshold[event->get_fid()].at(0).push_back(runtime);
+    m_func_outliers_hbos_scores_and_threshold[event->get_fid()].at(1).push_back(hbos_score);
+    m_func_outliers_hbos_scores_and_threshold[event->get_fid()].at(2).push_back(threshold);
     break;
   case EventType::Normal:
     m_all_normal_execs.push_back(event);

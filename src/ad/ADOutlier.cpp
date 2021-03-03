@@ -409,7 +409,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         //if(++top_out <= 3){
           itt->set_label(-1);
           verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-          outliers.insert(itt, Anomalies::EventType::Outlier, ad_score, l_threshold); //insert into data structure containing captured anomalies
+          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
         //}
       }
