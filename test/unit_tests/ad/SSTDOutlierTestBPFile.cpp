@@ -252,7 +252,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
         //++n_executions;
         std::vector<double> r_times;
         for(auto itt : anomalies.funcEvents(func_id, Anomalies::EventType::Outlier)){
-          const double r_time = testHbos.getStatisticValueTest(*itt);
+          const double r_time = testSstd.getStatisticValueTest(*itt);
           r_times.push_back(r_time);
         }
         if(outs_map.find(func_id) == outs_map.end()){
