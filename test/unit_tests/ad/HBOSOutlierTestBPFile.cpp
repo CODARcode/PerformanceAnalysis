@@ -228,7 +228,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
       tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over functions (key is function index)
-        verboseStream << "Looping over m_execDataMap" << std::endl;
+        //verboseStream << "Looping over m_execDataMap" << std::endl;
         unsigned long func_id = it.first;
         n_functions.insert(func_id);
         std::vector<double> runtimes;
