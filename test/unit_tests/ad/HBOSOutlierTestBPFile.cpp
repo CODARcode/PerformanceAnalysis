@@ -263,17 +263,18 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         //v_ad_compute_time.push_back(tad_taken);
         //++n_executions;
         std::vector<double> r_times;
-        for(auto itt : anomalies.allEvents(Anomalies::EventType::Outlier)){
+        for(auto itt : anomalies.funcEvents(func_id, Anomalies::EventType::Outlier)){
           const double r_time = testHbos.getStatisticValueTest(*itt);
           r_times.push_back(r_time);
         }
         if(outs_map.find(func_id) == outs_map.end()){
           outs_map[func_id] = r_times;
         }
-        else{
-          for(int i=0; i<r_times.size(); i++) {
-            outs_map[func_id].push_back(r_times.at(i));
-          }
+        r_times.clear();
+        //else{
+        //  for(int i=0; i<r_times.size(); i++) {
+        //    outs_map[func_id].push_back(r_times.at(i));
+        //  }
         }
 
       }
