@@ -82,6 +82,14 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<double
 
 }
 
+void create_save_json(const std::unordered_map<unsigned long, std::vector<std::vector<double> > > &data, const int &rank, const std::string & prefix, const int &io_step) {
+  nlohmann::json j(data);
+  std::string fname = prefix + "-" + std::to_string(rank) + "-step-" + std::to_string(io_step) + ".json";
+  std::ofstream ofile(fname);
+  ofile << j;
+
+}
+
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
   //int file_suffix = 1;
   int ranks = 4;
@@ -183,6 +191,8 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     std::unordered_map<unsigned long, std::vector<double> > save_data;
     std::unordered_map<unsigned long, std::vector<double> > outs_map;
     std::unordered_map<unsigned long, std::vector<double> > bin_width_map;
+    std::vector<Anomalies> v_anomalies_obj;
+
     while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
       std::cout << ++io_steps << std::endl;
 
@@ -283,6 +293,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
       v_ad_compute_time.push_back(tad_taken);
 
+      create_save_json(anomalies.allHbosScores(), mpi_rank_bp, "hbos_scores", io_steps);
     }
     create_save_json(outs_map, mpi_rank_bp, "all_outs");
     //create_save_json(save_data, mpi_rank_bp, "all_data");
