@@ -74,9 +74,9 @@ bool parseInputStepTest(int &step, ADParser **m_parser, const ChimbukoParams &pa
 
 }
 
-void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, int &rank) {
+void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, const int &rank, const std::string & prefix) {
   nlohmann::json j(data);
-  std::string fname = "all_data-" + std::to_string(rank) + ".json";
+  std::string fname = prefix + std::to_string(rank) + ".json";
   std::ofstream ofile(fname);
   ofile << j;
 
@@ -252,6 +252,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
       //Run anomaly detection algorithm
       //tad = std::clock();
+      std::unordered_map<unsigned long, std::vector<double> > outs_map;
       for (auto it : *m_execDataMap) { //loop over function index
         const unsigned long func_id = it.first;
         //tad = std::clock();
@@ -260,13 +261,28 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         //double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
         //v_ad_compute_time.push_back(tad_taken);
         //++n_executions;
+        std::vector<double> r_times;
+        for(auto itt : anomalies.allEvents(Anomalies::EventType::Outlier)){
+          const double r_time = testHbos.getStatisticValueTest(*itt);
+          r_times.push_back(r_time);
+        }
+        if(outs_map.find(func_id) == outs_map.end()){
+          outs_map[func_id] = r_times;
+        }
+        else{
+          for(int i=0; i<r_times.size(); i++) {
+            outs_map[func_id].push_back(r_times.at(i));
+          }
+        }
+
+        create_save_json(outs_map, mpi_rank_bp, "all_outs");
       }
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
       v_ad_compute_time.push_back(tad_taken);
 
     }
 
-    create_save_json(save_data, mpi_rank_bp);
+    create_save_json(save_data, mpi_rank_bp, "all_data");
 
     v_io_steps[mpi_rank_bp] = io_steps;
     v_tot_events[mpi_rank_bp] = n_tot_events;
