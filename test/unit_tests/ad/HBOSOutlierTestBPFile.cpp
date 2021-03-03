@@ -182,6 +182,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
     std::unordered_map<unsigned long, std::vector<double> > save_data;
     std::unordered_map<unsigned long, std::vector<double> > outs_map;
+    std::unordered_map<unsigned long, std::vector<double> > bin_width_map;
     while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
       std::cout << ++io_steps << std::endl;
 

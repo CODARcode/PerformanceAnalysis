@@ -182,6 +182,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
 
     int io_steps = 0;
     std::unordered_map<unsigned long, std::vector<double> > outs_map;
+
     while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
       std::cout << ++io_steps << std::endl;
 

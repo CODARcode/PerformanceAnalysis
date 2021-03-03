@@ -140,8 +140,8 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
   const double mean = param[func_id].mean();
   const double std = param[func_id].stddev();
 
-  const double thr_hi = mean + m_sigma * std;
-  const double thr_lo = mean - m_sigma * std;
+  const double thr_hi = mean + std; //m_sigma * std;
+  const double thr_lo = mean - std; //m_sigma * std;
 
   for (auto itt : data) {
     if(itt->get_label() == 0){ //only label new events
