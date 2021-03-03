@@ -181,6 +181,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     int io_steps = 0;
 
     std::unordered_map<unsigned long, std::vector<double> > save_data;
+    std::unordered_map<unsigned long, std::vector<double> > outs_map;
     while(parseInputStepTest(step, &parser, params, n_func_events, n_comm_events, n_counter_events)) {
       std::cout << ++io_steps << std::endl;
 
@@ -252,7 +253,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
       //Run anomaly detection algorithm
       //tad = std::clock();
-      std::unordered_map<unsigned long, std::vector<double> > outs_map;
+
       for (auto it : *m_execDataMap) { //loop over function index
         const unsigned long func_id = it.first;
         //tad = std::clock();
@@ -275,13 +276,12 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
           }
         }
 
-        create_save_json(outs_map, mpi_rank_bp, "all_outs");
       }
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
       v_ad_compute_time.push_back(tad_taken);
 
     }
-
+    create_save_json(outs_map, mpi_rank_bp, "all_outs");
     create_save_json(save_data, mpi_rank_bp, "all_data");
 
     v_io_steps[mpi_rank_bp] = io_steps;
