@@ -271,12 +271,13 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         if(outs_map.find(func_id) == outs_map.end()){
           outs_map[func_id] = r_times;
         }
+        //r_times.clear();
+        else{
+          for(int i=0; i<r_times.size(); i++) {
+            outs_map[func_id].push_back(r_times.at(i));
+          }
+        }
         r_times.clear();
-        //else{
-        //  for(int i=0; i<r_times.size(); i++) {
-        //    outs_map[func_id].push_back(r_times.at(i));
-        //  }
-        //}
 
       }
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
@@ -284,7 +285,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
     }
     create_save_json(outs_map, mpi_rank_bp, "all_outs");
-    create_save_json(save_data, mpi_rank_bp, "all_data");
+    //create_save_json(save_data, mpi_rank_bp, "all_data");
 
     v_io_steps[mpi_rank_bp] = io_steps;
     v_tot_events[mpi_rank_bp] = n_tot_events;
