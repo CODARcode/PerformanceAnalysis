@@ -152,7 +152,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
-  std::vector<double> sstd_stats(thr_hi, thr_lo, mean, std);
+  std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
 	outliers.insert(itt, Anomalies::EventType::Outlier, sstd_stats); //insert into data structure containing captured anomalies
       }else{
 	//Capture maximum of one normal execution per io step
