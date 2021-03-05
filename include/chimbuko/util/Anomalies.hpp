@@ -27,9 +27,10 @@ namespace chimbuko{
      */
     void Anomalies::insert(CallListIterator_t event, EventType type, std::vector<double> thres_hilo_mean_std);
 
+
     const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allHbosScores() const{return m_func_outliers_hbos_scores_and_threshold;}
 
-    const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allSstdScores() const{return m_func_outliers_sstd_threshold_mean_std;}
+    const std::unordered_map<unsigned long, std::vector<double> > & allSstdScores() const{return m_func_outliers_sstd_threshold_mean_std;}
 
     /**
      * @brief Get the outlier/normal events associated with a given function
