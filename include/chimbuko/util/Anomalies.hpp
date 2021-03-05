@@ -25,7 +25,7 @@ namespace chimbuko{
     /**
      * @brief Insert used in SSTD for test purposes
      */
-    void Anomalies::insert(CallListIterator_t event, EventType type, std::vector<double> thres_hilo_mean_std);
+    void insert(CallListIterator_t event, EventType type, std::vector<double> thres_hilo_mean_std);
 
 
     const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allHbosScores() const{return m_func_outliers_hbos_scores_and_threshold;}
