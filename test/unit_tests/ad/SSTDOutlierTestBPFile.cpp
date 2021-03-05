@@ -83,6 +83,14 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<double
 
 }
 
+void create_save_json(const std::unordered_map<unsigned long, std::vector<double> > &data, const int &rank, const std::string & prefix, const int &io_step) {
+  nlohmann::json j(data);
+  std::string fname = prefix + "-" + std::to_string(rank) + "-step-" + std::to_string(io_step) + ".json";
+  std::ofstream ofile(fname);
+  ofile << j;
+
+}
+
 TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
   //int file_suffix = 1;
   int ranks = 4;
@@ -269,6 +277,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
       double tad_taken = (std::clock() - tad) / (double) CLOCKS_PER_SEC;
       v_ad_compute_time.push_back(tad_taken);
 
+      create_save_json(anomalies.allSstdScores(), mpi_rank_bp, "sstd_funcStats", io_steps);
     }
 
     create_save_json(outs_map, mpi_rank_bp, "SSTD_outs");

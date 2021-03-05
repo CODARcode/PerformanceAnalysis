@@ -18,11 +18,18 @@ namespace chimbuko{
     void insert(CallListIterator_t event, EventType type);
 
     /**
-     * @brief Insert used in HBOS
+     * @brief Insert used in HBOS for test purposes
      */
     void insert(CallListIterator_t event, EventType type, double runtime, double hbos_score, double threshold);
 
+    /**
+     * @brief Insert used in SSTD for test purposes
+     */
+    void Anomalies::insert(CallListIterator_t event, EventType type, std::vector<double> thres_hilo_mean_std);
+
     const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allHbosScores() const{return m_func_outliers_hbos_scores_and_threshold;}
+
+    const std::unordered_map<unsigned long, std::vector<std::vector<double> > > & allSstdScores() const{return m_func_outliers_sstd_threshold_mean_std;}
 
     /**
      * @brief Get the outlier/normal events associated with a given function
@@ -52,6 +59,8 @@ namespace chimbuko{
     std::unordered_map<unsigned long, std::vector<CallListIterator_t> > m_func_normal_execs; /**< Map of function index to associated normal executions */
 
     std::unordered_map<unsigned long, std::vector<std::vector<double> > > m_func_outliers_hbos_scores_and_threshold; /**< Map of function index to a 2D vector where index 0: HBOS scores, index 1: threshold */
+
+    std::unordered_map<unsigned long, std::vector<double> > m_func_outliers_sstd_threshold_mean_std; /**< Map of function index to a 2D vector where index 0: HBOS scores, index 1: threshold */
   };
 
 
