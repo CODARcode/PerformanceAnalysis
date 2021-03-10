@@ -377,56 +377,22 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
 					const unsigned long last_event_ts) const{
-  constexpr bool do_delete = true;
-  constexpr bool add_outstanding = true;
-
   //Gather provenance data on anomalies and send to provenance database
   if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB
      || m_provdb_client->isConnected()
 #endif
      ){
-    PerfTimer timer,timer2;
-
-    //Put new normal event provenance into m_normalevent_prov
-    timer.start();
-    for(auto norm_it : anomalies.allEvents(Anomalies::EventType::Normal)){
-      timer2.start();
-      ADAnomalyProvenance extract_prov(*norm_it, *m_event, *m_outlier->get_global_parameters(), 
-				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
-				       step, first_event_ts, last_event_ts);
-      m_normalevent_prov->addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
-      m_perf.add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
-    }
-    m_perf.add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
-
-    //Get any outstanding normal events from previous timesteps that we couldn't previously provide
-    timer.start();
-    std::vector<nlohmann::json> normalevent_prov = m_normalevent_prov->getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
-    m_perf.add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
-
-    //Gather provenance of anomalies and for each one try to obtain a normal execution
-    timer.start();
-    std::vector<nlohmann::json> anomaly_prov(anomalies.nEvents(Anomalies::EventType::Outlier));
-    size_t i=0;
-    for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
-      timer2.start();
-      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(), 
-				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
-				       step, first_event_ts, last_event_ts);
-      anomaly_prov[i++] = extract_prov.get_json();
-      m_perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
-      
-      //Get the associated normal event
-      //if normal event not available put into the list of outstanding requests
-      //if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
-      timer2.start();
-      auto nev = m_normalevent_prov->getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete); 
-      if(nev.second) normalevent_prov.push_back(std::move(nev.first));
-      m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
-    }
+    //Get the provenance data
+    PerfTimer timer;
+    std::vector<nlohmann::json> anomaly_prov, normalevent_prov;
+    ADAnomalyProvenance::getProvenanceEntries(anomaly_prov, normalevent_prov, *m_normalevent_prov, m_perf,
+					      anomalies, step, first_event_ts, last_event_ts, m_params.anom_win_size,
+					      *m_outlier->get_global_parameters(), *m_event, *m_counter, *m_metadata_parser);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
+
+    //Write and send provenance dataX
     if(anomaly_prov.size() > 0){
       timer.start();
       m_io->writeJSON(anomaly_prov, step, "anomalies");
