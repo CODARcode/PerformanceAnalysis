@@ -320,9 +320,9 @@ bool Chimbuko::parseInputStep(int &step,
   m_parser->endStep();
 
   // count total number of events
-  n_func_events += (unsigned long long)m_parser->getNumFuncData();
-  n_comm_events += (unsigned long long)m_parser->getNumCommData();
-  n_counter_events += (unsigned long long)m_parser->getNumCounterData();
+  n_func_events = (unsigned long long)m_parser->getNumFuncData();
+  n_comm_events = (unsigned long long)m_parser->getNumCommData();
+  n_counter_events = (unsigned long long)m_parser->getNumCounterData();
 
   //Parse the new metadata for any attributes we want to maintain
   m_metadata_parser->addData(m_parser->getNewMetaData());
@@ -458,10 +458,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
   int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
   unsigned long first_event_ts, last_event_ts; //earliest and latest timestamps in io frame
 
-  std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
+  std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
 
-  std::string ad_perf_prd = "ad_perf_prd_" + std::to_string(m_params.rank) + ".log";
+  std::string ad_perf_prd = stringize("ad_perf_prd.%d.%d.log", m_params.program_idx, m_params.rank);
   m_perf_prd.setWriteLocation(m_params.perf_outputpath, ad_perf_prd);
   
 #if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
@@ -471,13 +471,28 @@ void Chimbuko::run(unsigned long long& n_func_events,
 #endif
   
   PerfTimer step_timer, timer;
+  
+  unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
+  unsigned long long n_func_events_accum_prd = 0, n_comm_events_accum_prd = 0, n_counter_events_accum_prd = 0; //accumulated event counts since last write of periodic data
+  unsigned long n_outliers_accum_prd = 0; //accumulated outliers detected since last write of periodic data 
+  int n_steps_accum_prd = 0; //number of steps since last write of periodic data
 
   //Loop until we lose connection with the application
-  while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
+  while ( parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step) ) {
+    //Increment total events
+    n_func_events += n_func_events_step;
+    n_comm_events += n_comm_events_step;
+    n_counter_events += n_counter_events_step;
+
+    n_func_events_accum_prd += n_func_events_step;
+    n_comm_events_accum_prd += n_comm_events_step;
+    n_counter_events_accum_prd += n_counter_events_step;
+    
     //Decide whether to report step progress
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl; }
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step 
+							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -494,9 +509,13 @@ void Chimbuko::run(unsigned long long& n_func_events,
     timer.start();
     Anomalies anomalies = m_outlier->run(step);
     m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
+    m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
 
-    n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
+    int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    n_outliers += nout;
+    n_outliers_accum_prd += nout;
     frames++;
+    n_steps_accum_prd++;
     
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
@@ -542,6 +561,23 @@ void Chimbuko::run(unsigned long long& n_func_events,
       size_t total, resident;
       getMemUsage(total, resident);
       m_perf_prd.add("ad_mem_usage_kB", resident);
+      
+      m_perf_prd.add("io_steps", n_steps_accum_prd);
+
+      //Write accumulated outlier count
+      m_perf_prd.add("outlier_count", n_outliers_accum_prd);
+
+      //Write accumulated event counts
+      m_perf_prd.add("event_count_func", n_func_events_accum_prd);
+      m_perf_prd.add("event_count_comm", n_comm_events_accum_prd);
+      m_perf_prd.add("event_count_counter", n_counter_events_accum_prd);
+
+      //Reset the counts
+      n_func_events_accum_prd = 0;
+      n_comm_events_accum_prd = 0;
+      n_counter_events_accum_prd = 0;
+      n_outliers_accum_prd = 0;
+      n_steps_accum_prd = 0;
 
       //These only write if both filename and output path is set
       m_perf_prd.write();

@@ -3,7 +3,7 @@
 #ifdef _PERF_METRIC
 #include <chrono>
 #include <sstream>
-#include <unordered_map>
+#include <map>
 #include "chimbuko/util/RunMetric.hpp"
 #endif
 
@@ -103,7 +103,7 @@ namespace chimbuko{
 #ifdef _PERF_METRIC
     std::string m_outputpath;
     std::string m_filename;
-    std::unordered_map<std::string, std::string> m_data;
+    std::map<std::string, std::string> m_data;
     bool m_first_write; /**< Is this the first write?*/
 #endif
   public:    

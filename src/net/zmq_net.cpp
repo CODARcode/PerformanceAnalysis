@@ -56,7 +56,7 @@ public:
     response.set_msg("", false);
     std::lock_guard<std::mutex> _(m);
     clients--;
-    if(clients < 0) throw std::runtime_error("ZMQNet registered clients < 0! Likely a client did not perform a handshake");
+    if(clients < 0) fatal_error("ZMQNet registered clients < 0! Likely a client did not perform a handshake");
 
     verboseStream << "ZMQNet received disconnect notification, #clients is now " << clients << std::endl;
   };
@@ -77,11 +77,11 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 {
     m_context  = zmq_ctx_new();
     if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
-      throw std::runtime_error("ZMQNet::init couldn't set number of io threads to requested amount");   
+      fatal_error("ZMQNet::init couldn't set number of io threads to requested amount");   
 
     //Check worker_idx = 0 for all payloads
     for(auto const &e : m_payloads)
-      if(e.first != 0) throw std::runtime_error("ZMQNet all payloads must have worker_idx=0");
+      if(e.first != 0) fatal_error("ZMQNet all payloads must have worker_idx=0");
 
     init_thread_pool(nt);
 }
@@ -134,9 +134,9 @@ void doWork(void* context,
 
     timer.start();
     auto kit = payloads.find((MessageKind)msg.kind());
-    if(kit == payloads.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message kind provided. Message: " + strmsg + " (did you add the payload to the server?)");
+    if(kit == payloads.end()) fatal_error("ZMQNet::doWork : No payload associated with the message kind provided. Message: " + strmsg + " (did you add the payload to the server?)");
     auto pit = kit->second.find((MessageType)msg.type());
-    if(pit == kit->second.end()) throw std::runtime_error("ZMQNet::doWork : No payload associated with the message type provided. Mesage: " + strmsg + " (did you add the payload to the server?)");
+    if(pit == kit->second.end()) fatal_error("ZMQNet::doWork : No payload associated with the message type provided. Mesage: " + strmsg + " (did you add the payload to the server?)");
     perf.add(perf_prefix + "message_kind_type_lookup_ms", timer.elapsed_ms());
 
     //Apply the payload
@@ -394,7 +394,7 @@ int ZMQNet::recvAndSend(void* skFrom, void* skTo, int max_msg){
     if(len == -1 && errno == EAGAIN){ //no more messages on queue
       zmq_msg_close(&msg);
       return msg_count;
-    }else if(len == -1) throw std::runtime_error("ZMQNet::recvAndSend error receiving: " + std::string(zmq_strerror(errno)));
+    }else if(len == -1) fatal_error("ZMQNet::recvAndSend error receiving: " + std::string(zmq_strerror(errno)));
     int more;
     zmq_getsockopt(skFrom, ZMQ_RCVMORE, &more, &more_size); //check whether message is part of a multi-part message
 
@@ -429,6 +429,9 @@ int ZMQNet::send(void* socket, const std::string& strmsg)
     memcpy(zmq_msg_data(&msg), (const void*)strmsg.data(), strmsg.size());
     ret = zmq_msg_send(&msg, socket, 0);
     zmq_msg_close(&msg);
+
+    if(ret == -1) fatal_error("Send failed with error: " + std::string(zmq_strerror(errno)) );
+
     return ret;
 }
 
@@ -440,6 +443,9 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     ret = zmq_msg_recv(&msg, socket, 0);    
     if(ret != -1) strmsg.assign((char*)zmq_msg_data(&msg), ret);
     zmq_msg_close(&msg);
+
+    if(ret == -1) fatal_error("Receive failed with error: " + std::string(zmq_strerror(errno)) );
+
     return ret;
 }
 #endif

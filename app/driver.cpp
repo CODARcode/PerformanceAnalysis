@@ -101,7 +101,7 @@ void printHelp(){
   std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n" 
 	    << "Where <Trace engine type> : BPFile or SST\n"
 	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
-	    << "      <Trace file prefix> : The prefix of the file eg \"tau-metrics-[mybinary]\"\n"
+	    << "      <Trace file prefix> : The prefix of the file (the trace file name without extension e.g. \"tau-metrics-mybinary\" for \"tau-metrics-mybinary.bp\")\n"
 	    << "      <Options>           : Optional arguments as described below.\n";
   getOptionalArgsParser().help(std::cout);
 }
@@ -201,6 +201,8 @@ int main(int argc, char ** argv){
   verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
 
+  bool error = false;
+
   try 
     {
       //Instantiate Chimbuko
@@ -276,23 +278,20 @@ int main(int argc, char ** argv){
 				  << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
 				  << std::endl;
     }
-  catch (std::invalid_argument &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument:" << std::endl;
-      std::cout << e.what() << std::endl;
-    }
-  catch (std::ios_base::failure &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught\n";
-      std::cout << e.what() << std::endl;
-    }
-  catch (std::exception &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught\n";
-      std::cout << e.what() << std::endl;
-    }
+  catch (const std::invalid_argument &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument: " << e.what() << std::endl;
+    error = true;
+  }
+  catch (const std::ios_base::failure &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught: " << e.what() << std::endl;
+    error = true;
+  }
+  catch (const std::exception &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught: " << e.what() << std::endl;
+    error = true;
+  }
 
   MPI_Finalize();
   headProgressStream(params.rank) << "Driver is exiting" << std::endl;
-  return 0;
+  return error ? 1 : 0;
 }

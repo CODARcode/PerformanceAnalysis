@@ -84,10 +84,10 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     msg.clear();
 
     verboseStream << "ADNetClient waiting for handshake response from server" << std::endl;
-    int ret = ZMQNet::recv(m_socket, strmsg);
-    if(ret == -1){
-      if(errno == EAGAIN){ recoverable_error("Connect error to parameter server: handshake timed out"); }
-      else{ recoverable_error("Connect error to parameter server: receive returned an error"); }
+    try{
+      ZMQNet::recv(m_socket, strmsg);
+    }catch(const std::exception &err){
+      recoverable_error("Connect error to parameter server, ADNetClient failed to initialize");
       return;
     }
 
@@ -166,8 +166,7 @@ std::string ADNetClient::send_and_receive(const Message &msg){
   ZMQNet::send(m_socket, send_msg);
   
   //Receive global parameters from PS
-  int ret = ZMQNet::recv(m_socket, recv_msg);   
-  if(ret == -1) throw std::runtime_error("ADNetClient::send_and_receive: receive call returned an error");
+  ZMQNet::recv(m_socket, recv_msg);   
 #endif
 
 #ifdef _PERF_METRIC
