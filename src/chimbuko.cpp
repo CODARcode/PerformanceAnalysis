@@ -367,7 +367,11 @@ void Chimbuko::extractCounters(int rank, int step){
 	       EventDataType::COUNT,
 	       c,
 	       eventID(rank, step, c));    
-    m_counter->addCounter(ev);
+    try{
+      m_counter->addCounter(ev);
+    }catch(const std::exception &e){
+      recoverable_error(std::string("extractCounters failed to register counter event :\"") + ev.get_json().dump() + "\"");
+    }
   }
   m_perf.add("ad_extract_counters_get_register_ms", timer.elapsed_ms());
 } 

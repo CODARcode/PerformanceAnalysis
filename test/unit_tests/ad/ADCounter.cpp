@@ -61,4 +61,15 @@ TEST(ADCounterTest, CounterAddedCorrectly){
   EXPECT_EQ(idctrs.size(), 1);
   EXPECT_EQ(*idctrs.begin(), clist.begin());
 
+  //Try adding a counter event not in the counter list and ensure it throws an error
+  Event_t ev2 = createCounterEvent_t(pid, rid, tid, 101, value, ts);
+  bool caught_error = false;
+  try{
+    counters.addCounter(ev2);
+  }catch(const std::exception &e){
+    std::cout << "Caught expected exception: " << e.what() << std::endl;
+    caught_error = true;
+  }
+  EXPECT_TRUE(caught_error);
+
 }
