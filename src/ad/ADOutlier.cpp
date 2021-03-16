@@ -310,7 +310,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //probability of runtime counts
   std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
-  std::cout << "Count and its Probability:" << std::endl;
+  std::cout << "Count and its Probability for func_id: " << std::to_string(func_id) << std::endl;
   for(int i=0; i < param[func_id].counts().size(); i++){
     int count = param[func_id].counts().at(i);
     double p = count / tot_runtimes;
