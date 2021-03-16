@@ -351,7 +351,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //   param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
   //   //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
   // }
-  
+
   std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;
   // For each datapoint get its corresponding bin index
   //std::vector<int> bin_inds = ADOutlierHBOS::np_digitize(param[func_id].runtimes, param[func_id].bin_edges);
@@ -421,7 +421,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       //Compare the ad_score with the threshold
 
-      if (ad_score > l_threshold) {
+      if (ad_score >= l_threshold) {
         //if(++top_out <= 3){
           itt->set_label(-1);
           verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
