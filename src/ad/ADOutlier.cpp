@@ -23,10 +23,10 @@ ADOutlier::~ADOutlier() {
 
 ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm) {
 
-  if (algorithm == 'sstd' || algorithm == 'SSTD') {
+  if (!algorithm.compare('sstd') || !algorithm.compare('SSTD')) {
     return new ADOutlierSSTD(stat);
   }
-  else if (algorithm == 'hbos' || algorithm == 'HBOS') {
+  else if (!algorithm.compare('hbos') || !algorithm.compare('HBOS')) {
     return new ADOutlierHBOS(stat);
   }
   else {
