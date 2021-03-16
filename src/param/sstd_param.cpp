@@ -352,7 +352,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  {
     Histogram combined = combine_two_histograms(*this, h); //*this + h
     *this = combined;
-    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()))
+    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
