@@ -22,11 +22,11 @@ ADOutlier::~ADOutlier() {
 }
 
 ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm) {
-  std::string hbos = 'hbos', sstd = 'sstd';
-  if (algorithm.compare(sstd) == 0) {
+
+  if (algorithm == "sstd" || algorithm == "SSTD") {
     return new ADOutlierSSTD(stat);
   }
-  else if (algorithm.compare(hbos) == 0) {
+  else if (algorithm == "hbos" || algorithm == "HBOS") {
     return new ADOutlierHBOS(stat);
   }
   else {
