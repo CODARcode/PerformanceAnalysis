@@ -227,7 +227,7 @@ namespace chimbuko {
     void set_bin_edges(const std::vector<double>& be) {m_histogram.bin_edges = be;}
     void add2counts(int& count) {m_histogram.counts.push_back(count);}
     void add2counts(int& id, int& count) {m_histogram.counts[id] += count;}
-    void add2binedges(double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
+    void add2binedges(const double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
     const double& get_threshold() const {return m_histogram.glob_threshold;}
     const std::vector<int>& counts() const {return m_histogram.counts;}
