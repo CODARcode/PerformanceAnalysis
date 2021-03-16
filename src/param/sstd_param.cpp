@@ -282,7 +282,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  Histogram Histogram::combine_two_histograms(const Histogram& g, const Histogram& l) //Histogram Histogram::operator+(const Histogram g, const Histogram l)
  {
    Histogram combined;
-   double min_runtime = DBL_MAX, max_runtime = 0;
+   double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
    std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
    if (g.bin_edges().size() <= 1) { //== 0) {
