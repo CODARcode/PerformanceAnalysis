@@ -9,11 +9,11 @@ ParamInterface::ParamInterface()
 }
 
 ParamInterface *ParamInterface::set_AdParam(const std::string & ad_algorithm) {
-  const std::string hbos = 'hbos', sstd = 'sstd';
-  if (ad_algorithm.compare(hbos) == 0) {
+  std::string hbos = 'hbos', sstd = 'sstd';
+  if (ad_algorithm == hbos) {
     return new HbosParam();
   }
-  else if (ad_algorithm.compare(sstd) == 0) {
+  else if (ad_algorithm == sstd) {
     return new SstdParam();
   }
   else {
