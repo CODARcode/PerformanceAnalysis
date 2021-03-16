@@ -109,7 +109,7 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  ParamInterface * param = ParamInterface::set_AdParam("sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
+  ParamInterface * param = ParamInterface::set_AdParam("hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
   if (param == nullptr) {
     verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
     exit(EXIT_FAILURE);
