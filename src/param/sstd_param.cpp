@@ -296,16 +296,16 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      //unwrap both histograms into values
      std::vector<double> runtimes;
      std::cout << "Global and Local Histogram are non-empty" << std::endl;
-
+     std::cout << "Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl; 
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
-         std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
+         //std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
          runtimes.push_back(g.bin_edges().at(i));
        }
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
        for(int j = 0; j < l.counts().at(i); j++){
-         std::cout << "Local Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(l.bin_edges().at(i)) << std::endl;
+         //std::cout << "Local Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(l.bin_edges().at(i)) << std::endl;
          runtimes.push_back(l.bin_edges().at(i));
        }
      }
