@@ -296,7 +296,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      //unwrap both histograms into values
      std::vector<double> runtimes;
      std::cout << "Global and Local Histogram are non-empty" << std::endl;
-     std::cout << "Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl; 
+     std::cout << "Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
          //std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
@@ -352,6 +352,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
  {
     Histogram combined = combine_two_histograms(*this, h); //*this + h
     *this = combined;
+    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()))
     return *this;
  }
 
