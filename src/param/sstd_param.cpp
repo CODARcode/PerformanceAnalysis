@@ -299,11 +299,13 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
+         std::cout << "Global Histogram bin_edge at " << str(i) << ": " << str(g.bin_edges().at(i)) << std::endl;
          runtimes.push_back(g.bin_edges().at(i));
        }
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
        for(int j = 0; j < l.counts().at(i); j++){
+         std::cout << "Local Histogram bin_edge at " << str(i) << ": " << str(l.bin_edges().at(i)) << std::endl;
          runtimes.push_back(l.bin_edges().at(i));
        }
      }
