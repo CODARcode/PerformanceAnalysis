@@ -326,7 +326,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
 
      combined.add2binedges(min_runtime); //runtimes.at(0));
-
+     std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
      double prev = min_runtime; //runtimes.at(0); // combined.bin_edges().at(0);
      while(prev < max_runtime) { //runtimes.at(h)){
        const double b = bin_width + prev;
@@ -353,7 +353,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
       combined.set_glob_threshold(g.get_threshold());
 
      const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
-     combined.set_hist_data(d_tmp);
+     //combined.set_hist_data(d_tmp);
 
      return combined;
    }
@@ -379,7 +379,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    }
    var = var / vals.size();
 
-   return (3.5 * sqrt(var) ) / pow(vals.size(), 1/3);
+   return ((3.5 * sqrt(var) ) / pow(vals.size(), 1/3));
  }
 
  void Histogram::set_hist_data(const Histogram::Data& d)
