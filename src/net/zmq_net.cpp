@@ -440,6 +440,7 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     ret = zmq_msg_recv(&msg, socket, 0);
     if(ret != -1) strmsg.assign((char*)zmq_msg_data(&msg), ret);
     zmq_msg_close(&msg);
+    if(ret == -1) fatal_error("Receive failed with error: " + std::string(zmq_strerror(errno)) );
     return ret;
 }
 #endif
