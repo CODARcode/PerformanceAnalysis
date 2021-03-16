@@ -9,7 +9,7 @@ namespace chimbuko {
    */
   struct ChimbukoParams{
     //Parameters associated with obtaining trace data from the instrumented binary
-    std::string trace_engineType; /**< The ADIOS2 communications mode. If "SST" it will receive trace data in real-time, if "BPfile" it will parse an existing trace dump*/ 
+    std::string trace_engineType; /**< The ADIOS2 communications mode. If "SST" it will receive trace data in real-time, if "BPfile" it will parse an existing trace dump*/
     std::string trace_data_dir; /**< Directory containing input file.*/
     std::string trace_inputFile; /**< The input file. Assuming the environment variable TAU_FILENAME is set, the binary name is BINARY_NAME and the MPI rank is WORLD_RANK, the file format is
 			      < inputFile = "${TAU_FILENAME}-${BINARY_NAME}-${WORLD_RANK}.bp"
@@ -22,9 +22,9 @@ namespace chimbuko {
 
 
     //Parameters associated with communicating with the parameter server*/
-    std::string pserver_addr; /**< The address of the parameter server. 
+    std::string pserver_addr; /**< The address of the parameter server.
 				 < If no parameter server is in use, this string should be empty (length zero)
-				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}" 
+				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}"
 			      */
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
@@ -44,7 +44,7 @@ namespace chimbuko {
 
     //General parameters for Chimbuko
     int program_idx; /**< Program index (for workflows with >1 component) */
-    int rank; /**< The rank index of the trace data*/ 
+    int rank; /**< The rank index of the trace data*/
     bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
@@ -102,7 +102,7 @@ namespace chimbuko {
     /**
      * @brief Return the provenance DB client
      */
-    ADProvenanceDBclient & getProvenanceDBclient(){ return *m_provdb_client; }    
+    ADProvenanceDBclient & getProvenanceDBclient(){ return *m_provdb_client; }
 #endif
 
     /**
@@ -114,7 +114,7 @@ namespace chimbuko {
      * @brief Whether the AD is connected through ADIOS2 to the trace input
      */
     bool get_status() const { return m_parser->getStatus(); }
-    
+
     /**
      * @brief Get the current IO step
      */
@@ -128,7 +128,7 @@ namespace chimbuko {
      * @param[out] n_outlier number of anomalous events recorded
      * @param[out] frames number of adios2 input steps
      */
-    void run(unsigned long long& n_func_events, 
+    void run(unsigned long long& n_func_events,
 	     unsigned long long& n_comm_events,
 	     unsigned long long& n_counter_events,
 	     unsigned long& n_outliers,
@@ -158,8 +158,8 @@ namespace chimbuko {
      * @param[out] number of counter events parsed
      * @return false if unsuccessful, true otherwise
      */
-    bool parseInputStep(int &step, 
-			unsigned long long& n_func_events, 
+    bool parseInputStep(int &step,
+			unsigned long long& n_func_events,
 			unsigned long long& n_comm_events,
 			unsigned long long& n_counter_event);
 
@@ -173,7 +173,7 @@ namespace chimbuko {
     void extractEvents(unsigned long &first_event_ts,
 		       unsigned long &last_event_ts,
 		       int step);
-    
+
     /**
      * @brief Extract parsed counters and insert into counter manager
      * @param rank The MPI rank of the process
@@ -190,17 +190,17 @@ namespace chimbuko {
 				  const unsigned long first_event_ts,
 				  const unsigned long last_event_ts) const;
 
-    
+
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB
      */
     void sendNewMetadataToProvDB(int step) const;
-    
+
     //Components and parameters
     ADParser * m_parser;       /**< adios2 input data stream parser */
     ADEvent * m_event;         /**< func/comm event manager */
     ADCounter * m_counter;     /**< counter event manager */
-    ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
+    ADOutlier * m_outlier; //ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
     ADNetClient * m_net_client; /**< client for comms with parameter server */
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
@@ -208,10 +208,10 @@ namespace chimbuko {
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif
     ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
-    
+
     mutable PerfStats m_perf; /**< Performance data */
     mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */
-    
+
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/
   };

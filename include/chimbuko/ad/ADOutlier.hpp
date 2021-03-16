@@ -33,6 +33,9 @@ namespace chimbuko {
      */
     virtual ~ADOutlier();
 
+
+    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm );
+
     /**
      * @brief check if the parameter server is in use
      *

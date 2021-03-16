@@ -186,7 +186,11 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = new ADOutlierSSTD(stat);
+  m_outlier = ADOutlier::set_algorithm(stat, "sstd"); //new ADOutlierSSTD(stat);
+	if (m_outlier == nullptr) {
+		verboseStream << "INCORRECT Algorithm: Not Found" << std::endl;
+		break;
+	}
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
@@ -482,7 +486,7 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
   }
 }
 
-void Chimbuko::run(unsigned long long& n_func_events, 
+void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,

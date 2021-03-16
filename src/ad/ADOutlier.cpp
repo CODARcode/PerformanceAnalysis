@@ -21,6 +21,19 @@ ADOutlier::~ADOutlier() {
     }
 }
 
+ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm) {
+
+  if (algorithm == 'sstd' || algorithm == 'SSTD') {
+    return new ADOutlierSSTD(stat);
+  }
+  else if (algorithm == 'hbos' || algorithm == 'HBOS') {
+    return new ADOutlierHBOS(stat);
+  }
+  else {
+    return nullptr;
+  }
+}
+
 void ADOutlier::linkNetworkClient(ADNetClient *client){
   m_net_client = client;
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
