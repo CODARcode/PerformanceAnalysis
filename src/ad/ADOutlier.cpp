@@ -343,7 +343,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
-  double l_threshold = min_score + (0.99 * (max_score - min_score));
+  double l_threshold = min_score + (0.995 * (max_score - min_score));
 
   // if(l_threshold < param[func_id].get_threshold()) {
   //   l_threshold = param[func_id].get_threshold();
@@ -415,7 +415,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
         //int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
         //std::cout << "bin_index = " << bin_ind << std::endl;
-        ad_score = out_scores_i.at( bin_ind );
+        ad_score = out_scores_i.at( bin_ind - 1);
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
 
