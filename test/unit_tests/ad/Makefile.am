@@ -54,3 +54,6 @@ ADglobalFunctionIndexMap_LDADD = $(LDADD)
 
 ADNormalEventProvenance_SOURCES = ADNormalEventProvenance.cpp ../unit_test_main.cpp
 ADNormalEventProvenance_LDADD = $(LDADD)
+
+utils_SOURCES = utils.cpp ../unit_test_main.cpp
+utils_LDADD = $(LDADD)

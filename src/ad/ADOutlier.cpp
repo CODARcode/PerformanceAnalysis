@@ -53,7 +53,7 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(6.0) { //m_sigma(6.0)
+ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(6.0) {
     m_param = new SstdParam();
 }
 
@@ -113,7 +113,6 @@ Anomalies ADOutlierSSTD::run(int step) {
 	if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
 	  param[func_id].push( this->getStatisticValue(*itt) );
 	}
-
       }
     }
   }
@@ -165,8 +164,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
-  std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
-	outliers.insert(itt, Anomalies::EventType::Outlier, sstd_stats); //insert into data structure containing captured anomalies
+	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
       }else{
 	//Capture maximum of one normal execution per io step
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){

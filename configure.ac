@@ -93,6 +93,8 @@ if test "x$with_adios2" != "x"; then
    else
 	   AC_MSG_NOTICE([Detected ADIOS 2.6+])
    fi
+else
+	AC_MSG_FAILURE(["ADIOS2 install path must be specified with --with-adios2"])
 fi
 
 #Choose network
@@ -140,6 +142,14 @@ fi
 #AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[PS_FLAGS+=" -D_PERF_METRIC"],[])
 
+
+#Check for boost
+AC_ARG_WITH([boost], AS_HELP_STRING([--with-boost], [Specify Boost install directory]),[],[])
+if test "x$with_boost" != "x"; then
+   CPPFLAGS+=" -I$with_boost/include"
+   LIBS+=" -L$with_boost/lib"
+fi
+AC_CHECK_HEADERS([boost/math/distributions/normal.hpp], [],    [AC_MSG_ERROR(Boost library is required)])
 
 
 AC_CONFIG_HEADERS([chimbuko_config.h])

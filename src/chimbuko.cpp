@@ -324,9 +324,9 @@ bool Chimbuko::parseInputStep(int &step,
   m_parser->endStep();
 
   // count total number of events
-  n_func_events += (unsigned long long)m_parser->getNumFuncData();
-  n_comm_events += (unsigned long long)m_parser->getNumCommData();
-  n_counter_events += (unsigned long long)m_parser->getNumCounterData();
+  n_func_events = (unsigned long long)m_parser->getNumFuncData();
+  n_comm_events = (unsigned long long)m_parser->getNumCommData();
+  n_counter_events = (unsigned long long)m_parser->getNumCounterData();
 
   //Parse the new metadata for any attributes we want to maintain
   m_metadata_parser->addData(m_parser->getNewMetaData());
@@ -370,8 +370,12 @@ void Chimbuko::extractCounters(int rank, int step){
     Event_t ev(m_parser->getCounterData(c),
 	       EventDataType::COUNT,
 	       c,
-	       generate_event_id(rank, step, c));
-    m_counter->addCounter(ev);
+	       eventID(rank, step, c));
+    try{
+      m_counter->addCounter(ev);
+    }catch(const std::exception &e){
+      recoverable_error(std::string("extractCounters failed to register counter event :\"") + ev.get_json().dump() + "\"");
+    }
   }
   m_perf.add("ad_extract_counters_get_register_ms", timer.elapsed_ms());
 }
@@ -381,56 +385,22 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
 					const unsigned long last_event_ts) const{
-  constexpr bool do_delete = true;
-  constexpr bool add_outstanding = true;
-
   //Gather provenance data on anomalies and send to provenance database
   if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB
      || m_provdb_client->isConnected()
 #endif
      ){
-    PerfTimer timer,timer2;
-
-    //Put new normal event provenance into m_normalevent_prov
-    timer.start();
-    for(auto norm_it : anomalies.allEvents(Anomalies::EventType::Normal)){
-      timer2.start();
-      ADAnomalyProvenance extract_prov(*norm_it, *m_event, *m_outlier->get_global_parameters(),
-				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
-				       step, first_event_ts, last_event_ts);
-      m_normalevent_prov->addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
-      m_perf.add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
-    }
-    m_perf.add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
-
-    //Get any outstanding normal events from previous timesteps that we couldn't previously provide
-    timer.start();
-    std::vector<nlohmann::json> normalevent_prov = m_normalevent_prov->getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
-    m_perf.add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
-
-    //Gather provenance of anomalies and for each one try to obtain a normal execution
-    timer.start();
-    std::vector<nlohmann::json> anomaly_prov(anomalies.nEvents(Anomalies::EventType::Outlier));
-    size_t i=0;
-    for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
-      timer2.start();
-      ADAnomalyProvenance extract_prov(*anom_it, *m_event, *m_outlier->get_global_parameters(),
-				       *m_counter, *m_metadata_parser, m_params.anom_win_size,
-				       step, first_event_ts, last_event_ts);
-      anomaly_prov[i++] = extract_prov.get_json();
-      m_perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
-
-      //Get the associated normal event
-      //if normal event not available put into the list of outstanding requests
-      //if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
-      timer2.start();
-      auto nev = m_normalevent_prov->getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
-      if(nev.second) normalevent_prov.push_back(std::move(nev.first));
-      m_perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
-    }
+    //Get the provenance data
+    PerfTimer timer;
+    std::vector<nlohmann::json> anomaly_prov, normalevent_prov;
+    ADAnomalyProvenance::getProvenanceEntries(anomaly_prov, normalevent_prov, *m_normalevent_prov, m_perf,
+					      anomalies, step, first_event_ts, last_event_ts, m_params.anom_win_size,
+					      *m_outlier->get_global_parameters(), *m_event, *m_counter, *m_metadata_parser);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
+
+    //Write and send provenance dataX
     if(anomaly_prov.size() > 0){
       timer.start();
       m_io->writeJSON(anomaly_prov, step, "anomalies");
@@ -496,10 +466,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
   int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
   unsigned long first_event_ts, last_event_ts; //earliest and latest timestamps in io frame
 
-  std::string ad_perf = "ad_perf_" + std::to_string(m_params.rank) + ".json";
+  std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
 
-  std::string ad_perf_prd = "ad_perf_prd_" + std::to_string(m_params.rank) + ".log";
+  std::string ad_perf_prd = stringize("ad_perf_prd.%d.%d.log", m_params.program_idx, m_params.rank);
   m_perf_prd.setWriteLocation(m_params.perf_outputpath, ad_perf_prd);
 
 #if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
@@ -510,12 +480,27 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   PerfTimer step_timer, timer;
 
+  unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
+  unsigned long long n_func_events_accum_prd = 0, n_comm_events_accum_prd = 0, n_counter_events_accum_prd = 0; //accumulated event counts since last write of periodic data
+  unsigned long n_outliers_accum_prd = 0; //accumulated outliers detected since last write of periodic data
+  int n_steps_accum_prd = 0; //number of steps since last write of periodic data
+
   //Loop until we lose connection with the application
-  while ( parseInputStep(step, n_func_events, n_comm_events, n_counter_events) ) {
+  while ( parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step) ) {
+    //Increment total events
+    n_func_events += n_func_events_step;
+    n_comm_events += n_comm_events_step;
+    n_counter_events += n_counter_events_step;
+
+    n_func_events_accum_prd += n_func_events_step;
+    n_comm_events_accum_prd += n_comm_events_step;
+    n_counter_events_accum_prd += n_counter_events_step;
+
     //Decide whether to report step progress
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step << std::endl; }
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step
+							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -532,9 +517,13 @@ void Chimbuko::run(unsigned long long& n_func_events,
     timer.start();
     Anomalies anomalies = m_outlier->run(step);
     m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
+    m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
 
-    n_outliers += anomalies.nEvents(Anomalies::EventType::Outlier);
+    int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    n_outliers += nout;
+    n_outliers_accum_prd += nout;
     frames++;
+    n_steps_accum_prd++;
 
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
@@ -580,6 +569,23 @@ void Chimbuko::run(unsigned long long& n_func_events,
       size_t total, resident;
       getMemUsage(total, resident);
       m_perf_prd.add("ad_mem_usage_kB", resident);
+
+      m_perf_prd.add("io_steps", n_steps_accum_prd);
+
+      //Write accumulated outlier count
+      m_perf_prd.add("outlier_count", n_outliers_accum_prd);
+
+      //Write accumulated event counts
+      m_perf_prd.add("event_count_func", n_func_events_accum_prd);
+      m_perf_prd.add("event_count_comm", n_comm_events_accum_prd);
+      m_perf_prd.add("event_count_counter", n_counter_events_accum_prd);
+
+      //Reset the counts
+      n_func_events_accum_prd = 0;
+      n_comm_events_accum_prd = 0;
+      n_counter_events_accum_prd = 0;
+      n_outliers_accum_prd = 0;
+      n_steps_accum_prd = 0;
 
       //These only write if both filename and output path is set
       m_perf_prd.write();

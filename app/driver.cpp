@@ -74,9 +74,9 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
     addOptionalCommandLineArg(p, prov_outputpath, "Output provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 #ifdef ENABLE_PROVDB
-    addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
-    addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");    
-#endif    
+    addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
+    addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+#endif
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
     addOptionalCommandLineArg(p, perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
@@ -98,10 +98,10 @@ optionalArgsParser & getOptionalArgsParser(){
 };
 
 void printHelp(){
-  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n" 
+  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n"
 	    << "Where <Trace engine type> : BPFile or SST\n"
 	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
-	    << "      <Trace file prefix> : The prefix of the file eg \"tau-metrics-[mybinary]\"\n"
+	    << "      <Trace file prefix> : The prefix of the file (the trace file name without extension e.g. \"tau-metrics-mybinary\" for \"tau-metrics-mybinary.bp\")\n"
 	    << "      <Options>           : Optional arguments as described below.\n";
   getOptionalArgsParser().help(std::cout);
 }
@@ -116,7 +116,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
   // -----------------------------------------------------------------------
   ChimbukoParams params;
-      
+
   //Parameters for the connection to the instrumented binary trace output
   params.trace_engineType = argv[1]; // BPFile or SST
   params.trace_data_dir = argv[2]; // *.bp location
@@ -141,7 +141,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   params.rank = -1234; //assign an invalid value as default for use below
   params.outlier_statistic = "exclusive_runtime";
   params.step_report_freq = 1;
-  
+
   getOptionalArgsParser().parse(params, argc-4, (const char**)(argv+4));
 
   //By default assign the rank index of the trace data as the MPI rank of the AD process
@@ -158,7 +158,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
   if(params.override_rank)
     params.trace_inputFile = bp_prefix + "-" + std::to_string(overrideRankArg::input_data_rank()) + ".bp";
-  
+
   //If neither the provenance database or the provenance output path are set, default to outputting to pwd
   if(params.prov_outputpath.size() == 0
 #ifdef ENABLE_PROVDB
@@ -170,8 +170,8 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
 
   return params;
 }
-  
- 
+
+
 
 
 int main(int argc, char ** argv){
@@ -179,12 +179,12 @@ int main(int argc, char ** argv){
     printHelp();
     return 0;
   }
-      
+
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
   int mpi_world_rank, mpi_world_size;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);    
+  MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);
 
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE"))
@@ -201,7 +201,9 @@ int main(int argc, char ** argv){
   verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
 
-  try 
+  bool error = false;
+
+  try
     {
       //Instantiate Chimbuko
       Chimbuko driver(params);
@@ -213,24 +215,24 @@ int main(int argc, char ** argv){
       unsigned long total_n_outliers = 0, n_outliers = 0;
       unsigned long total_processing_time = 0, processing_time = 0;
       unsigned long long n_func_events = 0, n_comm_events = 0, n_counter_events = 0;
-      unsigned long long total_n_func_events = 0, total_n_comm_events = 0, total_n_counter_events = 0; 
+      unsigned long long total_n_func_events = 0, total_n_comm_events = 0, total_n_counter_events = 0;
       high_resolution_clock::time_point t1, t2;
 
       // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
-      headProgressStream(params.rank) << "Driver rank " << params.rank 
-				  << ": analysis start " << (driver.use_ps() ? "with": "without") 
+      headProgressStream(params.rank) << "Driver rank " << params.rank
+				  << ": analysis start " << (driver.use_ps() ? "with": "without")
 				  << " pserver" << std::endl;
 
       t1 = high_resolution_clock::now();
-      driver.run(n_func_events, 
+      driver.run(n_func_events,
 		 n_comm_events,
 		 n_counter_events,
 		 n_outliers,
 		 frames);
       t2 = high_resolution_clock::now();
-        
+
       if (params.rank == 0) {
 	headProgressStream(params.rank) << "Driver rank " << params.rank << ": analysis done!\n";
 	driver.show_status(true);
@@ -265,7 +267,7 @@ int main(int argc, char ** argv){
 	total_n_comm_events = global_measures[1];
 	total_n_counter_events = global_measures[2];
       }
-        
+
       headProgressStream(params.rank) << "Driver rank " << params.rank << ": Final report\n"
 				  << "Avg. num. frames over MPI ranks : " << (double)total_frames/(double)mpi_world_size << "\n"
 				  << "Avg. processing time over MPI ranks : " << (double)total_processing_time/(double)mpi_world_size << " msec\n"
@@ -276,23 +278,20 @@ int main(int argc, char ** argv){
 				  << "Total function/comm events         : " << total_n_func_events + total_n_comm_events
 				  << std::endl;
     }
-  catch (std::invalid_argument &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument:" << std::endl;
-      std::cout << e.what() << std::endl;
-    }
-  catch (std::ios_base::failure &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught\n";
-      std::cout << e.what() << std::endl;
-    }
-  catch (std::exception &e)
-    {
-      std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught\n";
-      std::cout << e.what() << std::endl;
-    }
+  catch (const std::invalid_argument &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument: " << e.what() << std::endl;
+    error = true;
+  }
+  catch (const std::ios_base::failure &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught: " << e.what() << std::endl;
+    error = true;
+  }
+  catch (const std::exception &e){
+    std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught: " << e.what() << std::endl;
+    error = true;
+  }
 
   MPI_Finalize();
   headProgressStream(params.rank) << "Driver is exiting" << std::endl;
-  return 0;
+  return error ? 1 : 0;
 }

@@ -52,14 +52,14 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
   }
 
   // open file
-  // for sst engine, is the adios2 internally blocked here until *.sst file is found?  
+  // for sst engine, is the adios2 internally blocked here until *.sst file is found?
   verboseStream << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl;
   m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
 
   verboseStream << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
 
-    
+
   m_opened = true;
   m_status = true;
 }
@@ -102,8 +102,8 @@ void ADParser::update_attributes() {
   m_new_metadata.clear(); //clear all previously seen metadata
 
   //Delay inserting function idx/name pairs so we can do a batch lookup of the global function index
-  std::vector<std::pair<int, std::string> > func_idx_name_pairs; 
-  
+  std::vector<std::pair<int, std::string> > func_idx_name_pairs;
+
   for (const auto attributePair: attributes){
     if(enableVerboseLogging()){
       std::stringstream ss;
@@ -122,7 +122,7 @@ void ADParser::update_attributes() {
     else if(name.find("event_type") != std::string::npos) attrib_type = Event;
     else if(name.find("counter") != std::string::npos) attrib_type = Counter;
     else if(name.find("MetaData") != std::string::npos) attrib_type = Metadata;
-      
+
     //Parse metadata attributes
     if(attrib_type == Metadata){
       if(!m_metadata_seen.count(name) ){
@@ -136,11 +136,11 @@ void ADParser::update_attributes() {
 	  size_t idx;
 	  while ( (idx = value.find("\"")) != std::string::npos )
 	    value.replace(idx, 1, "");
-	 	  
+
 	  m_new_metadata.push_back(MetaData_t(m_program_idx,rank,tid,descr, value));
-	    
+
 	  verboseStream << "Parsed new metadata " << m_new_metadata.back().get_json().dump() << std::endl;
-	    
+
 	  m_metadata_seen.insert(name);
 	}
       }
@@ -180,9 +180,9 @@ void ADParser::update_attributes() {
 	  func_idx_name_pairs.push_back( {key,value} );
 	}else if(!m->count(key)){ 	//Append to map
 	  (*m)[key] = value;
-	}else{ 
+	}else{
 	  verboseStream << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl;
-	}      	
+	}
       }
 
     }//!= metadata && != unknown
@@ -204,11 +204,11 @@ void ADParser::update_attributes() {
       func_names[i] = func_idx_name_pairs[i].second;
     }
     verboseStream << "ADParser::update_attributes: rank " << m_rank << " global function index lookup of " << n_pairs << " functions" << std::endl;
-    std::vector<unsigned long> glob_idx = m_global_func_idx_map.lookup(loc_idx, func_names);      
-	
+    std::vector<unsigned long> glob_idx = m_global_func_idx_map.lookup(loc_idx, func_names);
+
     for(size_t i=0;i<n_pairs;i++){
       if(!m_funcMap.count(glob_idx[i]))
-	m_funcMap[ glob_idx[i] ] = func_names[i];      
+	m_funcMap[ glob_idx[i] ] = func_names[i];
     }
     if(m_perf != nullptr) m_perf->add("parser_global_func_idx_lookup_ms", timer.elapsed_ms());
     verboseStream << "ADParser::update_attributes: rank " << m_rank << " got global function indices of " << n_pairs << " of functions" << std::endl;
@@ -255,7 +255,7 @@ bool ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
       unsigned long ridi = data[IDX_R];
 
       if(thr_last_ts.count(thr) && ts < thr_last_ts[thr]){
-	std::stringstream ss; 
+	std::stringstream ss;
 	ss << descr_plural << " on thr " << thr << " are out of order! Timestamp " << ts << " < " << thr_last_ts[thr] << std::endl;
 	if(exit_on_fail){ fatal_error(ss.str()); }
 	else{ recoverable_error(ss.str()); }
@@ -285,7 +285,7 @@ ParserError ADParser::fetchFuncData() {
     {
       m_reader.Get<size_t>(in_timer_event_count, &m_timer_event_count, adios2::Mode::Sync);
 
-      nelements = m_timer_event_count * FUNC_EVENT_DIM; 
+      nelements = m_timer_event_count * FUNC_EVENT_DIM;
       //m_event_timestamps.resize(nelements);
       if (nelements > m_event_timestamps.size())
 	m_event_timestamps.resize(nelements);
@@ -317,7 +317,7 @@ ParserError ADParser::fetchFuncData() {
 	  }catch(const std::exception &e){
 	    //Sometimes tau gives us malformed (nonsense) data entries, and this can cause the lookup to fail
 	    //We need to work around that here
-	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
+	    std::pair<Event_t,bool> ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, eventID(), false);
 	    if(!ev.second){
 	      recoverable_error("caught local index lookup error but appears to be associated with malformed event: " + ev.first.get_json().dump());
 	      fidx_p += FUNC_EVENT_DIM;
@@ -337,7 +337,7 @@ ParserError ADParser::fetchFuncData() {
 	      *pidx_p = m_program_idx + 99999999; //give it an invalid program index
 
 	      //Check invalidation worked
-	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, "test event", false);
+	      ev = createAndValidateEvent(m_event_timestamps.data() + i*FUNC_EVENT_DIM, EventDataType::FUNC, i, eventID(), false);
 	      if(ev.second) fatal_error("invalidation check failed!??");
 	      fidx_p += FUNC_EVENT_DIM;
 	      continue;
@@ -351,10 +351,10 @@ ParserError ADParser::fetchFuncData() {
       //Sometimes Tau gives us data that is out of order, we need to fix this
 #define DO_SORT
 #ifdef DO_SORT
-      if(!checkEventOrder(EventDataType::FUNC, false)){	
-	verboseStream << "ADParser rank " << m_rank << " sorting func data" << std::endl;  
+      if(!checkEventOrder(EventDataType::FUNC, false)){
+	verboseStream << "ADParser rank " << m_rank << " sorting func data" << std::endl;
 	PerfTimer timer;
-	
+
 	std::map<unsigned long, std::vector<size_t> > data_sorted_idx; //preserve ordering of events that have the same timestamp
 	unsigned long* data = m_event_timestamps.data();
 	for(size_t i=0;i<m_timer_event_count;i++){
@@ -372,13 +372,13 @@ ParserError ADParser::fetchFuncData() {
 	m_event_timestamps.swap(data_sorted);
 
 	double sort_time_ms = timer.elapsed_ms();
-	verboseStream << "ADParser rank " << m_rank << " finished sorting func data: " << m_timer_event_count << " entries in " << sort_time_ms << "ms" << std::endl;  
+	verboseStream << "ADParser rank " << m_rank << " finished sorting func data: " << m_timer_event_count << " entries in " << sort_time_ms << "ms" << std::endl;
 	if(m_perf){
 	  m_perf->add("parser_sort_funcdata_ms", sort_time_ms);
 	  m_perf->add("parser_sort_funcdata_ndata", m_timer_event_count);
 	}
       }
-#else      
+#else
       checkEventOrder(EventDataType::FUNC, true); //fatal errors
 #endif
 
@@ -467,7 +467,7 @@ ParserError ADParser::fetchCounterData() {
       }
 
       checkEventOrder(EventDataType::COUNT, false);
-      
+
       return ParserError::OK;
     }
   return ParserError::NoCountData;
@@ -486,7 +486,7 @@ const unsigned long* ADParser::getEarliest(const std::vector<const unsigned long
     }
   }
   if(earliest == -1) throw std::runtime_error("Failed to determine earliest entry");
-  return arrays[earliest];  
+  return arrays[earliest];
 }
 
 bool ADParser::validateEvent(const unsigned long* e) const{
@@ -494,7 +494,7 @@ bool ADParser::validateEvent(const unsigned long* e) const{
 }
 
 
-std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, std::string id, bool log_error) const{
+std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * data, EventDataType t, size_t idx, const eventID &id, bool log_error) const{
   // Create event
   Event_t ev(data, t, idx, id);
 
@@ -502,7 +502,7 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   // NOTE: in SST mode with large rank number (>=10), sometimes I got
   // very large number of pid, rid and tid. This issue was also observed in python version.
   // In BP mode, it doesn't have such problem. As temporal solution, we skip those data and
-  // it doesn't cause any problems (e.g. call stack violation). Need to consult with 
+  // it doesn't cause any problems (e.g. call stack violation). Need to consult with
   // adios team later
   bool good = true;
 
@@ -519,29 +519,29 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
 	    event_type = eit->second;
 	}else if(ev.type() == EventDataType::COUNT)
 	  event_type = "N/A";
-      
+
 	if(ev.type() == EventDataType::FUNC){
 	  auto fit = this->getFuncMap()->find(ev.fid());
 	  if(fit != this->getFuncMap()->end())
 	    func_name = fit->second;
 	}else if(ev.type() == EventDataType::COUNT || ev.type() == EventDataType::COMM)
 	  func_name = "N/A";
- 
+
 	std::stringstream ss;
 	ss << "\n***** Invalid event detected *****\n"
-	   << "Invalid event data: " << ev.get_json().dump() << std::endl 
+	   << "Invalid event data: " << ev.get_json().dump() << std::endl
 	   << "Invalid event type: " << event_type << ", function name:" << func_name << std::endl;
 	recoverable_error(ss.str());
       }else recoverable_error("\n***** Invalid event detected *****\nInvalid event data pointer is null");
     }//log_error
-    
+
     good = false;
   }
   return {ev, good};
 }
 
 std::vector<Event_t> ADParser::getEvents() const{
-  PerfTimer get_event_type_timer(false), get_earliest_timer(false), create_insert_timer(false), 
+  PerfTimer get_event_type_timer(false), get_earliest_timer(false), create_insert_timer(false),
     other_timer(false), loop_timer(false), total_timer(true), gen_timer(false);
 
   //During the timestep a number of function and perhaps also comm and counter events occurred
@@ -565,11 +565,11 @@ std::vector<Event_t> ADParser::getEvents() const{
   //Reserve memory for output
   other_timer.unpause();
   std::vector<Event_t> out;
-  out.reserve( getNumFuncData() + getNumCommData() + getNumCounterData() ); 
+  out.reserve( getNumFuncData() + getNumCommData() + getNumCounterData() );
 
   //Maintain latest timestamps to check ordering is correct
-  typedef std::unordered_map<unsigned long, std::unordered_map< unsigned long, std::unordered_map< unsigned long, unsigned long> > > TSmap;
-  TSmap latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts;
+  //Validation ensures all entries have the same pid and rid as those of this AD process
+  std::vector<long> latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts; //vector over threads
   other_timer.pause();
 
 
@@ -591,14 +591,14 @@ std::vector<Event_t> ADParser::getEvents() const{
       }
     }
     get_event_type_timer.pause();
-	
+
     get_earliest_timer.unpause();
     const unsigned long *data;
     //When timestamps are equal we need to decide on a priority for the ordering
     //For entry event, funcData takes highest priority so comm and counter events are included in the function execution
     if(func_event_type == ENTRY){
       data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
-    }else{    
+    }else{
       //Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
       data = getEarliest( {commData, counterData, funcData}, {COMM_IDX_TS, COUNTER_IDX_TS, FUNC_IDX_TS} );
     }
@@ -607,16 +607,20 @@ std::vector<Event_t> ADParser::getEvents() const{
     //Create and insert the event
     create_insert_timer.unpause();
     if(data == funcData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData, 
-							   generate_event_id(m_rank, step, idx_funcData));
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData,
+							   eventID(m_rank, step, idx_funcData));
       if(evp.second){
-	unsigned long* latest_func_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_func_ts);
-	if(latest_func_ts_val != nullptr && evp.first.ts() < *latest_func_ts_val){
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_func_ts.size() < rid+1) latest_func_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+
+	if(latest_func_ts[rid] != -1 && ts < latest_func_ts[rid]){
 	  std::stringstream ss;
-	  ss << "ADParser::getEvents parsed function data is not in time order: Event " << evp.first.get_json().dump() 
+	  ss << "ADParser::getEvents parsed function data is not in time order: Event " << evp.first.get_json().dump()
 	     << " for function \"" << m_funcMap.find(evp.first.fid())->second
-	     << "\" has timestamp " << evp.first.ts() << " < " << *latest_func_ts_val << " of previous func insertion\n";
-	  
+	     << "\" has timestamp " << evp.first.ts() << " < " << latest_func_ts[rid] << " of previous func insertion\n";
+
 	  auto rit = out.rbegin();
 	  while(rit != out.rend()){
 	    if(rit->type() == EventDataType::FUNC){
@@ -626,42 +630,48 @@ std::vector<Event_t> ADParser::getEvents() const{
 	  }
 	  fatal_error(ss.str());
 	}
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [func]");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [func]");
+
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_func_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_func_ts[rid] = ts;
       }
       funcData = this->getFuncData(++idx_funcData);
     }else if(data == commData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData, 
-							   generate_event_id(m_rank, step, idx_commData));
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData,
+							   eventID(m_rank, step, idx_commData));
 
       if(evp.second){
-	unsigned long* latest_comm_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_comm_ts);
-	if(latest_comm_ts_val != nullptr && evp.first.ts() < *latest_comm_ts_val) fatal_error("parsed comm data is not in time order");
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [comm]");
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_comm_ts.size() < rid+1) latest_comm_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+
+	if(latest_comm_ts[rid] != -1 && ts < latest_comm_ts[rid]) fatal_error("parsed comm data is not in time order");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [comm]");
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_comm_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_comm_ts[rid] = ts;
       }
       commData = this->getCommData(++idx_commData);
     }else if(data == counterData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData, 
-							   generate_event_id(m_rank, step, idx_counterData));
+      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData,
+							   eventID(m_rank, step, idx_counterData));
       if(evp.second){
-	unsigned long* latest_count_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_count_ts);
-	if(latest_count_ts_val != nullptr && evp.first.ts() < *latest_count_ts_val) fatal_error("parsed counter data is not in time order");
-	unsigned long* latest_ts_val = getElemPRT(evp.first.pid(), evp.first.rid(), evp.first.tid(), latest_ts);
-	if(latest_ts_val != nullptr && evp.first.ts() < *latest_ts_val) fatal_error("event ordering error! [counter]");
+	unsigned long rid = evp.first.rid();
+	unsigned long ts = evp.first.ts();
+	if(latest_count_ts.size() < rid+1) latest_count_ts.resize(rid+1, -1);
+	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+
+	if(latest_count_ts[rid] != -1 && ts < latest_count_ts[rid]) fatal_error("parsed counter data is not in time order");
+	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [counter]");
 	out.push_back(evp.first);
-	latest_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = latest_count_ts[evp.first.pid()][evp.first.rid()][evp.first.tid()] = evp.first.ts();
+	latest_ts[rid] = latest_count_ts[rid] = ts;
       }
       counterData = this->getCounterData(++idx_counterData);
     }else{
       fatal_error("Unexpected pointer");
     }
     create_insert_timer.pause();
-    
+
   }//while loop over func and comm data
   loop_timer.pause();
 
@@ -704,5 +714,3 @@ void ADParser::addCommData(unsigned long const* d){
   m_comm_timestamps.insert(m_comm_timestamps.end(), d, d+COMM_EVENT_DIM);
   ++m_comm_count;
 }
-
-

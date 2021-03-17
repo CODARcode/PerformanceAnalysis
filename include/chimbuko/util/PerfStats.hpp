@@ -3,7 +3,7 @@
 #ifdef _PERF_METRIC
 #include <chrono>
 #include <sstream>
-#include <unordered_map>
+#include <map>
 #include "chimbuko/util/RunMetric.hpp"
 #endif
 
@@ -29,13 +29,13 @@ namespace chimbuko{
      */
     void start();
 
-    /** 
+    /**
      * @brief Pause the timer
      */
     void pause();
 
-    /** 
-     * @brief Unpause the timer. 
+    /**
+     * @brief Unpause the timer.
      *
      * This is the same as start but it does not zero the accumulated time from previous active periods
      */
@@ -49,9 +49,9 @@ namespace chimbuko{
      * @brief Compute the elapsed time in milliconds since start/unpause plus accumulated time from previoud active periods
      */
     double elapsed_ms() const;
-  };    
+  };
 
-    
+
 
 
   /**
@@ -86,7 +86,7 @@ namespace chimbuko{
      * @brief Write the running statistics to the file. Only writes out if a path and filename have been provided.
      */
     void write() const;
-    
+
     /**
      * @brief Combine the statistics with another
      */
@@ -103,10 +103,10 @@ namespace chimbuko{
 #ifdef _PERF_METRIC
     std::string m_outputpath;
     std::string m_filename;
-    std::unordered_map<std::string, std::string> m_data;
+    std::map<std::string, std::string> m_data;
     bool m_first_write; /**< Is this the first write?*/
 #endif
-  public:    
+  public:
     /**
      * @brief Construct with empty path and filename (no output will be written unless these are set)
      */
@@ -120,7 +120,7 @@ namespace chimbuko{
     template<typename T>
     void add(const std::string &label, const T &value){
 #ifdef _PERF_METRIC
-      std::stringstream ss; ss << value; 
+      std::stringstream ss; ss << value;
       m_data[label] = ss.str();
 #endif
     }

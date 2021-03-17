@@ -8,7 +8,8 @@
 using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose)
-  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose)
+  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose),
+    m_eidx_func_entry(-1), m_eidx_func_exit(-1), m_eidx_comm_send(-1), m_eidx_comm_recv(-1)
 {
 
 }
@@ -33,13 +34,13 @@ EventError ADEvent::addEvent(const Event_t& event) {
 void ADEvent::stackProtectGC(CallListIterator_t it){
   it->can_delete(false);
 
-  std::string parent = it->get_parent();
-  while(parent != "root"){
+  eventID parent = it->get_parent();
+  while(parent != eventID::root()){
     CallListIterator_t pit;
     try{
       pit = getCallData(parent);
     }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
@@ -55,13 +56,13 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
     it->can_delete(true);
   else return; //stop here, the stack will be needed
 
-  std::string parent = it->get_parent();
-  while(parent != "root"){
+  eventID parent = it->get_parent();
+  while(parent != eventID::root()){
     CallListIterator_t pit;
     try{
       pit = getCallData(parent);
     }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent + " in call list due to : " + e.what());
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
@@ -87,8 +88,8 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
       //Does a partner already exist?
       auto m = m_unmatchedCorrelationID.find(cid);
       if(m != m_unmatchedCorrelationID.end()){
-	std::string current_event_id = it->get_id();
-	std::string partner_event_id = m->second->get_id();
+	eventID current_event_id = it->get_id();
+	eventID partner_event_id = m->second->get_id();
 	it->set_GPU_correlationID_partner(partner_event_id);
 	m->second->set_GPU_correlationID_partner(current_event_id);
 
@@ -99,7 +100,7 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	}
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
 
-	verboseStream << "Found partner event " << current_event_id << " to previous unmatched event " << partner_event_id << " with correlation ID " << cid << std::endl;
+	verboseStream << "Found partner event " << current_event_id.toString() << " to previous unmatched event " << partner_event_id.toString() << " with correlation ID " << cid << std::endl;
       }else{
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
 	stackProtectGC(it);
@@ -123,31 +124,49 @@ CallListIterator_t ADEvent::addCall(const ExecData_t &exec){
 
 
 EventError ADEvent::addFunc(const Event_t& event) {
+  //Determine the event type. Use the known event indices if previously determined, otherwise find them
   if (m_eventType == nullptr) {
     std::cerr << "Uninitialized eventType\n";
     return EventError::UnknownEvent;
   }
-
-  std::string eventType;
   int eid = static_cast<int>(event.eid());
-  if (m_eventType->count(eid) == 0) {
-    std::cerr << "Unknown event in eventType: " << eid << std::endl;
-    return EventError::UnknownEvent;
+
+  bool is_entry(false), is_exit(false);
+
+  if(eid == m_eidx_func_entry){
+    is_entry = true;
+  }else if(eid == m_eidx_func_exit){
+    is_exit = true;
+  }else{
+    //Event might be an unknown type *or* the m_eidx* members have not yet been set
+    auto it = m_eventType->find(eid);
+    if(it == m_eventType->end()){ //event index is not in the map??
+      std::cerr << "Unknown event in eventType: " << eid << std::endl;
+      return EventError::UnknownEvent;
+    }
+    if(m_eidx_func_entry == -1 && it->second == "ENTRY"){
+      m_eidx_func_entry = eid;
+      is_entry = true;
+    }else if(m_eidx_func_exit == -1 && it->second == "EXIT"){
+      m_eidx_func_exit = eid;
+      is_exit = true;
+    }
   }
 
+  //Get the iterator to the function name
   if (m_funcMap == nullptr) {
     std::cerr << "Uninitialized function map\n";
     return EventError::UnknownEvent;
   }
+  auto func_name_it = m_funcMap->find(event.fid());
 
-  if (m_funcMap->count(event.fid()) == 0) {
+  if(func_name_it == m_funcMap->end()){
     std::cerr << "Unknown function event\n";
     return EventError::UnknownFunc;
   }
+  const std::string &func_name = func_name_it->second;
 
-  eventType = m_eventType->find(eid)->second;
-
-  if (eventType.compare("ENTRY") == 0){
+  if(is_entry){
     //Create a new ExecData_t object with function entry information and push onto the call list
     CallList_t& cl = m_callList[event.pid()][event.rid()][event.tid()];
 
@@ -159,20 +178,20 @@ EventError ADEvent::addFunc(const Event_t& event) {
       it->set_parent(cs.top()->get_id());
       cs.top()->inc_n_children();
     }
-    it->set_funcname(m_funcMap->find(event.fid())->second);
+    it->set_funcname(func_name);
     cs.push(it);
 
     //Add the new call to the map of call index string
     m_callIDMap[it->get_id()] = it;
 
     return EventError::OK;
-  }else if (eventType.compare("EXIT") == 0){
+  }else if(is_exit){
     CallStack_t& cs = m_callStack[event.pid()][event.rid()][event.tid()];
     if (cs.size() == 0) { //Expect to have at least one entry; that created when the ENTRY was encountered
       std::stringstream ss;
       ss << "\n***** Empty call stack! *****" << std::endl
 	 << "Event information: " << event.get_json().dump() << std::endl
-	 << "Event type: " << m_eventType->find(event.eid())->second << "  Function name: " << m_funcMap->find(event.fid())->second << std::endl;
+	 << "Event type: EXIT  Function name: " << func_name << std::endl;
       recoverable_error(ss.str());
       return EventError::EmptyCallStack;
     }
@@ -183,13 +202,8 @@ EventError ADEvent::addFunc(const Event_t& event) {
       std::stringstream ss;
       ss << "\n***** Invalid EXIT event! *****" << std::endl
 	 << "Event information: " << event.get_json().dump() << std::endl
-	 << "Event type: " << m_eventType->find(event.eid())->second << "  Function name: " << m_funcMap->find(event.fid())->second << std::endl;
+	 << "Event type: EXIT  Function name: " << func_name << std::endl;
       recoverable_error(ss.str());
-
-      // while (!cs.empty()) {
-      //     std::cerr << *cs.top() << std::endl;
-      //     cs.pop();
-      // }
       return EventError::CallStackViolation;
     }
     //Remove the object from the stack (it still lives in the CallList)
@@ -236,7 +250,6 @@ EventError ADEvent::addFunc(const Event_t& event) {
     }
 
     //Add the now complete event to the map
-    //verboseStream << "Event fid(): " << event.fid() << std::endl;
     m_execDataMap[event.fid()].push_back(it);
 
     //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
@@ -250,22 +263,41 @@ EventError ADEvent::addFunc(const Event_t& event) {
 }
 
 EventError ADEvent::addComm(const Event_t& event) {
-  if (m_eventType == nullptr)
+  if (m_eventType == nullptr) {
+    std::cerr << "Uninitialized eventType\n";
     return EventError::UnknownEvent;
-
-  int eid = static_cast<int>(event.eid());
-  if (m_eventType->count(eid) == 0)
-    return EventError::UnknownEvent;
-
-  std::string eventType = m_eventType->find(eid)->second;
-
-  if (eventType.compare("SEND") == 0 || eventType.compare("RECV") == 0) {
-    CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
-    cs.push(CommData_t(event, eventType));
   }
-  else return EventError::UnknownEvent;
+  int eid = static_cast<int>(event.eid());
 
-  return EventError::OK;
+  bool is_send(false), is_recv(false);
+
+  if(eid == m_eidx_comm_send){
+    is_send = true;
+  }else if(eid == m_eidx_comm_recv){
+    is_recv = true;
+  }else{
+    //Event might be an unknown type *or* the m_eidx* members have not yet been set
+    auto it = m_eventType->find(eid);
+    if(it == m_eventType->end()){ //event index is not in the map??
+      std::cerr << "Unknown event in eventType: " << eid << std::endl;
+      return EventError::UnknownEvent;
+    }
+    if(m_eidx_comm_send == -1 && it->second == "SEND"){
+      m_eidx_comm_send = eid;
+      is_send = true;
+    }else if(m_eidx_comm_recv == -1 && it->second == "RECV"){
+      m_eidx_comm_recv = eid;
+      is_recv = true;
+    }
+  }
+
+  if (is_send || is_recv) {
+    CommStack_t& cs = m_commStack[event.pid()][event.rid()][event.tid()];
+    cs.push(CommData_t(event, is_send ? "SEND" : "RECV"));
+    return EventError::OK;
+  }
+
+  return EventError::UnknownEvent;
 }
 
 EventError ADEvent::addCounter(const Event_t& event){
@@ -279,7 +311,7 @@ EventError ADEvent::addCounter(const Event_t& event){
   if (it == m_counterMap->end())
     return EventError::UnknownEvent;
 
-  std::string counterName = it->second;
+  const std::string &counterName = it->second;
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
 
@@ -373,13 +405,13 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 
 
 
-CallListIterator_t ADEvent::getCallData(const std::string &event_id) const{
+CallListIterator_t ADEvent::getCallData(const eventID &event_id) const{
   auto it = m_callIDMap.find(event_id);
-  if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id + " not present in map");
+  if(it == m_callIDMap.end()) throw std::runtime_error("Call " + event_id.toString() + " not present in map");
   else return it->second;
 }
 
-std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd(const std::string &event_id, const int win_size) const{
+std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd(const eventID &event_id, const int win_size) const{
   CallListIterator_t it = getCallData(event_id);
   CallList_t* cl = getElemPRT(it->get_pid(), it->get_rid(), it->get_tid(), const_cast<CallListMap_p_t&>(m_callList)); //need non-const iterator
   if(cl == nullptr)  throw std::runtime_error("ADEvent::getCallWindowStartEnd event has unknown pid/rid/tid");

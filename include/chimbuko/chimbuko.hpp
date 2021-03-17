@@ -128,7 +128,7 @@ namespace chimbuko {
      * @param[out] n_outlier number of anomalous events recorded
      * @param[out] frames number of adios2 input steps
      */
-    void run(unsigned long long& n_func_events,
+    void run(unsigned long long& n_func_events, 
 	     unsigned long long& n_comm_events,
 	     unsigned long long& n_counter_events,
 	     unsigned long& n_outliers,
