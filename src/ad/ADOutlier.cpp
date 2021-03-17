@@ -345,12 +345,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
   double l_threshold = min_score + (0.995 * (max_score - min_score));
 
-  // if(l_threshold < param[func_id].get_threshold()) {
-  //   l_threshold = param[func_id].get_threshold();
-  // } else {
-  //   param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
-  //   //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
-  // }
+  if(l_threshold < param[func_id].get_threshold()) {
+    l_threshold = param[func_id].get_threshold();
+  } else {
+    param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
+    //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+  }
 
   std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;
   // For each datapoint get its corresponding bin index
