@@ -296,17 +296,19 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
      combined.set_bin_edges(g.bin_edges());
    }
    else {
-     //unwrap both histograms into values
-     std::vector<double> runtimes;
-     std::cout << "Global and Local Histogram are non-empty" << std::endl;
 
+     //unwrap both histograms into values
+     const int required_merge_size = std::accumulate(g.counts().begin(),g.counts().end(),0) + std::accumulate(l.counts().begin(),l.counts().end(),0)
+     std::vector<double> runtimes = std::vector<double>(required_merge_size, 0.0);
+     std::cout << "Global and Local Histogram are non-empty" << std::endl;
+     int runtimes_index = 0;
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
          //std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
          const double t_bin_edge = g.bin_edges().at(i);
          if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
          if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
-         runtimes.push_back(t_bin_edge);
+         runtimes.at(runtimes_index++) += t_bin_edge; //.push_back(t_bin_edge);
        }
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
@@ -315,7 +317,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
          const double t_bin_edge = l.bin_edges().at(i);
          if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
          if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
-         runtimes.push_back(t_bin_edge);
+         runtimes.at(runtimes_index++) += t_bin_edge; //push_back(t_bin_edge);
        }
      }
 
