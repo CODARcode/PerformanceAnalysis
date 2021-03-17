@@ -5,6 +5,7 @@
 #include <cereal/access.hpp>
 #include <cereal/types/vector.hpp>
 #include <limits>
+#include <cmath>
 
 using namespace chimbuko;
 
@@ -298,30 +299,31 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    else {
 
      //unwrap both histograms into values
-     const int required_merge_size = std::accumulate(g.counts().begin(),g.counts().end(),0) + std::accumulate(l.counts().begin(),l.counts().end(),0);
-     std::vector<double> runtimes = std::vector<double>(required_merge_size, 0.0);
-     std::cout << "Global and Local Histogram are non-empty" << std::endl;
-     int runtimes_index = 0;
-     for (int i = 0; i < g.bin_edges().size() - 1; i++) {
-       for(int j = 0; j < g.counts().at(i); j++){
-         //std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
-         const double t_bin_edge = g.bin_edges().at(i);
-         if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
-         if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
-         runtimes.at(runtimes_index++) += t_bin_edge; //.push_back(t_bin_edge);
-       }
-     }
-     for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-       for(int j = 0; j < l.counts().at(i); j++){
-         //std::cout << "Local Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(l.bin_edges().at(i)) << std::endl;
-         const double t_bin_edge = l.bin_edges().at(i);
-         if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
-         if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
-         runtimes.at(runtimes_index++) += t_bin_edge; //push_back(t_bin_edge);
-       }
-     }
+     // const int required_merge_size = std::accumulate(g.counts().begin(),g.counts().end(),0) + std::accumulate(l.counts().begin(),l.counts().end(),0);
+     // std::vector<double> runtimes = std::vector<double>(required_merge_size, 0.0);
+     // std::cout << "Global and Local Histogram are non-empty" << std::endl;
+     // int runtimes_index = 0;
+     // for (int i = 0; i < g.bin_edges().size() - 1; i++) {
+     //   for(int j = 0; j < g.counts().at(i); j++){
+     //     //std::cout << "Global Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(g.bin_edges().at(i)) << std::endl;
+     //     const double t_bin_edge = g.bin_edges().at(i);
+     //     if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
+     //     if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
+     //     runtimes.at(runtimes_index++) += t_bin_edge; //.push_back(t_bin_edge);
+     //   }
+     // }
+     // for (int i = 0; i < l.bin_edges().size() - 1; i++) {
+     //   for(int j = 0; j < l.counts().at(i); j++){
+     //     //std::cout << "Local Histogram bin_edge at " << std::to_string(i) << ": " << std::to_string(l.bin_edges().at(i)) << std::endl;
+     //     const double t_bin_edge = l.bin_edges().at(i);
+     //     if (t_bin_edge < min_runtime) {min_runtime = t_bin_edge;}
+     //     if (t_bin_edge > max_runtime) {max_runtime = t_bin_edge;}
+     //     runtimes.at(runtimes_index++) += t_bin_edge; //push_back(t_bin_edge);
+     //   }
+     // }
 
-     const double bin_width = Histogram::_scott_binWidth(runtimes);
+     // const double bin_width = Histogram::_scott_binWidth(runtimes);
+     const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
      std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
      //std::sort(runtimes.begin(), runtimes.end());
      //const int h = runtimes.size() - 1;
@@ -393,13 +395,35 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
     return *this;
  }
 
+ double Histogram::_scott_binWidth(std::vector<int> & global_counts, std::vector<double> & global_edges, std::vector<int> & local_counts, std::vector<double> & local_edges){
+   double sum = 0.0;
+   const double size = (double) (std::accumulate(global_counts.begin(), global_counts.end(), 0) + std::accumulate(local_counts.begin(), local_counts.end(), 0));
+   for (int i=0;i<global_counts.size();i++){
+     sum += global_counts.at(i) * global_edges.at(i);
+   }
+   for (int i=0;i<local_counts.size();i++){
+     sum += local_counts.at(i) * local_edges.at(i);
+   }
+
+   const double mean = sum / size;
+   double var = 0.0;
+   for (int i=0;i<global_counts.size();i++){
+     var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
+   }
+   for (int i=0;i<local_counts.size();i++){
+     var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
+   }
+   var = var / size;
+   return ((3.5 * sqrt(var) ) / pow(size, 1/3));
+ }
+
  double Histogram::_scott_binWidth(std::vector<double> & vals){
    //Find bin width as per Scott's rule = 3.5*std*n^-1/3
 
    double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
 
    double mean = sum / vals.size();
-   double var;
+   double var = 0.0;
    for(int i=0; i<vals.size(); i++){
      var += pow(vals.at(i) - mean, 2);
    }
