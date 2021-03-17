@@ -298,7 +298,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
    else {
 
      //unwrap both histograms into values
-     const int required_merge_size = std::accumulate(g.counts().begin(),g.counts().end(),0) + std::accumulate(l.counts().begin(),l.counts().end(),0)
+     const int required_merge_size = std::accumulate(g.counts().begin(),g.counts().end(),0) + std::accumulate(l.counts().begin(),l.counts().end(),0);
      std::vector<double> runtimes = std::vector<double>(required_merge_size, 0.0);
      std::cout << "Global and Local Histogram are non-empty" << std::endl;
      int runtimes_index = 0;
