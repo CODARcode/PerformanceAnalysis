@@ -395,7 +395,7 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
     return *this;
  }
 
- double Histogram::_scott_binWidth(std::vector<int> & global_counts, std::vector<double> & global_edges, std::vector<int> & local_counts, std::vector<double> & local_edges){
+ double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
    const double size = (double) (std::accumulate(global_counts.begin(), global_counts.end(), 0) + std::accumulate(local_counts.begin(), local_counts.end(), 0));
    for (int i=0;i<global_counts.size();i++){
