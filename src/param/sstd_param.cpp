@@ -339,18 +339,39 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
        //prev += bin_width;
      }
      std::cout << "]" << std::endl;
+
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
      std::vector<int> count = std::vector<int>(combined.bin_edges().size()-1, 0);
      combined.set_counts(count);
-     for ( int i=0; i < runtimes.size(); i++) {
-       for ( int j=1; j < combined.bin_edges().size(); j++) {
-         if ( runtimes.at(i) < combined.bin_edges().at(j) ) {
-           int id = j-1, inc = 1;
+     for (int i = 0; i < g.bin_edges().size() -1; i++) {
+       for(int j = 1; j < combined.bin_edges().size(); j++) {
+         if(g.bin_edges().at(i) < combined.bin_edges().at(j)) {
+           int id = j-1, inc = g.counts().at(i);
            combined.add2counts(id, inc);
            break;
          }
        }
      }
+     for (int i = 0; i < l.bin_edges().size() -1; i++) {
+       for(int j = 1; j < combined.bin_edges().size(); j++) {
+         if(l.bin_edges().at(i) < combined.bin_edges().at(j)) {
+           int id = j-1, inc = l.counts().at(i);
+           combined.add2counts(id, inc);
+           break;
+         }
+       }
+     }
+
+
+     // for ( int i=0; i < runtimes.size(); i++) {
+     //   for ( int j=1; j < combined.bin_edges().size(); j++) {
+     //     if ( runtimes.at(i) < combined.bin_edges().at(j) ) {
+     //       int id = j-1, inc = 1;
+     //       combined.add2counts(id, inc);
+     //       break;
+     //     }
+     //   }
+     // }
      //verboseStream << "Size of counts: " << combined.data.counts.size() << std::endl;
      if(l.get_threshold() > g.get_threshold())
       combined.set_glob_threshold(l.get_threshold());
