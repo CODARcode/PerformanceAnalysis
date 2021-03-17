@@ -329,13 +329,16 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
      combined.add2binedges(min_runtime); //runtimes.at(0));
      std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
+     std::cout << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
      double prev = min_runtime; //runtimes.at(0); // combined.bin_edges().at(0);
      while(prev < max_runtime) { //runtimes.at(h)){
        const double b = bin_width + prev;
+       std::cout << std::to_string(b) << ", ";
        combined.add2binedges(b);
        prev = b;
        //prev += bin_width;
      }
+     std::cout << "]" << std::endl;
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
      std::vector<int> count = std::vector<int>(combined.bin_edges().size()-1, 0);
      combined.set_counts(count);
