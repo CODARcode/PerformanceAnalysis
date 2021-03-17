@@ -321,8 +321,8 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
 
      const double bin_width = Histogram::_scott_binWidth(runtimes);
      std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
-     std::sort(runtimes.begin(), runtimes.end());
-     const int h = runtimes.size() - 1;
+     //std::sort(runtimes.begin(), runtimes.end());
+     //const int h = runtimes.size() - 1;
 
 
      combined.add2binedges(min_runtime); //runtimes.at(0));
