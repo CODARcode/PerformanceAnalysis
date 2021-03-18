@@ -1,5 +1,6 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
 #include <mpi.h>
