@@ -74,9 +74,9 @@ namespace chimbuko {
       return histdata;
     }
 
-    void create_histogram(std::vector<double>& runtimes);
+    void create_histogram(const std::vector<double>& r_times);
 
-    void merge_histograms(Histogram& g, const std::vector<double>& runtimes);
+    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
@@ -92,8 +92,8 @@ namespace chimbuko {
     void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
     void set_counts(const std::vector<int>& c) { m_histogram.counts = c; }
     void set_bin_edges(const std::vector<double>& be) {m_histogram.bin_edges = be;}
-    void add2counts(int& count) {m_histogram.counts.push_back(count);}
-    void add2counts(int& id, int& count) {m_histogram.counts[id] += count;}
+    void add2counts(const int& count) {m_histogram.counts.push_back(count);}
+    void add2counts(const int& id, const int& count) {m_histogram.counts[id] += count;}
     void add2binedges(const double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
     const double& get_threshold() const {return m_histogram.glob_threshold;}

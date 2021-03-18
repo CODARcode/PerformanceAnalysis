@@ -264,9 +264,9 @@ using namespace chimbuko;
   // m_histogram.runtimes.push_back(x);
  //}
 
- void Histogram::create_histogram(std::vector<double>& runtimes)
+ void Histogram::create_histogram(const std::vector<double>& r_times)
  {
-
+   std::vector<double> runtimes = r_times;
    const double bin_width = Histogram::_scott_binWidth(runtimes);
    std::sort(runtimes.begin(), runtimes.end());
    const int h = runtimes.size() - 1;
@@ -303,7 +303,7 @@ using namespace chimbuko;
 
  }
 
- void Histogram::merge_histograms(Histogram& g, const std::vector<double>& runtimes)
+ void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
    //Histogram merged_h;
    std::vector<double> r_times = runtimes;
