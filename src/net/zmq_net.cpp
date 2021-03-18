@@ -63,10 +63,33 @@ public:
 };
 
 
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1)
+/**
+ * @brief Allow the client to request the pserver stop
+ */
+class NetPayloadClientRemoteStop: public NetPayloadBase{
+public:
+  bool &register_stop_cmd;
+  std::mutex &m;
+  NetPayloadClientRemoteStop(bool &register_stop_cmd, std::mutex &m): register_stop_cmd(register_stop_cmd), m(m){}
+  
+  MessageKind kind() const{ return MessageKind::CMD; }
+  MessageType type() const{ return MessageType::REQ_QUIT; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg("", false);
+    std::lock_guard<std::mutex> _(m);
+    register_stop_cmd = true;
+    verboseStream << "ZMQNet received remote stop command" << std::endl;
+  };
+};
+
+
+
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1), m_remote_stop_cmd(false)
 {
   add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
   add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
+  add_payload(new NetPayloadClientRemoteStop(m_remote_stop_cmd, m_mutex));
 }
 
 ZMQNet::~ZMQNet()
@@ -235,7 +258,7 @@ void ZMQNet::run()
   Clock::time_point t_end;
 #endif
     
-  
+  m_remote_stop_cmd = false;
   m_status = Status::Running;
   Status stop_status; //record why it stops
 
@@ -247,11 +270,12 @@ void ZMQNet::run()
   m_n_requests = 0;
   while(true){
 
-    //Autoshutdown
-    if(m_autoshutdown && m_client_has_connected && m_clients == 0){
+    //Autoshutdown or action of remote stop
+    //Note: the server will only finish if all the clients have disconnected
+    if( (m_autoshutdown || m_remote_stop_cmd) && m_client_has_connected && m_clients == 0){
       if(m_n_requests == 0){
 	verboseStream << "ZMQnet all clients have disconnected and queue cleared" << std::endl;
-	stop_status = Status::StoppedAutomatically;
+	stop_status = m_remote_stop_cmd ? Status::StoppedByRequest : Status::StoppedAutomatically;
 	break;
       }else{
 	verboseStream << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl;	  
