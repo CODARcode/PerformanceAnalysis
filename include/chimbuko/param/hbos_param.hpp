@@ -80,7 +80,7 @@ namespace chimbuko {
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    static const Histogram & combine_two_histograms(const Histogram& a, const Histogram& b);
+    const Histogram & combine_two_histograms(const Histogram& a, const Histogram& b);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
