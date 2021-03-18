@@ -51,8 +51,6 @@ namespace chimbuko {
 
     };
 
-    //friend class cereal::access;
-
 
     void clear();
 
@@ -73,14 +71,18 @@ namespace chimbuko {
       histdata.set_hist_data(d);
       return histdata;
     }
-
+    /**
+     * @brief Create new histogram locally for AD module's batch data instances
+     */
     void create_histogram(const std::vector<double>& r_times);
 
+
     void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
+
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    const Histogram combine_two_histograms(const Histogram& a, const Histogram& b);
+    const Histogram combine_two_histograms(const Histogram& g, const Histogram& l);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
@@ -88,16 +90,49 @@ namespace chimbuko {
     Histogram & operator+=(const Histogram& rs);
 
 
-
+    /**
+     * @brief setd global threshold for anomaly filtering
+     */
     void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
+
+    /*
+     * @brief set bin counts in Histogram
+     */
     void set_counts(const std::vector<int>& c) { m_histogram.counts = c; }
+
+    /*
+     * @brief set bin edges in Histogram
+     */
     void set_bin_edges(const std::vector<double>& be) {m_histogram.bin_edges = be;}
+
+    /*
+     * @brief Update counts in Histogram
+     */
     void add2counts(const int& count) {m_histogram.counts.push_back(count);}
+
+    /*
+     * @brief Update counts for a given index of bin in histogram
+     */
     void add2counts(const int& id, const int& count) {m_histogram.counts[id] += count;}
+
+    /*
+     * @brief Update bin edges in histogram
+     */
     void add2binedges(const double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
+    /*
+     * @brief get global threshold from global histogram
+     */
     const double& get_threshold() const {return m_histogram.glob_threshold;}
+
+    /*
+     * @brief Get bin counts of Histogram
+     */
     const std::vector<int>& counts() const {return m_histogram.counts;}
+
+    /*
+     * @brief Get bin edges of histogram
+     */
     const std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
 
     /**
@@ -107,7 +142,20 @@ namespace chimbuko {
 
   private:
     Data m_histogram;
+
+    /*
+     * @brief Compute bin width based on Scott's rule
+     * @param vals: vector of runtimes
+     */
     static double _scott_binWidth(const std::vector<double> & vals);
+
+    /*
+     * @brief Compute bin width based on Scott's rule
+     * @param global_counts: bin counts in global histogram on pserver
+     * @param global_edges: bin edges in global histogram on pserver
+     * @param local_counts: bin counts in local histogram in AD module
+     * @param local_edges: bin edges in local histogram in AD module 
+     */
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
   };
@@ -137,13 +185,13 @@ namespace chimbuko {
     size_t size() const override { return m_hbosstats.size(); }
 
     /**
-     * @brief Convert internal run statistics to string format for IO
-     * @return Run statistics in string format
+     * @brief Convert internal Histogram to string format for IO
+     * @return Histogram in string format
      */
     std::string serialize() const override;
 
     /**
-     * @brief Update the internal run statistics with those included in the serialized input map
+     * @brief Update the internal Histogram with those included in the serialized input map
      * @param parameters The parameters in serialized format
      * @param return_update Controls return format
      * @return An empty string if return_update==False, otherwise the serialized updated parameters

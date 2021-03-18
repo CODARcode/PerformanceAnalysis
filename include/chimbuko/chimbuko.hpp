@@ -16,7 +16,7 @@ namespace chimbuko {
 			      < Do not include the .sst file extensions for SST mode*/
     int trace_connect_timeout; /**< Timeout (in seconds) of ADIOS2 SST connection to trace data*/
 
-
+    std::string ad_algorithm;
     //Parameters associated with the outlier detection algorithm
     double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
 
