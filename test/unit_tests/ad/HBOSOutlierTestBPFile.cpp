@@ -4,6 +4,7 @@
 #include "chimbuko/util/commandLineParser.hpp"
 #include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/param/sstd_param.hpp>
+#include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
 #include <nlohmann/json.hpp>
 #include "gtest/gtest.h"
