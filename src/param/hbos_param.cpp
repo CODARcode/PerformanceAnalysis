@@ -211,7 +211,7 @@ using namespace chimbuko;
  {
     const Histogram combined = combine_two_histograms(*this, h);
     *this = combined;
-    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
