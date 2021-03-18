@@ -143,8 +143,8 @@ using namespace chimbuko;
  const Histogram Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
-   std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
-   std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
+   // std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
+   // std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
    if (g.bin_edges().size() <= 1) { //== 0) {
      combined.set_glob_threshold(l.get_threshold());
      combined.set_counts(l.counts());
@@ -315,7 +315,7 @@ using namespace chimbuko;
    }
 
    m_histogram.glob_threshold = g.get_threshold();
-   std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
+   // std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
    this->create_histogram(r_times);
    //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 

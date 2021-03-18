@@ -190,8 +190,9 @@ void Chimbuko::init_outlier(){
 
   m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
 	if (m_outlier == nullptr) {
-		verboseStream << "INCORRECT Algorithm: Not Found" << std::endl;
-		exit(EXIT_FAILURE); //break;
+		fatal_error("INCORRECT Algorithm: Not Found");
+		// verboseStream << "INCORRECT Algorithm: Not Found" << std::endl;
+		// exit(EXIT_FAILURE); //break;
 	}
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   //m_outlier->set_sigma(m_params.outlier_sigma);

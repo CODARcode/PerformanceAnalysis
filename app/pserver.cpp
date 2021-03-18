@@ -113,8 +113,9 @@ int main (int argc, char ** argv){
 
   ParamInterface * param = ParamInterface::set_AdParam(args.ad); //"hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
   if (param == nullptr) {
-    verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
-    exit(EXIT_FAILURE);
+    fatal_error("INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos.");
+    // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
+    // exit(EXIT_FAILURE);
   }
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics

@@ -311,19 +311,19 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //probability of runtime counts
   std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
-  std::cout << "Count and its Probability for func_id: " << std::to_string(func_id) << std::endl;
+  //std::cout << "Count and its Probability for func_id: " << std::to_string(func_id) << std::endl;
   for(int i=0; i < param[func_id].counts().size(); i++){
     int count = param[func_id].counts().at(i);
     double p = count / tot_runtimes;
     prob_counts.at(i) += p;
-    std::cout << "Count: " << count << ", Probability: " << prob_counts.at(i) << std::endl;
+    //std::cout << "Count: " << count << ", Probability: " << prob_counts.at(i) << std::endl;
   }
 
   //Create HBOS score vector
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
-  std::cout<< "out_scores_i: " << std::endl;
+  //std::cout<< "out_scores_i: " << std::endl;
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
@@ -337,13 +337,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
     }
   }
-  std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
-  std::cout << "min_score = " << min_score << std::endl;
-  std::cout << "max_score = " << max_score << std::endl;
+  // std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
+  // std::cout << "min_score = " << min_score << std::endl;
+  // std::cout << "max_score = " << max_score << std::endl;
   if (out_scores_i.size() == 0) return 0;
 
   //compute threshold
-  std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
+  //std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
   double l_threshold = min_score + (0.995 * (max_score - min_score));
 
   if(l_threshold < param[func_id].get_threshold()) {
@@ -353,7 +353,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
   }
 
-  std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;
+  //std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;
   // For each datapoint get its corresponding bin index
   //std::vector<int> bin_inds = ADOutlierHBOS::np_digitize(param[func_id].runtimes, param[func_id].bin_edges);
   //if (bin_inds.size() < param[func_id].runtimes.size()) {
@@ -365,8 +365,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //std::vector<double> ad_scores(tot_runtimes, 0.0);
   const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
   const int num_bins = param[func_id].counts().size();
-  std::cout << "Bin width: " << bin_width << std::endl;
-  std::cout << "Bin edges: " << std::endl;
+  // std::cout << "Bin width: " << bin_width << std::endl;
+  // std::cout << "Bin edges: " << std::endl;
   for (int i=0; i< param[func_id].bin_edges().size(); i++){
     std::cout << param[func_id].bin_edges().at(i) << std::endl;
   }
