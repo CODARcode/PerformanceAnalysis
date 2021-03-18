@@ -140,7 +140,7 @@ using namespace chimbuko;
  Histogram::Histogram(){}
  Histogram::~Histogram(){}
 
- Histogram & Histogram::combine_two_histograms const(const Histogram& g, const Histogram& l) {
+ Histogram & Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) const{
    Histogram combined;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
