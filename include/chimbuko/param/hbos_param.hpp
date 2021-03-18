@@ -107,9 +107,9 @@ namespace chimbuko {
 
   private:
     Data m_histogram;
-    double _scott_binWidth(const std::vector<double> & vals);
-    double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
-    
+    static double _scott_binWidth(const std::vector<double> & vals);
+    static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
+
   };
 
   /**
