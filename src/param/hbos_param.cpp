@@ -203,7 +203,7 @@ using namespace chimbuko;
 
      //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
 
-     return &combined;
+     return combined;
    }
  }
 
