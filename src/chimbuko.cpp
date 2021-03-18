@@ -15,7 +15,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  trace_connect_timeout(60),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
-					ad_algorithm("hbos")
+					ad_algorithm("hbos"),
 #ifdef ENABLE_PROVDB
 				  provdb_addr(""), nprovdb_shards(1),
 #endif
