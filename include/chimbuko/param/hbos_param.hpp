@@ -87,8 +87,7 @@ namespace chimbuko {
      */
     Histogram & operator+=(const Histogram& rs);
 
-    double _scott_binWidth(const std::vector<double> & vals);
-    double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
+
 
     void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
     void set_counts(const std::vector<int>& c) { m_histogram.counts = c; }
@@ -108,6 +107,9 @@ namespace chimbuko {
 
   private:
     Data m_histogram;
+    double _scott_binWidth(const std::vector<double> & vals);
+    double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
+    
   };
 
   /**

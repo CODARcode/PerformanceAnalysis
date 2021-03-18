@@ -137,12 +137,9 @@ using namespace chimbuko;
   /**
    * @brief Merge Histogram
    */
-   Histogram::Histogram(){
+ Histogram::Histogram(){}
+ Histogram::~Histogram(){}
 
-   }
-   Histogram::~Histogram(){
-
-   }
  Histogram& Histogram::combine_two_histograms(const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
