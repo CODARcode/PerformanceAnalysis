@@ -32,7 +32,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
-  std::normal_distribution<double> dist(500.,10.);
+  std::normal_distribution<double> dist(50.,10.);
   int N = 50;
 
   {
@@ -48,7 +48,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 1000 : double(dist(gen));
+      double val = i==N-1 ? 500 : double(dist(gen));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 1: " << val << std::endl;
