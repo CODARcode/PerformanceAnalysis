@@ -7,7 +7,7 @@ using namespace chimbuko;
 int main(int argc, char** argv){
 #ifdef _USE_ZMQNET
   if(argc != 2){
-    std::cout << "Usage: pserver_shutdown <server address e.g. tcp://localhost:5559>" << std::endl;
+    std::cout << "Usage: pshutdown <server address e.g. tcp://localhost:5559>" << std::endl;
     return 1;
   }
   ADNetClient ad;
