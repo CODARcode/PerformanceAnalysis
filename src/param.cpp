@@ -1,5 +1,6 @@
 #include "chimbuko/param.hpp"
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/param/hbos_param.hpp"
 #include <chrono>
 
 using namespace chimbuko;

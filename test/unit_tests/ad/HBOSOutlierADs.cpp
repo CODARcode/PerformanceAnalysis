@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/param/sstd_param.hpp>
+#include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
@@ -31,7 +32,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
-  std::normal_distribution<double> dist(500.,10.);
+  std::normal_distribution<double> dist(50.,10.);
   int N = 50;
 
   {
@@ -223,7 +224,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
   //EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
-  EXPECT_EQ(nout, 1);
+  EXPECT_EQ(nout, 0);
   EXPECT_EQ(nout2, 1);
 #else
 #error "Requires compiling with MPI or ZMQ net"

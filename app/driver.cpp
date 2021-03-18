@@ -60,12 +60,13 @@ struct setLoggingHeadRankArg: public optionalCommandLineArgBase<ChimbukoParams>{
   }
 };
 
-  
+
 
 optionalArgsParser & getOptionalArgsParser(){
   static bool initialized = false;
   static optionalArgsParser p;
   if(!initialized){
+    addOptionalCommandLineArg(p, ad_algorithm, "Set an AD algorithm to use: hbos or sstd.");
     addOptionalCommandLineArg(p, program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
     addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
@@ -123,7 +124,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
   //The remainder are optional arguments. Enable using the appropriate command line switch
-
+  params.ad_algorithm = "hbos";
   params.pserver_addr = "";  //don't use pserver by default
   params.hpserver_nthr = 1;
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter

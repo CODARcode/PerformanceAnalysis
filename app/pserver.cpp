@@ -40,6 +40,7 @@ struct pserverArgs{
   int stat_send_freq;
 
   std::string stat_outputdir;
+  std::string ad;
 
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
@@ -51,7 +52,7 @@ struct pserverArgs{
   std::string provdb_addr;
 #endif
 
-  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
+  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
@@ -64,6 +65,7 @@ struct pserverArgs{
     static bool init = false;
     static commandLineParser<pserverArgs> p;
     if(!init){
+      addOptionalCommandLineArg(p, ad, "Set AD algorithm to use.");
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, port, "Set the pserver port (default: 5559)");
@@ -109,10 +111,11 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  ParamInterface * param = ParamInterface::set_AdParam("hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
+  ParamInterface * param = ParamInterface::set_AdParam(args.ad); //"hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
   if (param == nullptr) {
-    verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
-    exit(EXIT_FAILURE);
+    fatal_error("INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos.");
+    // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
+    // exit(EXIT_FAILURE);
   }
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics

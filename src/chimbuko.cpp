@@ -15,6 +15,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  trace_connect_timeout(60),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
+					ad_algorithm("hbos"),
 #ifdef ENABLE_PROVDB
 				  provdb_addr(""), nprovdb_shards(1),
 #endif
@@ -28,7 +29,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 
 
 void ChimbukoParams::print() const{
-  std::cout << "Program Idx: " << program_idx
+  std::cout << "AD Algorithm: " << ad_algorithm
+	    << "Program Idx: " << program_idx
 	    << "\nRank       : " << rank
 	    << "\nEngine     : " << trace_engineType
 	    << "\nBP in dir  : " << trace_data_dir
@@ -186,10 +188,11 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(stat, "hbos"); //sstd"); //new ADOutlierSSTD(stat);
+  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
 	if (m_outlier == nullptr) {
-		verboseStream << "INCORRECT Algorithm: Not Found" << std::endl;
-		exit(EXIT_FAILURE); //break;
+		fatal_error("INCORRECT Algorithm: Not Found");
+		// verboseStream << "INCORRECT Algorithm: Not Found" << std::endl;
+		// exit(EXIT_FAILURE); //break;
 	}
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   //m_outlier->set_sigma(m_params.outlier_sigma);
