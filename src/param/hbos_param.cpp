@@ -157,7 +157,7 @@ using namespace chimbuko;
    }
    else {
 
-     const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
+     const double bin_width = _scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
      //std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
 
      combined.add2binedges(min_runtime);
