@@ -1,0 +1,84 @@
+FROM nvidia/cuda:10.1-devel-ubuntu18.04
+
+RUN mkdir -p /Downloads
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+                        autoconf gfortran pkg-config \
+                        python-cheetah python-yaml \
+                        python3 python3-dev python3-pip python3-tk \
+                        libzmq5 libzmq3-dev \
+                        bzip2 libbz2-dev zlib1g zlib1g-dev \ 
+                        curl libcurl4-openssl-dev libgtest-dev zip unzip \
+                        libopenblas-base libopenblas-dev libnuma-dev \
+			openssl libssl-dev && \
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/* 
+
+WORKDIR /Downloads
+
+RUN git clone https://github.com/openucx/ucx.git ucx && \
+    cd ucx && \
+    git checkout v1.6.0 && \
+    ./autogen.sh && \
+    ./configure --with-mlx5-dv --with-cuda=/usr/local/cuda --enable-mt \
+        --disable-cma --with-ugni=no --with-xpmem=no && \
+    make -j$(nproc) && \
+    make install -j$(nproc) && \
+    cd .. && rm -rf ucx
+
+#Install openmpi4.0.4
+RUN cd /tmp/ && \
+    wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.4.tar.gz && \
+    tar -xvzf openmpi-4.0.4.tar.gz &&  cd openmpi-4.0.4 && \
+    ./configure --prefix=/opt/openmpi4.0.4 && \
+    make -j 16 install && rm -rf /tmp/openmpi4.0.4
+ENV PATH=/opt/openmpi4.0.4/bin/:${PATH}
+ENV LD_LIBRARY_PATH=/opt/openmpi4.0.4/lib/:${LD_LIBRARY_PATH}
+
+#Get openmpi paths for all shells
+RUN mv /etc/bash.bashrc tmprc && \
+    echo 'export PATH=/opt/openmpi4.0.4/bin/:${PATH}' >> /etc/bash.bashrc && \
+    echo 'export LD_LIBRARY_PATH=/opt/openmpi4.0.4/lib/:${LD_LIBRARY_PATH}' >> /etc/bash.bashrc && \
+    cat tmprc >> /etc/bash.bashrc && rm tmprc
+
+#Python requirements
+RUN pip3 install numpy mpi4py flask
+COPY requirements.txt /
+RUN cd / && pip3 install -r requirements.txt 
+
+#Cmake
+WORKDIR /Downloads
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz && \
+    tar xvfz cmake-3.17.0-Linux-x86_64.tar.gz -C /opt && \
+    rm cmake-3.17.0-Linux-x86_64.tar.gz
+
+ENV PATH=${PATH}:/opt/cmake-3.17.0-Linux-x86_64/bin
+
+RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp *.a /usr/lib
+
+#Libfabric
+WORKDIR /Downloads
+RUN wget https://github.com/ofiwg/libfabric/releases/download/v1.9.0/libfabric-1.9.0.tar.bz2 && \
+    tar xf libfabric-1.9.0.tar.bz2 && \
+    cd /Downloads/libfabric-1.9.0 && \
+    ./configure --disable-verbs --disable-mlx --prefix=/opt/libfabric && \
+    make && make install && \
+    rm -rf /Downloads/libfabric*
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+
+#Cereal
+WORKDIR /Downloads
+RUN wget https://github.com/USCiLab/cereal/archive/v1.3.0.tar.gz && \
+    tar -xvzf v1.3.0.tar.gz && cd cereal-1.3.0 && \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt/cereal -DSKIP_PORTABILITY_TEST=ON && \
+    make -j 16 install && \
+    rm -rf /Downloads/*
+
+#Fix missing /etc/protocol
+RUN apt-get update && apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase

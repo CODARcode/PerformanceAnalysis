@@ -1,0 +1,18 @@
+FROM chimbuko/tau2:ubuntu18.04-cuda10.1 AS base
+
+WORKDIR /Downloads
+
+RUN wget http://www.cs.ucr.edu/~ltan003/downloads/MOCU_docker.tar.gz\
+ && tar -xzf MOCU_docker.tar.gz
+
+RUN pip3 install pycuda pandas matplotlib
+
+WORKDIR /Downloads/MOCU_Kuramoto
+
+RUN apt update && apt-get install -y emacs-nox vim gdb psmisc
+
+RUN echo "FORCE UPDATE 11/24/20 12.01pm" >> /dev/null
+COPY run_mocu_tau.sh /Downloads/MOCU_Kuramoto/
+RUN chmod a+x run_mocu_tau.sh
+
+ENTRYPOINT [ "./docker_run.sh" ]
