@@ -3,6 +3,7 @@
 #include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/util/error.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
@@ -205,7 +206,7 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
   const HbosParam & l = *(HbosParam const*)param; //local parameter set
 
     if (!m_use_ps) {
-        std::cout << "m_use_ps not USED!" << std::endl;
+        fatal_error("m_use_ps not USED!");
         g.update(l);
         return std::make_pair(0, 0);
     }
@@ -328,7 +329,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    std::cout<<l<<std::endl;
+    //std::cout<<l<<std::endl;
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -368,9 +369,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   const int num_bins = param[func_id].counts().size();
   // std::cout << "Bin width: " << bin_width << std::endl;
   // std::cout << "Bin edges: " << std::endl;
-  for (int i=0; i< param[func_id].bin_edges().size(); i++){
-    std::cout << param[func_id].bin_edges().at(i) << std::endl;
-  }
+  //for (int i=0; i< param[func_id].bin_edges().size(); i++){
+    //std::cout << param[func_id].bin_edges().at(i) << std::endl;
+  //}
   //std::vector<double> runtimes;
   int top_out = 0;
   for (auto itt : data) {
