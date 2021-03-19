@@ -8,7 +8,7 @@
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/Anomalies.hpp"
-#include "chimbuko/chimbuko.hpp"
+
 
 namespace chimbuko {
   /**
@@ -35,7 +35,7 @@ namespace chimbuko {
     virtual ~ADOutlier();
 
 
-    static ADOutlier *set_algorithm(OutlierStatistic stat, const ChimbukoParams & params); //const std::string & algorithm);
+    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const double & sstd_sigma);
 
     /**
      * @brief check if the parameter server is in use

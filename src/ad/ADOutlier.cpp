@@ -3,7 +3,6 @@
 #include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
-//#include "chimbuko/chimbuko.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
@@ -23,14 +22,14 @@ ADOutlier::~ADOutlier() {
     }
 }
 
-ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const ChimbukoParams & params) { //std::string & algorithm) {
+ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const double & sstd_sigma) {
 
-  if (params.ad_algorithm == "sstd" || params.ad_algorithm == "SSTD") {
+  if (algorithm == "sstd" || algorithm == "SSTD") {
 
-    return new ADOutlierSSTD(stat, params.outlier_sigma);
+    return new ADOutlierSSTD(stat, sstd_sigma);
   }
-  else if (params.ad_algorithm == "hbos" || params.ad_algorithm == "HBOS") {
-    return new ADOutlierHBOS(stat, params.hbos_threshold);
+  else if (algorithm == "hbos" || algorithm == "HBOS") {
+    return new ADOutlierHBOS(stat, hbos_thres);
   }
   else {
     return nullptr;
