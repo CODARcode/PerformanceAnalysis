@@ -303,7 +303,7 @@ using namespace chimbuko;
 
  void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
-   
+
    std::vector<double> r_times = runtimes;
 
    for (int i = 0; i < g.bin_edges().size() - 1; i++) {

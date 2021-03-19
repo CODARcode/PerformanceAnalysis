@@ -206,7 +206,7 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
   const HbosParam & l = *(HbosParam const*)param; //local parameter set
 
     if (!m_use_ps) {
-        fatal_error("m_use_ps not USED!");
+        verboseStream << "m_use_ps not USED!" << std::endl;
         g.update(l);
         return std::make_pair(0, 0);
     }
@@ -460,7 +460,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
     }
   }
 
-  int ret_val = bin_edges.size(); 
+  int ret_val = bin_edges.size();
 
   return  ret_val;
 }

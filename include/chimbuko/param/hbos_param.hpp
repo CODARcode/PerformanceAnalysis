@@ -260,7 +260,7 @@ namespace chimbuko {
 
 
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
-    
+
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };
