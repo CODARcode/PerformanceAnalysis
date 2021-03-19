@@ -206,7 +206,7 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
   const HbosParam & l = *(HbosParam const*)param; //local parameter set
 
     if (!m_use_ps) {
-        fatal_error("m_use_ps not USED!");
+        verboseStream << "m_use_ps not USED!" << std::endl;
         g.update(l);
         return std::make_pair(0, 0);
     }
