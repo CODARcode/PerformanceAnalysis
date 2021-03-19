@@ -199,7 +199,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
         Event_t ev(parser->getCounterData(c),
     	       EventDataType::COUNT,
     	       c,
-    	       generate_event_id(params.rank, step, c));
+    	       eventID(params.rank, step, c));
         counter->addCounter(ev);
       }
 
