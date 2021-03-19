@@ -44,15 +44,13 @@ using namespace chimbuko;
      std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
          m_hbosstats[pair.first] = pair.second;
-         //Histogram::Data d = pair.second.get_histogram();
-         //m_hbosstats[pair.first].set_hist_data(d);
      }
  }
 
  void HbosParam::assign(const std::string& parameters)
  {
      std::unordered_map<unsigned long, Histogram> hbosstats;
-     //deserialize_json(parameters, runstats);
+
      deserialize_cerealpb(parameters, hbosstats);
      assign(hbosstats);
  }
@@ -94,7 +92,7 @@ using namespace chimbuko;
      std::unordered_map<unsigned long, Histogram> hbosstats;
 
      deserialize_cerealpb(parameters, hbosstats);
-     update_and_return(hbosstats); //update runstats to reflect changes
+     update_and_return(hbosstats); //update hbosstats to reflect changes
 
      return (return_update) ? serialize_cerealpb(hbosstats): "";
  }
@@ -145,12 +143,12 @@ using namespace chimbuko;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
    // std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
    // std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
-   if (g.bin_edges().size() <= 1) { //== 0) {
+   if (g.bin_edges().size() <= 1) {
      combined.set_glob_threshold(l.get_threshold());
      combined.set_counts(l.counts());
      combined.set_bin_edges(l.bin_edges());
    }
-   else if (l.bin_edges().size() <= 1) { //== 0) {
+   else if (l.bin_edges().size() <= 1) {
      combined.set_glob_threshold(g.get_threshold());
      combined.set_counts(g.counts());
      combined.set_bin_edges(g.bin_edges());
@@ -305,7 +303,7 @@ using namespace chimbuko;
 
  void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
-   //Histogram merged_h;
+   
    std::vector<double> r_times = runtimes;
 
    for (int i = 0; i < g.bin_edges().size() - 1; i++) {

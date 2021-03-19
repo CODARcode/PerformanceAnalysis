@@ -146,7 +146,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
-        //comb_params_serialize = combined_params_ps.serialize();
+
 
         Anomalies outliers;
         nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
@@ -165,11 +165,11 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
+
 		      });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+
 
 
   std::cout << "Initializing AD thread 2" << std::endl;
@@ -193,7 +193,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
-        //comb_params_serialize2 = combined_params_ps.serialize();
+
 
         Anomalies outliers;
         nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
@@ -211,7 +211,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
+
 		      });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -222,8 +222,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   ps_thr.join();
 
 
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
-  //EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
+
   EXPECT_EQ(nout, 0);
   EXPECT_EQ(nout2, 1);
 #else

@@ -20,9 +20,9 @@ namespace chimbuko {
 
     struct Data {
 
-      double glob_threshold;
-      std::vector<int> counts;
-      std::vector<double> bin_edges;
+      double glob_threshold; /**< global threshold used to filter anomalies*/
+      std::vector<int> counts; /**< Bin counts in Histogram*/
+      std::vector<double> bin_edges; /**< Bin edges in Histogram*/
 
       Data(){
         clear();
@@ -56,7 +56,7 @@ namespace chimbuko {
 
     void push (double x);
 
-    const Data &get_histogram() const{ return m_histogram; } //const Data &get_histogram() const{ return m_histogram; }
+    const Data &get_histogram() const{ return m_histogram; }
 
     /**
      * @brief Set the internal variables from an instance of Histogram Data
@@ -141,7 +141,7 @@ namespace chimbuko {
     nlohmann::json get_json() const;
 
   private:
-    Data m_histogram;
+    Data m_histogram; /**< Histogram Data*/
 
     /*
      * @brief Compute bin width based on Scott's rule
@@ -154,7 +154,7 @@ namespace chimbuko {
      * @param global_counts: bin counts in global histogram on pserver
      * @param global_edges: bin edges in global histogram on pserver
      * @param local_counts: bin counts in local histogram in AD module
-     * @param local_edges: bin edges in local histogram in AD module 
+     * @param local_edges: bin edges in local histogram in AD module
      */
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
@@ -199,23 +199,23 @@ namespace chimbuko {
     std::string update(const std::string& parameters, bool return_update=false) override;
 
     /**
-     * @brief Set the internal run statistics to match those included in the serialized input map. Overwrite performed only for those keys in input.
-     * @param runstats The serialized input map
+     * @brief Set the internal Histogram to match those included in the serialized input map. Overwrite performed only for those keys in input.
+     * @param parameters The serialized input map
      */
     void assign(const std::string& parameters) override;
 
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Set the internal run statistics to match those included in the input map. Overwrite performed only for those keys in input.
-     * @param runstats The input map between global function index and statistics
+     * @brief Set the internal Histogram to match those included in the input map. Overwrite performed only for those keys in input.
+     * @param hbosstats The input map between global function index and Histogram
      */
     void assign(const std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
-     * @brief Convert a run statistics mapping into a Cereal portable binary representration
-     * @param The run stats mapping
-     * @return Run statistics in string format
+     * @brief Convert a Histogram mapping into a Cereal portable binary representration
+     * @param hbosstats The Histogram mapping
+     * @return Histogram in string format
      */
     static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats);
 
@@ -226,41 +226,41 @@ namespace chimbuko {
     Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
 
     /**
-     * @brief Convert a run statistics Cereal portable binary representation string into a map
+     * @brief Convert a Histogram Cereal portable binary representation string into a map
      * @param[in] parameters The parameter string
-     * @param[out] runstats The map between global function index and statistics
+     * @param[out] hbosstats The map between global function index and histogram statistics
      */
     static void deserialize_cerealpb(const std::string& parameters,
 			    std::unordered_map<unsigned long, Histogram>& hbosstats);
 
 
     /**
-     * @brief Update the internal run statistics with those included in the input map
-     * @param[in] runstats The map between global function index and statistics
+     * @brief Update the internal histogram with those included in the input map
+     * @param[in] hbosstats The map between global function index and histogram
      */
     void update(const std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
-     * @brief Update the internal statistics with those included in another SstdParam instance.
-     * @param[in] other The other SstdParam instance
+     * @brief Update the internal Histogram with those included in another HbosParam instance.
+     * @param[in] other The other HbosParam instance
      */
     void update(const HbosParam& other) { update(other.m_hbosstats); }
 
     /**
-     * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
-     * @param[in,out] runstats The map between global function index and statistics
+     * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.
+     * @param[in,out] hbosstats The map between global function index and statistics
      */
     void update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats);
 
     /**
-     * @brief Update the internal statistics with those included in another SstdParam instance. Other SstdParam is then updated to reflect new state.
-     * @param[in,out] other The other SstdParam instance
+     * @brief Update the internal histogram with those included in another HbosParam instance. Other HbosParam is then updated to reflect new state.
+     * @param[in,out] other The other HbosParam instance
      */
     void update_and_return(HbosParam& other) { update_and_return(other.m_hbosstats); }
 
 
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
-    //nlohmann::json get_function_stats(const unsigned long func_id) const override;
+    
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats;
   };
