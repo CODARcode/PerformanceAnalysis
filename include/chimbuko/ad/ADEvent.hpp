@@ -281,6 +281,10 @@ namespace chimbuko {
      */
     CallListMap_p_t* trimCallList(int n_keep_thread = 0);
 
+    /**
+     * @brief Get the total number of function events in the call list over all pid/rid/tid
+     */
+    size_t getCallListSize() const;
 
     /**
      * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)

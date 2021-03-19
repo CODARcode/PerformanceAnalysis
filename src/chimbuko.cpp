@@ -569,6 +569,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
       
       m_perf_prd.add("io_steps", n_steps_accum_prd);
 
+      //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
+      m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
+      m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
+
       //Write accumulated outlier count
       m_perf_prd.add("outlier_count", n_outliers_accum_prd);
 

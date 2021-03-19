@@ -416,7 +416,17 @@ void ADEvent::purgeCallList(int n_keep_thread) {
   m_execDataMap.clear();
 }
 
-
+size_t ADEvent::getCallListSize() const{
+  size_t out = 0;
+  for (auto& it_p : m_callList) {
+    for (auto& it_r : it_p.second) {
+      for (auto& it_t: it_r.second) {
+	out += it_t.second.size();
+      }
+    }
+  }
+  return out;
+}
 
 
 CallListIterator_t ADEvent::getCallData(const eventID &event_id) const{
