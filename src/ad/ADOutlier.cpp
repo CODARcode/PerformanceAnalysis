@@ -3,6 +3,7 @@
 #include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
+#include "chimbuko/chimbuko.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 
