@@ -95,9 +95,9 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
-  //long ts_end = 1000*N + 800;
+
   stats_r2.create_histogram(runtimes);
-  //bin_edges.clear();
+
   std::vector<double> bin_edges2 = stats_r2.bin_edges();
   std::cout << "Bin edges 2:" << std::endl;
   for(int i=0; i<bin_edges2.size(); i++) std::cout << bin_edges2[i] << std::endl;
@@ -125,9 +125,9 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
-  //long ts_end2 = 1000*N + 800;
+
   stats_r3.create_histogram(runtimes);
-  //bin_edges.clear();
+
   std::vector<double> bin_edges3 = stats_r3.bin_edges();
   std::cout << "Bin edges 3:" << std::endl;
   for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
@@ -157,9 +157,9 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
     runtimes.push_back(val);
     //std::cout << call_list.back().get_json().dump() << std::endl;
   }
-  //long ts_end2 = 1000*N + 800;
+
   stats_r4.create_histogram(runtimes);
-  //bin_edges.clear();
+
   std::vector<double> bin_edges4 = stats_r4.bin_edges();
   std::cout << "Bin edges 4:" << std::endl;
   for(int i=0; i<bin_edges4.size(); i++) std::cout << bin_edges4[i] << std::endl;
@@ -179,12 +179,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   std::cout << "# outliers detected: " << nout3 << std::endl;
 
-  //EXPECT_EQ(nout, 1);
-  //EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
 
-  //Check that running again on the same data does not report new outliers
-  //nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
-  //EXPECT_EQ(nout, 0);
 }
 
 
@@ -261,7 +256,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
+
 		      });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));

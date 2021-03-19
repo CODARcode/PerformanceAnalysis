@@ -92,7 +92,7 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<std::v
 }
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
-  //int file_suffix = 1;
+
   int ranks = 4;
   std::vector<int> v_io_steps(ranks);
   std::vector<int> v_functions(ranks);
@@ -107,9 +107,9 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     ti = std::clock();
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
-    params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
-    params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
-    std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
+    params.trace_engineType = "BPFile";  // BPFile or SST
+    params.trace_data_dir = "../../data";  // *.bp location
+    std::string bp_prefix = "tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
     params.program_idx = 0;
@@ -243,7 +243,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
             local_params_ad[func_id].create_histogram(runtimes);
           }
           else { //merge with exisiting func_id, not overwrite
-            //param[func_id] += g[func_id];
+
             local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
           }
 
@@ -297,7 +297,6 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
       create_save_json(anomalies.allHbosScores(), mpi_rank_bp, "hbos_scores", io_steps);
     }
     create_save_json(outs_map, mpi_rank_bp, "all_outs");
-    //create_save_json(save_data, mpi_rank_bp, "all_data");
 
     v_io_steps[mpi_rank_bp] = io_steps;
     v_tot_events[mpi_rank_bp] = n_tot_events;

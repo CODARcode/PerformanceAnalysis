@@ -33,7 +33,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
-  //std::normal_distribution<double> dist(500.,10.);
+
   std::lognormal_distribution<double> dist_lognorm(2.,0.5);
 
   int N = 50;
@@ -82,7 +82,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   std::cout << local_params_ad[0].get_json().dump();
   std::cout << local_params_ad2[0].get_json().dump();
 
-  HbosParam combined_params_ps, combined_params_ps2; //what we expect
+  HbosParam combined_params_ps, combined_params_ps2;
   combined_params_ps.assign(global_params_ps.get_hbosstats());
   combined_params_ps.update(local_params_ad.get_hbosstats());
 
@@ -149,7 +149,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
-        //comb_params_serialize = combined_params_ps.serialize();
+
 
         Anomalies outliers;
         nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
@@ -168,11 +168,8 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
-		      });
 
-  //std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
+		      });
 
 
   std::cout << "Initializing AD thread 2" << std::endl;
@@ -196,7 +193,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
-        //comb_params_serialize2 = combined_params_ps.serialize();
+
 
         Anomalies outliers;
         nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
@@ -214,7 +211,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
+
 		      });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -225,9 +222,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   ps_thr.join();
 
 
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
-  //EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
-  //EXPECT_EQ(nout, 1);
+
   ASSERT_LE(nout, 2);
   ASSERT_LE(nout2, 2);
 #else
@@ -244,7 +239,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
-  //std::normal_distribution<double> dist(500.,10.);
+
   std::lognormal_distribution<double> dist_gamma(1,2);
 
   int N = 50;
@@ -382,10 +377,6 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 			//barrier2.wait();
 		      });
 
-  //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
-
-
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
 			try{
@@ -407,7 +398,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
         std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
-        //comb_params_serialize2 = combined_params_ps.serialize();
+
 
         Anomalies outliers;
         nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
@@ -425,7 +416,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
-			//barrier2.wait();
+
 		      });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -435,9 +426,6 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
   stop_ps.join();
   ps_thr.join();
 
-
-  //EXPECT_EQ(glob_params_comb_ad, combined_params_ps.serialize());
-  //EXPECT_EQ(glob_params_comb_ad2, combined_params_ps2.serialize());
   ASSERT_LE(nout, 2);
   ASSERT_LE(nout2, 2);
 #else

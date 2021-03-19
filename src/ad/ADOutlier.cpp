@@ -253,7 +253,7 @@ Anomalies ADOutlierHBOS::run(int step) {
   	encounter_it->second++;
 
         if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
-  	       //param[func_id].push( this->getStatisticValue(*itt) );
+
            runtimes.push_back(this->getStatisticValue(*itt));
         }
       }
@@ -263,7 +263,7 @@ Anomalies ADOutlierHBOS::run(int step) {
         param[func_id].create_histogram(runtimes);
       }
       else { //merge with exisiting func_id, not overwrite
-        //param[func_id] += g[func_id];
+
         param[func_id].merge_histograms(g[func_id], runtimes);
       }
     }
@@ -364,7 +364,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //}
 
   //Compute HBOS based score for each datapoint
-  //std::vector<double> ad_scores(tot_runtimes, 0.0);
   const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
   const int num_bins = param[func_id].counts().size();
   // std::cout << "Bin width: " << bin_width << std::endl;
@@ -372,7 +371,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //for (int i=0; i< param[func_id].bin_edges().size(); i++){
     //std::cout << param[func_id].bin_edges().at(i) << std::endl;
   //}
-  //std::vector<double> runtimes;
+
   int top_out = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
@@ -383,7 +382,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       // If the sample does not belong to any bins
       // bin_ind == 0 (fall outside since it is too small)
-      if( bin_ind == 0){ //
+      if( bin_ind == 0){
         double first_bin_edge = param[func_id].bin_edges().at(0);
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
@@ -392,52 +391,47 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         }
         else{
 
-          ad_score = max_score; //min_score;
+          ad_score = max_score;
 
         }
         //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
       // If the sample does not belong to any bins
-      // bin_ind == n_bins+1 (fall outside since it is too large)
       else if(bin_ind == num_bins + 1){
         int last_idx = param[func_id].bin_edges().size() - 1;
         double last_bin_edge = param[func_id].bin_edges().at(last_idx);
         double dist = runtime_i - last_bin_edge;
 
-        if (dist <= (bin_width * 0.05)) {  //last_bin_edge < runtime_i) { //<= runtime_i ) { // && runtime_i <= (last_bin_edge + (bin_width * 0.05))) {
+        if (dist <= (bin_width * 0.05)) {
 
           ad_score = out_scores_i.at(num_bins - 1);
         }
         else{
 
-          ad_score = max_score; //out_scores_i.at(num_bins - 1); //max_score; //min_score;
+          ad_score = max_score;
         }
         //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
       else {
 
-        //int bin_index = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-        //std::cout << "bin_index = " << bin_ind << std::endl;
         ad_score = out_scores_i.at( bin_ind - 1);
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
 
       //Compare the ad_score with the threshold
-
       if (ad_score >= l_threshold) {
-        //if(++top_out <= 3){
+
           itt->set_label(-1);
           verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
           outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
-        //}
+
       }
       else {
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
       	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-
       	   outliers.insert(itt, Anomalies::EventType::Normal);
 
         }
@@ -451,30 +445,22 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
 
 int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
-  //std::vector<int> b_inds(X.size(), 0);
+
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
-    return 0; //std::vector<int>(1);
+    return 0;
   }
 
-  //std::cout << "Bin edges in np_digitize_get_bin_inds: " << std::endl;
-  //for(int i=0; i < X.size(); i++){
-  //std::cout << "Bin_edges.size : " << bin_edges.size() << std::endl;
-  //std::cout << "First: " << bin_edges[0] << std::endl;
+
   for(int j=1; j < bin_edges.size(); j++){
-    //std::cout << bin_edges[j] << std::endl;
+
     if(X <= bin_edges.at(j)){
-      //b_inds.at(i) += j-1;
-      //break;
-      //std::cout << "Index of bin found for input X: " << j-1 << std::endl;
+
       return (j-1);
     }
   }
-  //}
-  //Should not reach here
-  //verboseStream << "!!!!!!!BAD Histogram in np_digitize_get_bin_inds!!!!!!!!!!!!" << "X : " << X << "bin_edges size: " << bin_edges.size() << std::endl;
 
-  int ret_val = bin_edges.size(); // + 1;
-  //std::cout << X <<" is Outside histogram limit. The ret_val = " << ret_val << std::endl;
-  return  ret_val;//b_inds;
+  int ret_val = bin_edges.size();
+
+  return  ret_val;
 }
