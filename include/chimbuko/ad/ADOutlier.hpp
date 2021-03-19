@@ -34,9 +34,6 @@ namespace chimbuko {
      */
     virtual ~ADOutlier();
 
-
-    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const double & sstd_sigma);
-
     /**
      * @brief Fatory method to select AD algorithm at runtime
      */
