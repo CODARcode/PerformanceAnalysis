@@ -16,8 +16,10 @@
 
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
+#include <chimbuko/util/error.hpp>
 #include <fstream>
 #include "chimbuko/verbose.hpp"
+
 
 
 using namespace chimbuko;
