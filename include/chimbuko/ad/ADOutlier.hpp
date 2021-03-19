@@ -1,6 +1,5 @@
 #pragma once
 #include<array>
-//#include "chimbuko/chimbuko.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
@@ -9,6 +8,7 @@
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/Anomalies.hpp"
+#include "chimbuko/chimbuko.hpp"
 
 namespace chimbuko {
   /**
