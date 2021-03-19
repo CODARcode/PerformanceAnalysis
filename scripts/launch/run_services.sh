@@ -199,7 +199,7 @@ fi
 
 ############################################
 #Generate the command to launch the AD module
-ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg}"
+ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg} -hbos_threshold ${hbos_thres}"
 ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
 echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 

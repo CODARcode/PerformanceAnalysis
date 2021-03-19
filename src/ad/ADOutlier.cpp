@@ -22,13 +22,14 @@ ADOutlier::~ADOutlier() {
     }
 }
 
-ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm) {
+ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const ChimbukoParams & params) { //std::string & algorithm) {
 
-  if (algorithm == "sstd" || algorithm == "SSTD") {
-    return new ADOutlierSSTD(stat);
+  if (params.ad_algorithm == "sstd" || params.ad_algorithm == "SSTD") {
+
+    return new ADOutlierSSTD(stat, params.outlier_sigma);
   }
-  else if (algorithm == "hbos" || algorithm == "HBOS") {
-    return new ADOutlierHBOS(stat);
+  else if (params.ad_algorithm == "hbos" || params.ad_algorithm == "HBOS") {
+    return new ADOutlierHBOS(stat, params.hbos_threshold);
   }
   else {
     return nullptr;
@@ -54,7 +55,7 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat) : ADOutlier(stat), m_sigma(6.0) { //m_sigma(6.0)
+ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat, double sigma) : ADOutlier(stat), m_sigma(sigma) { //m_sigma(6.0)
     m_param = new SstdParam();
 }
 
@@ -189,7 +190,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat) : ADOutlier(stat), m_alpha(0.00001) {
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold) : ADOutlier(stat), m_alpha(0.00001), m_threshold(threshold) {
     m_param = new HbosParam();
 }
 
@@ -344,7 +345,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   //std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
-  double l_threshold = min_score + (0.995 * (max_score - min_score));
+  double l_threshold = min_score + (m_threshold * (max_score - min_score));
 
   if(l_threshold < param[func_id].get_threshold()) {
     l_threshold = param[func_id].get_threshold();

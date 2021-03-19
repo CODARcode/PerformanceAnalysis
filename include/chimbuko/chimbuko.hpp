@@ -16,10 +16,11 @@ namespace chimbuko {
 			      < Do not include the .sst file extensions for SST mode*/
     int trace_connect_timeout; /**< Timeout (in seconds) of ADIOS2 SST connection to trace data*/
 
-    std::string ad_algorithm;
+    std::string ad_algorithm; /**< Algorithm for Anomaly Detection. Set in config file*/
     //Parameters associated with the outlier detection algorithm
     double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
 
+    double hbos_threshold; /**< Threshold used by HBOS algorithm to filter outliers. Set in config file*/
 
     //Parameters associated with communicating with the parameter server*/
     std::string pserver_addr; /**< The address of the parameter server.
@@ -200,7 +201,7 @@ namespace chimbuko {
     ADParser * m_parser;       /**< adios2 input data stream parser */
     ADEvent * m_event;         /**< func/comm event manager */
     ADCounter * m_counter;     /**< counter event manager */
-    ADOutlier * m_outlier; //ADOutlierSSTD * m_outlier; /**< outlier detection algorithm */
+    ADOutlier * m_outlier;     /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
     ADNetClient * m_net_client; /**< client for comms with parameter server */
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */

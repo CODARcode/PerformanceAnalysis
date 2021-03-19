@@ -1,5 +1,6 @@
 #pragma once
 #include<array>
+#include "chimbuko/chimbuko.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
@@ -34,7 +35,7 @@ namespace chimbuko {
     virtual ~ADOutlier();
 
 
-    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm );
+    static ADOutlier *set_algorithm(OutlierStatistic stat, const ChimbukoParams & params); //const std::string & algorithm);
 
     /**
      * @brief check if the parameter server is in use
@@ -133,7 +134,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierSSTD object
      *
      */
-    ADOutlierSSTD(OutlierStatistic stat = ExclusiveRuntime);
+    ADOutlierSSTD(OutlierStatistic stat = ExclusiveRuntime, double sigma = 6.0);
     /**
      * @brief Destroy the ADOutlierSSTD object
      *
@@ -188,7 +189,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierHBOS object
      *
      */
-    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime);
+    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99);
     /**
      * @brief Destroy the ADOutlierHBOS object
      *
@@ -238,6 +239,7 @@ namespace chimbuko {
 
   private:
     double m_alpha; /**< alpha */
+    double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
     //double m_threshold; /** sync with global threshold */
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
 

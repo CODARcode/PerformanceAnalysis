@@ -67,6 +67,7 @@ optionalArgsParser & getOptionalArgsParser(){
   static optionalArgsParser p;
   if(!initialized){
     addOptionalCommandLineArg(p, ad_algorithm, "Set an AD algorithm to use: hbos or sstd.");
+    addOptionalCommandLineArg(p, hbos_threshold, "Set Threshold for HBOS anomaly detection filter.");
     addOptionalCommandLineArg(p, program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
     addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
@@ -125,6 +126,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
 
   //The remainder are optional arguments. Enable using the appropriate command line switch
   params.ad_algorithm = "hbos";
+  params.hbos_threshold = 0.99;
   params.pserver_addr = "";  //don't use pserver by default
   params.hpserver_nthr = 1;
   params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter

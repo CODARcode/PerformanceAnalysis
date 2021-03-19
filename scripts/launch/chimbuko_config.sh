@@ -46,6 +46,7 @@ ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command l
 ad_outlier_sigma=12 #number of standard deviations that defines an outlier
 ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this
 ad_alg=${pserver_ad}
+hbos_thres=0.99
 ####################################
 #Options for TAU
 #Note: Only the TAU_ADIOS2_PATH, TAU_ADIOS2_FILE_PREFIX, EXE_NAME and TAU_ADIOS2_ENGINE variables are used by the Chimbuko services script and there only to generate the suggested
