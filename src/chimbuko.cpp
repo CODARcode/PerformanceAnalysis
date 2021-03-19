@@ -31,7 +31,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 
 void ChimbukoParams::print() const{
   std::cout << "AD Algorithm: " << ad_algorithm
-	    << "Program Idx: " << program_idx
+	    << "\nProgram Idx: " << program_idx
 	    << "\nRank       : " << rank
 	    << "\nEngine     : " << trace_engineType
 	    << "\nBP in dir  : " << trace_data_dir
@@ -40,7 +40,7 @@ void ChimbukoParams::print() const{
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nSigma      : " << outlier_sigma
-			<< "HBOS Threshold: " << hbos_threshold
+			<< "\nHBOS Threshold: " << hbos_threshold
 	    << "\nWindow size: " << anom_win_size
 
 	    << "\nInterval   : " << interval_msec << " msec"
