@@ -21,8 +21,10 @@ namespace chimbuko{
 				      unsigned long eid,
 				      unsigned long func_id,
 				      unsigned long ts){
-    static size_t event_idx = -1;
-    eventID id(rid, 0, event_idx++);
+    static long event_idx_s = 0;
+    long event_idx = event_idx_s++;
+    
+    eventID id(rid, 0, event_idx);
   
     static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, FUNC_EVENT_DIM> ev;
@@ -79,8 +81,10 @@ namespace chimbuko{
 					 unsigned long counter_id,
 					 unsigned long value,
 					 unsigned long ts){
-    static size_t event_idx = -1;
-    eventID id(rid, 0, event_idx++);
+    static long event_idx_s = 0;
+    long event_idx = event_idx_s++;
+    
+    eventID id(rid, 0, event_idx);
   
     static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COUNTER_EVENT_DIM> ev;
@@ -139,8 +143,10 @@ namespace chimbuko{
 			    unsigned long comm_partner,
 			    unsigned long comm_bytes,
 			    unsigned long ts){
-    static size_t event_idx = -1;
-    eventID id(rid, 0, event_idx++);
+    static long event_idx_s = 0;
+    long event_idx = event_idx_s++;
+
+    eventID id(rid, 0, event_idx);
   
     static std::list< std::array<unsigned long, COMM_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COMM_EVENT_DIM> ev;

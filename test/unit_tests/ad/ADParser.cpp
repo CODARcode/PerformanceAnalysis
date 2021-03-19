@@ -97,6 +97,7 @@ struct SSTrw{
 };
 
 
+
 TEST(ADParserTestConstructor, opensCorrectlyBPFile){
   bool err = false;
   try{
@@ -644,11 +645,16 @@ TEST(ADParserTest, eventsOrderedCorrectly){
   
   EXPECT_EQ(events_out.size(), events.size());
 
-  for(int i=0;i<events_out.size();i++)
+  for(int i=0;i<events_out.size();i++){
+    //Note, the event id strings will differ because the step index in the parser has not been set and so will default to -1
+    std::cout << i << " " << events[i].get_json().dump() << " " << events_out[i].get_json().dump() << std::endl;
     EXPECT_EQ(same_up_to_id_string(events[i], events_out[i]), true);
+  }
   
 
 }
+
+
 
 
 //Check the optional override of the rank index in the data is working
@@ -770,3 +776,4 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
   }
   EXPECT_EQ(err, false);
 }
+

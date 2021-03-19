@@ -1,6 +1,7 @@
 #pragma once
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/util/map.hpp"
 #include <string>
 #include <vector>
@@ -164,6 +165,13 @@ namespace chimbuko {
      */
     void linkCounterMap(const std::unordered_map<int, std::string>* m) { m_counterMap = m; }
 
+
+    /**
+     * @brief Optional: give the event manager knowledge of which threads are GPU threads, improves error checking
+     */
+    void linkGPUthreadMap(const std::unordered_map<unsigned long, GPUvirtualThreadInfo> *m){ m_gpu_thread_Map = m; }
+
+
     /**
      * @brief Get the Func Map object
      * 
@@ -318,6 +326,11 @@ namespace chimbuko {
     int m_eidx_comm_recv; /**< If previously seen, the eid corresponding to the comm recv event (-1 otherwise)*/
 
 
+    /**
+     * @brief Optional: give the event manager knowledge of which threads are GPU threads, improves error checking
+     */
+    const std::unordered_map<unsigned long, GPUvirtualThreadInfo> *m_gpu_thread_Map;
+    
 
     /**
      * @brief communication event stack. Once a function call has exited, all comms events are associated with that call and the stack is cleared

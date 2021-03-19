@@ -110,11 +110,10 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_perf.add("ad_initialize_parser_ms", timer.elapsed_ms());
 
   //Event and outlier objects must be initialized in order after parser
-  init_event(); //requires parser
+  init_metadata_parser();
+  init_event(); //requires parser and metadata parser
   init_outlier(); //requires event
   init_counter(); //requires parser
-
-  init_metadata_parser();
   
   m_is_initialized = true;
   
@@ -145,11 +144,13 @@ void Chimbuko::init_parser(){
 }
 
 void Chimbuko::init_event(){
-  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_event");
+  if(!m_parser) fatal_error("Parser must be initialized before calling init_event");
+  if(!m_metadata_parser) fatal_error("Metadata parser must be initialized before calling init_event");
   m_event = new ADEvent(m_params.verbose);
   m_event->linkFuncMap(m_parser->getFuncMap());
   m_event->linkEventType(m_parser->getEventType());
   m_event->linkCounterMap(m_parser->getCounterMap());
+  m_event->linkGPUthreadMap(&m_metadata_parser->getGPUthreadMap());
 }
 
 void Chimbuko::init_net_client(){

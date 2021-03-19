@@ -8,7 +8,7 @@
 using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose) 
-  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_verbose(verbose),
+  : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_gpu_thread_Map(nullptr), m_verbose(verbose),
     m_eidx_func_entry(-1), m_eidx_func_exit(-1), m_eidx_comm_send(-1), m_eidx_comm_recv(-1)
 {
 
@@ -81,6 +81,7 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
 void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
   //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
   //event with a correlation ID
+  int n_cid = 0;
   for(auto const &c : it->get_counters()){
     if(c.get_countername() == "Correlation ID"){
       unsigned long cid = c.get_value();
@@ -108,7 +109,17 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 	++m_unmatchedCorrelationID_count[it->get_id()];
 	verboseStream << "Found as-yet unpartnered event with correlation ID " << cid << std::endl;
       }
+      n_cid++;
     }
+  }
+
+  if(n_cid > 1 && m_gpu_thread_Map && m_gpu_thread_Map->count(it->get_tid()) ){
+    std::stringstream ss;
+    ss << "Encountered a GPU kernel execution with multiple correlation IDs! Execution details:" << std::endl
+       << it->get_json(false, true).dump() << std::endl
+       << "GPU details: " << std::endl
+       << m_gpu_thread_Map->find(it->get_tid())->second.get_json().dump() << std::endl;
+    fatal_error(ss.str());
   }
 }
 
@@ -202,7 +213,10 @@ EventError ADEvent::addFunc(const Event_t& event) {
       std::stringstream ss;
       ss << "\n***** Invalid EXIT event! *****" << std::endl
 	 << "Event information: " << event.get_json().dump() << std::endl
-	 << "Event type: EXIT  Function name: " << func_name << std::endl;
+	 << "Event type: EXIT  Function name: " << func_name << std::endl
+	 << "This can happen if the exit timestamp comes before the entry timestamp or if the function ids don't match" << std::endl
+	 << "Exit timestamp: " << event.ts() << " function id of exit event: " << event.fid() << std::endl
+	 << "Entry timestamp: " << it->get_entry() << " function id of entry event: " << it->get_fid() << std::endl;
       recoverable_error(ss.str());
       return EventError::CallStackViolation;
     }
