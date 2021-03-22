@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>On-node AD Module &mdash; Performance Analysis 3.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Performance Analysis
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#on-node-ad-module">On-node AD Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html#paramter-server">Paramter Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API For Developers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/api.html">Classes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Performance Analysis</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>On-node AD Module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/introduction/ad.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="on-node-ad-module">
+<h1>On-node AD Module<a class="headerlink" href="#on-node-ad-module" title="Permalink to this headline">¶</a></h1>
+<p>The on-node anomaly detection (AD) module (per applications’ process) takes streamed trace data.
+Each AD parses the streamed trace data and maintains a function call stack along with
+any communication events (if available). Then, it determines anomalous function calls that have
+extraordinary behaviors. If there are any anomalies within the current trace data,
+the AD module stores them in files or DB. This is where significant data reduction occurs
+because we only save the anomalies and a few nearby normal function calls of the anomalies.</p>
+<div class="section" id="parser">
+<h2>Parser<a class="headerlink" href="#parser" title="Permalink to this headline">¶</a></h2>
+<p>Currently, the trace data is streamed via <a class="reference external" href="https://github.com/ornladios/ADIOS2">ADIOS2</a>.
+We provide class <a class="reference external" href="../api/api_code.html#adparser">ADParser</a> to connect to an ADIOS2 writer side and
+fetch necessary data for the performance analysis.</p>
+</div>
+<div class="section" id="pre-processing">
+<h2>Pre-processing<a class="headerlink" href="#pre-processing" title="Permalink to this headline">¶</a></h2>
+<p>In the pre-processing step, the <strong>on-node AD moudle</strong> maintains a call stack tree in application,
+rank and thread levels (See class <a class="reference external" href="../api/api_code.html#adevent">ADEvent</a>). While it is building and
+maintaining the call stack tree, it computes inclusive and exclusive running time for each function, and
+mapping communication events to a function event.</p>
+</div>
+<div class="section" id="update-local-parameters">
+<h2>Update local parameters<a class="headerlink" href="#update-local-parameters" title="Permalink to this headline">¶</a></h2>
+<p>Using the pre-processed data, it first computes local parameters (depends on anomaly detection algorithm).
+Then, the local parameters are updated via the Parameter Server to have robust and consistent
+anomaly detection capabilities over the distribued <strong>on-node AD modules</strong>.
+(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>).</p>
+</div>
+<div class="section" id="anomaly-detection">
+<h2>Anomaly Detection<a class="headerlink" href="#anomaly-detection" title="Permalink to this headline">¶</a></h2>
+<p>With updated anomaly detection parameters, it determines anomaly functions calls.
+(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>)</p>
+<div class="section" id="statistical-anomaly-analysis">
+<h3>Statistical anomaly analysis<a class="headerlink" href="#statistical-anomaly-analysis" title="Permalink to this headline">¶</a></h3>
+<p>An anomaly function call is a function call that has a longer (or shorter) execution time than
+a upper (or a lower) threshold.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}threshold_{upper} = \mu_{i} + \alpha * \sigma_{i} \\
+threshold_{lower} = \mu_{i} - \alpha * \sigma_{i}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mu_{i}\)</span> and <span class="math notranslate nohighlight">\(\sigma_{i}\)</span> are mean and standard deviation of execution time
+of a function <span class="math notranslate nohighlight">\(i\)</span>, respectively, and <span class="math notranslate nohighlight">\(\alpha\)</span> is a control parameter (the lesser value,
+the more anomalies or the more false positives).</p>
+<p>(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a> and <a class="reference external" href="../api/api_code.html#runstats">RunStats</a>).</p>
+</div>
+<div class="section" id="advanced-anomaly-analysis">
+<h3>Advanced anomaly analysis<a class="headerlink" href="#advanced-anomaly-analysis" title="Permalink to this headline">¶</a></h3>
+<p>TBD</p>
+</div>
+</div>
+<div class="section" id="stream-local-viz-data">
+<h2>Stream local viz data<a class="headerlink" href="#stream-local-viz-data" title="Permalink to this headline">¶</a></h2>
+<p>Once anmalies are identified, statistics related those anomalies (e.g. mean and standard deviation
+of the number of anomalies per rank) is sent to the Parameter Server. Then the Parameter Server will
+stream the aggregated statistics to the Visualization Server so that users can evaluate the overall performance
+of the running applications in real time.
+(See <a class="reference external" href="../api/api_code.html#adoutlier">ADOutlier</a>).</p>
+</div>
+<div class="section" id="post-processing">
+<h2>Post-processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h2>
+<p>Currently, in the post-processing step, the evaluated function calls are trimed out from
+the call stack tree (See <a class="reference external" href="../api/api_code.html#adevent">ADEvent</a>) and the trimed function calls
+are sent to the visualization server or stored in the database according to users’ configuration
+(See <a class="reference external" href="../api/api_code.html#adio">ADio</a>)</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Brookhaven National Laboratory
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,78 @@
+
+//Move the func data located on idx=idx_move to just before idx_before
+//idx_before should be larger than idx_move
+void moveFuncDataBefore(unsigned long* data, size_t idx_move, size_t idx_before){
+  if(idx_before <= idx_move) throw std::runtime_error("moveFuncDataBefore: invalid indices");
+  unsigned long *data_move_from_loc = data + idx_move * FUNC_EVENT_DIM;
+  unsigned long *data_move_before_loc = data + idx_before * FUNC_EVENT_DIM;
+  unsigned long *data_move_to_loc = data_move_before_loc - FUNC_EVENT_DIM;
+  size_t nshift = idx_before - idx_move - 1; //number of blocks to shift left
+  size_t block_bytes = FUNC_EVENT_DIM * sizeof(unsigned long);
+
+  unsigned long tmp[FUNC_EVENT_DIM];
+  memcpy(tmp, data_move_from_loc, block_bytes);
+  memmove(data_move_from_loc, data_move_from_loc + FUNC_EVENT_DIM,  nshift*block_bytes);
+  memcpy(data_move_to_loc, tmp, block_bytes);
+}
+
+//Swap the func data at idx_a and idx_b
+void swapFuncData(unsigned long *data, size_t idx_a, size_t idx_b){
+  unsigned long tmp[FUNC_EVENT_DIM];
+  constexpr size_t block_bytes = FUNC_EVENT_DIM * sizeof(unsigned long);
+  unsigned long *blocka = data + idx_a*FUNC_EVENT_DIM;
+  unsigned long *blockb = data + idx_b*FUNC_EVENT_DIM;
+  memcpy(tmp, blocka, block_bytes);
+  memcpy(blocka, blockb, block_bytes);
+  memcpy(blockb, tmp, block_bytes);
+}
+
+
+
+#define USE_SET_SORT
+#ifdef USE_SET_SORT
+  int step = m_current_step;
+  int entry_eid(-1), exit_eid(-1);
+  for(auto const &e : m_eventType){
+    if(e.second == "ENTRY") entry_eid = e.first;
+    else if(e.second == "EXIT") exit_eid = e.first;
+  }
+  if(entry_eid==-1 || exit_eid==-1) throw std::runtime_error("ADParser::getEvents could not get index for func entry/exit events!");
+
+  auto cmp = [entry_eid, exit_eid](const Event_t &a, const Event_t &b){ //define whether a goes before b
+    if(a.ts() < b.ts()) return true;
+    else if(a.ts() > b.ts()) return false;
+    else if(a.tid() == b.tid()){ //a.ts() == b.ts()    Ordering only important on same thread
+      if(a.type() == EventDataType::FUNC && b.type() == EventDataType::FUNC){
+	return a.eid() == exit_eid; //two func events on same thread, exit always before entrance (assumes function does't take 0 time to execute!)
+      }else if(a.type() == EventDataType::FUNC && b.type() != EventDataType::FUNC){
+	return a.eid() == entry_eid; //entry event always goes before other events, exit event always goes after other events
+      }else if(a.type() != EventDataType::FUNC && b.type() == EventDataType::FUNC){
+	return b.eid() == exit_eid; //entry event always goes before other events, exit event always goes after other events
+      }else return false; //doesn't really matter
+    }else return false; //doesn't really matter
+  };
+
+  std::set<Event_t, decltype(cmp)> ev_set(cmp);
+  for(size_t i=0;i<getNumFuncData();i++){
+    std::pair<Event_t,bool> evp = createAndValidateEvent(getFuncData(i), EventDataType::FUNC, i, generate_event_id(rank, step, i), rank);
+    if(evp.second) ev_set.insert(std::move(evp.first));
+  }
+  for(size_t i=0;i<getNumCommData();i++){
+    std::pair<Event_t,bool> evp = createAndValidateEvent(getCommData(i), EventDataType::COMM, i, "event_id", rank);
+    if(evp.second) ev_set.insert(std::move(evp.first));
+  }
+  for(size_t i=0;i<getNumCounterData();i++){
+    std::pair<Event_t,bool> evp = createAndValidateEvent(getCounterData(i), EventDataType::COUNT, i, generate_event_id(rank, step, i), rank);
+    if(evp.second) ev_set.insert(std::move(evp.first));
+  }
+  out.reserve(ev_set.size());
+  unsigned long prev_ts = 0;
+  for(const auto &e: ev_set){
+    if(e.ts() < prev_ts) throw std::runtime_error("ADParser::getEvents reorder failed!");
+    out.push_back(e);
+  }
+  return out;
+
+
+#else //USE_SET_SORT
+
