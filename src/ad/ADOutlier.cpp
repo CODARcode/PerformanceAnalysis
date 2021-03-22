@@ -23,14 +23,14 @@ ADOutlier::~ADOutlier() {
     }
 }
 
-ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const double & sstd_sigma) {
+ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const bool & glob_thres, const double & sstd_sigma) {
 
   if (algorithm == "sstd" || algorithm == "SSTD") {
 
     return new ADOutlierSSTD(stat, sstd_sigma);
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
-    return new ADOutlierHBOS(stat, hbos_thres);
+    return new ADOutlierHBOS(stat, hbos_thres, glob_thres);
   }
   else {
     return nullptr;
@@ -191,7 +191,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold) : ADOutlier(stat), m_alpha(0.00001), m_threshold(threshold) {
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(0.00001), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
     m_param = new HbosParam();
 }
 
@@ -347,12 +347,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //compute threshold
   //std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
   double l_threshold = min_score + (m_threshold * (max_score - min_score));
-
-  if(l_threshold < param[func_id].get_threshold()) {
-    l_threshold = param[func_id].get_threshold();
-  } else {
-    param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
-    //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+  if(m_use_global_threshold) {
+    if(l_threshold < param[func_id].get_threshold()) {
+      l_threshold = param[func_id].get_threshold();
+    } else {
+      param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
+      //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+    }
   }
 
   //std::cout << "local threshold = " << l_threshold << " updated global_threshold = " << param[func_id].get_threshold() << std::endl;

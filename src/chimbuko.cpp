@@ -190,7 +190,7 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
+  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.gt, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
 	if (m_outlier == nullptr) {
 		fatal_error("INCORRECT Algorithm: Not Found");
 	}
