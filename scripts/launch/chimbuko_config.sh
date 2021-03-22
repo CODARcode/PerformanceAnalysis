@@ -27,6 +27,7 @@ provdb_nshards=4  #number of database shards
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database
 provdb_nthreads=4 #number of worker threads; should be >= the number of shards
+provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***

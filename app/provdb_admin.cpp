@@ -86,8 +86,9 @@ struct ProvdbArgs{
   int nthreads;
   std::string db_type;
   unsigned long db_commit_freq;
+  std::string db_write_dir;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."){}
 };
 
 
@@ -112,6 +113,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
     addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
+    addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
@@ -167,7 +169,7 @@ int main(int argc, char** argv) {
 	sonata::Admin admin(engine);
 	progressStream << "ProvDB Admin: creating global data database" << std::endl;
 	std::string glob_db_name = "provdb.global";
-	std::string glob_db_config = stringize("{ \"path\" : \"./%s.unqlite\" }", glob_db_name.c_str());
+	std::string glob_db_config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), glob_db_name.c_str());
 	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
 	
 	progressStream << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
@@ -175,7 +177,7 @@ int main(int argc, char** argv) {
 	std::vector<std::string> db_shard_names(args.nshards);
 	for(int s=0;s<args.nshards;s++){
 	  std::string db_name = stringize("provdb.%d",s);
-	  std::string config = stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+	  std::string config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), db_name.c_str());
 	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
 	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
 	  db_shard_names[s] = db_name;

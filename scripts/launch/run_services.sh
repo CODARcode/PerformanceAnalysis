@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -u
 set -o pipefail
 
 #---------------------------------------------------------------------------
@@ -46,7 +47,7 @@ fi
 
 mkdir chimbuko
 mkdir chimbuko/logs
-mkdir chimbuko/provdb
+mkdir chimbuko/provdb    #directory in which provDB is run. Also the default directory for the database shards
 mkdir chimbuko/viz
 mkdir chimbuko/vars      #directory for files containing variables for inter-script communication
 mkdir chimbuko/adios2
@@ -93,15 +94,21 @@ if (( 1 )); then
     echo "==========================================="
     echo "Instantiating provenance database"
     echo "==========================================="
+
+    #If provdb_writedir is a relative path it should be relative to the run directory
+    #Turn it into an absolute path before entering the subdirectory
+    provdb_writedir=$(readlink -f ${provdb_writedir})
+
     cd ${provdb_dir}
-    rm -f provdb.*.unqlite*  provider.address
+
+    rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address
     
     provdb_addr="${service_node_iface}:${provdb_port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
     if [[ ${provdb_engine} == "verbs" ]]; then
 	provdb_addr="${provdb_domain}/${provdb_addr}"
     fi
 
-    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} 2>&1 | tee ${log_dir}/provdb.log &
+    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} 2>&1 | tee ${log_dir}/provdb.log &
     provdb_pid=$!
 
     start_time=$SECONDS
@@ -134,7 +141,7 @@ if (( ${use_viz} )); then
     export ANOMALY_STATS_URL="sqlite:///${viz_dir}/anomaly_stats.sqlite"
     export ANOMALY_DATA_URL="sqlite:///${viz_dir}/anomaly_data.sqlite"
     export FUNC_STATS_URL="sqlite:///${viz_dir}/func_stats.sqlite"
-    export PROVENANCE_DB=${provdb_dir}
+    export PROVENANCE_DB=${provdb_writedir}
     export CELERY_BROKER_URL="redis://${HOST}:${viz_worker_port}"
 
     #Setup redis
@@ -181,12 +188,13 @@ if (( ${use_viz} )); then
 fi
 
 if (( 1 )); then
+    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
+
     echo "==========================================="
     echo "Chimbuko Services: Instantiating pserver"
     echo "==========================================="
     echo "Chimbuko Services: Pserver $pserver_addr"
 
-    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
     pserver -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
 
     ps_pid=$!
