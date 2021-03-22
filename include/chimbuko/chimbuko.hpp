@@ -21,7 +21,7 @@ namespace chimbuko {
     double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
 
     double hbos_threshold; /**< Threshold used by HBOS algorithm to filter outliers. Set in config file*/
-
+    bool gt; /**< Global threshold flag in HBOS*/
     //Parameters associated with communicating with the parameter server*/
     std::string pserver_addr; /**< The address of the parameter server.
 				 < If no parameter server is in use, this string should be empty (length zero)
