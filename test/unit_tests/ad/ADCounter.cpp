@@ -7,21 +7,21 @@ using namespace chimbuko;
 
 TEST(ADCounterTest, CounterAddedCorrectly){
   ADCounter counters;
-  
-  unsigned long 
+
+  unsigned long
     pid = 0,
     rid = 1,
     tid = 2,
     id = 99,
     value = 1234,
     ts = 5678;
-  
+
   Event_t ev = createCounterEvent_t(pid, rid, tid, id, value, ts);
   std::unordered_map<int, std::string> cmap;
   cmap[id] = "MyCounter";
   counters.linkCounterMap(&cmap);
   counters.addCounter(ev);
-  
+
   //Check counter has been stored
   CounterDataListMap_p_t const* cprt = counters.getCounters(); //p/r/t -> std::list<CounterData_t>
   auto const &pmap = *cprt;
@@ -52,7 +52,7 @@ TEST(ADCounterTest, CounterAddedCorrectly){
 
   window = counters.getCountersInWindow(pid, rid, tid, 6000, 7000);
   EXPECT_EQ(window.size(), 0);
-  
+
   //Check the counter appears in the map by index
   const CountersByIndex_t &cbyidx = counters.getCountersByIndex();
   EXPECT_EQ(cbyidx.size(), 1);

@@ -14,7 +14,7 @@ namespace chimbuko {
    * @brief parsing performance trace data streamed via ADIOS2
    *
    * Note: The "function index" assigned to each function by Tau is not necessarily the same for every node as it depends on the order in which the function
-   *       is encountered. To deal with this, if the parameter server is running it maintains a global mapping of function name to an index, which is 
+   *       is encountered. To deal with this, if the parameter server is running it maintains a global mapping of function name to an index, which is
    *       synchronized to the parser (providing the net client is linked) and the local index is replaced by the global index in the incoming data stream.
    *
    * Note2: The "program index" assigned by Tau is defunct (always 0). We must therefore replace it manually with a correct index to support workflows
@@ -24,7 +24,7 @@ namespace chimbuko {
   public:
     /**
      * @brief Construct a new ADParser object
-     * 
+     *
      * @param inputFile ADIOS2 BP filename
      * @param program_index The index to assign to the program whose trace data is being parsed
      * @param rank Rank of current process
@@ -34,7 +34,7 @@ namespace chimbuko {
     ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType="BPFile", int openTimeoutSeconds = 60);
     /**
      * @brief Destroy the ADParser object
-     * 
+     *
      */
     ~ADParser();
 
@@ -52,15 +52,15 @@ namespace chimbuko {
 
     /**
      * @brief Get the function hash map (function id --> function name)
-     * 
-     * @return const std::unordered_map<int, std::string>* function hash map 
+     *
+     * @return const std::unordered_map<int, std::string>* function hash map
      */
     const std::unordered_map<int, std::string>* getFuncMap() const {
       return &m_funcMap;
     }
     /**
      * @brief Get the event type hash map (event type id --> event name)
-     * 
+     *
      * @return const std::unordered_map<int, std::string>* event type hash map
      */
     const std::unordered_map<int, std::string>* getEventType() const {
@@ -68,24 +68,24 @@ namespace chimbuko {
     }
     /**
      * @brief Get the counter hash map (counter id --> counter description)
-     * 
+     *
      * @return const std::unordered_map<int, std::string>* event type hash map
      */
     const std::unordered_map<int, std::string>* getCounterMap() const {
       return &m_counterMap;
     }
-    
+
 
     /**
      * @brief Get the status of this parser
-     * 
+     *
      * @return true if it is connected with a writer
      * @return false if it is disconnected or there are no available data anymore
      */
     bool getStatus() const { return m_status; }
     /**
      * @brief Get the current step (or frame) number
-     * 
+     *
      * @return int step number
      *
      * Returns a value of -1 if beginStep has yet to be called.
@@ -94,14 +94,14 @@ namespace chimbuko {
 
     /**
      * @brief start fetching next available data
-     * 
+     *
      * @param verbose true to output additional information
      * @return int current step number
      */
     int beginStep(bool verbose=false);
     /**
      * @brief end current step (or frame), only effect on ADIOS2 SST engine
-     * 
+     *
      */
     void endStep();
 
@@ -111,7 +111,7 @@ namespace chimbuko {
     /**
      * @brief update attributes (or meta data), with ADIOS2 BPFile engine it only fetches
      *        the available attributes one time.
-     * 
+     *
      */
     void update_attributes();
     /**
@@ -121,21 +121,21 @@ namespace chimbuko {
     ParserError fetchFuncData();
     /**
      * @brief fetching communication data. Results stored internally and extracted using ADParser::getCommData
-     * 
+     *
      * @return ParserError error code
      */
     ParserError fetchCommData();
 
     /**
      * @brief fetching counter data. Results stored internally and extracted using ADParser::getCounterData
-     * 
+     *
      * @return ParserError error code
      */
     ParserError fetchCounterData();
-    
+
     /**
      * @brief get pointer to an array of a function event specified by `idx`
-     * 
+     *
      * @param idx index of a function event
      * @return pointer to a function event array
      */
@@ -145,14 +145,14 @@ namespace chimbuko {
     }
     /**
      * @brief Get the number of function events in the current step
-     * 
+     *
      * @return size_t the number of function events
      */
     size_t getNumFuncData() const { return m_timer_event_count; }
-    
+
     /**
      * @brief get pointer to a communication event array specified by `idx`
-     * 
+     *
      * @param idx index of a communication event
      * @return pointer to a communication event array
      */
@@ -162,7 +162,7 @@ namespace chimbuko {
     }
     /**
      * @brief Get the number of communication events in the current step
-     * 
+     *
      * @return size_t the number of communication events
      */
     size_t getNumCommData() const { return m_comm_count; }
@@ -170,7 +170,7 @@ namespace chimbuko {
 
     /**
      * @brief get pointer to a counter event array specified by `idx`
-     * 
+     *
      * @param idx index of a counter event
      * @return pointer to a counter event array
      */
@@ -178,21 +178,21 @@ namespace chimbuko {
       if (idx >= m_counter_count) return nullptr;
       return &m_counter_timestamps[idx * COUNTER_EVENT_DIM];
     }
-    
+
     /**
      * @brief Get the number of counter events in the current step
-     * 
+     *
      * @return size_t the number of counter events
      */
     size_t getNumCounterData() const { return m_counter_count; }
 
-    
+
     /**
      * @brief Get metadata parsed for the first time during the current step
      */
     const std::vector<MetaData_t> & getNewMetaData() const{ return m_new_metadata; }
 
-    
+
     /**
      * @brief Get all the events (func, comm and counter) occuring in the IO step ordered by their timestamp
      */
@@ -206,7 +206,7 @@ namespace chimbuko {
      * Will throw an error if the new array size exceeds the vector capacity as this would invalidate previous Event_t objects
      */
     void addFuncData(unsigned long const* d);
-    
+
     /**
      * @brief For testing purposes, add the data in the array d to the internal m_counter_timestamps array
      * @param d An array of length COUNTER_EVENT_DIM
@@ -223,7 +223,7 @@ namespace chimbuko {
      */
     void addCommData(unsigned long const* d);
 
-    
+
     /**
      * @brief Set the m_event_timestamps vector capacity in units of FUNC_EVENT_DIM. This will invalidate previous Event_t objects if it requires a realloc!
      */
@@ -260,7 +260,7 @@ namespace chimbuko {
      */
     unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
 
-    
+
     /**
      * @brief When true the parser will override the rank index of the parsed data with the rank member parameter
      *
@@ -269,7 +269,7 @@ namespace chimbuko {
     void setDataRankOverride(bool to){ m_data_rank_override = to; }
 
   private:
-    
+
     /**
      * @brief Scan the data and check the events are in order
      * @param exit_on_fail Throw an error if the check fails
@@ -311,7 +311,7 @@ namespace chimbuko {
     std::string m_engineType;                           /**< adios2 engine type */
 
     int m_beginstep_timeout;                            /**< the timeout in seconds on waiting for the next ADIOS2 timestep*/
-    bool m_status;                                      /**< parser status */                              
+    bool m_status;                                      /**< parser status */
     bool m_opened;                                      /**< true if connected to a writer or a BP file */
     bool m_attr_once;                                   /**< true for BP engine */
     int  m_current_step;                                /**< current step */
@@ -320,11 +320,11 @@ namespace chimbuko {
 
     std::unordered_set<std::string> m_metadata_seen;    /**< Metadata descriptions that have been seen */
     std::vector<MetaData_t> m_new_metadata;             /**< New metadata that appeared on this step */
-    
+
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (global function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
     std::unordered_map<int, std::string> m_counterMap;  /**< counter hash map (counter id --> counter name) */
-    
+
     size_t m_timer_event_count;                         /**< the number of function events in current step */
     std::vector<unsigned long> m_event_timestamps;      /**< array of all function events in the current step */
 

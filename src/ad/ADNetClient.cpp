@@ -5,7 +5,7 @@
 
 using namespace chimbuko;
 
-ADNetClient::ADNetClient() 
+ADNetClient::ADNetClient()
   : m_use_ps(false), m_perf(nullptr)
 {
 #ifdef _USE_ZMQNET
@@ -67,7 +67,7 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &m_recv_timeout_ms, sizeof(int));
 
     if(zmq_connect(m_socket, sname.c_str()) == -1){
-      std::string err = strerror(errno);      
+      std::string err = strerror(errno);
       throw std::runtime_error("ZMQ failed to connect to socket at address " + sname + ", due to error: " + err);
     }
 
@@ -92,13 +92,13 @@ void ADNetClient::connect_ps(int rank, int srank, std::string sname) {
     }
 
     verboseStream << "ADNetClient handshake response received" << std::endl;
-    
+
     msg.set_msg(strmsg, true);
 
     if (msg.buf().compare("Hello!I am NET!") != 0){
       recoverable_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
       return;
-    } 
+    }
 
     m_use_ps = true;
     headProgressStream(rank) << "ADNetClient rank " << rank << " successfully connected to server " << sname << std::endl;
@@ -132,7 +132,7 @@ void ADNetClient::disconnect_ps() {
     m_use_ps = false;
 }
 
-std::string ADNetClient::send_and_receive(const Message &msg){  
+std::string ADNetClient::send_and_receive(const Message &msg){
   PerfTimer timer;
   std::string send_msg = msg.data(), recv_msg;
 #ifdef _USE_MPINET
@@ -152,21 +152,21 @@ std::string ADNetClient::send_and_receive(const Message &msg){
   default:
     throw std::runtime_error("Invalid request type");
   }
-  
+
   MPINet::send(m_comm, send_msg, m_srank, req_type, msg.count());
-  
+
   MPI_Status status;
   int count;
   MPI_Probe(m_srank, rep_type, m_comm, &status);
   MPI_Get_count(&status, MPI_BYTE, &count);
-  
+
   recv_msg = MPINet::recv(m_comm, status.MPI_SOURCE, status.MPI_TAG, count);
 #else
   //Send local parameters to PS
   ZMQNet::send(m_socket, send_msg);
-  
+
   //Receive global parameters from PS
-  ZMQNet::recv(m_socket, recv_msg);   
+  ZMQNet::recv(m_socket, recv_msg);
 #endif
 
 #ifdef _PERF_METRIC
@@ -175,7 +175,7 @@ std::string ADNetClient::send_and_receive(const Message &msg){
     m_perf->add("net_client_send_bytes", send_msg.size()); //1 char = 1 byte
     m_perf->add("net_client_recv_bytes", recv_msg.size());
   }
-#endif  
+#endif
 
   return recv_msg;
 }
@@ -183,5 +183,3 @@ std::string ADNetClient::send_and_receive(const Message &msg){
 void ADNetClient::send_and_receive(Message &recv,  const Message &send){
   recv.set_msg( send_and_receive(send), true );
 }
-
-

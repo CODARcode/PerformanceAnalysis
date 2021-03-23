@@ -15,7 +15,7 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     version('ckelly_develop', branch='ckelly_develop', preferred=True)
     version('develop', branch='develop')
     version('master', branch='master')
-    
+
     variant('perf-metric', default=True, description='Build with performance monitoring')
 
     depends_on('mpi')
@@ -26,7 +26,7 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('mochi-sonata')
     depends_on('curl')
     depends_on('boost')
-    
+
     depends_on('autoconf', type='build')
     depends_on('automake', type='build')
     depends_on('libtool',  type='build')
@@ -35,11 +35,11 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
 
     def setup_environment(self, spack_env, run_env):
         spack_env.set('CXX', self.spec['mpi'].mpicxx)
-    
+
     def configure_args(self):
         args = ["--with-network=ZMQ", "--with-adios2=%s" % self.spec['adios2'].prefix ]
 
         if '+perf-metric' in self.spec:
                args.append('--with-perf-metric')
-               
+
         return args

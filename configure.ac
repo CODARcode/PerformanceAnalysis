@@ -94,7 +94,7 @@ if test "x$with_adios2" != "x"; then
 	   AC_MSG_NOTICE([Detected ADIOS 2.6+])
    fi
 else
-	AC_MSG_FAILURE(["ADIOS2 install path must be specified with --with-adios2"])	
+	AC_MSG_FAILURE(["ADIOS2 install path must be specified with --with-adios2"])
 fi
 
 #Choose network

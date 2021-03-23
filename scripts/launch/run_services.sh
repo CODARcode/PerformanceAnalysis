@@ -78,7 +78,7 @@ else
     echo "Chimbuko services: Neither ifconfig or ip commands exists; cannot infer ip for interface ${service_node_iface}"
     exit 1
 fi
-     
+
 echo "Chimbuko Services: Launching Chimbuko services on interface ${service_node_iface} with host IP" ${ip}
 
 
@@ -95,7 +95,7 @@ if (( 1 )); then
     echo "==========================================="
     cd ${provdb_dir}
     rm -f provdb.*.unqlite*  provider.address
-    
+
     provdb_addr="${service_node_iface}:${provdb_port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
     if [[ ${provdb_engine} == "verbs" ]]; then
 	provdb_addr="${provdb_domain}/${provdb_addr}"
@@ -105,14 +105,14 @@ if (( 1 )); then
     provdb_pid=$!
 
     start_time=$SECONDS
-    while [ ! -f provider.address ]; do 
+    while [ ! -f provider.address ]; do
 	now=$SECONDS
 	elapsed=$(( now - start_time ))
 	if [[ ${elapsed} -gt 30 ]]; then
 	    echo "Chimbuko Services: ERROR: Provider address file not created after ${elapsed} seconds"
 	    exit 1
 	fi
-	sleep 1; 
+	sleep 1;
     done
 
     prov_add=$(cat provider.address)
@@ -174,7 +174,7 @@ if (( ${use_viz} )); then
 
     ws_addr="http://${HOST}:${viz_port}/api/anomalydata"
     ps_extra_args+=" -ws_addr ${ws_addr}"
-    
+
     echo $HOST > ${var_dir}/chimbuko_webserver.host
     echo $viz_port > ${var_dir}/chimbuko_webserver.port
     echo "Chimbuko Services: Webserver is running on ${HOST}:${viz_port} and is ready for the user to connect"
@@ -186,8 +186,8 @@ if (( 1 )); then
     echo "==========================================="
     echo "Chimbuko Services: Pserver $pserver_addr"
 
-    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
-    pserver -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
+    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
+    pserver -ad ${pserver_ad} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
 
     ps_pid=$!
     extra_args+=" -pserver_addr ${pserver_addr}"
@@ -199,7 +199,7 @@ fi
 
 ############################################
 #Generate the command to launch the AD module
-ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size}"
+ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg} -hbos_threshold ${hbos_thres}"
 ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
 echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
@@ -220,7 +220,7 @@ wait ${ps_pid}
 
 if (( ${use_viz} == 1 )); then
     echo "Chimbuko Services: Terminating Chimbuko visualization"
-    cd ${viz_root} 
+    cd ${viz_root}
 
     echo "Chimbuko Services: redis ping-pong"
     redis-cli -h $HOST -p ${viz_worker_port} ping

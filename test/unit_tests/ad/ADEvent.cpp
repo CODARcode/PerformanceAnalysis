@@ -15,7 +15,7 @@ struct FuncEvent{
   Event_t func_event;
   std::string event_type;
   std::string func_name;
-  
+
   FuncEvent(const std::string &event_type, const std::string &func_name,
 	    const int event_id = 1234, const int func_id = 9876, const long timestamp = 0): event_type(event_type), func_name(func_name),
 											    func_event(data.data(), EventDataType::FUNC, 0){
@@ -34,9 +34,9 @@ struct ADFuncEventContainer{
   std::unordered_map<int, std::string> event_types;
   std::unordered_map<int, std::string> func_map;
   ADEvent event_manager;
-  
+
   int addEvent(const FuncEvent &ev){ events.push_back(ev); return events.size() - 1; } //returns index of last added event
-  
+
   void registerEvents(){
     for(int i=0;i<events.size();i++){
       int eid = events[i].data[IDX_E];
@@ -49,7 +49,7 @@ struct ADFuncEventContainer{
     for(int i=0;i<events.size();i++){
       int fid = events[i].data[FUNC_IDX_F];
       if(func_map.count(fid) && func_map[fid] != events[i].func_name)
-	throw("registerFuncs: multiple funcs have same fid!");      
+	throw("registerFuncs: multiple funcs have same fid!");
       func_map[fid] = events[i].func_name;
     }
   }
@@ -75,7 +75,7 @@ TEST(ADEventTestaddFunc, eventTypesNotAssigned){
   ad.registerFuncs();
   //ad.linkEventType();
   ad.linkFuncMap();
-  
+
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx]), EventError::UnknownEvent );
 }
 TEST(ADEventTestaddFunc, eventNotInMap){
@@ -85,7 +85,7 @@ TEST(ADEventTestaddFunc, eventNotInMap){
   ad.registerFuncs();
   ad.linkEventType();
   ad.linkFuncMap();
-  
+
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx]), EventError::UnknownEvent );
 }
 TEST(ADEventTestaddFunc, funcMapNotAssigned){
@@ -95,7 +95,7 @@ TEST(ADEventTestaddFunc, funcMapNotAssigned){
   ad.registerFuncs();
   ad.linkEventType();
   //ad.linkFuncMap();
-  
+
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx]), EventError::UnknownEvent );
 }
 TEST(ADEventTestaddFunc, funcNotInMap){
@@ -105,7 +105,7 @@ TEST(ADEventTestaddFunc, funcNotInMap){
   //ad.registerFuncs();
   ad.linkEventType();
   ad.linkFuncMap();
-  
+
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx]), EventError::UnknownFunc );
 }
 TEST(ADEventTestaddFunc, eventNotENTRYorEXIT){
@@ -154,7 +154,7 @@ struct CommEvent{
   std::array<unsigned long,COMM_EVENT_DIM> data;
   Event_t comm_event;
   std::string event_type;
-  
+
   CommEvent(const std::string &event_type,
 	    const int event_id = 1234, const long timestamp = 0): event_type(event_type), comm_event(data.data(), EventDataType::COMM, 0){
     data[IDX_P] = 0; //program
@@ -170,9 +170,9 @@ struct ADCommEventContainer{
   std::vector<CommEvent> events;
   std::unordered_map<int, std::string> event_types;
   ADEvent event_manager;
-  
+
   int addEvent(const CommEvent &ev){ events.push_back(ev); return events.size() - 1; } //returns index of last added event
-  
+
   void registerEvents(){
     for(int i=0;i<events.size();i++) event_types[ events[i].data[IDX_E] ] = events[i].event_type;
   }
@@ -191,7 +191,7 @@ TEST(ADEventTestaddComm, eventTypesNotAssigned){
   int idx = ad.addEvent(CommEvent("ACOMM"));
   ad.registerEvents();
   //ad.linkEventType();
-  
+
   EXPECT_EQ( ad.event_manager.addComm(ad[idx]), EventError::UnknownEvent );
 }
 TEST(ADEventTestaddComm, eventNotInMap){
@@ -199,7 +199,7 @@ TEST(ADEventTestaddComm, eventNotInMap){
   int idx = ad.addEvent(CommEvent("ACOMM"));
   //ad.registerEvents();
   ad.linkEventType();
-  
+
   EXPECT_EQ( ad.event_manager.addComm(ad[idx]), EventError::UnknownEvent );
 }
 TEST(ADEventTestaddComm, eventisnotSENDorRECV){
@@ -267,7 +267,7 @@ TEST(ADEventTesttrimCallList, trimsCorrectly){
   const ExecData_t &data = *list.begin();
   EXPECT_EQ( data.get_runtime(), time );
   EXPECT_EQ( data.get_fid(), fid1 );
-  
+
 }
 
 
@@ -358,7 +358,7 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
 
   const ExecDataMap_t &func_calls_by_idx = *event_man.getExecDataMap();
   EXPECT_NE(func_calls_by_idx.find(MYFUNC), func_calls_by_idx.end());
-  
+
   const std::vector<CallListIterator_t> &myfunc_calls = func_calls_by_idx.find(MYFUNC)->second;
   EXPECT_EQ(myfunc_calls.size(), 1);
 
@@ -384,19 +384,19 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
 
 TEST(ADEvent, trimsCallListCorrectly){
   ADEvent event_man;
-  
+
   int pid = 1;
   int tid = 2;
   int rid = 3;
   int func_id[] = {4,5};
   std::string func_name[] = {"hello_world", "goodbye_world"};
-  
+
   //Add 2 events and check added properly
   ExecData_t c1 = createFuncExecData_t(pid, rid, tid, func_id[0], func_name[0], 100, 200);
   ExecData_t c2 = createFuncExecData_t(pid, rid, tid, func_id[1], func_name[1], 300, 400);
   event_man.addCall(c1);
   event_man.addCall(c2);
-  
+
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
   EXPECT_NE(calls_p_r_t_ptr, nullptr);
   const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
@@ -417,22 +417,22 @@ TEST(ADEvent, trimsCallListCorrectly){
 
   const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
   EXPECT_EQ(purged_calls_p_r_t.size(), 2);
-    
+
   EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
   EXPECT_EQ(std::next(purged_calls_p_r_t.begin(),1)->get_funcname(), func_name[1]);
-  delete purged;  
+  delete purged;
 }
 
 
 TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
   ADEvent event_man;
-  
+
   int pid = 1;
   int tid = 2;
   int rid = 3;
   int func_id[] = {4,5};
   std::string func_name[] = {"hello_world", "goodbye_world"};
-  
+
   //Add 2 events and check added properly
   ExecData_t c1 = createFuncExecData_t(pid, rid, tid, func_id[0], func_name[0], 100, 200);
   ExecData_t c2 = createFuncExecData_t(pid, rid, tid, func_id[1], func_name[1], 300, 400);
@@ -441,7 +441,7 @@ TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
   event_man.addCall(c1);
   c2.can_delete(false);
   event_man.addCall(c2);
-  
+
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
   EXPECT_NE(calls_p_r_t_ptr, nullptr);
   const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
@@ -451,13 +451,13 @@ TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
   //Check purged events are correct
   CallListMap_p_t* purged = event_man.trimCallList();
   EXPECT_EQ(calls_p_r_t.size(), 1);
-    
+
   auto const* purged_calls_p_r_t_ptr = getElemPRT(pid,rid,tid,*purged);
   EXPECT_NE(purged_calls_p_r_t_ptr, nullptr);
 
   const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
   EXPECT_EQ(purged_calls_p_r_t.size(), 1);
-    
+
   EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
   delete purged;
 }
@@ -493,7 +493,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   //A grandparent with no gpu kernels
   ExecData_t c_cpu_p2 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_grandparent", 0, 300); //0-300
   bindParentChild(c_cpu_p2, c_cpu_p1);
-  
+
 
   event_man.addCall(c_cpu_p2);
   event_man.addCall(c_cpu_p1);
@@ -519,7 +519,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   const CallList_t &calls_p_r_t_gpu = *calls_p_r_t_gpu_ptr;
 
   EXPECT_EQ( calls_p_r_t_gpu.size(), 1); //only first event present now
-  
+
   auto cpu_it = std::next(calls_p_r_t_cpu.begin(),2);
   auto gpu_it = calls_p_r_t_gpu.begin();
 
@@ -543,7 +543,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( cpu_it->get_GPU_correlationID_partner(1), c_cpu_gpu2.get_id() );
   EXPECT_EQ( gpu_it->n_GPU_correlationID_partner(), 1);
   EXPECT_EQ( gpu_it->get_GPU_correlationID_partner(0), c_cpu.get_id() );
-  
+
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 ); //parent still hasn't been matched
 
   //Ensure c_cpu and both of it's gpu events are now trimmed out
@@ -562,7 +562,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( cpu_it->get_GPU_correlationID_partner(0), c_cpu_p1_gpu.get_id() );
   EXPECT_EQ( gpu_it->n_GPU_correlationID_partner(), 1);
   EXPECT_EQ( gpu_it->get_GPU_correlationID_partner(0), c_cpu_p1.get_id() );
-  
+
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
 
   //All events are now trimmed out
@@ -570,7 +570,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( calls_p_r_t_cpu.size(), 0);
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
 }
-  
+
 
 
 
@@ -588,10 +588,10 @@ TEST(ADEvent, testIteratorWindowDetermination){
   execs.push_back(createFuncExecData_t(pid, rid, tid_func, 6, "func6", 700, 100)); //4
   execs.push_back(createFuncExecData_t(pid, rid, tid_func, 7, "func7", 800, 100)); //5
   execs.push_back(createFuncExecData_t(pid, rid, tid_func, 8, "func8", 900, 100)); //6
-  
+
   for(int i=0;i<execs.size();i++)
     event_man.addCall(execs[i]);
-  
+
   CallList_t* call_list = getElemPRT(pid,rid,tid_func, event_man.getCallListMap());
   EXPECT_NE(call_list, nullptr);
   EXPECT_EQ(call_list->size(), execs.size()-1); //one event on different thread
@@ -604,13 +604,13 @@ TEST(ADEvent, testIteratorWindowDetermination){
   EXPECT_EQ(it_p.second, end); //second iterator is *one past the end* of the window
 
   it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 4); //should stop at edge of map
-  EXPECT_EQ(it_p.first, begin); 
-  EXPECT_EQ(it_p.second, end); 
+  EXPECT_EQ(it_p.first, begin);
+  EXPECT_EQ(it_p.second, end);
 
   //Check that trimming but keeping 4 events per thread means we get the full upper half of the window view
   event_man.trimCallList(4);
   EXPECT_EQ(call_list->size(), 4);
-  
+
   it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 3);
   EXPECT_EQ(it_p.first->get_id(), execs[3].get_id());
   EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[7].get_id());
@@ -621,11 +621,10 @@ TEST(ADEvent, testIteratorWindowDetermination){
 
   for(int i=8;i<execs.size();i++)
     event_man.addCall(execs[i]);
-  
+
 
   it_p = event_man.getCallWindowStartEnd(execs[8].get_id(), 1); //window of 1 around execs[8]
   EXPECT_EQ(it_p.first->get_id(), execs[7].get_id());
   EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[9].get_id());
-  
+
 }
-  

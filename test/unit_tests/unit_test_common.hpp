@@ -23,7 +23,7 @@ namespace chimbuko{
 				      unsigned long ts){
     static size_t event_idx = -1;
     eventID id(rid, 0, event_idx++);
-  
+
     static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, FUNC_EVENT_DIM> ev;
     ev[IDX_P] = pid;
@@ -59,7 +59,7 @@ namespace chimbuko{
     return exec;
   }
 
-  
+
   /**
    * @brief Setup parent <-> child relationship between events
    */
@@ -81,7 +81,7 @@ namespace chimbuko{
 					 unsigned long ts){
     static size_t event_idx = -1;
     eventID id(rid, 0, event_idx++);
-  
+
     static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COUNTER_EVENT_DIM> ev;
     ev[IDX_P] = pid;
@@ -108,7 +108,7 @@ namespace chimbuko{
 				    const std::string &counter_name){
     return CounterData_t( createCounterEvent_t(pid,rid,tid,counter_id,value,ts), counter_name);
   }
-    
+
 
   /**
    * @brief Setup parent <-> child relationship between GPU event and CPU parent
@@ -116,7 +116,7 @@ namespace chimbuko{
   void bindCPUparentGPUkernel(ExecData_t &cpu_parent, ExecData_t &gpu_kern, unsigned long corridx){
     assert(cpu_parent.get_pid() == gpu_kern.get_pid());
     assert(cpu_parent.get_rid() == gpu_kern.get_rid());
-    
+
     gpu_kern.add_counter( createCounterData_t(gpu_kern.get_pid(), gpu_kern.get_rid(), gpu_kern.get_tid(), 99, corridx, gpu_kern.get_entry(), "Correlation ID" ) ); //correlation ID counter at start of kernel
     cpu_parent.add_counter( createCounterData_t(cpu_parent.get_pid(), cpu_parent.get_rid(), cpu_parent.get_tid(), 99, corridx, cpu_parent.get_entry(), "Correlation ID" ) ); //correlation ID counter at start of parent
     gpu_kern.set_GPU_correlationID_partner(cpu_parent.get_id());
@@ -141,7 +141,7 @@ namespace chimbuko{
 			    unsigned long ts){
     static size_t event_idx = -1;
     eventID id(rid, 0, event_idx++);
-  
+
     static std::list< std::array<unsigned long, COMM_EVENT_DIM> > todelete; //make sure they get deleted eventually
     std::array<unsigned long, COMM_EVENT_DIM> ev;
     ev[IDX_P] = pid;
@@ -186,14 +186,14 @@ namespace chimbuko{
       assert(zmq_bind(socket, sinterface.c_str()) == 0);
       barrier2.wait(); //wait until AD has been initialized
 
-      zmq_pollitem_t items[1] = 
+      zmq_pollitem_t items[1] =
 	{
 	  { socket, 0, ZMQ_POLLIN, 0 }
 	};
       std::cout << "Mock PS start polling" << std::endl;
-      zmq_poll(items, 1, -1); 
+      zmq_poll(items, 1, -1);
       std::cout << "Mock PS has a message" << std::endl;
-    
+
       //Receive the hello string from the AD
       std::string strmsg;
       {
@@ -214,7 +214,7 @@ namespace chimbuko{
 	Message msg_t;
 	msg_t.set_msg(std::string("Hello!I am NET!"), false);
 	strmsg = msg_t.data();
-			 
+
 	zmq_msg_t msg;
 	int ret;
 	zmq_msg_init_size(&msg, strmsg.size());
@@ -227,14 +227,14 @@ namespace chimbuko{
 
     //Act as a receiver for function stats sent by ADOutlier::update_local_statistics
     void receive_statistics(Barrier &barrier2, const std::string test_msg){
-      zmq_pollitem_t items[1] = 
+      zmq_pollitem_t items[1] =
 	{
 	  { socket, 0, ZMQ_POLLIN, 0 }
 	};
       std::cout << "Mock PS start polling" << std::endl;
-      zmq_poll(items, 1, -1); 
+      zmq_poll(items, 1, -1);
       std::cout << "Mock PS has a message" << std::endl;
-    
+
       //Receive the update string from the AD
       std::string strmsg;
       {
@@ -250,14 +250,14 @@ namespace chimbuko{
       std::stringstream ss;
       ss << "{\"Buffer\":\"" << test_msg << "\",\"Header\":{\"dst\":0,\"frame\":0,\"kind\":3,\"size\":" << test_msg.size() << ",\"src\":0,\"type\":1}}";
       EXPECT_EQ(strmsg, ss.str());
-    
+
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
       {
 	Message msg_t;
 	msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
 	strmsg = msg_t.data();
-			 
+
 	zmq_msg_t msg;
 	int ret;
 	zmq_msg_init_size(&msg, strmsg.size());
@@ -270,14 +270,14 @@ namespace chimbuko{
 
     //Act as a receiver for function stats sent by ADOutlier::update_local_statistics
     void receive_counter_statistics(Barrier &barrier2, const std::string test_msg){
-      zmq_pollitem_t items[1] = 
+      zmq_pollitem_t items[1] =
 	{
 	  { socket, 0, ZMQ_POLLIN, 0 }
 	};
       std::cout << "Mock PS start polling" << std::endl;
-      zmq_poll(items, 1, -1); 
+      zmq_poll(items, 1, -1);
       std::cout << "Mock PS has a message" << std::endl;
-    
+
       //Receive the update string from the AD
       std::string strmsg;
       {
@@ -303,7 +303,7 @@ namespace chimbuko{
 	msg_t.set_info(0,0,REP_ECHO,DEFAULT);
 	msg_t.set_msg(std::string(""), false);
 	strmsg = msg_t.data();
-			 
+
 	zmq_msg_t msg;
 	int ret;
 	zmq_msg_init_size(&msg, strmsg.size());
@@ -334,7 +334,7 @@ namespace chimbuko{
 	msg_t.set_info(0,0,REP_QUIT,DEFAULT);
 	msg_t.set_msg(std::string(""), false);
 	strmsg = msg_t.data();
-			 
+
 	zmq_msg_t msg;
 	int ret;
 	zmq_msg_init_size(&msg, strmsg.size());
@@ -344,8 +344,8 @@ namespace chimbuko{
       }
     }
 
-      
-    void end(){     
+
+    void end(){
       std::cout << "Mock PS is finalizing" << std::endl;
       zmq_close(socket);
       zmq_ctx_term(context);
