@@ -37,7 +37,7 @@ namespace chimbuko {
     /**
      * @brief Fatory method to select AD algorithm at runtime
      */
-    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const double & sstd_sigma);
+    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const bool & glob_thres, const double & sstd_sigma);
 
     /**
      * @brief check if the parameter server is in use
@@ -191,7 +191,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierHBOS object
      *
      */
-    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99);
+    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
     /**
      * @brief Destroy the ADOutlierHBOS object
      *
@@ -242,6 +242,7 @@ namespace chimbuko {
   private:
     double m_alpha; /**< alpha */
     double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
+    bool m_use_global_threshold; /**< Flas to use global threshold*/
     //double m_threshold; /** sync with global threshold */
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
 

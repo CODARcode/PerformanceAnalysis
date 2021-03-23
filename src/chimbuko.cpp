@@ -17,6 +17,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  anom_win_size(10),
 					ad_algorithm("hbos"),
 					hbos_threshold(0.99),
+					hbos_use_global_threshold(true),
 #ifdef ENABLE_PROVDB
 				  provdb_addr(""), nprovdb_shards(1),
 #endif
@@ -41,6 +42,7 @@ void ChimbukoParams::print() const{
 #endif
 	    << "\nSigma      : " << outlier_sigma
 			<< "\nHBOS Threshold: " << hbos_threshold
+			<< "\nUsing Global threshold: " << hbos_use_global_threshold
 	    << "\nWindow size: " << anom_win_size
 
 	    << "\nInterval   : " << interval_msec << " msec"
@@ -190,7 +192,7 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
+  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.hbos_use_global_threshold, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
 	if (m_outlier == nullptr) {
 		fatal_error("INCORRECT Algorithm: Not Found");
 	}

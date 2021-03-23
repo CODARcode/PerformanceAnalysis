@@ -239,6 +239,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
   std::default_random_engine gen;
+
   std::lognormal_distribution<double> dist_gamma(1,2);
 
   int N = 50;
