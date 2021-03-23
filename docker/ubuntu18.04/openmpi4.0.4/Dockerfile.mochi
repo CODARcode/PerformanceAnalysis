@@ -1,0 +1,27 @@
+FROM chimbuko/base:ubuntu18.04 AS mochi-install
+
+SHELL ["/bin/bash", "-c"]
+
+ENV SPACK_ROOT=/spack/spack
+RUN echo FORCE_REDOWNLOAD_10_30_20_12_53 >> /dev/null && \
+    mkdir /spack && cd /spack && \
+    git clone https://github.com/spack/spack.git
+
+RUN source /spack/spack/share/spack/setup-env.sh && \
+    mkdir /sds && cd /sds && \
+    git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git && \
+    spack repo add sds-repo
+
+COPY packages.yaml /root/.spack/
+
+RUN source /spack/spack/share/spack/setup-env.sh && \
+        spack install mercury ^libfabric@1.9.0 && \
+	spack install mochi-sonata@master ^libfabric@1.9.0 && \
+	spack install py-mochi-sonata ^mochi-sonata@master ^python@3.6.0 ^libfabric@1.9.0 && \
+	spack gc -y && spack clean -a
+
+WORKDIR /
+
+ENTRYPOINT [ "/bin/bash" ]
+#To setup spack you need to run "source /spack/spack/share/spack/setup-env.sh" inside your image
+
