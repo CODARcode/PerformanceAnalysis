@@ -116,7 +116,7 @@ using namespace chimbuko;
 
  nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
    auto it = m_hbosstats.find(func_id);
-   if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_function_stats");
+   if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in HbosParam::get_algorithm_params");
    return it->second.get_json();
  }
 
