@@ -172,7 +172,7 @@ using namespace chimbuko;
      //std::cout << "]" << std::endl;
 
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
-     std::vector<int> count = std::vector<int>(combined.bin_edges().size()-1, 0);
+     std::vector<int> count (combined.bin_edges().size()-1, 0);
      combined.set_counts(count);
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
        for(int j = 1; j < combined.bin_edges().size(); j++) {
