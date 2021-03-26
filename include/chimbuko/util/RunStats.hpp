@@ -8,21 +8,21 @@ namespace chimbuko {
 
   /**
    * @brief Compute statistics in a single pass
-   * 
+   *
    * Computes the minimum, maximum, mean, variance, standard deviation,
    * skewness, and kurtosis. Optionally, also computes accumulated values.
-   * 
+   *
    * RunStats objects may also be added together and copied.
-   * 
+   *
    * Based entirely on the C++ code by John D Cook at
    * http://www.johndcook.com/skewness_kurtosis.html
-   * 
+   *
    */
   class RunStats {
   public:
     /**
      * @brief Internal state of RunStats object
-     * 
+     *
      */
     struct State {
       double count; /**< count of instances */
@@ -38,10 +38,10 @@ namespace chimbuko {
 	clear();
       }
       State(
-            double _count, 
-            double _eta, double _rho, double _tau, double _phi, 
+            double _count,
+            double _eta, double _rho, double _tau, double _phi,
             double _min, double _max, double _acc)
-        : count(_count), 
+        : count(_count),
           eta(_eta), rho(_rho), tau(_tau), phi(_phi),
           min(_min), max(_max), acc(_acc)
       {
@@ -72,10 +72,10 @@ namespace chimbuko {
 	return count == r.count && eta == r.eta && rho == r.rho && tau == r.tau  && phi == r.phi && min == r.min && max == r.max && acc == r.acc;
       }
     };
-      
+
     /**
      * @brief A serializable object containing the stats values
-     * 
+     *
      */
     struct RunStatsValues {
       double count;
@@ -117,7 +117,7 @@ namespace chimbuko {
 
     /**
      * @brief Set the internal variables from an instance of State
-     */    
+     */
     void set_state(const State& s);
 
     /**
@@ -140,7 +140,7 @@ namespace chimbuko {
      * @brief Return the current set of internal variables (state) as a JSON object
      */
     nlohmann::json get_json_state() const;
-    
+
     /**
      * @brief Set the internal variables from a JSON object
      */
@@ -206,7 +206,7 @@ namespace chimbuko {
      * @brief Get the current statistics as a RunStatsValues object
      */
     RunStatsValues get_stat_values() const;
-   
+
 
     /**
      * @brief Combine two RunStats instances such that the resulting statistics are the union of the two
@@ -222,7 +222,7 @@ namespace chimbuko {
      * @brief Comparison operator
      */
     friend bool operator==(const RunStats& a, const RunStats& b);
-    
+
     /**
      * @brief Negative comparison operator
      */

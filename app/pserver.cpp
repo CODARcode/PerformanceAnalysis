@@ -16,8 +16,10 @@
 
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
+#include <chimbuko/util/error.hpp>
 #include <fstream>
 #include "chimbuko/verbose.hpp"
+
 
 
 using namespace chimbuko;
@@ -40,6 +42,7 @@ struct pserverArgs{
   int stat_send_freq;
 
   std::string stat_outputdir;
+  std::string ad;
 
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
@@ -50,8 +53,8 @@ struct pserverArgs{
 #ifdef ENABLE_PROVDB
   std::string provdb_addr;
 #endif
- 
-  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
+
+  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
@@ -64,6 +67,7 @@ struct pserverArgs{
     static bool init = false;
     static commandLineParser<pserverArgs> p;
     if(!init){
+      addOptionalCommandLineArg(p, ad, "Set AD algorithm to use.");
       addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, port, "Set the pserver port (default: 5559)");
@@ -79,7 +83,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");    
+      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
 #endif
 
       init = true;
@@ -107,13 +111,18 @@ int main (int argc, char ** argv){
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     progressStream << "Pserver: Enabling verbose debug output" << std::endl;
     enableVerboseLogging() = true;
-  }       
+  }
 
-  SstdParam param; //global collection of parameters used to identify anomalies
+  ParamInterface * param = ParamInterface::set_AdParam(args.ad); //"hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
+  if (param == nullptr) {
+    fatal_error("INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos.");
+    // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
+    // exit(EXIT_FAILURE);
+  }
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
-  
+
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
@@ -122,7 +131,7 @@ int main (int argc, char ** argv){
     nlohmann::json in_p;
     in >> in_p;
     global_func_index_map.deserialize(in_p["func_index_map"]);
-    param.assign(in_p["alg_params"].dump());
+    param->assign(in_p["alg_params"].dump()); //param.assign(in_p["alg_params"].dump());
   }
 
 #ifdef _USE_MPINET
@@ -172,8 +181,8 @@ int main (int argc, char ** argv){
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
 
-    net.add_payload(new NetPayloadUpdateParams(&param, args.freeze_params));
-    net.add_payload(new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params)); //new NetPayloadUpdateParams(&param, args.freeze_params));
+    net.add_payload(new NetPayloadGetParams(param)); //new NetPayloadGetParams(&param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
@@ -206,7 +215,7 @@ int main (int argc, char ** argv){
       progressStream << "Pserver: sending final statistics to provDB" << std::endl;
       provdb_client.sendMultipleData(global_func_stats.collect_func_data(), GlobalProvenanceDataType::FunctionStats);
       provdb_client.sendMultipleData(global_counter_stats.get_json_state(), GlobalProvenanceDataType::CounterStats);
-      progressStream << "Pserver: disconnecting from provDB" << std::endl;      
+      progressStream << "Pserver: disconnecting from provDB" << std::endl;
       provdb_client.disconnect();
     }
 #endif
@@ -218,7 +227,7 @@ int main (int argc, char ** argv){
     o.open(args.logdir + "/parameters.txt");
     if (o.is_open())
       {
-	param.show(o);
+	param->show(o); //param.show(o);
 	o.close();
       }
   }
@@ -242,12 +251,12 @@ int main (int argc, char ** argv){
 
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
-    progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;   
+    progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
     std::ofstream out(args.save_params);
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
     out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param.serialize());
+    out_p["alg_params"] = nlohmann::json::parse(param->serialize()); //param.serialize());
     out << out_p;
   }
 

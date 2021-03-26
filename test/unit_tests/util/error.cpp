@@ -10,7 +10,7 @@ std::string removeDateTime(const std::string &from){
   return from.substr(pos+2);
 }
 
-void donothing(){}  
+void donothing(){}
 
 TEST(TestError, runTests){
   //Test with default rank
@@ -36,15 +36,15 @@ TEST(TestError, runTests){
   //Test with auto source code lines
   {
     std::stringstream ss;
-    set_error_output_stream(22, &ss);    
+    set_error_output_stream(22, &ss);
     unsigned long line = __LINE__ + 1;
     recoverable_error("hello");
 
     std::string e = removeDateTime(ss.str());
-    
+
     std::stringstream expect;
     expect << "Error (recoverable) rank 22 : " << __func__ << " (" << __FILE__ << ":" << line <<") : hello\n";
-    
+
     std::cout << e << std::endl;
     EXPECT_EQ(e, expect.str());
   }
@@ -73,7 +73,7 @@ TEST(TestError, runTests){
 
     std::cout << thrown_err_str << std::endl;
     EXPECT_EQ(thrown_err_str, expect.str());
-   
+
     //Normally fatal errors are only written to the error stream if they are uncaught
     //As we caught the error above it will not be in the error stream unless we do an explicit flush
     EXPECT_EQ(ss.str().size(), 0);
@@ -81,7 +81,7 @@ TEST(TestError, runTests){
     Error().flushError(thrown_err);
 
     std::string e = removeDateTime(ss.str());
-   
+
     std::cout << e << std::endl;
 
     EXPECT_EQ(e, expect.str());

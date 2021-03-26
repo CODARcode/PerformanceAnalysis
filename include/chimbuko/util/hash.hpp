@@ -14,7 +14,7 @@ namespace chimbuko{
       for (auto e : a)
 	boost::hash_combine(h, e);
       return h;
-    }   
+    }
   };
 
 };

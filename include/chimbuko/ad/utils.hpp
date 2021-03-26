@@ -15,16 +15,16 @@ namespace chimbuko{
    * WARNING: this is slow, apparently
    */
   std::string generate_hex(const unsigned int len);
- 
+
   /*
    * @brief Generate an event_id string of form ${rank}:${step}:${idx}
    */
-  std::string generate_event_id(int rank, int step, long idx);
+  std::string generate_event_id(int rank, int step, size_t idx);
 
   /*
    * @brief Generate an event_id string of form ${rank}-${eid}:${step}:${idx}
    */
-  std::string generate_event_id(int rank, int step, long idx, unsigned long eid);
+  std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid);
 
 
   /**
@@ -49,8 +49,8 @@ namespace chimbuko{
     inline bool isRoot() const{ return rank == -1 && step == -1 && idx == -1; }
 
     inline bool operator==(const eventID &r) const{ return r.rank == rank && r.step == step && r.idx == idx; }
-    inline bool operator!=(const eventID &r) const{ return r.rank != rank || r.step != step || r.idx != idx; }    
-    
+    inline bool operator!=(const eventID &r) const{ return r.rank != rank || r.step != step || r.idx != idx; }
+
     /**
      * @brief Return a string representing the event of the form "${rank}:${step}:${idx}" or "root" for the special root event
      */

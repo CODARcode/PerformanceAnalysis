@@ -27,7 +27,7 @@ public:
   bool &client_has_connected;
   std::mutex &m;
   NetPayloadHandShakeWithCount(int &clients, bool &client_has_connected, std::mutex &m): clients(clients), m(m), client_has_connected(client_has_connected){}
-  
+
   MessageKind kind() const{ return MessageKind::DEFAULT; }
   MessageType type() const{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
@@ -48,7 +48,7 @@ public:
   int &clients;
   std::mutex &m;
   NetPayloadClientDisconnectWithCount(int &clients, std::mutex &m): clients(clients), m(m){}
-  
+
   MessageKind kind() const{ return MessageKind::DEFAULT; }
   MessageType type() const{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
@@ -63,33 +63,10 @@ public:
 };
 
 
-/**
- * @brief Allow the client to request the pserver stop
- */
-class NetPayloadClientRemoteStop: public NetPayloadBase{
-public:
-  bool &register_stop_cmd;
-  std::mutex &m;
-  NetPayloadClientRemoteStop(bool &register_stop_cmd, std::mutex &m): register_stop_cmd(register_stop_cmd), m(m){}
-  
-  MessageKind kind() const{ return MessageKind::CMD; }
-  MessageType type() const{ return MessageType::REQ_QUIT; }
-  void action(Message &response, const Message &message) override{
-    check(message);
-    response.set_msg("", false);
-    std::lock_guard<std::mutex> _(m);
-    register_stop_cmd = true;
-    verboseStream << "ZMQNet received remote stop command" << std::endl;
-  };
-};
-
-
-
-ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1), m_remote_stop_cmd(false)
+ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1)
 {
   add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
   add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
-  add_payload(new NetPayloadClientRemoteStop(m_remote_stop_cmd, m_mutex));
 }
 
 ZMQNet::~ZMQNet()
@@ -100,7 +77,7 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 {
     m_context  = zmq_ctx_new();
     if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
-      fatal_error("ZMQNet::init couldn't set number of io threads to requested amount");   
+      fatal_error("ZMQNet::init couldn't set number of io threads to requested amount");
 
     //Check worker_idx = 0 for all payloads
     for(auto const &e : m_payloads)
@@ -109,7 +86,7 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
     init_thread_pool(nt);
 }
 
-void doWork(void* context,     
+void doWork(void* context,
 	    std::unordered_map<MessageKind,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
 	    > &payloads,
@@ -122,9 +99,9 @@ void doWork(void* context,
   zmq_setsockopt(socket, ZMQ_SNDHWM, &zero, sizeof(int));
 
   zmq_connect(socket, "inproc://workers"); //connect the socket to the worker pool
-    
-  zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } }; 
- 
+
+  zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } };
+
   std::string perf_prefix = "worker" + anyToStr(thr_idx) + "_";
   PerfTimer timer;
 
@@ -138,7 +115,7 @@ void doWork(void* context,
       break;
     }
     perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
-    
+
     //Receive the message into a json-formatted string
     timer.start();
     std::string strmsg;
@@ -146,7 +123,7 @@ void doWork(void* context,
     perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
 
     verboseStream << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl;
-    
+
     //Parse the message and instantiate a reply message with appropriate sender
     timer.start();
     Message msg, msg_reply;
@@ -175,7 +152,7 @@ void doWork(void* context,
     perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());
 
   }//while(<receiving messages>)
-  
+
   zmq_close(socket);
 }
 
@@ -191,7 +168,7 @@ void ZMQNet::init_thread_pool(int nt){
 
 void ZMQNet::stop(){
   //Send a stop command on the stop socket, presumably from a different thread
-  if(m_status == Status::Running){     
+  if(m_status == Status::Running){
     void* socket = zmq_socket(m_context, ZMQ_REQ);
     zmq_connect(socket, "inproc://shutdown"); //connect the socket to the worker pool
     zmq_send(socket, nullptr, 0, 0);
@@ -216,7 +193,7 @@ void ZMQNet::run()
 #endif
 {
   m_status = Status::StartingUp;
-    
+
   void* stop_socket = zmq_socket(m_context, ZMQ_REP);
   void* frontend = zmq_socket(m_context, ZMQ_ROUTER);
   void* backend  = zmq_socket(m_context, ZMQ_DEALER);
@@ -232,8 +209,8 @@ void ZMQNet::run()
   zmq_bind(backend, "inproc://workers"); //create a socket for distributing work among the worker threads
   zmq_bind(stop_socket, "inproc://shutdown"); //create a socket for communicating shutdown messages
 
-  const int NR_ITEMS = 3; 
-  zmq_pollitem_t items[NR_ITEMS] = 
+  const int NR_ITEMS = 3;
+  zmq_pollitem_t items[NR_ITEMS] =
     {
       { frontend, 0, ZMQ_POLLIN, 0 },
       { backend , 0, ZMQ_POLLIN, 0 },
@@ -254,11 +231,11 @@ void ZMQNet::run()
   if (f.is_open())
     f << "# PS PERFORMANCE MEASURE" << std::endl;
   Clock::time_point t_init = Clock::now();
-  Clock::time_point t_start = Clock::now();  
+  Clock::time_point t_start = Clock::now();
   Clock::time_point t_end;
 #endif
-    
-  m_remote_stop_cmd = false;
+
+
   m_status = Status::Running;
   Status stop_status; //record why it stops
 
@@ -270,22 +247,21 @@ void ZMQNet::run()
   m_n_requests = 0;
   while(true){
 
-    //Autoshutdown or action of remote stop
-    //Note: the server will only finish if all the clients have disconnected
-    if( (m_autoshutdown || m_remote_stop_cmd) && m_client_has_connected && m_clients == 0){
+    //Autoshutdown
+    if(m_autoshutdown && m_client_has_connected && m_clients == 0){
       if(m_n_requests == 0){
 	verboseStream << "ZMQnet all clients have disconnected and queue cleared" << std::endl;
-	stop_status = m_remote_stop_cmd ? Status::StoppedByRequest : Status::StoppedAutomatically;
+	stop_status = Status::StoppedAutomatically;
 	break;
       }else{
-	verboseStream << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl;	  
+	verboseStream << "ZMQnet all clients have disconnected, waiting for queue clearance" << std::endl;
       }
     }
 
     timer.start();
     int err = zmq_poll(items, NR_ITEMS, m_poll_timeout);
     m_perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
-    
+
     //If we either timeout or encounter an error we gracefully exit
     if(err == 0){ //timed out
       recoverable_error(std::string("ZMQnet::run polling timed out after ") + anyToStr(m_poll_timeout) + " ms\n");
@@ -317,10 +293,10 @@ void ZMQNet::run()
       freq_n_reply += nmsg;
       n_replies += nmsg;
 #endif
-    } 
-      
+    }
+
     //If the message was received from the AD, route the message to a worker thread
-    if(items[0].revents & ZMQ_POLLIN) { 
+    if(items[0].revents & ZMQ_POLLIN) {
       timer.start();
       int nmsg = recvAndSend(frontend, backend, m_max_pollcyc_msg);
       m_perf.add(perf_prefix + "route_front_to_back_ms", timer.elapsed_ms());
@@ -347,10 +323,10 @@ void ZMQNet::run()
     duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
     if (duration >= 10000. && f.is_open()) {
       elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
-      f << elapsed << " " 
-	<< n_requests << " " 
-	<< n_replies << " " 
-	<< duration 
+      f << elapsed << " "
+	<< n_requests << " "
+	<< n_replies << " "
+	<< duration
 	<< std::endl;
       t_start = t_end;
       n_requests = 0;
@@ -374,9 +350,9 @@ void ZMQNet::run()
   duration = double(std::chrono::duration_cast<MicroSec>(t_end - t_start).count())/1000.;
   if (f.is_open()) {
     elapsed = double(std::chrono::duration_cast<MicroSec>(t_end - t_init).count())/1000.;
-    f << elapsed << " " 
-      << n_requests << " " 
-      << n_replies << " " 
+    f << elapsed << " "
+      << n_requests << " "
+      << n_replies << " "
       << duration
       << std::endl;
   }
@@ -424,7 +400,7 @@ int ZMQNet::recvAndSend(void* skFrom, void* skTo, int max_msg){
 
     if(!more)
       ++msg_count; //don't count multi-part messages as distinct messages to avoid exiting too early
-    
+
     if(more || len)
       zmq_msg_send(&msg, skTo, more ? ZMQ_SNDMORE: 0);
 
@@ -441,11 +417,11 @@ int ZMQNet::send(void* socket, const std::string& strmsg)
     int ret;
     // zero-copy version (need to think again...)
     // zmq_msg_init_data(
-    //     &msg, (void*)strmsg.data(), strmsg.size(), 
+    //     &msg, (void*)strmsg.data(), strmsg.size(),
     //     [](void* _data, void* _hint){
     //         // std::cout << "free message\n";
     //         // free(_data);
-    //     }, 
+    //     },
     //     nullptr
     // );
     // internal-copy version
@@ -464,7 +440,7 @@ int ZMQNet::recv(void* socket, std::string& strmsg)
     zmq_msg_t msg;
     int ret;
     zmq_msg_init(&msg);
-    ret = zmq_msg_recv(&msg, socket, 0);    
+    ret = zmq_msg_recv(&msg, socket, 0);
     if(ret != -1) strmsg.assign((char*)zmq_msg_data(&msg), ret);
     zmq_msg_close(&msg);
 

@@ -66,17 +66,6 @@ void pserver_goodbye(const tl::request& req) {
   progressStream << "ProvDB Admin: Pserver has said goodbye" << std::endl;
 }
 
-bool cmd_shutdown = false; //true if a client has requested that the server shut down
-
-void client_stop_rpc(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  cmd_shutdown = true;
-  progressStream << "ProvDB Admin: Received shutdown request from client" << std::endl;
-}
-
-
-
-
 
 struct ProvdbArgs{
   std::string ip;
@@ -154,7 +143,6 @@ int main(int argc, char** argv) {
     engine.define("client_goodbye",client_goodbye).disable_response();
     engine.define("pserver_hello",pserver_hello).disable_response();
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
-    engine.define("stop_server",client_stop_rpc).disable_response();
 
     std::string addr = (std::string)engine.self();  //ip and port of admin
 
@@ -231,10 +219,8 @@ int main(int argc, char** argv) {
       
 	    //If at least one client has previously connected but none are now connected, shutdown the server
 	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
-
-	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
 	    if(
-	       (args.autoshutdown || cmd_shutdown)  && 
+	       args.autoshutdown && 
 	       ( a_client_has_connected && connected.size() == 0 ) &&
 	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) )
 	       ){

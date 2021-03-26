@@ -24,7 +24,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   exec0.update_exclusive(exec1.get_runtime());
 
   exec2.set_label(-1); //tag it as an anomaly
-  
+
   ADEvent event_man;
   event_man.addCall(exec0);
   event_man.addCall(exec1);
@@ -49,14 +49,14 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
 			   param,
 			   counter, metadata, 0,
 			   step, step_start, step_end);
-    
+
   nlohmann::json output = prov.get_json();
   //Test pid,rid,tid,runtime
   EXPECT_EQ(output["pid"], 1);
   EXPECT_EQ(output["rid"], 2);
   EXPECT_EQ(output["tid"], 3);
   EXPECT_EQ(output["runtime_total"], 50);
-  
+
   //Check call stack
   EXPECT_EQ(output["call_stack"].size(), 3);
   EXPECT_EQ(output["call_stack"][0]["event_id"], exec2.get_id().toString());
@@ -81,7 +81,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
 
   //Test statistics
   EXPECT_EQ(output["algo_params"], stats.get_json());
-  
+
   //Check step info
   EXPECT_EQ(output["io_step"], step);
   EXPECT_EQ(output["io_step_tstart"], step_start);
@@ -129,7 +129,7 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   std::list<CounterDataListIterator_t> exec2_counters = counter.getCountersInWindow(0,1,0, 1050,1100);
   for(auto const &e : exec2_counters)
     exec2.add_counter(*e);
-  
+
   ADMetadataParser metadata;
 
   ADAnomalyProvenance prov(exec2,
@@ -137,12 +137,12 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
 			   param,
 			   counter, metadata, 0,
 			   11,900,1200);
-    
-  nlohmann::json output = prov.get_json();
-  
 
-  
-  EXPECT_EQ(output["counter_events"].size(), 4); 
+  nlohmann::json output = prov.get_json();
+
+
+
+  EXPECT_EQ(output["counter_events"].size(), 4);
   for(int i=0;i<4;i++){
     int cidx = idx_pickedup[i];
     std::string cname = counters[cevents[cidx].counter_id()];
@@ -158,7 +158,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   int corrid_cid = 22;
   ExecData_t exec_gpu = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
   exec_gpu.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx, 1000, "Correlation ID"));
-  
+
   ExecData_t exec_cpu = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
   exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx, 1000, "Correlation ID"));
 
@@ -168,7 +168,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADEvent event_man;
   CallListIterator_t exec_cpu_parent_it = event_man.addCall(exec_cpu_parent);
   CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
-  
+
   //Check both CPU calls picked up
   const CallListMap_p_t &calls = event_man.getCallListMap();
   CallList_t const* calls_p_r_t_cpu_ptr = getElemPRT(0,1,0, calls);
@@ -188,7 +188,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   param[11] = stats;
 
   ADCounter counter;
-    
+
   ADMetadataParser metadata;
   std::vector<MetaData_t> mdata = {
     MetaData_t(0,0, gpu_thr, "CUDA Context", "8"),
@@ -220,7 +220,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
     EXPECT_EQ(output["is_gpu_event"], false);
     EXPECT_EQ(output["call_stack"].size(), 2);
   }
-  
+
   //Parent function exec should not be trimmed out even though it is not the immediate partner event
   delete event_man.trimCallList();
   EXPECT_EQ(calls_p_r_t_cpu.size(), 2);
@@ -249,7 +249,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
 
 
 
-TEST(TestADAnomalyProvenance, extractsExecWindow){  
+TEST(TestADAnomalyProvenance, extractsExecWindow){
   ExecData_t exec0 = createFuncExecData_t(1,2,3, 33, "theonebefore", 900, 0); //not yet completed
   ExecData_t exec1 = createFuncExecData_t(1,2,3, 55, "theparent", 1000, 100);
   ExecData_t exec2 = createFuncExecData_t(1,2,3, 77, "thechild", 1050, 50); //going to be the anomalous one
@@ -267,10 +267,10 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
   CommData_t comm2 = createCommData_t(1,2,3, 1, 112, 2, 1024, 1133, "RECV");
 
   CommData_t* comms[] = {&comm1, &comm2};
-  
+
   ASSERT_NE( exec1.add_message(comm1), false );
   ASSERT_NE( exec3.add_message(comm2), false );
- 
+
   ADEvent event_man;
   event_man.addCall(exec0);
   event_man.addCall(exec1);
@@ -293,7 +293,7 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
 			   counter, metadata,
 			   2,
 			   8,800,1200);
-    
+
   nlohmann::json output = prov.get_json();
 
   const nlohmann::json &win = output["event_window"];

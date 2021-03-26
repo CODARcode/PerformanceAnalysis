@@ -26,21 +26,21 @@ namespace chimbuko{
      * @param io_step Index of io step
      * @param io_step_tstart Timestamp of beginning of io frame
      * @param io_step_tend Timestamp of end of io frame
-     */     
+     */
     ADAnomalyProvenance(const ExecData_t &call,
 			const ADEvent &event_man, //for stack trace
 			const ParamInterface &algo_params, //algorithm parameters
 			const ADCounter &counters, //for counters
 			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
 			const int window_size,
-			const int io_step, 
+			const int io_step,
 			const unsigned long io_step_tstart, const unsigned long io_step_tend);
 
     /**
      * @brief Serialize anomaly data into JSON construct
      */
     nlohmann::json get_json() const;
-    
+
     /**
      * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
      *
@@ -69,7 +69,7 @@ namespace chimbuko{
 				     const unsigned int anom_win_size,
 				     const ParamInterface &algo_params,
 				     const ADEvent &event_man,
-				     const ADCounter &counters, 
+				     const ADCounter &counters,
 				     const ADMetadataParser &metadata);
 
     /**
@@ -98,20 +98,20 @@ namespace chimbuko{
 				     const unsigned int anom_win_size,
 				     const ParamInterface &algo_params,
 				     const ADEvent &event_man,
-				     const ADCounter &counters, 
+				     const ADCounter &counters,
 				     const ADMetadataParser &metadata){
       PerfStats perf;
       getProvenanceEntries(anom_event_entries, normal_event_entries,
 			   normal_event_manager, perf, anomalies, step, first_event_ts, last_event_ts,
 			   anom_win_size, algo_params, event_man, counters, metadata);
-    }		     
+    }
 
   private:
     /**
      * @brief Get the call stack
      */
     void getStackInformation(const ExecData_t &call, const ADEvent &event_man);
-    
+
     /**
      * @brief Get counters in execution window
      */

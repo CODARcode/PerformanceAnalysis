@@ -1,8 +1,23 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
-LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs 
+LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs
 
 testdir = $(prefix)/test/unit_tests/ad
-test_PROGRAMS = ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils
+test_PROGRAMS = HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils
+
+HBOSOutlier_SOURCES = HBOSOutlier.cpp ../unit_test_main_mpi.cpp
+HBOSOutlier_LDADD = $(LDADD)
+
+HBOSOutlierADs_SOURCES = HBOSOutlierADs.cpp ../unit_test_main_mpi.cpp
+HBOSOutlierADs_LDADD = $(LDADD)
+
+HBOSOutlierDistributions_SOURCES = HBOSOutlierDistributions.cpp ../unit_test_main_mpi.cpp
+HBOSOutlierDistributions_LDADD = $(LDADD)
+
+HBOSOutlierTestBPFile_SOURCES = HBOSOutlierTestBPFile.cpp ../unit_test_main_mpi.cpp
+HBOSOutlierTestBPFile_LDADD = $(LDADD)
+
+SSTDOutlierTestBPFile_SOURCES = SSTDOutlierTestBPFile.cpp ../unit_test_main_mpi.cpp
+SSTDOutlierTestBPFile_LDADD = $(LDADD)
 
 ADEvent_SOURCES = ADEvent.cpp ../unit_test_main.cpp
 ADEvent_LDADD = $(LDADD)
@@ -42,4 +57,3 @@ ADNormalEventProvenance_LDADD = $(LDADD)
 
 utils_SOURCES = utils.cpp ../unit_test_main.cpp
 utils_LDADD = $(LDADD)
-

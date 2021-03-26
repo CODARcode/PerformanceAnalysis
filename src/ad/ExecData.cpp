@@ -6,7 +6,7 @@ using namespace chimbuko;
  * Implementation of ExecData_t class
  * --------------------------------------------------------------------------- */
 ExecData_t::ExecData_t()
-  : m_pid(0), m_rid(0), m_tid(0), m_fid(0), 
+  : m_pid(0), m_rid(0), m_tid(0), m_fid(0),
     m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
     m_n_children(0), m_n_messages(0),
     m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0){}
@@ -85,29 +85,23 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     return true;
 }
 
-nlohmann::json ExecData_t::get_json(bool with_message, bool with_counter) const
+nlohmann::json ExecData_t::get_json(bool with_message) const
 {
     nlohmann::json j{
         {"key", m_id.toString()},
         {"name", m_funcname},
         {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
-        {"entry", m_entry}, {"exit", m_exit}, 
+        {"entry", m_entry}, {"exit", m_exit},
         {"runtime", m_runtime}, {"exclusive", m_exclusive},
-        {"label", m_label}, 
+        {"label", m_label},
         {"parent", m_parent.toString()},
-        {"n_children", m_n_children}, {"n_messages", m_n_messages}, {"n_counters", m_counters.size() }
+        {"n_children", m_n_children}, {"n_messages", m_n_messages}
     };
     if (with_message)
     {
         j["messages"] = nlohmann::json::array();
         for (auto comm: m_messages)
             j["messages"].push_back(comm.get_json());
-    }
-    if (with_counter)
-    {
-        j["counters"] = nlohmann::json::array();
-        for (auto count: m_counters)
-            j["counters"].push_back(count.get_json());
     }
     return j;
 }
@@ -127,7 +121,7 @@ unsigned long Event_t::ts() const {
   case EventDataType::COMM: return m_data[COMM_IDX_TS];
   case EventDataType::COUNT: return m_data[COUNTER_IDX_TS];
   default: return UINT64_MAX;
-  }     
+  }
 }
 
 std::string Event_t::strtype() const {
@@ -145,15 +139,15 @@ unsigned long Event_t::eid() const {
     exit(EXIT_FAILURE);
   }
   return m_data[IDX_E];
-}   
+}
 
 // for function event
-unsigned long Event_t::fid() const { 
+unsigned long Event_t::fid() const {
     if (m_t != EventDataType::FUNC) {
         std::cerr << "\n***** It is NOT func event and tried to get fid! *****\n";
         exit(EXIT_FAILURE);
     }
-    return m_data[FUNC_IDX_F]; 
+    return m_data[FUNC_IDX_F];
 }
 
 // for communication event
@@ -161,38 +155,38 @@ unsigned long Event_t::tag() const {
     if (m_t != EventDataType::COMM) {
         std::cerr << "\n***** It is NOT comm event and tried to get tag! *****\n";
         exit(EXIT_FAILURE);
-    } 
-    return m_data[COMM_IDX_TAG]; 
+    }
+    return m_data[COMM_IDX_TAG];
 }
-unsigned long Event_t::partner() const { 
+unsigned long Event_t::partner() const {
     if (m_t != EventDataType::COMM) {
         std::cerr << "\n***** It is NOT comm event and tried to get partner! *****\n";
         exit(EXIT_FAILURE);
-    } 
-    return m_data[COMM_IDX_PARTNER]; 
+    }
+    return m_data[COMM_IDX_PARTNER];
 }
-unsigned long Event_t::bytes() const { 
+unsigned long Event_t::bytes() const {
     if (m_t != EventDataType::COMM) {
         std::cerr << "\n***** It is NOT comm event and tried to get bytes! *****\n";
         exit(EXIT_FAILURE);
-    } 
-    return m_data[COMM_IDX_BYTES]; 
+    }
+    return m_data[COMM_IDX_BYTES];
 }
 
 unsigned long Event_t::counter_id() const{
   if (m_t != EventDataType::COUNT) {
     std::cerr << "\n***** It is NOT count event and tried to get counter id! *****\n";
     exit(EXIT_FAILURE);
-  } 
-  return m_data[COUNTER_IDX_ID]; 
+  }
+  return m_data[COUNTER_IDX_ID];
 }
 
-unsigned long Event_t::counter_value() const { 
+unsigned long Event_t::counter_value() const {
     if (m_t != EventDataType::COUNT) {
         std::cerr << "\n***** It is NOT count event and tried to get counter value! *****\n";
         exit(EXIT_FAILURE);
-    } 
-    return m_data[COUNTER_IDX_VALUE]; 
+    }
+    return m_data[COUNTER_IDX_VALUE];
 }
 
 
@@ -252,7 +246,7 @@ nlohmann::json Event_t::get_json() const
     j["counter_id"] = counter_id();
     j["value"] = counter_value();
   }
-  
+
   return j;
 }
 
@@ -264,13 +258,13 @@ CommData_t::CommData_t()
 
 }
 
-CommData_t::CommData_t(const Event_t& ev, const std::string &commType) 
+CommData_t::CommData_t(const Event_t& ev, const std::string &commType)
 : m_commType(commType)
 {
     m_pid = ev.pid();
     m_rid = ev.rid();
     m_tid = ev.tid();
-    
+
     if (m_commType.compare("SEND") == 0) {
         m_src = m_rid;
         m_tar = ev.partner();
@@ -284,7 +278,7 @@ CommData_t::CommData_t(const Event_t& ev, const std::string &commType)
     m_ts = ev.ts();
 }
 
-bool CommData_t::is_same(const CommData_t& other) const 
+bool CommData_t::is_same(const CommData_t& other) const
 {
     if (!(m_commType == other.m_commType)) return false;
     if (!(m_pid == other.m_pid)) return false;
@@ -315,7 +309,7 @@ MetaData_t::MetaData_t(unsigned long pid, unsigned long rid, unsigned long tid, 
 
 nlohmann::json MetaData_t::get_json() const{
   return {
-    {"pid", m_pid}, 
+    {"pid", m_pid},
       {"rid",m_rid},
 	{"tid",m_tid},
 	  {"descr",m_descr},
@@ -341,7 +335,7 @@ CounterData_t::CounterData_t(const Event_t& ev, const std::string &counter_name)
   m_cid(ev.counter_id()),
   m_value(ev.counter_value()),
   m_ts(ev.ts()){}
-  
+
 nlohmann::json CounterData_t::get_json() const{
   return {
 	  {"pid",m_pid},

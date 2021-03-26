@@ -11,7 +11,7 @@ namespace chimbuko{
   struct ErrorWriter{
   public:
     ErrorWriter();
-    
+
     /**
      * @brief Set the MPI rank. This will add the rank to the error output
      */
@@ -34,7 +34,7 @@ namespace chimbuko{
 
     /**
      * @brief Manually flush an exception to the output stream
-     */    
+     */
     void flushError(std::exception_ptr e);
     void flushError(const std::exception &e);
 
@@ -50,14 +50,14 @@ namespace chimbuko{
    * @brief The global error writer instance
    */
   ErrorWriter & Error();
-   
+
   /**
    * @brief For fatal errors we delay writing the error to the output stream in case it is caught. This terminate handler ensures it is written
    *
    * After flushing the error the handler calls the terminateHandlerAbortAction above
    */
   void writeErrorTerminateHandler();
-  
+
   /**
    * @brief Set the error output of the global error writer to a stream and specify the rank
    */
@@ -80,5 +80,5 @@ namespace chimbuko{
    */
 #define fatal_error(MSG) \
   { chimbuko::Error().fatal(MSG, __func__, __FILE__, __LINE__); }
- 
+
 }

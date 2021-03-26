@@ -10,14 +10,16 @@
 
 namespace chimbuko {
 
-  /** 
+  /**
    * @brief The general interface for storing function statistics for anomaly detection
-   */      
+   */
   class ParamInterface {
   public:
     ParamInterface();
 
     virtual ~ParamInterface(){};
+
+    static ParamInterface *set_AdParam(const std::string & ad_algorithm);
 
     /**
      * @brief Clear all statistics
@@ -63,7 +65,7 @@ namespace chimbuko {
   };
 
 
-  /** 
+  /**
    * @brief Net payload for pserver updating params from AD
    */
   class NetPayloadUpdateParams: public NetPayloadBase{
@@ -81,13 +83,13 @@ namespace chimbuko {
     void action(Message &response, const Message &message) override{
       check(message);
       //Response message is a copy of the updated statistics in JSON form
-      response.set_msg(m_freeze ? 
-		       m_param->serialize() : 
+      response.set_msg(m_freeze ?
+		       m_param->serialize() :
 		       m_param->update(message.buf(), true),  //second argument indicates that a serialized copy of the updated params should be returned
 		       false);
-    }	
+    }
   };
-  /** 
+  /**
    * @brief Net payload for AD updating params from pserver
    */
   class NetPayloadGetParams: public NetPayloadBase{
@@ -99,7 +101,7 @@ namespace chimbuko {
     void action(Message &response, const Message &message) override{
       check(message);
       response.set_msg(m_param->serialize(), false);
-    }	
+    }
   };
 
 

@@ -15,6 +15,9 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  trace_connect_timeout(60),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
+					ad_algorithm("hbos"),
+					hbos_threshold(0.99),
+					hbos_use_global_threshold(true),
 #ifdef ENABLE_PROVDB
 				  provdb_addr(""), nprovdb_shards(1),
 #endif
@@ -23,12 +26,13 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
                                   outlier_statistic("exclusive_runtime"),
-                                  step_report_freq(1)  
+                                  step_report_freq(1)
 {}
 
 
 void ChimbukoParams::print() const{
-  std::cout << "Program Idx: " << program_idx
+  std::cout << "AD Algorithm: " << ad_algorithm
+	    << "\nProgram Idx: " << program_idx
 	    << "\nRank       : " << rank
 	    << "\nEngine     : " << trace_engineType
 	    << "\nBP in dir  : " << trace_data_dir
@@ -37,8 +41,10 @@ void ChimbukoParams::print() const{
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nSigma      : " << outlier_sigma
+			<< "\nHBOS Threshold: " << hbos_threshold
+			<< "\nUsing Global threshold: " << hbos_use_global_threshold
 	    << "\nWindow size: " << anom_win_size
-	  
+
 	    << "\nInterval   : " << interval_msec << " msec"
 	    << "\nPerf. metric outpath : " << perf_outputpath
 	    << "\nPerf. step   : " << perf_step;
@@ -50,7 +56,7 @@ void ChimbukoParams::print() const{
 #endif
   if(prov_outputpath.size())
     std::cout << "\nProvenance outpath : " << prov_outputpath;
-  
+
   std::cout << std::endl;
 }
 
@@ -77,13 +83,13 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
 
 #ifdef ENABLE_PROVDB
-  if(m_params.provdb_addr.size() == 0 && m_params.prov_outputpath.size() == 0) 
+  if(m_params.provdb_addr.size() == 0 && m_params.prov_outputpath.size() == 0)
     throw std::runtime_error("Neither provenance database address or provenance output dir are set - no provenance data will be written!");
 #else
-  if(m_params.prov_outputpath.size() == 0) 
+  if(m_params.prov_outputpath.size() == 0)
     throw std::runtime_error("Provenance output dir is not set - no provenance data will be written!");
-#endif  
-  
+#endif
+
   //Initialize error collection
   if(params.err_outputpath.size())
     set_error_output_file(m_params.rank, stringize("%s/ad_error.%d", params.err_outputpath.c_str(), m_params.program_idx));
@@ -98,7 +104,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
 #endif
   init_io(); //will write provenance info if provDB not in use
   init_normalevent_prov();
-  
+
   //Connect to the parameter server
   timer.start();
   init_net_client();
@@ -110,13 +116,14 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_perf.add("ad_initialize_parser_ms", timer.elapsed_ms());
 
   //Event and outlier objects must be initialized in order after parser
-  init_metadata_parser();
-  init_event(); //requires parser and metadata parser
+  init_event(); //requires parser
   init_outlier(); //requires event
   init_counter(); //requires parser
-  
+
+  init_metadata_parser();
+
   m_is_initialized = true;
-  
+
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " has initialized successfully" << std::endl;
   m_perf.add("ad_initialize_total_ms", total_timer.elapsed_ms());
 }
@@ -128,7 +135,7 @@ void Chimbuko::init_io(){
   m_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
 
   if(m_params.prov_outputpath.size())
-    m_io->setOutputPath(m_params.prov_outputpath); 
+    m_io->setOutputPath(m_params.prov_outputpath);
 }
 
 void Chimbuko::init_parser(){
@@ -136,7 +143,7 @@ void Chimbuko::init_parser(){
   if(m_params.pserver_addr.length() > 0 && !m_net_client) throw std::runtime_error("Net client must be initialized before calling init_parser");
   m_parser = new ADParser(m_params.trace_data_dir + "/" + m_params.trace_inputFile, m_params.program_idx, m_params.rank, m_params.trace_engineType,
 			  m_params.trace_connect_timeout);
-  m_parser->linkPerf(&m_perf);  
+  m_parser->linkPerf(&m_perf);
   m_parser->setBeginStepTimeout(m_params.parser_beginstep_timeout);
   m_parser->setDataRankOverride(m_params.override_rank);
   m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
@@ -144,13 +151,11 @@ void Chimbuko::init_parser(){
 }
 
 void Chimbuko::init_event(){
-  if(!m_parser) fatal_error("Parser must be initialized before calling init_event");
-  if(!m_metadata_parser) fatal_error("Metadata parser must be initialized before calling init_event");
+  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_event");
   m_event = new ADEvent(m_params.verbose);
   m_event->linkFuncMap(m_parser->getFuncMap());
   m_event->linkEventType(m_parser->getEventType());
   m_event->linkCounterMap(m_parser->getCounterMap());
-  m_event->linkGPUthreadMap(&m_metadata_parser->getGPUthreadMap());
 }
 
 void Chimbuko::init_net_client(){
@@ -186,16 +191,19 @@ void Chimbuko::init_outlier(){
   if(m_params.outlier_statistic == "exclusive_runtime") stat = ADOutlier::ExclusiveRuntime;
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
-  
-  m_outlier = new ADOutlierSSTD(stat);
+
+  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.hbos_use_global_threshold, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
+	if (m_outlier == nullptr) {
+		fatal_error("INCORRECT Algorithm: Not Found");
+	}
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
-  m_outlier->set_sigma(m_params.outlier_sigma);
+  //m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
 }
 
 void Chimbuko::init_counter(){
-  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_counter");  
+  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_counter");
   m_counter = new ADCounter();
   m_counter->linkCounterMap(m_parser->getCounterMap());
 }
@@ -262,8 +270,8 @@ void Chimbuko::finalize()
 }
 
 //Returns false if beginStep was not successful
-bool Chimbuko::parseInputStep(int &step, 
-			      unsigned long long& n_func_events, 
+bool Chimbuko::parseInputStep(int &step,
+			      unsigned long long& n_func_events,
 			      unsigned long long& n_comm_events,
 			      unsigned long long& n_counter_events
 			      ){
@@ -276,7 +284,7 @@ bool Chimbuko::parseInputStep(int &step,
 
   //Decide whether to report step progress
   bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && expect_step % m_params.step_report_freq == 0);
-  
+
   if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing step " << expect_step << std::endl; }
 
   timer.start();
@@ -286,35 +294,35 @@ bool Chimbuko::parseInputStep(int &step,
     return false;
   }
   m_perf.add("ad_parse_input_begin_step_ms", timer.elapsed_ms());
-    
+
   // get trace data via SST
   step = m_parser->getCurrentStep();
   if(step != expect_step){ recoverable_error(stringize("Got step %d expected %d\n", step, expect_step)); }
-    
+
   if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " commencing input parse for step " << step << std::endl; }
 
-  verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;  
+  verboseStream << "driver rank " << m_params.rank << " updating attributes" << std::endl;
   timer.start();
   m_parser->update_attributes();
   m_perf.add("ad_parse_input_update_attributes_ms", timer.elapsed_ms());
 
-  verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;  
+  verboseStream << "driver rank " << m_params.rank << " fetching func data" << std::endl;
   timer.start();
   m_parser->fetchFuncData();
   m_perf.add("ad_parse_input_fetch_func_data_ms", timer.elapsed_ms());
 
-  verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;  
+  verboseStream << "driver rank " << m_params.rank << " fetching comm data" << std::endl;
   timer.start();
   m_parser->fetchCommData();
   m_perf.add("ad_parse_input_fetch_comm_data_ms", timer.elapsed_ms());
 
-  verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;  
+  verboseStream << "driver rank " << m_params.rank << " fetching counter data" << std::endl;
   timer.start();
   m_parser->fetchCounterData();
   m_perf.add("ad_parse_input_fetch_counter_data_ms", timer.elapsed_ms());
 
 
-  verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;  
+  verboseStream << "driver rank " << m_params.rank << " finished gathering data" << std::endl;
 
 
   // early SST buffer release
@@ -359,7 +367,7 @@ void Chimbuko::extractEvents(unsigned long &first_event_ts,
     first_event_ts = last_event_ts = -1; //no events!
   }
 }
-  
+
 void Chimbuko::extractCounters(int rank, int step){
   if(!m_counter) throw std::runtime_error("Counter is not initialized");
   PerfTimer timer;
@@ -367,7 +375,7 @@ void Chimbuko::extractCounters(int rank, int step){
     Event_t ev(m_parser->getCounterData(c),
 	       EventDataType::COUNT,
 	       c,
-	       eventID(rank, step, c));    
+	       eventID(rank, step, c));
     try{
       m_counter->addCounter(ev);
     }catch(const std::exception &e){
@@ -375,10 +383,10 @@ void Chimbuko::extractCounters(int rank, int step){
     }
   }
   m_perf.add("ad_extract_counters_get_register_ms", timer.elapsed_ms());
-} 
+}
 
 
-void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies, 
+void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
 					const unsigned long last_event_ts) const{
@@ -403,7 +411,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       m_io->writeJSON(anomaly_prov, step, "anomalies");
       m_perf.add("ad_extract_send_prov_anom_data_io_write_ms", timer.elapsed_ms());
 
-#ifdef ENABLE_PROVDB      
+#ifdef ENABLE_PROVDB
       timer.start();
       m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
       m_perf.add("ad_extract_send_prov_anom_data_send_async_ms", timer.elapsed_ms());
@@ -415,7 +423,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
       m_io->writeJSON(normalevent_prov, step, "normalexecs");
       m_perf.add("ad_extract_send_prov_normalexec_data_io_write_ms", timer.elapsed_ms());
 
-#ifdef ENABLE_PROVDB      
+#ifdef ENABLE_PROVDB
       timer.start();
       m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
       m_perf.add("ad_extract_send_prov_normalexec_data_send_async_ms", timer.elapsed_ms());
@@ -442,7 +450,7 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
       timer.start();
       m_io->writeJSON(new_metadata_j, step, "metadata");
       m_perf.add("ad_send_new_metadata_to_provdb_io_write_ms", timer.elapsed_ms());
-      
+
 #ifdef ENABLE_PROVDB
       timer.start();
       m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
@@ -453,7 +461,7 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
   }
 }
 
-void Chimbuko::run(unsigned long long& n_func_events, 
+void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,
@@ -468,18 +476,18 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   std::string ad_perf_prd = stringize("ad_perf_prd.%d.%d.log", m_params.program_idx, m_params.rank);
   m_perf_prd.setWriteLocation(m_params.perf_outputpath, ad_perf_prd);
-  
+
 #if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
-  
+
   std::ofstream *perf_provdb_client_outstanding = nullptr;
   if(m_params.rank == 0 && m_provdb_client->isConnected()) perf_provdb_client_outstanding = new std::ofstream(m_params.perf_outputpath + "/ad_provdb_outstandingreq.0.txt");
 #endif
-  
+
   PerfTimer step_timer, timer;
-  
+
   unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
   unsigned long long n_func_events_accum_prd = 0, n_comm_events_accum_prd = 0, n_counter_events_accum_prd = 0; //accumulated event counts since last write of periodic data
-  unsigned long n_outliers_accum_prd = 0; //accumulated outliers detected since last write of periodic data 
+  unsigned long n_outliers_accum_prd = 0; //accumulated outliers detected since last write of periodic data
   int n_steps_accum_prd = 0; //number of steps since last write of periodic data
 
   //Loop until we lose connection with the application
@@ -492,11 +500,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
     n_func_events_accum_prd += n_func_events_step;
     n_comm_events_accum_prd += n_comm_events_step;
     n_counter_events_accum_prd += n_counter_events_step;
-    
+
     //Decide whether to report step progress
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step 
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step
 							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
 
@@ -521,7 +529,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     n_outliers_accum_prd += nout;
     frames++;
     n_steps_accum_prd++;
-    
+
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
     extractAndSendProvenance(anomalies, step, first_event_ts, last_event_ts);
@@ -548,7 +556,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
       count_stats.updateGlobalStatistics(*m_net_client);
       m_perf.add("ad_run_gather_update_counter_stats_time_ms", timer.elapsed_ms());
     }
-    
+
     //Trim the call list
     timer.start();
     m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
@@ -566,12 +574,8 @@ void Chimbuko::run(unsigned long long& n_func_events,
       size_t total, resident;
       getMemUsage(total, resident);
       m_perf_prd.add("ad_mem_usage_kB", resident);
-      
-      m_perf_prd.add("io_steps", n_steps_accum_prd);
 
-      //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
-      m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
-      m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
+      m_perf_prd.add("io_steps", n_steps_accum_prd);
 
       //Write accumulated outlier count
       m_perf_prd.add("outlier_count", n_outliers_accum_prd);
@@ -598,7 +602,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
-    
+
     if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl; }
   } // end of parser while loop
 

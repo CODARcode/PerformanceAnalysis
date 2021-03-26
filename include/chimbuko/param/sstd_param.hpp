@@ -4,6 +4,9 @@
 #include "chimbuko/util/RunStats.hpp"
 #include <unordered_map>
 #include <nlohmann/json.hpp>
+#include <vector>
+#include <iostream>
+
 
 namespace chimbuko {
 
@@ -45,7 +48,7 @@ namespace chimbuko {
      * @param runstats The serialized input map
      */
     void assign(const std::string& parameters) override;
-    
+
     void show(std::ostream& os) const override;
 
     /**
@@ -91,7 +94,7 @@ namespace chimbuko {
      * @param[in] other The other SstdParam instance
      */
     void update(const SstdParam& other) { update(other.m_runstats); }
-    
+
     /**
      * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
      * @param[in,out] runstats The map between global function index and statistics
@@ -120,7 +123,6 @@ namespace chimbuko {
      * @brief Get the internal map between global function index and statistics
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
-
     /**
      * @brief Get the algorithm parameters associated with a given function
      */
@@ -131,10 +133,11 @@ namespace chimbuko {
     /**
      * @brief Get the internal map of global function index to statistics
      */
-    std::unordered_map<unsigned long, RunStats> & access_runstats(){ return m_runstats; }    
-    
+    std::unordered_map<unsigned long, RunStats> & access_runstats(){ return m_runstats; }
+
   private:
     std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of global function index to statistics*/
   };
+
 
 } // end of chimbuko namespace
