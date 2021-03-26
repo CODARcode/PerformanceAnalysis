@@ -604,6 +604,15 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Always dump perf at end
   m_perf.write();
+
+  //For debug purposes, write out any unmatched correlation ID events that we encountered as recoverable errors
+  if(m_event->getUnmatchCorrelationIDevents().size() > 0){
+    for(auto c: m_event->getUnmatchCorrelationIDevents()){
+      std::stringstream ss;
+      ss << "Unmatched correlation ID: " << c.first << " from event " << c.second->get_json().dump();
+      recoverable_error(ss.str());
+    }
+  }
   
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 }
