@@ -173,9 +173,10 @@ using namespace chimbuko;
 
      }
      //std::cout << "]" << std::endl;
-     if (combined.bin_edges().size() -1 <= 0){
-       fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
-     }
+     std::assert (combined.bin_edges().size() -1 > 0); 
+     //{
+     //   fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
+     // }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
      //std::vector<int> count (combined.bin_edges().size()-1, 0);
      combined.set_counts(std::vector<int> (combined.bin_edges().size() - 1, 0)); //count);
