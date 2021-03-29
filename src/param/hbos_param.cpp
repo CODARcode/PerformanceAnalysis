@@ -212,9 +212,12 @@ using namespace chimbuko;
     Histogram combined = *this + h;
 
     this->clear();
-    this->set_glob_threshold(combined.get_threshold());
-    this->set_counts(combined.counts());
-    this->set_bin_edges(combined.bin_edges());
+    double threshold = combined.get_threshold();
+    this->set_glob_threshold(threshold);
+    std::vector<int> counts = combined.counts();
+    this->set_counts(counts);
+    std::vector<double> bin_edges = combined.bin_edges();
+    this->set_bin_edges(bin_edges);
     //*this = combined;
     //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
