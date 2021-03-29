@@ -158,8 +158,10 @@ using namespace chimbuko;
 
      const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
      //std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
-
+     min_runtime = l.bin_edges().at(0) ? (l.bin_edges().at(0) < g.bin_edges().at(0)) : min_runtime = g.bin_edges().at(0);
+     max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
      combined.add2binedges(min_runtime);
+
      //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
      //std::cout << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
      double prev = min_runtime;
@@ -171,7 +173,9 @@ using namespace chimbuko;
 
      }
      //std::cout << "]" << std::endl;
-
+     if (combined.bin_edges().size() -1 <= 0){
+       fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
+     }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
      //std::vector<int> count (combined.bin_edges().size()-1, 0);
      combined.set_counts(std::vector<int> (combined.bin_edges().size() - 1, 0)); //count);
@@ -211,13 +215,13 @@ using namespace chimbuko;
     //const Histogram combined = combine_two_histograms(*this, h);
     Histogram combined = *this + h;
 
-    // this->clear();
-    // double threshold = combined.get_threshold();
-    // this->set_glob_threshold(threshold);
-    // std::vector<int> counts = combined.counts();
-    // this->set_counts(counts);
-    // std::vector<double> bin_edges = combined.bin_edges();
-    // this->set_bin_edges(bin_edges);
+    this->clear();
+    double threshold = combined.get_threshold();
+    this->set_glob_threshold(threshold);
+    std::vector<int> counts = combined.counts();
+    this->set_counts(counts);
+    std::vector<double> bin_edges = combined.bin_edges();
+    this->set_bin_edges(bin_edges);
     //*this = combined;
     //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
