@@ -1,4 +1,5 @@
 #include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/unordered_map.hpp>
@@ -164,11 +165,11 @@ using namespace chimbuko;
      verboseStream << "min_runtime:" << min_runtime << std::endl;
      verboseStream << "max_runtime:" << max_runtime << std::endl;
       //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
-     //std::cout << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
+     verboseStream << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
      double prev = min_runtime;
      while(prev < max_runtime) {
        const double b = bin_width + prev;
-       //std::cout << std::to_string(b) << ", ";
+       verboseStream << std::to_string(b) << ", ";
        combined.add2binedges(b);
        prev = b;
 
