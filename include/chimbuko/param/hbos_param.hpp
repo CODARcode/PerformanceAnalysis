@@ -99,7 +99,7 @@ namespace chimbuko {
     /*
      * @brief set bin counts in Histogram
      */
-    void set_counts(std::vector<int> c) { m_histogram.counts = c; }
+    void set_counts(const std::vector<int> & c) { m_histogram.counts = c; }
 
     /*
      * @brief set bin edges in Histogram
