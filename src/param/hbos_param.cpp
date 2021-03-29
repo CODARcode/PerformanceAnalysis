@@ -198,7 +198,7 @@ using namespace chimbuko;
      }
      //runtimes.clear();
      std::cout << "]" << std::endl;
-     //std::assert (combined.bin_edges().size() -1 > 0);
+
      //{
      //   fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
      // }
@@ -242,14 +242,14 @@ using namespace chimbuko;
     //const Histogram combined = combine_two_histograms(*this, h);
     Histogram combined = *this + h;
 
-    this->clear();
-    double threshold = combined.get_threshold();
-    this->set_glob_threshold(threshold);
-    std::vector<int> counts = combined.counts();
-    this->set_counts(counts);
-    std::vector<double> bin_edges = combined.bin_edges();
-    this->set_bin_edges(bin_edges);
-    //*this = combined;
+    // this->clear();
+    // double threshold = combined.get_threshold();
+    // this->set_glob_threshold(threshold);
+    // std::vector<int> counts = combined.counts();
+    // this->set_counts(counts);
+    // std::vector<double> bin_edges = combined.bin_edges();
+    // this->set_bin_edges(bin_edges);
+    *this = combined;
     //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
