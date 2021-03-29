@@ -162,34 +162,38 @@ using namespace chimbuko;
      std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
      //min_runtime = l.bin_edges().at(0) ? (l.bin_edges().at(0) < g.bin_edges().at(0)) : min_runtime = g.bin_edges().at(0);
      //max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
-     std::vector<double> runtimes;
+     //std::vector<double> runtimes;
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
-         runtimes.push_back(g.bin_edges().at(i));
+         //runtimes.push_back(g.bin_edges().at(i));
+         min_runtime = g.bin_edges().at(i) ? (g.bin_edges().at(i) < min_runtime);
+         max_runtime = g.bin_edges().at(i) ? (g.bin_edges().at(i) > max_runtime);
        }
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
        for(int j = 0; j < l.counts().at(i); j++){
-         runtimes.push_back(l.bin_edges().at(i));
+         //runtimes.push_back(l.bin_edges().at(i));
+         min_runtime = l.bin_edges().at(i) ? (l.bin_edges().at(i) < min_runtime);
+         max_runtime = l.bin_edges().at(i) ? (l.bin_edges().at(i) > max_runtime);
        }
      }
-     std::sort(runtimes.begin(), runtimes.end());
-     combined.add2binedges(runtimes.at(0));  //min_runtime);
-     const int h = runtimes.size() - 1;
+     //std::sort(runtimes.begin(), runtimes.end());
+     combined.add2binedges(min_runtime);
+     //const int h = runtimes.size() - 1;
      std::cout << "min_runtime:" << combined.bin_edges().at(0) << std::endl;
      //std::cout << "max_runtime:" << max_runtime << std::endl;
       //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
      std::cout << "Combined Bin Edges: [" << std::to_string(combined.bin_edges().at(0)) << ", " ;
      double prev = combined.bin_edges().at(0); //min_runtime;
-     while(prev < runtimes.at(h)) {  // max_runtime) {
+     while(prev < max_runtime) {
        const double b = bin_width + prev;
        std::cout << std::to_string(b) << ", ";
        combined.add2binedges(b);
        prev = b;
 
      }
-     runtimes.clear();
-     //std::cout << "]" << std::endl;
+     //runtimes.clear();
+     std::cout << "]" << std::endl;
      //std::assert (combined.bin_edges().size() -1 > 0);
      //{
      //   fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
