@@ -58,7 +58,7 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    std::string send_and_receive(const Message &msg);
+    std::string send_and_receive(const Message &msg) const;
 
     /**
      * @brief Send a message to the parameter server and receive the response both as Message objects
@@ -90,6 +90,10 @@ namespace chimbuko{
      */
     void * getZMQcontext(){ return m_context; }
     
+    /**
+     * @brief Issue a stop command to the server. The server will then stop once all clients have disconnected and all messages processed
+     */
+    void stopServer() const;
 #endif
 
 

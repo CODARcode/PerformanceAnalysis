@@ -78,7 +78,7 @@ std::string SstdParam::update(const std::string& parameters, bool return_update)
     std::unordered_map<unsigned long, RunStats> runstats;
 
     deserialize_cerealpb(parameters, runstats);
-    update_and_return(runstats);
+    update_and_return(runstats);  //update runstats to reflect changes
 
     return (return_update) ? serialize_cerealpb(runstats): "";
 }

@@ -7,7 +7,6 @@ using namespace chimbuko;
 
 ParamInterface::ParamInterface()
 {
-
 }
 
 ParamInterface *ParamInterface::set_AdParam(const std::string & ad_algorithm) {

@@ -90,6 +90,9 @@ void ADProvenanceDBclient::disconnect(){
       delete m_client_goodbye; m_client_goodbye = nullptr;
     }
 
+    m_stop_server->deregister();
+    delete m_stop_server; m_stop_server = nullptr;
+
     m_is_connected = false;
     verboseStream << "ADProvenanceDBclient disconnected" << std::endl;
   }
@@ -149,6 +152,8 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
       m_client_hello->on(m_server)(m_rank);
     }      
+
+    m_stop_server = new thallium::remote_procedure(eng.define("stop_server").disable_response());
 
     m_is_connected = true;
     verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
@@ -343,6 +348,11 @@ std::unordered_map<std::string,std::string> ADProvenanceDBclient::execute(const 
   if(m_is_connected)
     m_database.execute(code, vars, &out);
   return out;
+}
+
+void ADProvenanceDBclient::stopServer() const{
+  verboseStream << "ADProvenanceDBclient stopping server" << std::endl;
+  m_stop_server->on(m_server)();
 }
 
     

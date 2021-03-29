@@ -1,8 +1,8 @@
-// #include "chimbuko/AD.hpp"
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/string.hpp"
 #include "chimbuko/util/commandLineParser.hpp"
+#include "chimbuko/util/error.hpp"
 #include <chrono>
 #include <cstdlib>
 
@@ -285,14 +285,17 @@ int main(int argc, char ** argv){
     }
   catch (const std::invalid_argument &e){
     std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : caught invalid argument: " << e.what() << std::endl;
+    if(params.err_outputpath.size()) recoverable_error(std::string("Driver : caught invalid argument: ") + e.what()); //ensure errors also written to error logs
     error = true;
   }
   catch (const std::ios_base::failure &e){
     std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : I/O base exception caught: " << e.what() << std::endl;
+    if(params.err_outputpath.size()) recoverable_error(std::string("Driver : I/O base exception caught: ") + e.what());
     error = true;
   }
   catch (const std::exception &e){
     std::cout << '[' << getDateTime() << ", rank " << params.rank << "] Driver : Exception caught: " << e.what() << std::endl;
+    if(params.err_outputpath.size()) recoverable_error(std::string("Driver : Exception caught: ") + e.what());
     error = true;
   }
 

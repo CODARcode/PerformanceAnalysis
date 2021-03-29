@@ -132,7 +132,7 @@ void ADNetClient::disconnect_ps() {
     m_use_ps = false;
 }
 
-std::string ADNetClient::send_and_receive(const Message &msg){
+std::string ADNetClient::send_and_receive(const Message &msg) const{  
   PerfTimer timer;
   std::string send_msg = msg.data(), recv_msg;
 #ifdef _USE_MPINET
@@ -183,3 +183,13 @@ std::string ADNetClient::send_and_receive(const Message &msg){
 void ADNetClient::send_and_receive(Message &recv,  const Message &send){
   recv.set_msg( send_and_receive(send), true );
 }
+
+void ADNetClient::stopServer() const{
+  verboseStream << "Client is sending stop request to server" << std::endl;
+  Message msg;
+  msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::CMD);
+  msg.set_msg("");
+  send_and_receive(msg);
+}
+  
+

@@ -216,7 +216,7 @@ public:
   };
 };
 
-
+//Induce a timeout by having the pserver delay its response for longer than the timeout
 TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){  
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
@@ -284,6 +284,71 @@ TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){
   out_thr.join();
   
   EXPECT_EQ(success, false);
+
+#else
+#error "Requires compiling with MPI or ZMQ net"
+#endif
+
+}
+
+
+
+
+
+TEST(ADNetClient, TestRemoteStop){  
+#ifdef _USE_MPINET
+#warning "Testing with MPINET not available"
+#elif defined(_USE_ZMQNET)
+
+  Barrier barrier2(2);
+
+  int port = 555912;
+  std::string sname = "tcp://localhost:" + anyToStr(port);
+
+  int argc; char** argv = nullptr;
+  std::cout << "Initializing PS thread" << std::endl;
+  
+  bool stopped_on_request = false;
+
+  std::thread ps_thr([&]{
+  		       ZMQNet ps;
+  		       ps.init(&argc, &argv, 4); //4 workers
+		       ps.setPort(port);
+		       ps.setAutoShutdown(false);
+  		       ps.run(".");
+		       std::cout << "PS thread waiting at barrier" << std::endl;
+		       barrier2.wait();
+		       std::cout << "PS thread terminating connection" << std::endl;
+		       ps.finalize();
+		       stopped_on_request = ps.getStatus() == ZMQNet::Status::StoppedByRequest;
+  		     });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::cout << "Initializing AD thread" << std::endl;
+  std::thread out_thr([&]{
+			try{
+			  ADNetClient net_client;
+			  net_client.setRecvTimeout(1000);
+			  net_client.connect_ps(0, 0, sname);
+
+			  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			  std::cout << "AD thread issuing stop request" << std::endl;
+			  net_client.stopServer();
+
+			  std::cout << "AD thread terminating connection" << std::endl;
+			  net_client.disconnect_ps();
+			  std::cout << "AD thread waiting at barrier" << std::endl;
+			  barrier2.wait();
+			}catch(const std::exception &e){
+			  std::cerr << e.what() << std::endl;
+			}
+			//barrier2.wait();
+		      });
+  
+  ps_thr.join();
+  out_thr.join();
+  
+  EXPECT_EQ(stopped_on_request, true);
 
 #else
 #error "Requires compiling with MPI or ZMQ net"
