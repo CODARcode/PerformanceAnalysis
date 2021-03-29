@@ -52,7 +52,7 @@ namespace chimbuko {
     };
 
 
-    void clear();
+    void clear() {m_histogram.clear();}
 
     void push (double x);
 
@@ -88,7 +88,7 @@ namespace chimbuko {
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram & operator+=(const Histogram& rs);
+    Histogram & operator+=(const Histogram& h);
 
 
     /**
