@@ -162,14 +162,14 @@ using namespace chimbuko;
      min_runtime = l.bin_edges().at(0) ? (l.bin_edges().at(0) < g.bin_edges().at(0)) : min_runtime = g.bin_edges().at(0);
      max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
      combined.add2binedges(min_runtime);
-     verboseStream << "min_runtime:" << min_runtime << std::endl;
-     verboseStream << "max_runtime:" << max_runtime << std::endl;
+     std::cout << "min_runtime:" << min_runtime << std::endl;
+     std::cout << "max_runtime:" << max_runtime << std::endl;
       //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
-     verboseStream << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
+     std::cout << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
      double prev = min_runtime;
      while(prev < max_runtime) {
        const double b = bin_width + prev;
-       verboseStream << std::to_string(b) << ", ";
+       std::cout << std::to_string(b) << ", ";
        combined.add2binedges(b);
        prev = b;
 
