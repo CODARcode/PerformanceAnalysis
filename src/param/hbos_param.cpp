@@ -200,8 +200,8 @@ using namespace chimbuko;
       combined.set_glob_threshold(g.get_threshold());
 
      //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
-
-     return combined;
+     g = combined;
+     return g; //combined;
    }
  }
 
