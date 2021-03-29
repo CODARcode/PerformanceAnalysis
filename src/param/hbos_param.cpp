@@ -298,11 +298,11 @@ using namespace chimbuko;
    for(int i=0; i < global_counts.size();i++){
      std::cout << std::to_string(global_counts.at(i)) << ", ";
    }
-   std::endl;
+   std::cout << std::endl;
    for(int i=0; i < local_counts.size();i++){
      std::cout << std::to_string(local_counts.at(i)) << ", ";
    }
-   std::endl;
+   std::cout << std::endl;
 
    // for (int i=0;i<global_counts.size();i++){
    //   sum += (global_counts.at(i) * global_edges.at(i));
