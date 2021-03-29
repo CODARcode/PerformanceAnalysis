@@ -160,27 +160,27 @@ using namespace chimbuko;
 
      const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
      std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
-     //min_runtime = l.bin_edges().at(0) ? (l.bin_edges().at(0) < g.bin_edges().at(0)) : min_runtime = g.bin_edges().at(0);
-     //max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
+     (l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
+     (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
      //std::vector<double> runtimes;
-     for (int i = 0; i < g.bin_edges().size() - 1; i++) {
-       //for(int j = 0; j < g.counts().at(i); j++){
-         //runtimes.push_back(g.bin_edges().at(i));
-         if (g.bin_edges().at(i) < min_runtime)
-          min_runtime = g.bin_edges().at(i);
-         if (g.bin_edges().at(i) > max_runtime)
-          max_runtime = g.bin_edges().at(i);
-       //}
-     }
-     for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-       //for(int j = 0; j < l.counts().at(i); j++){
-         //runtimes.push_back(l.bin_edges().at(i));
-         if (l.bin_edges().at(i) < min_runtime)
-          min_runtime = l.bin_edges().at(i);
-         if (l.bin_edges().at(i) > max_runtime)
-          max_runtime = l.bin_edges().at(i);
-       //}
-     }
+     // for (int i = 0; i < g.bin_edges().size() - 1; i++) {
+     //   //for(int j = 0; j < g.counts().at(i); j++){
+     //     //runtimes.push_back(g.bin_edges().at(i));
+     //     if (g.bin_edges().at(i) < min_runtime)
+     //      min_runtime = g.bin_edges().at(i);
+     //     if (g.bin_edges().at(i) > max_runtime)
+     //      max_runtime = g.bin_edges().at(i);
+     //   //}
+     // }
+     // for (int i = 0; i < l.bin_edges().size() - 1; i++) {
+     //   //for(int j = 0; j < l.counts().at(i); j++){
+     //     //runtimes.push_back(l.bin_edges().at(i));
+     //     if (l.bin_edges().at(i) < min_runtime)
+     //      min_runtime = l.bin_edges().at(i);
+     //     if (l.bin_edges().at(i) > max_runtime)
+     //      max_runtime = l.bin_edges().at(i);
+     //   //}
+     // }
      //std::sort(runtimes.begin(), runtimes.end());
      combined.add2binedges(min_runtime);
      //const int h = runtimes.size() - 1;
@@ -250,24 +250,27 @@ using namespace chimbuko;
     // std::vector<double> bin_edges = combined.bin_edges();
     // this->set_bin_edges(bin_edges);
     *this = combined;
-    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
-   const double size = (double) (std::accumulate(global_counts.begin(), global_counts.end(), 0) + std::accumulate(local_counts.begin(), local_counts.end(), 0));
+   double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
+   size += std::accumulate(local_counts.begin(), local_counts.end(), 0));
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<global_counts.size();i++){
-     sum += global_counts.at(i) * global_edges.at(i);
+     sum += (global_counts.at(i) * global_edges.at(i));
    }
    std::cout << "Global sum in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<local_counts.size();i++){
-     sum += local_counts.at(i) * local_edges.at(i);
+     sum += (local_counts.at(i) * local_edges.at(i));
    }
    std::cout << "total sum in _scott_binWidth: " << size << std::endl;
 
    const double mean = sum / size;
+   std::cout << "mean in _xcott_binWidth: " << mean << std::endl;
+
    double var = 0.0;
    for (int i=0;i<global_counts.size();i++){
      var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
@@ -277,6 +280,7 @@ using namespace chimbuko;
      var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
    }
    std::cout << "total var in _scott_binWidth: " << size << std::endl;
+
    var = var / size;
    std::cout << "Variance in _scott_binWidth: " << size << std::endl;
    return ((3.5 * sqrt(var) ) / pow(size, 1/3));
