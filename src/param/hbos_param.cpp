@@ -257,22 +257,28 @@ using namespace chimbuko;
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
    const double size = (double) (std::accumulate(global_counts.begin(), global_counts.end(), 0) + std::accumulate(local_counts.begin(), local_counts.end(), 0));
+   std::cout << "Size in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<global_counts.size();i++){
      sum += global_counts.at(i) * global_edges.at(i);
    }
+   std::cout << "Global sum in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<local_counts.size();i++){
      sum += local_counts.at(i) * local_edges.at(i);
    }
+   std::cout << "total sum in _scott_binWidth: " << size << std::endl;
 
    const double mean = sum / size;
    double var = 0.0;
    for (int i=0;i<global_counts.size();i++){
      var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
    }
+   std::cout << "Global var in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<local_counts.size();i++){
      var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
    }
+   std::cout << "total var in _scott_binWidth: " << size << std::endl;
    var = var / size;
+   std::cout << "Variance in _scott_binWidth: " << size << std::endl;
    return ((3.5 * sqrt(var) ) / pow(size, 1/3));
  }
 
