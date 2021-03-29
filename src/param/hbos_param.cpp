@@ -164,22 +164,22 @@ using namespace chimbuko;
      //max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
      //std::vector<double> runtimes;
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
-       for(int j = 0; j < g.counts().at(i); j++){
+       //for(int j = 0; j < g.counts().at(i); j++){
          //runtimes.push_back(g.bin_edges().at(i));
          if (g.bin_edges().at(i) < min_runtime)
           min_runtime = g.bin_edges().at(i);
          if (g.bin_edges().at(i) > max_runtime)
           max_runtime = g.bin_edges().at(i);
-       }
+       //}
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-       for(int j = 0; j < l.counts().at(i); j++){
+       //for(int j = 0; j < l.counts().at(i); j++){
          //runtimes.push_back(l.bin_edges().at(i));
          if (l.bin_edges().at(i) < min_runtime)
           min_runtime = l.bin_edges().at(i);
          if (l.bin_edges().at(i) > max_runtime)
           max_runtime = l.bin_edges().at(i);
-       }
+       //}
      }
      //std::sort(runtimes.begin(), runtimes.end());
      combined.add2binedges(min_runtime);
