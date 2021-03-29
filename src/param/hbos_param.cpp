@@ -208,7 +208,8 @@ using namespace chimbuko;
 
        std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
        //double prev = combined.bin_edges().at(0); //min_runtime;
-       for (int i=0, double edge_val=min_runtime; i < num_bins; i++, edge_val+=bin_width){
+       double edge_val=min_runtime;
+       for (int i=0; i < num_bins; i++, edge_val+=bin_width){
          std::cout << std::to_string(edge_val) << ", ";
          combined.add2binedges(edge_val);
        }
