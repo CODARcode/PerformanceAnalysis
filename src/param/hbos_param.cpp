@@ -282,13 +282,7 @@ using namespace chimbuko;
     //const Histogram combined = combine_two_histograms(*this, h);
     Histogram combined = *this + h;
 
-    // this->clear();
-    // double threshold = combined.get_threshold();
-    // this->set_glob_threshold(threshold);
-    // std::vector<int> counts = combined.counts();
-    // this->set_counts(counts);
-    // std::vector<double> bin_edges = combined.bin_edges();
-    // this->set_bin_edges(bin_edges);
+
     *this = combined;
     this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
@@ -299,31 +293,32 @@ using namespace chimbuko;
    double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
    size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
-   for (int i=0;i<global_counts.size();i++){
-     sum += (global_counts.at(i) * global_edges.at(i));
-   }
-   std::cout << "Global sum in _scott_binWidth: " << size << std::endl;
-   for (int i=0;i<local_counts.size();i++){
-     sum += (local_counts.at(i) * local_edges.at(i));
-   }
-   std::cout << "total sum in _scott_binWidth: " << size << std::endl;
-
-   const double mean = sum / size;
-   std::cout << "mean in _xcott_binWidth: " << mean << std::endl;
-
-   double var = 0.0;
-   for (int i=0;i<global_counts.size();i++){
-     var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
-   }
-   std::cout << "Global var in _scott_binWidth: " << size << std::endl;
-   for (int i=0;i<local_counts.size();i++){
-     var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
-   }
-   std::cout << "total var in _scott_binWidth: " << size << std::endl;
-
-   var = var / size;
-   std::cout << "Variance in _scott_binWidth: " << size << std::endl;
-   return ((3.5 * sqrt(var) ) / pow(size, 1/3));
+   // for (int i=0;i<global_counts.size();i++){
+   //   sum += (global_counts.at(i) * global_edges.at(i));
+   // }
+   // std::cout << "Global sum in _scott_binWidth: " << size << std::endl;
+   // for (int i=0;i<local_counts.size();i++){
+   //   sum += (local_counts.at(i) * local_edges.at(i));
+   // }
+   // std::cout << "total sum in _scott_binWidth: " << size << std::endl;
+   //
+   // const double mean = sum / size;
+   // std::cout << "mean in _xcott_binWidth: " << mean << std::endl;
+   //
+   // double var = 0.0;
+   // for (int i=0;i<global_counts.size();i++){
+   //   var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
+   // }
+   // std::cout << "Global var in _scott_binWidth: " << size << std::endl;
+   // for (int i=0;i<local_counts.size();i++){
+   //   var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
+   // }
+   // std::cout << "total var in _scott_binWidth: " << size << std::endl;
+   //
+   // var = var / size;
+   // std::cout << "Variance in _scott_binWidth: " << size << std::endl;
+   // return ((3.5 * sqrt(var) ) / pow(size, 1/3));
+   return sqrt(size);
  }
 
  double Histogram::_scott_binWidth(const std::vector<double> & vals){
