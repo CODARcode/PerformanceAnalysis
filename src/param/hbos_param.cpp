@@ -173,7 +173,7 @@ using namespace chimbuko;
 
      }
      //std::cout << "]" << std::endl;
-     std::assert (combined.bin_edges().size() -1 > 0); 
+     //std::assert (combined.bin_edges().size() -1 > 0); 
      //{
      //   fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
      // }
