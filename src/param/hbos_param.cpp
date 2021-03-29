@@ -143,8 +143,9 @@ using namespace chimbuko;
  Histogram chimbuko::operator+ (const Histogram g, const Histogram l) {
    Histogram combined;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
-   // std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
-   // std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
+   std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
+   std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
+
    if (g.bin_edges().size() <= 1) {
      combined.set_glob_threshold(l.get_threshold());
      combined.set_counts(l.counts());
@@ -158,7 +159,7 @@ using namespace chimbuko;
    else {
 
      const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
-     //std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
+     std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
      min_runtime = l.bin_edges().at(0) ? (l.bin_edges().at(0) < g.bin_edges().at(0)) : min_runtime = g.bin_edges().at(0);
      max_runtime = l.bin_edges().at(l.bin_edges().size()-1) ? (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
      combined.add2binedges(min_runtime);
@@ -209,8 +210,9 @@ using namespace chimbuko;
 
      //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
      //g.clear(); //g=combined;
-     return combined;
    }
+   return combined;
+
  }
 
  Histogram& Histogram::operator+=(const Histogram& h)
