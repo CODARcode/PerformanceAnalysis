@@ -138,7 +138,7 @@ using namespace chimbuko;
  Histogram::Histogram(){}
  Histogram::~Histogram(){}
 
- const Histogram Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
+ const Histogram & Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
    // std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
@@ -172,8 +172,8 @@ using namespace chimbuko;
      //std::cout << "]" << std::endl;
 
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
-     std::vector<int> count (combined.bin_edges().size()-1, 0);
-     combined.set_counts(count);
+     //std::vector<int> count (combined.bin_edges().size()-1, 0);
+     combined.set_counts(std::vector<int> (combined.bin_edges().size() - 1, 0)); //count);
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
        for(int j = 1; j < combined.bin_edges().size(); j++) {
          if(g.bin_edges().at(i) < combined.bin_edges().at(j)) {
