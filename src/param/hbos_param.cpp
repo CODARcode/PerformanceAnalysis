@@ -166,15 +166,19 @@ using namespace chimbuko;
      for (int i = 0; i < g.bin_edges().size() - 1; i++) {
        for(int j = 0; j < g.counts().at(i); j++){
          //runtimes.push_back(g.bin_edges().at(i));
-         min_runtime = g.bin_edges().at(i) ? (g.bin_edges().at(i) < min_runtime);
-         max_runtime = g.bin_edges().at(i) ? (g.bin_edges().at(i) > max_runtime);
+         if (g.bin_edges().at(i) < min_runtime)
+          min_runtime = g.bin_edges().at(i);
+         if (g.bin_edges().at(i) > max_runtime)
+          max_runtime = g.bin_edges().at(i);
        }
      }
      for (int i = 0; i < l.bin_edges().size() - 1; i++) {
        for(int j = 0; j < l.counts().at(i); j++){
          //runtimes.push_back(l.bin_edges().at(i));
-         min_runtime = l.bin_edges().at(i) ? (l.bin_edges().at(i) < min_runtime);
-         max_runtime = l.bin_edges().at(i) ? (l.bin_edges().at(i) > max_runtime);
+         if (l.bin_edges().at(i) < min_runtime)
+          min_runtime = l.bin_edges().at(i);
+         if (l.bin_edges().at(i) > max_runtime)
+          max_runtime = l.bin_edges().at(i);
        }
      }
      //std::sort(runtimes.begin(), runtimes.end());
