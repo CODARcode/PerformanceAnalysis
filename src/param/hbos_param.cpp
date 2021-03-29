@@ -147,11 +147,13 @@ using namespace chimbuko;
    std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
 
    if (g.bin_edges().size() <= 1) {
+     std::cout << "Global Histogram is empty" << std::endl;
      combined.set_glob_threshold(l.get_threshold());
      combined.set_counts(l.counts());
      combined.set_bin_edges(l.bin_edges());
    }
    else if (l.bin_edges().size() <= 1) {
+     std::cout << "Local Histogram is empty" << std::endl;
      combined.set_glob_threshold(g.get_threshold());
      combined.set_counts(g.counts());
      combined.set_bin_edges(g.bin_edges());
@@ -196,9 +198,11 @@ using namespace chimbuko;
      // }
      //std::sort(runtimes.begin(), runtimes.end());
      if (bin_width == 0){
+       std::cout << "BINWIDTH is Zero" << std::endl;
        combined.set_bin_edges(g.bin_edges());
      }
      else{ // bin_width is > 0
+       std::cout << "BindWidth is > 0 here: " << std::endl;
        const int num_bins = (max_runtime - min_runtime) / bin_width;
        //combined.add2binedges(min_runtime);
        //const int h = runtimes.size() - 1;
@@ -208,10 +212,20 @@ using namespace chimbuko;
 
        std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
        //double prev = combined.bin_edges().at(0); //min_runtime;
+
        double edge_val=min_runtime;
-       for (int i=0; i < num_bins; i++, edge_val+=bin_width){
-         std::cout << std::to_string(edge_val) << ", ";
-         combined.add2binedges(edge_val);
+       if(num_bins > 0){
+         for (int i=0; i < num_bins; i++, edge_val+=bin_width){
+           std::cout << std::to_string(edge_val) << ", ";
+           combined.add2binedges(edge_val);
+         }
+       }
+       else{
+         while (edge_val < max_runtime){
+           std::cout << std::to_string(edge_val) << ", ";
+           combined.add2binedges(edge_val);
+           edge_val+=bin_width;
+         }
        }
        //
        // while(prev < max_runtime) {
