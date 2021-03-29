@@ -203,7 +203,7 @@ using namespace chimbuko;
      }
      else{ // bin_width is > 0
        std::cout << "BindWidth is > 0 here: " << std::endl;
-       const int num_bins = ((max_runtime - min_runtime) / bin_width) + 1;
+       const int num_bins = ceil((max_runtime - min_runtime) / bin_width);
 
        //combined.add2binedges(min_runtime);
        //const int h = runtimes.size() - 1;
