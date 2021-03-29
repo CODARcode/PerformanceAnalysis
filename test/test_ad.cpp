@@ -72,6 +72,8 @@ TEST_F(ADTest, BpfileTest)
     
     params.anom_win_size = 0;
 
+    params.ad_algorithm = "sstd";
+
     Chimbuko driver;
     int step;
     unsigned long n_outliers = 0, frames = 0;
@@ -227,6 +229,7 @@ TEST_F(ADTest, BpfileWithNetTest)
     params.only_one_frame = true;
     params.outlier_sigma = 6.0;
 
+    params.ad_algorithm = "sstd";
 
     Chimbuko driver;
 
