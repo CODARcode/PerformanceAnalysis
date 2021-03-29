@@ -209,15 +209,15 @@ using namespace chimbuko;
  Histogram& Histogram::operator+=(const Histogram& h)
  {
     //const Histogram combined = combine_two_histograms(*this, h);
-    // Histogram combined = *this + h;
-    return (*this + h);
-    // this->clear();
-    // this->set_glob_threshold(combined.get_threshold());
-    // this->set_counts(combined.counts());
-    // this->set_bin_edges(combined.bin_edges());
+    Histogram combined = *this + h;
+
+    this->clear();
+    this->set_glob_threshold(combined.get_threshold());
+    this->set_counts(combined.counts());
+    this->set_bin_edges(combined.bin_edges());
     //*this = combined;
     //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
-    // return *this;
+    return *this;
  }
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
