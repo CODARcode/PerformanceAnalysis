@@ -211,20 +211,20 @@ using namespace chimbuko;
        std::cout << "max_runtime:" << max_runtime << std::endl;
         //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
 
-       std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
+       //std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
        //double prev = combined.bin_edges().at(0); //min_runtime;
 
        double edge_val=min_runtime;
        if(num_bins > 0){
          for (int i=0; i < num_bins; i++, edge_val+=bin_width){
-           std::cout << std::to_string(edge_val) << ", ";
+           //std::cout << std::to_string(edge_val) << ", ";
            combined.add2binedges(edge_val);
          }
        }
        else{
          while (edge_val < max_runtime){
            std::cout << std::to_string(edge_val) << ", ";
-           combined.add2binedges(edge_val);
+           //combined.add2binedges(edge_val);
            edge_val+=bin_width;
          }
        }
@@ -285,15 +285,25 @@ using namespace chimbuko;
 
 
     *this = combined;
-    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
+
    double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
    size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
+   for(int i=0; i < global_counts.size();i++){
+     std::cout << std::to_string(global_counts.at(i)) << ", "
+   }
+   std::endl;
+   for(int i=0; i < local_counts.size();i++){
+     std::cout << std::to_string(local_counts.at(i)) << ", "
+   }
+   std::endl;
+
    // for (int i=0;i<global_counts.size();i++){
    //   sum += (global_counts.at(i) * global_edges.at(i));
    // }
