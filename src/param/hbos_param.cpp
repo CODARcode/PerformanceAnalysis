@@ -157,11 +157,24 @@ using namespace chimbuko;
      combined.set_bin_edges(g.bin_edges());
    }
    else {
+     double bin_width;
+     if(g.counts().size() > 0 && g.bin_edges().size() > 1 && l.counts().size() > 0 && l.bin_edges().size() > 1){
+       bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
 
-     const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
-     std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
+       std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
+       if (bin_width < 0){
+         std::cout << "Incorrect Bin Width Computed" << std::endl;
+         exit(1);
+       }
+     }
+     else{
+       std::cout << "INCORRECT histograms" << std::endl;
+       exit(1);
+     }
+
      (l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
      (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
+
      //std::vector<double> runtimes;
      // for (int i = 0; i < g.bin_edges().size() - 1; i++) {
      //   //for(int j = 0; j < g.counts().at(i); j++){
@@ -182,22 +195,34 @@ using namespace chimbuko;
      //   //}
      // }
      //std::sort(runtimes.begin(), runtimes.end());
-     combined.add2binedges(min_runtime);
-     //const int h = runtimes.size() - 1;
-     std::cout << "min_runtime:" << combined.bin_edges().at(0) << std::endl;
-     //std::cout << "max_runtime:" << max_runtime << std::endl;
-      //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
-     std::cout << "Combined Bin Edges: [" << std::to_string(combined.bin_edges().at(0)) << ", " ;
-     double prev = combined.bin_edges().at(0); //min_runtime;
-     while(prev < max_runtime) {
-       const double b = bin_width + prev;
-       std::cout << std::to_string(b) << ", ";
-       combined.add2binedges(b);
-       prev = b;
-
+     if (bin_width == 0){
+       combined.set_bin_edges(g.bin_edges());
      }
-     //runtimes.clear();
-     std::cout << "]" << std::endl;
+     else{ // bin_width is > 0
+       const int num_bins = (max_runtime - min_runtime) / bin_width;
+       //combined.add2binedges(min_runtime);
+       //const int h = runtimes.size() - 1;
+       std::cout << "min_runtime:" << min_runtime << std::endl;
+       std::cout << "max_runtime:" << max_runtime << std::endl;
+        //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
+
+       std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
+       //double prev = combined.bin_edges().at(0); //min_runtime;
+       for (int i=0, double edge_val=min_runtime; i < num_bins; i++, edge_val+=bin_width){
+         std::cout << std::to_string(edge_val) << ", ";
+         combined.add2binedges(edge_val);
+       }
+       //
+       // while(prev < max_runtime) {
+       //   const double b = bin_width + prev;
+       //   std::cout << std::to_string(b) << ", ";
+       //   combined.add2binedges(b);
+       //   prev = b;
+       //
+       // }
+       //runtimes.clear();
+       std::cout << "]" << std::endl;
+     }
 
      //{
      //   fatal_error("Wrong combined BIN_EDGES " + std::to_string(combined.bin_edges().size()));
@@ -257,7 +282,7 @@ using namespace chimbuko;
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
    double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
-   size += std::accumulate(local_counts.begin(), local_counts.end(), 0));
+   size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
    for (int i=0;i<global_counts.size();i++){
      sum += (global_counts.at(i) * global_edges.at(i));
