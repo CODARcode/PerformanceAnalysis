@@ -296,11 +296,11 @@ using namespace chimbuko;
    size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
    for(int i=0; i < global_counts.size();i++){
-     std::cout << std::to_string(global_counts.at(i)) << ", "
+     std::cout << std::to_string(global_counts.at(i)) << ", ";
    }
    std::endl;
    for(int i=0; i < local_counts.size();i++){
-     std::cout << std::to_string(local_counts.at(i)) << ", "
+     std::cout << std::to_string(local_counts.at(i)) << ", ";
    }
    std::endl;
 
