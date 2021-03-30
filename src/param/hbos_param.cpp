@@ -298,7 +298,7 @@ using namespace chimbuko;
    //size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    int size = 0;
    for(int i = 0; i < global_counts.size(); i++) {
-     int count = global_counts[i;
+     int count = global_counts[i];
      if (count < 0)
       count = -1 * count;
      size += count;
