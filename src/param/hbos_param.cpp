@@ -291,7 +291,9 @@ using namespace chimbuko;
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
-
+   std::cout << "Size of Vector global_counts: " << global_counts.size() << std::endl;
+   std::cout << "Size of Vector local_counts: " << local_counts.size() << std::endl;
+   
    double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
    size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
