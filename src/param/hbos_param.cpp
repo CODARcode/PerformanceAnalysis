@@ -320,6 +320,7 @@ using namespace chimbuko;
      sum += (count * local_edges.at(i));
    }
    std::cout << std::endl;
+   std::cout << "total Size in _scott_binWidth: " << size << std::endl;
    std::cout << "total sum in _scott_binWidth: " << sum << std::endl;
 
    const double mean = sum / size;
