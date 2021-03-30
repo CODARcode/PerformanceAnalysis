@@ -203,7 +203,7 @@ using namespace chimbuko;
      }
      else{ // bin_width is > 0
        std::cout << "BindWidth is > 0 here: " << std::endl;
-       const int num_bins = ceil((max_runtime - min_runtime) / bin_width);
+       //const int num_bins = ceil((max_runtime - min_runtime) / bin_width);
 
        //combined.add2binedges(min_runtime);
        //const int h = runtimes.size() - 1;
@@ -211,31 +211,31 @@ using namespace chimbuko;
        std::cout << "max_runtime:" << max_runtime << std::endl;
         //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
 
-       //std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
+       std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
        //double prev = combined.bin_edges().at(0); //min_runtime;
 
        double edge_val=min_runtime;
-       if(num_bins > 0){
-         for (int i=0; i < num_bins; i++, edge_val+=bin_width){
-           //std::cout << std::to_string(edge_val) << ", ";
-           combined.add2binedges(edge_val);
-         }
-       }
-       else{
-         while (edge_val < max_runtime){
-           std::cout << std::to_string(edge_val) << ", ";
-           //combined.add2binedges(edge_val);
-           edge_val+=bin_width;
-         }
-       }
-       //
-       // while(prev < max_runtime) {
-       //   const double b = bin_width + prev;
-       //   std::cout << std::to_string(b) << ", ";
-       //   combined.add2binedges(b);
-       //   prev = b;
-       //
+       // if(num_bins > 0){
+       //   for (int i=0; i < num_bins; i++, edge_val+=bin_width){
+       //     //std::cout << std::to_string(edge_val) << ", ";
+       //     combined.add2binedges(edge_val);
+       //   }
        // }
+       // else{
+       //   while (edge_val < max_runtime){
+       //     std::cout << std::to_string(edge_val) << ", ";
+       //     //combined.add2binedges(edge_val);
+       //     edge_val+=bin_width;
+       //   }
+       // }
+       //
+       while(edge_val <= max_runtime) {
+         combined.add2binedges(edge_val);
+         //const double b = bin_width + prev;
+         std::cout << std::to_string(edge_val) << ", ";
+         edge_val += bin_width;
+         //prev = b;
+       }
        //runtimes.clear();
        std::cout << "]" << std::endl;
      }
