@@ -83,7 +83,7 @@ namespace chimbuko {
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
     //Histogram combine_two_histograms(const Histogram& g, const Histogram& l);
-    friend Histogram operator+(const Histogram g, const Histogram l);
+    friend Histogram operator+(const Histogram& g, const Histogram& l);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
