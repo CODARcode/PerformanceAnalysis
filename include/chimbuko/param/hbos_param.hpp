@@ -160,7 +160,7 @@ namespace chimbuko {
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
   };
-  Histogram operator+(const Histogram g, const Histogram l);
+  Histogram operator+(const Histogram& g, const Histogram& l);
 
   /**
    * @@brief Implementation of ParamInterface for HBOS based anomaly detection
