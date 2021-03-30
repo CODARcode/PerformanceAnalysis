@@ -140,7 +140,7 @@ using namespace chimbuko;
  Histogram::~Histogram(){}
 
  //Histogram Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
- Histogram chimbuko::operator+ (Histogram& g, const Histogram& l) {
+ Histogram chimbuko::operator+(Histogram& g, const Histogram& l) {
    Histogram *combined= new Histogram();
    double min_runtime, max_runtime;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
@@ -151,6 +151,7 @@ using namespace chimbuko;
      combined->set_glob_threshold(l.get_threshold());
      combined->set_counts(l.counts());
      combined->set_bin_edges(l.bin_edges());
+     delete g;
      return *combined;
    }
    else if (l.counts().size() <= 0) {
@@ -158,6 +159,7 @@ using namespace chimbuko;
      combined->set_glob_threshold(g.get_threshold());
      combined->set_counts(g.counts());
      combined->set_bin_edges(g.bin_edges());
+     delete g;
      return *combined;
    }
    else {
@@ -185,6 +187,7 @@ using namespace chimbuko;
        combined->set_bin_edges(g.bin_edges());
        combined->set_counts(g.counts());
        combined->set_glob_threshold(g.get_threshold());
+       delete g;
        return *combined;
      }
      else{ // bin_width is > 0
@@ -263,6 +266,7 @@ using namespace chimbuko;
 
      //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
      //g.clear(); //g=combined;
+     delete g;
      return *combined;
    }
 
