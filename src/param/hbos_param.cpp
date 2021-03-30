@@ -234,7 +234,7 @@ using namespace chimbuko;
          if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
            int id = j-1, inc = g.counts().at(i);
            //combined->add2counts(id, inc);
-           comb_binedges[id] += inc;
+           comb_counts[id] += inc;
            break;
          }
        }
@@ -245,7 +245,7 @@ using namespace chimbuko;
          if(l.bin_edges().at(i) < comb_binedges.at(j) && l.bin_edges().at(i) >= comb_binedges.at(j-1)) {
            int id = j-1, inc = l.counts().at(i);
            //combined->add2counts(id, inc);
-           comb_binedges[id] += inc;
+           comb_counts[id] += inc;
            break;
          }
        }
