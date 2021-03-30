@@ -182,16 +182,16 @@ using namespace chimbuko;
      if (bin_width == 0){
        std::cout << "BINWIDTH is Zero" << std::endl;
        combined = g;
-       for (int i = 0; i < l.bin_edges().size() -1; i++) {
-         for(int j = 1; j < combined.bin_edges().size(); j++) {
-           if(l.bin_edges().at(i) < combined.bin_edges().at(j)) {
-             int id = j-1, inc = l.counts().at(i);
-             combined.add2counts(id, inc);
-             
-             break;
-           }
-         }
-       }
+       // for (int i = 0; i < l.bin_edges().size() -1; i++) {
+       //   for(int j = 1; j < combined.bin_edges().size(); j++) {
+       //     if(l.bin_edges().at(i) < combined.bin_edges().at(j)) {
+       //       int id = j-1, inc = l.counts().at(i);
+       //       combined.add2counts(id, inc);
+       //
+       //       break;
+       //     }
+       //   }
+       // }
        return combined;
      }
      else{ // bin_width is > 0
