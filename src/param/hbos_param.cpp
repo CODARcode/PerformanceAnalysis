@@ -301,33 +301,25 @@ using namespace chimbuko;
      int count = global_counts[i];
      if (count < 0)
       count = -1 * count;
+     if (count != 0)
+      std::cout << std::to_string(count) << ", ";
      size += count;
+     sum += (count * global_edges.at(i));
    }
+   std::cout << std::endl;
+   std::cout << "Size in _scott_binWidth: " << size << std::endl;
+   std::cout << "Global sum in _scott_binWidth: " << sum << std::endl;
+
    for(int i = 0; i < local_counts.size(); i++) {
      int count = local_counts[i];
      if (count < 0)
       count = -1 * count;
+     if (count != 0)
+      std::cout << std::to_string(count) << ", ";
      size += count;
-   }
-   std::cout << "Size in _scott_binWidth: " << size << std::endl;
-   for(int i=0; i < global_counts.size();i++){
-     if (global_counts[i] != 0)
-      std::cout << std::to_string(global_counts.at(i)) << ", ";
+     sum += (count * local_edges.at(i));
    }
    std::cout << std::endl;
-   for(int i=0; i < local_counts.size();i++){
-     if (local_counts[i] != 0)
-      std::cout << std::to_string(local_counts.at(i)) << ", ";
-   }
-   std::cout << std::endl;
-
-   for (int i=0;i<global_counts.size();i++){
-     sum += (global_counts.at(i) * global_edges.at(i));
-   }
-   std::cout << "Global sum in _scott_binWidth: " << sum << std::endl;
-   for (int i=0;i<local_counts.size();i++){
-     sum += (local_counts.at(i) * local_edges.at(i));
-   }
    std::cout << "total sum in _scott_binWidth: " << sum << std::endl;
 
    const double mean = sum / size;
