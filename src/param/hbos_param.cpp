@@ -146,13 +146,13 @@ using namespace chimbuko;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
    std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
 
-   if (g.bin_edges().size() <= 1) {
+   if (g.counts().size() <= 0) {
      std::cout << "Global Histogram is empty" << std::endl;
      combined.set_glob_threshold(l.get_threshold());
      combined.set_counts(l.counts());
      combined.set_bin_edges(l.bin_edges());
    }
-   else if (l.bin_edges().size() <= 1) {
+   else if (l.counts().size() <= 0) {
      std::cout << "Local Histogram is empty" << std::endl;
      combined.set_glob_threshold(g.get_threshold());
      combined.set_counts(g.counts());
@@ -175,7 +175,7 @@ using namespace chimbuko;
      }
 
      (l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
-     (l.bin_edges().at(l.bin_edges().size()-1) < g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
+     (l.bin_edges().at(l.bin_edges().size()-1) > g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
 
      //std::vector<double> runtimes;
      // for (int i = 0; i < g.bin_edges().size() - 1; i++) {
