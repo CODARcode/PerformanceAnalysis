@@ -285,7 +285,7 @@ using namespace chimbuko;
 
 
     *this = combined;
-    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
