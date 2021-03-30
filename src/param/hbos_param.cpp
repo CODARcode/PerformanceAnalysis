@@ -141,26 +141,28 @@ using namespace chimbuko;
 
  //Histogram Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
  Histogram chimbuko::operator+(Histogram& g, const Histogram& l) {
-   Histogram *combined= new Histogram();
+   Histogram combined; //= new Histogram();
    double min_runtime, max_runtime;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
    std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
 
    if (g.counts().size() <= 0) {
      std::cout << "Global Histogram is empty" << std::endl;
-     combined->set_glob_threshold(l.get_threshold());
-     combined->set_counts(l.counts());
-     combined->set_bin_edges(l.bin_edges());
-     delete g;
-     return *combined;
+     combined = l;
+     //combined->set_glob_threshold(l.get_threshold());
+     //combined->set_counts(l.counts());
+     //combined->set_bin_edges(l.bin_edges());
+
+     return combined;
    }
    else if (l.counts().size() <= 0) {
      std::cout << "Local Histogram is empty" << std::endl;
-     combined->set_glob_threshold(g.get_threshold());
-     combined->set_counts(g.counts());
-     combined->set_bin_edges(g.bin_edges());
-     delete g;
-     return *combined;
+     combined = g;
+     //combined->set_glob_threshold(g.get_threshold());
+     //combined->set_counts(g.counts());
+     //combined->set_bin_edges(g.bin_edges());
+     //delete g;
+     return combined;
    }
    else {
      double bin_width;
@@ -181,14 +183,17 @@ using namespace chimbuko;
      (l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
      (l.bin_edges().at(l.bin_edges().size()-1) > g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
 
+     std::vector<double> comb_binedges;
+     std::vector<int> comb_counts;
 
      if (bin_width == 0){
        std::cout << "BINWIDTH is Zero" << std::endl;
-       combined->set_bin_edges(g.bin_edges());
-       combined->set_counts(g.counts());
-       combined->set_glob_threshold(g.get_threshold());
-       delete g;
-       return *combined;
+       combined = g;
+       // combined->set_bin_edges(g.bin_edges());
+       // combined->set_counts(g.counts());
+       // combined->set_glob_threshold(g.get_threshold());
+       // delete g;
+       return combined;
      }
      else{ // bin_width is > 0
        std::cout << "BindWidth is > 0 here: " << std::endl;
@@ -198,6 +203,10 @@ using namespace chimbuko;
        //const int h = runtimes.size() - 1;
        std::cout << "min_runtime:" << min_runtime << std::endl;
        std::cout << "max_runtime:" << max_runtime << std::endl;
+       if (max_runtime < min_runtime){
+         std::cout << "Incorrect boundary for runtime" << std::endl;
+         exit(1);
+       }
         //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
 
        //std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
@@ -218,14 +227,21 @@ using namespace chimbuko;
        //   }
        // }
        //
-       combined->add2binedges(edge_val);
+
+
+       //combined->add2binedges(edge_val);
        if (min_runtime == max_runtime) {
-         combined->add2binedges(edge_val + bin_width);
+         comb_binedges = std::vector<double>(2, 0.0);
+         //combined->add2binedges(edge_val + bin_width);
+         comb_binedges[0] = edge_val;
+         comb_binedges[1] = edge_val + bin_width;
        }
        else{
+         comb_binedges.push_back(edge_val);
          while(edge_val < max_runtime) {
            edge_val += bin_width;
-           combined->add2binedges(edge_val);
+           //combined->add2binedges(edge_val);
+           comb_binedges.push_back(edge_val);
 
          }
        }
@@ -238,36 +254,48 @@ using namespace chimbuko;
      // }
      //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
      //std::vector<int> count (combined.bin_edges().size()-1, 0);
-     combined->set_counts(std::vector<int> (combined->bin_edges().size() - 1, 0)); //count);
+     //combined->set_counts(std::vector<int> (combined->bin_edges().size() - 1, 0)); //count);
+     comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
+
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
-       for(int j = 1; j < combined->bin_edges().size(); j++) {
-         if(g.bin_edges().at(i) < combined->bin_edges().at(j)) {
+       for(int j = 1; j < comb_binedges.size(); j++) {
+         if(g.bin_edges().at(i) < comb_binedges.at(j)) {
            int id = j-1, inc = g.counts().at(i);
-           combined->add2counts(id, inc);
+           //combined->add2counts(id, inc);
+           comb_binedges[id] += inc;
            break;
          }
        }
      }
 
      for (int i = 0; i < l.bin_edges().size() -1; i++) {
-       for(int j = 1; j < combined->bin_edges().size(); j++) {
-         if(l.bin_edges().at(i) < combined->bin_edges().at(j)) {
+       for(int j = 1; j < comb_binedges.size(); j++) {
+         if(l.bin_edges().at(i) < comb_binedges.at(j)) {
            int id = j-1, inc = l.counts().at(i);
-           combined->add2counts(id, inc);
+           //combined->add2counts(id, inc);
+           comb_binedges[id] += inc;
            break;
          }
        }
      }
 
+     double new_threshold;
      if(l.get_threshold() > g.get_threshold())
-      combined->set_glob_threshold(l.get_threshold());
+      //combined->set_glob_threshold(l.get_threshold());
+      new_threshold = l.get_threshold();
      else
-      combined->set_glob_threshold(g.get_threshold());
+      //combined->set_glob_threshold(g.get_threshold());
+      new_threshold = g.get_threshold();
 
      //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
      //g.clear(); //g=combined;
-     delete g;
-     return *combined;
+     //delete g;
+     combined = g;
+     combined.clear();
+     combined.set_glob_threshold(new_threshold);
+     combined.set_counts(comb_counts);
+     combined.set_bin_edges(comb_binedges);
+     return combined;
    }
 
 
