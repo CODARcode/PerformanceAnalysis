@@ -211,7 +211,7 @@ using namespace chimbuko;
        std::cout << "max_runtime:" << max_runtime << std::endl;
         //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
 
-       std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
+       //std::cout << "Combined Bin Edges: [" ; //<< std::to_string(combined.bin_edges().at(0)) << ", " ;
        //double prev = combined.bin_edges().at(0); //min_runtime;
 
        double edge_val=min_runtime;
@@ -232,12 +232,12 @@ using namespace chimbuko;
        while(edge_val <= max_runtime) {
          combined.add2binedges(edge_val);
          //const double b = bin_width + prev;
-         std::cout << std::to_string(edge_val) << ", ";
+         //std::cout << std::to_string(edge_val) << ", ";
          edge_val += bin_width;
          //prev = b;
        }
        //runtimes.clear();
-       std::cout << "]" << std::endl;
+       //std::cout << "]" << std::endl;
      }
 
      //{
