@@ -108,11 +108,16 @@ using namespace chimbuko;
 
  void HbosParam::update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats)
  {
-     std::lock_guard<std::mutex> _(m_mutex);
+    std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
-         m_hbosstats[pair.first] += pair.second;
-         pair.second = m_hbosstats[pair.first];
+         hbosstats[pair.first] += pair.second;
+         pair.second = hbosstats[pair.first];
      }
+     // std::lock_guard<std::mutex> _(m_mutex);
+     // {
+     //   if()
+     //   hbosstats[pair.first] += temp_hbosstats
+     // }
  }
 
  nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
@@ -139,7 +144,7 @@ using namespace chimbuko;
  Histogram::Histogram(){clear();}
  Histogram::~Histogram(){}
 
- Histogram chimbuko::operator+(Histogram& g, const Histogram& l) {
+ Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime, max_runtime;
    std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
@@ -148,13 +153,11 @@ using namespace chimbuko;
    if (g.counts().size() <= 0) {
      std::cout << "Global Histogram is empty" << std::endl;
      combined = l;
-
      return combined;
    }
    else if (l.counts().size() <= 0) {
      std::cout << "Local Histogram is empty" << std::endl;
      combined = g;
-
      return combined;
    }
    else {
@@ -182,6 +185,7 @@ using namespace chimbuko;
      if (bin_width == 0){
        std::cout << "BINWIDTH is Zero" << std::endl;
        combined = g;
+       //Expensive
        for (int i = 0; i < l.bin_edges().size() - 1; i++) {
          for(int j = 1; j < combined.bin_edges().size(); j++) {
            if(l.bin_edges().at(i) < combined.bin_edges().at(j) && l.bin_edges().at(i) >= combined.bin_edges().at(j-1)) {
@@ -207,17 +211,22 @@ using namespace chimbuko;
        double edge_val=min_runtime;
 
        if (min_runtime == max_runtime) {
-         comb_binedges = std::vector<double>(2, 0.0);
+         comb_binedges.resize(2);
+
          //combined->add2binedges(edge_val + bin_width);
          comb_binedges[0] = edge_val;
          comb_binedges[1] = edge_val + bin_width;
        }
        else{
-         comb_binedges.push_back(edge_val);
+         comb_binedges.resize((max_runtime - min_runtime)/bin_width + 1);
+         size_t i = 0;
+         comb_binedges[i++] = edge_val;
+
          while(edge_val < max_runtime) {
            edge_val += bin_width;
            //combined->add2binedges(edge_val);
-           comb_binedges.push_back(edge_val);
+
+           comb_binedges[i++] = edge_val;
 
          }
        }
@@ -228,7 +237,7 @@ using namespace chimbuko;
 
      //combined->set_counts(std::vector<int> (combined->bin_edges().size() - 1, 0)); //count);
      comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
-
+     //Expensive
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
        for(int j = 1; j < comb_binedges.size(); j++) {
          if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
@@ -239,7 +248,7 @@ using namespace chimbuko;
          }
        }
      }
-
+     //Expensive
      for (int i = 0; i < l.bin_edges().size() -1; i++) {
        for(int j = 1; j < comb_binedges.size(); j++) {
          if(l.bin_edges().at(i) < comb_binedges.at(j) && l.bin_edges().at(i) >= comb_binedges.at(j-1)) {
@@ -261,7 +270,7 @@ using namespace chimbuko;
 
 
      combined = g;
-     combined.clear();
+     //combined.clear();
      combined.set_glob_threshold(new_threshold);
      combined.set_counts(comb_counts);
      combined.set_bin_edges(comb_binedges);
@@ -312,7 +321,7 @@ using namespace chimbuko;
      size += count;
      sum += (count * local_edges.at(i));
    }
-   std::cout << std::endl;
+   stdcout << std::endl;
    std::cout << "total Size in _scott_binWidth: " << size << std::endl;
    std::cout << "total sum in _scott_binWidth: " << sum << std::endl;
 
