@@ -293,9 +293,22 @@ using namespace chimbuko;
    double sum = 0.0;
    std::cout << "Size of Vector global_counts: " << global_counts.size() << std::endl;
    std::cout << "Size of Vector local_counts: " << local_counts.size() << std::endl;
-   
-   double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
-   size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
+
+   //double size = std::accumulate(global_counts.begin(), global_counts.end(), 0);
+   //size += std::accumulate(local_counts.begin(), local_counts.end(), 0);
+   int size = 0;
+   for(int i = 0; i < global_counts.size(); i++) {
+     int count = global_counts[i]
+     if (count < 0)
+      count = -1 * count;
+     size += count;
+   }
+   for(int i = 0; i < local_counts.size(); i++) {
+     int count = local_counts[i]
+     if (count < 0)
+      count = -1 * count;
+     size += count;
+   }
    std::cout << "Size in _scott_binWidth: " << size << std::endl;
    for(int i=0; i < global_counts.size();i++){
      if (global_counts[i] != 0)
