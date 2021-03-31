@@ -397,7 +397,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
           verboseStream << runtime_i << " is small but NOT outlier" << std::endl;
-          ad_score = min_score; //out_scores_i.at(0);
+          ad_score = out_scores_i.at(0);
         }
         else{
           verboseStream << runtime_i << " is small and outlier" << std::endl;
@@ -464,9 +464,9 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
 
   for(int j=1; j < bin_edges.size(); j++){
 
-    if(X <= bin_edges.at(j)){  //X <= bin_edges.at(j)){
+    if(X <= bin_edges.at(j)){
 
-      return (j); //j-1);
+      return (j-1);
     }
   }
 
