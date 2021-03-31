@@ -108,7 +108,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile";  // BPFile or SST
-    params.trace_data_dir = "<PATH>/../../data";  // *.bp location
+    params.trace_data_dir = "<PATH>/../data";  // *.bp location
     std::string bp_prefix = "tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
