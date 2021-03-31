@@ -204,9 +204,9 @@ using namespace chimbuko;
          //     break;
          //   }
          // }
-         auto index_it = std::lower_bound(l.bin_edges().begin(), l.bin_edges().end(), l.bin_edges().at(i));
-         if (index_it != l.bin_edges().end()){
-           const int id = std::distance(l.bin_edges().begin(), index_it) - 1;
+         auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
+         if (index_it != combined.bin_edges().end()){
+           const int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
            const int inc = l.counts().at(i);
            combined.add2counts(id, inc);
          }
@@ -267,9 +267,9 @@ using namespace chimbuko;
        //     break;
        //   }
        // }
-       auto index_it = std::lower_bound(g.bin_edges().begin(), g.bin_edges().end(), g.bin_edges().at(i));
-       if (index_it != g.bin_edges().end()){
-         const int id = std::distance(g.bin_edges().begin(), index_it) - 1;
+       auto index_it = std::lower_bound(comb_binedges.bin_edges().begin(), comb_binedges.bin_edges().end(), g.bin_edges().at(i));
+       if (index_it != comb_binedges.bin_edges().end()){
+         const int id = std::distance(comb_binedges.bin_edges().begin(), index_it) - 1;
          const int inc = g.counts().at(i);
          comb_counts[id] += inc;
        }
@@ -284,9 +284,9 @@ using namespace chimbuko;
        //     break;
        //   }
        // }
-       auto index_it = std::lower_bound(l.bin_edges().begin(), l.bin_edges().end(), l.bin_edges().at(i));
-       if (index_it != l.bin_edges().end()){
-         const int id = std::distance(l.bin_edges().begin(), index_it) - 1;
+       auto index_it = std::lower_bound(comb_binedges.bin_edges().begin(), comb_binedges.bin_edges().end(), l.bin_edges().at(i));
+       if (index_it != comb_binedges.bin_edges().end()){
+         const int id = std::distance(comb_binedges.bin_edges().begin(), index_it) - 1;
          const int inc = l.counts().at(i);
          comb_counts[id] += inc;
        }
@@ -391,8 +391,9 @@ using namespace chimbuko;
      var += pow(vals.at(i) - mean, 2);
    }
    var = var / vals.size();
-
-   return ((3.5 * sqrt(var) ) / pow(vals.size(), 1/3));
+   std = sqrt(var);
+   std::cout << "STD in _scott_binWidth: " << std << std::endl;
+   return ((3.5 * std ) / pow(vals.size(), 1/3));
  }
 
  void Histogram::set_hist_data(const Histogram::Data& d)
