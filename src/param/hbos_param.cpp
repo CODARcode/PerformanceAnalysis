@@ -193,12 +193,9 @@ using namespace chimbuko;
 
          auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
          if (index_it != combined.bin_edges().end()){
-           int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
+           const int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
            const int inc = l.counts().at(i);
-           //if(id < 0) {id = 0;}
-           verboseStream << "In l" << "id: " << id << ", inc: " << inc << std::endl;
            if (id >= 0 && id < combined.counts().size())
-
             combined.add2counts(id, inc);
          }
 
@@ -227,16 +224,13 @@ using namespace chimbuko;
          comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 2);
          size_t i = 0;
          comb_binedges[i++] = edge_val;
-         //comb_binedges.push_back(edge_val);
 
          while(edge_val <= max_runtime) {
            edge_val += bin_width;
            comb_binedges[i++] = edge_val;
-           //comb_binedges.push_back(edge_val);
          }
        }
      }
-     verboseStream << "comb_binedges size: " << comb_binedges.size() << std::endl;
 
      comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
 
@@ -244,10 +238,8 @@ using namespace chimbuko;
 
        auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), g.bin_edges().at(i));
        if (index_it != comb_binedges.end()){
-         int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = g.counts().at(i);
-         //if(id < 0) {id = 0;}
-         verboseStream << "In g" << "id: " << id << ", inc: " << inc << std::endl;
          if (id >= 0 && id < comb_counts.size())
           comb_counts[id] += inc;
        }
@@ -257,10 +249,8 @@ using namespace chimbuko;
 
        auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), l.bin_edges().at(i));
        if (index_it != comb_binedges.end()){
-         int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = l.counts().at(i);
-         //if(id < 0) {id = 0;}
-         verboseStream << "In l" << "id: " << id << ", inc: " << inc  << std::endl;
          if (id >= 0 && id < comb_counts.size())
           comb_counts[id] += inc;
        }
