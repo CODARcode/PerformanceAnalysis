@@ -267,9 +267,9 @@ using namespace chimbuko;
        //     break;
        //   }
        // }
-       auto index_it = std::lower_bound(comb_binedges.bin_edges().begin(), comb_binedges.bin_edges().end(), g.bin_edges().at(i));
-       if (index_it != comb_binedges.bin_edges().end()){
-         const int id = std::distance(comb_binedges.bin_edges().begin(), index_it) - 1;
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), g.bin_edges().at(i));
+       if (index_it != comb_binedges.end()){
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = g.counts().at(i);
          comb_counts[id] += inc;
        }
@@ -284,9 +284,9 @@ using namespace chimbuko;
        //     break;
        //   }
        // }
-       auto index_it = std::lower_bound(comb_binedges.bin_edges().begin(), comb_binedges.bin_edges().end(), l.bin_edges().at(i));
-       if (index_it != comb_binedges.bin_edges().end()){
-         const int id = std::distance(comb_binedges.bin_edges().begin(), index_it) - 1;
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), l.bin_edges().at(i));
+       if (index_it != comb_binedges.end()){
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = l.counts().at(i);
          comb_counts[id] += inc;
        }
@@ -386,7 +386,7 @@ using namespace chimbuko;
    double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
 
    double mean = sum / vals.size();
-   double var = 0.0;
+   double var = 0.0, std = 0.0;
    for(int i=0; i<vals.size(); i++){
      var += pow(vals.at(i) - mean, 2);
    }
