@@ -9,8 +9,9 @@ using namespace std::chrono;
 
 struct SinkerArgs{
   int timeout;
+  int beginstep_timeout;
 
-  SinkerArgs(): timeout(60){}
+  SinkerArgs(): timeout(60), beginstep_timeout(30){}
 };
 
 
@@ -26,12 +27,12 @@ int main(int argc, char ** argv){
     {
       commandLineParser<SinkerArgs> cmdline;
       addOptionalCommandLineArg(cmdline, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
+      addOptionalCommandLineArg(cmdline, beginstep_timeout, "Specify the SST beginStep timeout in seconds (Default 30s)");
 
       if(argc < 5 || (argc == 2 && std::string(argv[1]) == "-help")){
 	std::cout << "Usage: <exe> <engine type (BPFile, SST)> <bp directory> <bpfile prefix (eg tau-metrics-nwchem)> <fetch>\n"
 		  << "Where \"fetch\" indicates whether the data is actually transferred or we just iterate over the IO steps\n"
 		  << "Options:" << std::endl;
-	
 	cmdline.help(std::cout);
 	return 0;
       }      
@@ -75,6 +76,8 @@ int main(int argc, char ** argv){
       // First, init io to make sure file (or connection) handler
       // -----------------------------------------------------------------------
       parser = new ADParser(data_dir + "/" + inputFile, 0, world_rank, engineType, args.timeout);
+
+      parser->setBeginStepTimeout(args.beginstep_timeout);
 
       // -----------------------------------------------------------------------
       // Start analysis
