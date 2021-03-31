@@ -223,13 +223,17 @@ using namespace chimbuko;
        }
        else{
          comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 2);
-         size_t i = 0;
-         comb_binedges[i++] = edge_val;
-
-         while(edge_val <= max_runtime) {
+         for (int i = 0; i < comb_binedges.size(); i++) {
+           comb_binedges[i] = edge_val;
            edge_val += bin_width;
-           comb_binedges[i++] = edge_val;
          }
+         // size_t i = 0;
+         // comb_binedges[i++] = edge_val;
+         //
+         // while(edge_val <= max_runtime) {
+         //   edge_val += bin_width;
+         //   comb_binedges[i++] = edge_val;
+         // }
        }
      }
 
