@@ -196,14 +196,21 @@ using namespace chimbuko;
        combined = g;
        //Expensive
        for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-         for(int j = 1; j < combined.bin_edges().size(); j++) {
-           if(l.bin_edges().at(i) < combined.bin_edges().at(j) && l.bin_edges().at(i) >= combined.bin_edges().at(j-1)) {
-             int id = j-1, inc = l.counts().at(i);
-             combined.add2counts(id, inc);
-
-             break;
-           }
+         // for(int j = 1; j < combined.bin_edges().size(); j++) {
+         //   if(l.bin_edges().at(i) < combined.bin_edges().at(j) && l.bin_edges().at(i) >= combined.bin_edges().at(j-1)) {
+         //     int id = j-1, inc = l.counts().at(i);
+         //     combined.add2counts(id, inc);
+         //
+         //     break;
+         //   }
+         // }
+         auto index_it = std::lower(l.bin_edges().begin(), l.bin_edges().end(), l.bin_edges().at(i));
+         if (index_it != l.bin_edges().end()){
+           const int id = std::distance(l.bin_edges().begin(), index_it) - 1;
+           const int inc = l.counts().at(i);
+           combined.add2counts(id, inc);
          }
+
        }
        return combined;
      }
@@ -233,7 +240,7 @@ using namespace chimbuko;
          comb_binedges.push_back(edge_val);
          while(edge_val <= max_runtime) {
            edge_val += bin_width;
-           
+
 
            //comb_binedges[i++] = edge_val;
            comb_binedges.push_back(edge_val);
@@ -252,24 +259,36 @@ using namespace chimbuko;
      //int i=0, j=0, id=0;
      //while(i < )
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
-       for(int j = 1; j < comb_binedges.size(); j++) {
-         if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
-           int id = j-1, inc = g.counts().at(i);
-           //combined->add2counts(id, inc);
-           comb_counts[id] += inc;
-           break;
-         }
+       // for(int j = 1; j < comb_binedges.size(); j++) {
+       //   if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
+       //     int id = j-1, inc = g.counts().at(i);
+       //     //combined->add2counts(id, inc);
+       //     comb_counts[id] += inc;
+       //     break;
+       //   }
+       // }
+       auto index_it = std::lower(g.bin_edges().begin(), g.bin_edges().end(), g.bin_edges().at(i));
+       if (index_it != g.bin_edges().end()){
+         const int id = std::distance(g.bin_edges().begin(), index_it) - 1;
+         const int inc = g.counts().at(i);
+         comb_counts[id] += inc;
        }
      }
      //Expensive
      for (int i = 0; i < l.bin_edges().size() -1; i++) {
-       for(int j = 1; j < comb_binedges.size(); j++) {
-         if(l.bin_edges().at(i) < comb_binedges.at(j) && l.bin_edges().at(i) >= comb_binedges.at(j-1)) {
-           int id = j-1, inc = l.counts().at(i);
-           //combined->add2counts(id, inc);
-           comb_counts[id] += inc;
-           break;
-         }
+       // for(int j = 1; j < comb_binedges.size(); j++) {
+       //   if(l.bin_edges().at(i) < comb_binedges.at(j) && l.bin_edges().at(i) >= comb_binedges.at(j-1)) {
+       //     int id = j-1, inc = l.counts().at(i);
+       //     //combined->add2counts(id, inc);
+       //     comb_counts[id] += inc;
+       //     break;
+       //   }
+       // }
+       auto index_it = std::lower(l.bin_edges().begin(), l.bin_edges().end(), l.bin_edges().at(i));
+       if (index_it != l.bin_edges().end()){
+         const int id = std::distance(l.bin_edges().begin(), index_it) - 1;
+         const int inc = l.counts().at(i);
+         comb_counts[id] += inc;
        }
      }
 
