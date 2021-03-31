@@ -422,7 +422,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
       else {
-        verboseStream << runtime_i << " should NOT be an outlier" << std::endl;
+        verboseStream << runtime_i << " can be an outlier" << std::endl;
         ad_score = out_scores_i.at( bin_ind - 1);
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
