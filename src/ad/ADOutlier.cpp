@@ -325,7 +325,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
-  verbosStream << "out_scores_i: ";
+  verboseStream << "out_scores_i: ";
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
@@ -339,7 +339,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
     }
   }
-  VerboseStream << std::endl;
+  verboseStream << std::endl;
   // std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
   // std::cout << "min_score = " << min_score << std::endl;
   // std::cout << "max_score = " << max_score << std::endl;
