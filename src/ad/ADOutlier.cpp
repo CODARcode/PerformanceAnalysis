@@ -325,11 +325,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
-  verboseStream << "out_scores_i: ";
+  verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    verboseStream << l << ", ";
+    verboseStream << "Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
