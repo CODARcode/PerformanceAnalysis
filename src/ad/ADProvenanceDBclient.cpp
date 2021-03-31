@@ -29,7 +29,7 @@ void AnomalousSendManager::waitAll(){
     outstanding.front().wait();
     outstanding.pop();
   }
-}  
+}
 
 size_t AnomalousSendManager::getNoutstanding(){
   purge();
@@ -45,12 +45,12 @@ AnomalousSendManager::~AnomalousSendManager(){
 AnomalousSendManager ADProvenanceDBclient::anom_send_man;
 
 
-ADProvenanceDBclient::~ADProvenanceDBclient(){ 
+ADProvenanceDBclient::~ADProvenanceDBclient(){
   disconnect();
   verboseStream << "ADProvenanceDBclient exiting" << std::endl;
 }
 
-sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type){ 
+sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type){
   switch(type){
   case ProvenanceDataType::AnomalyData:
     return m_coll_anomalies;
@@ -63,7 +63,7 @@ sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataTyp
   }
 }
 
-const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type) const{ 
+const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceDataType type) const{
   return const_cast<ADProvenanceDBclient*>(this)->getCollection(type);
 }
 
@@ -80,15 +80,18 @@ void ADProvenanceDBclient::disconnect(){
 
     if(m_perform_handshake){
       verboseStream << "ADProvenanceDBclient de-registering with server" << std::endl;
-      m_client_goodbye->on(m_server)(m_rank);    
+      m_client_goodbye->on(m_server)(m_rank);
       verboseStream << "ADProvenanceDBclient deleting handshake RPCs" << std::endl;
-      
+
       m_client_hello->deregister();
       m_client_goodbye->deregister();
-      
+
       delete m_client_hello; m_client_hello = nullptr;
       delete m_client_goodbye; m_client_goodbye = nullptr;
     }
+
+    m_stop_server->deregister();
+    delete m_stop_server; m_stop_server = nullptr;
 
     m_is_connected = false;
     verboseStream << "ADProvenanceDBclient disconnected" << std::endl;
@@ -103,8 +106,8 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       int mode = ADProvenanceDBengine::getProtocol().second;
       verboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
       ADProvenanceDBengine::finalize();
-      ADProvenanceDBengine::setProtocol(protocol,mode);      
-    }      
+      ADProvenanceDBengine::setProtocol(protocol,mode);
+    }
 
     int shard = m_rank % nshards;
     std::string db_name = stringize("provdb.%d", shard);
@@ -112,10 +115,10 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
     verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl;
-    
+
     {
       //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB
-      std::atomic<bool> ready(false); 
+      std::atomic<bool> ready(false);
       int rank = m_rank;
       int heartbeat_freq = 20;
       std::thread heartbeat([heartbeat_freq, rank, &ready]{
@@ -128,7 +131,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 	      std::cout << "DB client rank " << rank << " still waiting for provDB connection after " << sec << "s" << std::endl;
 	    std::this_thread::sleep_for(std::chrono::seconds(1));
 	  }
-	});	    
+	});
 
       m_database = m_client.open(addr, 0, db_name);
       ready.store(true, std::memory_order_relaxed);
@@ -148,7 +151,9 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       m_client_hello = new thallium::remote_procedure(eng.define("client_hello").disable_response());
       m_client_goodbye = new thallium::remote_procedure(eng.define("client_goodbye").disable_response());
       m_client_hello->on(m_server)(m_rank);
-    }      
+    }
+
+    m_stop_server = new thallium::remote_procedure(eng.define("stop_server").disable_response());
 
     m_is_connected = true;
     verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
@@ -168,7 +173,7 @@ uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const Prove
 
 
 std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<nlohmann::json> &entries, const ProvenanceDataType type) const{
-  if(entries.size() == 0 || !m_is_connected) 
+  if(entries.size() == 0 || !m_is_connected)
     return std::vector<uint64_t>();
 
   PerfTimer timer;
@@ -178,7 +183,7 @@ std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<n
   std::vector<std::string> dump(size);
   for(int i=0;i<size;i++){
     if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
-    dump[i] = entries[i].dump();    
+    dump[i] = entries[i].dump();
   }
   if(m_stats){
     m_stats->add("provdb_client_sendmulti_dump_json_ms", timer.elapsed_ms());
@@ -187,7 +192,7 @@ std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<n
   }
 
   timer.start();
-  getCollection(type).store_multi(dump, ids.data()); 
+  getCollection(type).store_multi(dump, ids.data());
   if(m_stats) m_stats->add("provdb_client_sendmulti_send_ms", timer.elapsed_ms());
 
   return ids;
@@ -196,8 +201,8 @@ std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const std::vector<n
 std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const nlohmann::json &entries, const ProvenanceDataType type) const{
   if(!entries.is_array()) throw std::runtime_error("JSON object must be an array");
   size_t size = entries.size();
-  
-  if(size == 0 || !m_is_connected) 
+
+  if(size == 0 || !m_is_connected)
     return std::vector<uint64_t>();
 
   std::vector<uint64_t> ids(size,-1);
@@ -207,10 +212,10 @@ std::vector<uint64_t> ADProvenanceDBclient::sendMultipleData(const nlohmann::jso
     dump[i] = entries[i].dump();
   }
 
-  getCollection(type).store_multi(dump, ids.data()); 
+  getCollection(type).store_multi(dump, ids.data());
   return ids;
-}  
-  
+}
+
 
 void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const ProvenanceDataType type, OutstandingRequest *req) const{
   if(!entry.is_object()) throw std::runtime_error("JSON entry must be an object");
@@ -227,7 +232,7 @@ void ADProvenanceDBclient::sendDataAsync(const nlohmann::json &entry, const Prov
     ids = req->ids.data();
     sreq = &req->req;
   }
-  
+
   getCollection(type).store(entry.dump(), ids, false, sreq);
 }
 
@@ -250,7 +255,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<std::string> 
     sreq = &req->req;
   }
 
-  getCollection(type).store_multi(entries, ids, false, sreq); 
+  getCollection(type).store_multi(entries, ids, false, sreq);
 
   if(m_stats) m_stats->add("provdb_client_sendmulti_async_send_ms", timer.elapsed_ms());
 }
@@ -265,7 +270,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
   std::vector<std::string> dump(size);
   for(int i=0;i<size;i++){
     if(!entries[i].is_object()) throw std::runtime_error("Array entries must be JSON objects");
-    dump[i] = entries[i].dump();    
+    dump[i] = entries[i].dump();
   }
 
   if(m_stats){
@@ -280,8 +285,8 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const std::vector<nlohmann::jso
 void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, const ProvenanceDataType type, OutstandingRequest *req) const{
   if(!entries.is_array()) throw std::runtime_error("JSON object must be an array");
   size_t size = entries.size();
-  
-  if(size == 0 || !m_is_connected) 
+
+  if(size == 0 || !m_is_connected)
     return;
 
   PerfTimer timer;
@@ -298,7 +303,7 @@ void ADProvenanceDBclient::sendMultipleDataAsync(const nlohmann::json &entries, 
   }
 
   sendMultipleDataAsync(dump, type, req);
-}  
+}
 
 
 
@@ -345,7 +350,10 @@ std::unordered_map<std::string,std::string> ADProvenanceDBclient::execute(const 
   return out;
 }
 
-    
-#endif
-  
+void ADProvenanceDBclient::stopServer() const{
+  verboseStream << "ADProvenanceDBclient stopping server" << std::endl;
+  m_stop_server->on(m_server)();
+}
 
+
+#endif

@@ -66,6 +66,17 @@ void pserver_goodbye(const tl::request& req) {
   progressStream << "ProvDB Admin: Pserver has said goodbye" << std::endl;
 }
 
+bool cmd_shutdown = false; //true if a client has requested that the server shut down
+
+void client_stop_rpc(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  cmd_shutdown = true;
+  progressStream << "ProvDB Admin: Received shutdown request from client" << std::endl;
+}
+
+
+
+
 
 struct ProvdbArgs{
   std::string ip;
@@ -75,8 +86,9 @@ struct ProvdbArgs{
   int nthreads;
   std::string db_type;
   unsigned long db_commit_freq;
+  std::string db_write_dir;
 
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."){}
 };
 
 
@@ -88,7 +100,7 @@ int main(int argc, char** argv) {
       progressStream << "ProvDB Admin: Enabling verbose debug output" << std::endl;
       enableVerboseLogging() = true;
       spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
-    }       
+    }
 
     //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
@@ -101,6 +113,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
     addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
+    addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
@@ -120,7 +133,7 @@ int main(int argc, char** argv) {
     progressStream << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
 
     //Initialize provider engine
-    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
+    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads);
 
 #ifdef _PERF_METRIC
     //Get Margo to output profiling information
@@ -141,6 +154,7 @@ int main(int argc, char** argv) {
     engine.define("client_goodbye",client_goodbye).disable_response();
     engine.define("pserver_hello",pserver_hello).disable_response();
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
+    engine.define("stop_server",client_stop_rpc).disable_response();
 
     std::string addr = (std::string)engine.self();  //ip and port of admin
 
@@ -148,22 +162,22 @@ int main(int argc, char** argv) {
 
       //Initialize provider
       sonata::Provider provider(engine, 0);
-    
+
       progressStream << "ProvDB Admin: Provider is running on " << addr << std::endl;
 
       { //Scope in which admin object is active
 	sonata::Admin admin(engine);
 	progressStream << "ProvDB Admin: creating global data database" << std::endl;
 	std::string glob_db_name = "provdb.global";
-	std::string glob_db_config = stringize("{ \"path\" : \"./%s.unqlite\" }", glob_db_name.c_str());
+	std::string glob_db_config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), glob_db_name.c_str());
 	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
-	
+
 	progressStream << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
 
 	std::vector<std::string> db_shard_names(args.nshards);
 	for(int s=0;s<args.nshards;s++){
 	  std::string db_name = stringize("provdb.%d",s);
-	  std::string config = stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
+	  std::string config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), db_name.c_str());
 	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
 	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
 	  db_shard_names[s] = db_name;
@@ -172,7 +186,7 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
-	  
+
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(args.nshards);
 	  for(int s=0;s<args.nshards;s++){
@@ -201,7 +215,7 @@ int main(int argc, char** argv) {
 
 
 	  //Spin quietly until SIGTERM sent
-	  signal(SIGTERM, termSignalHandler);  
+	  signal(SIGTERM, termSignalHandler);
 	  progressStream << "ProvDB Admin: main thread waiting for completion" << std::endl;
 	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
 	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
@@ -214,11 +228,13 @@ int main(int argc, char** argv) {
 	      glob_db.commit();
 	      commit_timer_start = Clock::now();
 	    }
-      
+
 	    //If at least one client has previously connected but none are now connected, shutdown the server
 	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
+
+	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
 	    if(
-	       args.autoshutdown && 
+	       (args.autoshutdown || cmd_shutdown)  &&
 	       ( a_client_has_connected && connected.size() == 0 ) &&
 	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) )
 	       ){
@@ -233,7 +249,7 @@ int main(int argc, char** argv) {
 	  progressStream << "ProvDB Admin: destroying pserver database as it didn't connect (connection is optional)" << std::endl;
 	  admin.destroyDatabase(addr, 0, glob_db_name);
 	}
-	
+
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
       }//admin scope
 
@@ -241,10 +257,10 @@ int main(int argc, char** argv) {
     }//provider scope
 
     progressStream << "ProvDB Admin: shutting down server engine" << std::endl;
-    delete mtx; //delete mutex prior to engine finalize    
+    delete mtx; //delete mutex prior to engine finalize
     engine.finalize();
-    progressStream << "ProvDB Admin: finished, exiting engine scope" << std::endl;  
+    progressStream << "ProvDB Admin: finished, exiting engine scope" << std::endl;
   }
-  progressStream << "ProvDB Admin: finished, exiting main scope" << std::endl;    
+  progressStream << "ProvDB Admin: finished, exiting main scope" << std::endl;
   return 0;
 }

@@ -8,7 +8,7 @@
 #include <thread>
 
 namespace chimbuko {
-  
+
   /**
      @brief A network interface using ZeroMQ
   */
@@ -22,8 +22,8 @@ namespace chimbuko {
 
     /**
      * @brief (virtual) initialize network interface
-     * 
-     * @param argc command line argc 
+     *
+     * @param argc command line argc
      * @param argv command line argv
      * @param nt the number of threads for a thread pool
      */
@@ -41,12 +41,12 @@ namespace chimbuko {
 #else
     /**
      * @brief (virtual) Run network server
-     */    
+     */
     void run() override;
 #endif
     /**
      * @brief Stop network server
-     * 
+     *
      */
     void stop() override;
 
@@ -100,8 +100,8 @@ namespace chimbuko {
 
   protected:
     /**
-     * @brief initialize thread pool 
-     * 
+     * @brief initialize thread pool
+     *
      * @param nt the number threads in the pool
      */
     void init_thread_pool(int nt) override;
@@ -110,7 +110,7 @@ namespace chimbuko {
     /**
      * @brief Route a message to/from worker thread pool
      *
-     * @param skFrom ZMQ origin socket 
+     * @param skFrom ZMQ origin socket
      * @param skTo ZMQ destination socket
      * @param max_msg The maximum number of messages this function will attempt to drain from the queue (including disconnect message)
      * @return the number of messages routed
@@ -132,6 +132,7 @@ namespace chimbuko {
     bool m_autoshutdown; /**< The network will shutdown once all clients have disconnected*/
     Status m_status; /**< Monitoring of status */
     long m_poll_timeout; /**< The timeout (in ms) after which on no activity the network with shutdown (default -1: infinite)*/
+    bool m_remote_stop_cmd; /**< Registration of requests for server to stop issued by clients*/
   };
 
 } // end of chimbuko namespace

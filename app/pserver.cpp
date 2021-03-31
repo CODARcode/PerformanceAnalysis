@@ -131,7 +131,7 @@ int main (int argc, char ** argv){
     nlohmann::json in_p;
     in >> in_p;
     global_func_index_map.deserialize(in_p["func_index_map"]);
-    param->assign(in_p["alg_params"].dump()); //param.assign(in_p["alg_params"].dump());
+    param->assign(in_p["alg_params"].dump());
   }
 
 #ifdef _USE_MPINET
@@ -181,8 +181,8 @@ int main (int argc, char ** argv){
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
 
-    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params)); //new NetPayloadUpdateParams(&param, args.freeze_params));
-    net.add_payload(new NetPayloadGetParams(param)); //new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params));
+    net.add_payload(new NetPayloadGetParams(param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
@@ -227,7 +227,7 @@ int main (int argc, char ** argv){
     o.open(args.logdir + "/parameters.txt");
     if (o.is_open())
       {
-	param->show(o); //param.show(o);
+	param->show(o);
 	o.close();
       }
   }
@@ -256,13 +256,10 @@ int main (int argc, char ** argv){
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
     out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param->serialize()); //param.serialize());
+    out_p["alg_params"] = nlohmann::json::parse(param->serialize());
     out << out_p;
   }
 
   progressStream << "Pserver: finished" << std::endl;
-
-  delete param;
-
   return 0;
 }

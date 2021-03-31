@@ -31,11 +31,11 @@ std::string generate_hex(const unsigned int len) {
     return ss.str();
 }
 
-std::string generate_event_id(int rank, int step, size_t idx) {
+std::string generate_event_id(int rank, int step, long idx) {
     return std::to_string(rank) + ":" + std::to_string(step) + ":" + std::to_string(idx);
 }
 
-std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid) {
+std::string generate_event_id(int rank, int step, long idx, unsigned long eid) {
     return std::to_string(rank) + "-" + std::to_string(eid) + ":" + std::to_string(step) + ":" + std::to_string(idx);
     // return generate_event_id(rank, step, idx) + "_" + std::to_string(eid);
 }
@@ -47,7 +47,7 @@ std::string getHPserverIP(const std::string &base_ip, const int hpserver_nthr, c
   if(!std::regex_match(base_ip, m, r)) throw std::runtime_error("getHPserverIP Could not parse base IP address " + base_ip);
   std::string server = m[1];
   int base_port = strToAny<int>(m[2]);
-  
+
   int port_offset = rank % hpserver_nthr; //assign round-robin to ranks
 
   int port = base_port + port_offset;

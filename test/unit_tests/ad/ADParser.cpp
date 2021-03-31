@@ -31,7 +31,7 @@ struct SSTrw{
   std::mutex m;
   std::condition_variable cv;
   const std::string filename;
-  
+
 
   //Writer (should be used only by writer thread)
   adios2::ADIOS ad;
@@ -39,9 +39,9 @@ struct SSTrw{
   adios2::Engine wr;
 
   void openWriter(){
-    barrier.wait(); 
+    barrier.wait();
     std::cout << "Writer thread initializing" << std::endl;
-  
+
     ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
     io = ad.DeclareIO("tau-metrics");
     io.SetEngine("SST");
@@ -50,7 +50,7 @@ struct SSTrw{
 		      //,
 		      //{"DataTransport", "RDMA"}
       });
-  
+
     wr = io.Open(filename, adios2::Mode::Write);
 
     std::cout << "Writer thread init is completed" << std::endl;
@@ -59,15 +59,15 @@ struct SSTrw{
   }
   void closeWriter(){
     barrier.wait();
-    
+
     std::cout << "Writer thread closing shop" << std::endl;
     wr.Close();
-    
+
     std::cout << "Writer thread closed" << std::endl;
-    
-    barrier.wait();    
+
+    barrier.wait();
   }
-  
+
   //Reader
   ADParser *parser;
 
@@ -75,24 +75,24 @@ struct SSTrw{
     barrier.wait();
     std::this_thread::sleep_for(std::chrono::milliseconds(500)); //ADIOS2 seems to crash if we don't wait a short amount of time between starting the writer and starting the reader
     std::cout << "Parse thread initializing" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
-    
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
     parser = new ADParser(filename, pid, rid, "SST");
     std::cout << "Parser initialized" << std::endl;
-    
+
     barrier.wait();
   }
   void closeReader(){
     barrier.wait();
     std::cout << "Parser thread waiting to exit" << std::endl;
-    
+
     barrier.wait(); //have to wait until after the writer has closed!
-    
+
     std::cout << "Parser thread exiting" << std::endl;
-    
+
     if(parser){ delete parser; parser = NULL; }
   }
-  
+
   SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
 
@@ -100,7 +100,7 @@ struct SSTrw{
 TEST(ADParserTestConstructor, opensCorrectlyBPFile){
   bool err = false;
   try{
-    std::string filename = "commFile";   
+    std::string filename = "commFile";
     {
       adios2::ADIOS ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
       adios2::IO io = ad.DeclareIO("tau-metrics");
@@ -108,11 +108,11 @@ TEST(ADParserTestConstructor, opensCorrectlyBPFile){
       io.SetParameters({
 	  {"MarshalMethod", "BP"}
 	});
-      
+
       adios2::Engine wr = io.Open(filename, adios2::Mode::Write);
       wr.Close();
     }
-    ADParser parser(filename, 0,0, "BPFile");    
+    ADParser parser(filename, 0,0, "BPFile");
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;
     err = true;
@@ -126,17 +126,17 @@ TEST(ADParserTestConstructor, opensCorrectlySST){
   bool err = false;
   try{
     SSTrw rw;
-    
+
     std::thread wthr([&](){
 		       rw.openWriter();
 		       rw.closeWriter();
 		     });
-    
+
     std::thread rthr([&](){
 		       rw.openReader();
 		       rw.closeReader();
-		     });		     
-    
+		     });
+
     rthr.join();
     wthr.join();
   }catch(std::exception &e){
@@ -166,7 +166,7 @@ TEST(ADParserTestbeginStep, stepStartEndOK){
 		       rw.parser->endStep();
 		       rw.closeReader();
 		     });
-  
+
     rthr.join();
     wthr.join();
   }catch(std::exception &e){
@@ -192,24 +192,24 @@ TEST(ADParserTestAttributeIO, funcAttributeCommunicated){
 		                                                       //testing suggests it does not require a corresponding get.  Bug report?
 
 		       int dummy = 5678;
-		       
+
 		       rw.wr.BeginStep();
-		       rw.wr.Put(var, &dummy);			 
+		       rw.wr.Put(var, &dummy);
 		       rw.io.DefineAttribute<std::string>("timer 1234", "my_function");
 		       rw.wr.EndStep();
 
 		       rw.barrier.wait();
-		       
+
 		       rw.closeWriter();
 		     });
-    
+
     rw.openReader();
-    
-    rw.parser->beginStep();    
+
+    rw.parser->beginStep();
     rw.parser->endStep();
 
     rw.parser->update_attributes(); //can be called during begin/end or after
-    
+
     const std::unordered_map<int, std::string>* fmap = rw.parser->getFuncMap();
     EXPECT_EQ(fmap->size(), 1);
     auto it = fmap->find(1234);
@@ -219,9 +219,9 @@ TEST(ADParserTestAttributeIO, funcAttributeCommunicated){
     }
 
     rw.barrier.wait();
-    
+
     rw.closeReader();
-  
+
     wthr.join();
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;
@@ -245,24 +245,24 @@ TEST(ADParserTestAttributeIO, eventAttributeCommunicated){
 		                                                       //testing suggests it does not require a corresponding get.  Bug report?
 
 		       int dummy = 5678;
-		       
+
 		       rw.wr.BeginStep();
-		       rw.wr.Put(var, &dummy);			 
+		       rw.wr.Put(var, &dummy);
 		       rw.io.DefineAttribute<std::string>("event_type 1234", "my_event");
 		       rw.wr.EndStep();
 
 		       rw.barrier.wait();
-		       
+
 		       rw.closeWriter();
 		     });
-    
+
     rw.openReader();
-    
-    rw.parser->beginStep();    
+
+    rw.parser->beginStep();
     rw.parser->endStep();
 
     rw.parser->update_attributes(); //can be called during begin/end or after
-    
+
     const std::unordered_map<int, std::string>* fmap = rw.parser->getEventType();
     EXPECT_EQ(fmap->size(), 1);
     auto it = fmap->find(1234);
@@ -272,9 +272,9 @@ TEST(ADParserTestAttributeIO, eventAttributeCommunicated){
     }
 
     rw.barrier.wait();
-    
+
     rw.closeReader();
-  
+
     wthr.join();
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;
@@ -298,27 +298,27 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
 		       unsigned long data[FUNC_EVENT_DIM];
 		       for(int i=0;i<FUNC_EVENT_DIM;i++) data[i] = i;
 		       size_t count_val = 1;
-		       
+
 		       rw.openWriter();
-		    		       
+
 		       auto count = rw.io.DefineVariable<size_t>("timer_event_count");
 		       auto timestamps = rw.io.DefineVariable<unsigned long>("event_timestamps", {1, FUNC_EVENT_DIM}, {0, 0}, {1, FUNC_EVENT_DIM});
 
 		       rw.wr.BeginStep();
-		       rw.wr.Put(count, &count_val);			 
+		       rw.wr.Put(count, &count_val);
 		       rw.wr.Put(timestamps, data);
-		       
+
 		       rw.wr.EndStep();
 
 		       rw.barrier.wait();
-		       
+
 		       rw.closeWriter();
 		     });
-    
+
     rw.openReader();
-    
+
     rw.parser->beginStep();
-    ParserError perr = rw.parser->fetchFuncData();    
+    ParserError perr = rw.parser->fetchFuncData();
     EXPECT_EQ(perr , chimbuko::ParserError::OK );
     rw.parser->endStep();
 
@@ -327,11 +327,11 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
     unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
     const unsigned long* rdata = rw.parser->getFuncData(0);
     EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );
-    
+
     rw.barrier.wait();
-    
+
     rw.closeReader();
-  
+
     wthr.join();
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;
@@ -366,7 +366,7 @@ TEST(ADParserTestFuncDataIO, checkProgramIndexSubstitution){
 		       for(int i=0;i<COUNTER_EVENT_DIM;i++) counter_data[i] = i;
 		       counter_data[IDX_P] = 0;
 		       size_t counter_count_val = 1;
-		       
+
 		       rw.openWriter();
 
 		       //Func
@@ -383,75 +383,75 @@ TEST(ADParserTestFuncDataIO, checkProgramIndexSubstitution){
 
 
 		       rw.wr.BeginStep();
-		       rw.wr.Put(func_count, &func_count_val);			 
+		       rw.wr.Put(func_count, &func_count_val);
 		       rw.wr.Put(func_timestamps, func_data);
 
-		       rw.wr.Put(comm_count, &comm_count_val);			 
+		       rw.wr.Put(comm_count, &comm_count_val);
 		       rw.wr.Put(comm_timestamps, comm_data);
 
-		       rw.wr.Put(counter_count, &counter_count_val);			 
+		       rw.wr.Put(counter_count, &counter_count_val);
 		       rw.wr.Put(counter_timestamps, counter_data);
-		       
+
 		       rw.wr.EndStep();
 
 		       rw.barrier.wait();
-		       
+
 		       rw.closeWriter();
 		     });
 
     int pid = 199;
     rw.openReader(pid);
-    
+
     rw.parser->beginStep();
 
     //Check func
     {
-      ParserError perr = rw.parser->fetchFuncData();    
+      ParserError perr = rw.parser->fetchFuncData();
       EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
-      
+
       unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       const unsigned long* rdata = rw.parser->getFuncData(0);
       std::cout << "Func data expect pid " << pid << " got " << rdata[IDX_P] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     //Check comm
     {
-      ParserError perr = rw.parser->fetchCommData();    
+      ParserError perr = rw.parser->fetchCommData();
       EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCommData(), 1 );
-      
+
       unsigned long expect_data[COMM_EVENT_DIM]; for(int i=0;i<COMM_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       const unsigned long* rdata = rw.parser->getCommData(0);
       std::cout << "Comm data expect pid " << pid << " got " << rdata[IDX_P] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COMM_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COMM_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     //Check counter
     {
-      ParserError perr = rw.parser->fetchCounterData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );     
+      ParserError perr = rw.parser->fetchCounterData();
+      EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCounterData(), 1 );
-      
+
       unsigned long expect_data[COUNTER_EVENT_DIM]; for(int i=0;i<COUNTER_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       const unsigned long* rdata = rw.parser->getCounterData(0);
       std::cout << "Counter data expect pid " << pid << " got " << rdata[IDX_P] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COUNTER_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COUNTER_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     rw.parser->endStep();
 
     rw.barrier.wait();
-    
+
     rw.closeReader();
-  
+
     wthr.join();
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;
@@ -474,12 +474,12 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   unsigned long local_idx = 1234;
   unsigned long global_idx = 0; //this is the value always assigned to the first function
   std::string func_name = "my_function";
-  
+
   std::string sname = "tcp://localhost:5559"; //ip of "pserver"
 
   int argc; char** argv = nullptr;
   SSTrw rw;
-  
+
   Barrier ps_barrier(2);
 
   //This thread will own the "pserver" instance
@@ -510,7 +510,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
       std::cout << "TEST: Writer thread opening ADIOS2 writer" << std::endl;
       rw.openWriter();
       rw.wr.BeginStep();
-		       
+
       //Pass the map of local index to func name
       rw.io.DefineAttribute<std::string>("timer " + anyToStr(local_idx), func_name);
 
@@ -519,21 +519,21 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
       for(int i=0;i<FUNC_EVENT_DIM;i++) data[i] = i;
       size_t count_val = 1;
       data[FUNC_IDX_F] = local_idx;
-		    		       
+
       auto count = rw.io.DefineVariable<size_t>("timer_event_count");
       auto timestamps = rw.io.DefineVariable<unsigned long>("event_timestamps", {1, FUNC_EVENT_DIM}, {0, 0}, {1, FUNC_EVENT_DIM});
 
-      rw.wr.Put(count, &count_val);			 
+      rw.wr.Put(count, &count_val);
       rw.wr.Put(timestamps, data);
-		       
+
       rw.wr.EndStep();
 
       std::cout << "TEST: Writer thread waiting at barrier for completion" << std::endl;
       rw.barrier.wait();
-		       
+
       rw.closeWriter();
     });
-  
+
 
   std::cout << "TEST: Opening SST reader" << std::endl;
   rw.openReader();
@@ -548,7 +548,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   rw.parser->fetchFuncData();
   std::cout << "TEST: Ending step" << std::endl;
   rw.parser->endStep();
- 
+
   std::cout << "TEST: Checking results" << std::endl;
   EXPECT_EQ(rw.parser->getGlobalFunctionIndex(local_idx), global_idx);
 
@@ -561,7 +561,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   EXPECT_EQ(dp[FUNC_IDX_F], global_idx);
 
   std::cout << "TEST: Main thread waiting at barrier for writer thread completion" << std::endl;
-  rw.barrier.wait();  
+  rw.barrier.wait();
   rw.closeReader();
   wthr.join();
 
@@ -635,18 +635,21 @@ TEST(ADParserTest, eventsOrderedCorrectly){
     else
       FAIL() << "Invalid EventDataType";
   }
-  
+
   EXPECT_EQ(parser.getNumFuncData(), 2);
   EXPECT_EQ(parser.getNumCommData(), 4);
   EXPECT_EQ(parser.getNumCounterData(), 4);
 
   std::vector<Event_t> events_out = parser.getEvents();
-  
+
   EXPECT_EQ(events_out.size(), events.size());
 
-  for(int i=0;i<events_out.size();i++)
+  for(int i=0;i<events_out.size();i++){
+    //Note, the event id strings will differ because the step index in the parser has not been set and so will default to -1
+    std::cout << i << " " << events[i].get_json().dump() << " " << events_out[i].get_json().dump() << std::endl;
     EXPECT_EQ(same_up_to_id_string(events[i], events_out[i]), true);
-  
+  }
+
 
 }
 
@@ -673,7 +676,7 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
 		       for(int i=0;i<COUNTER_EVENT_DIM;i++) counter_data[i] = i;
 		       counter_data[IDX_R] = 0;
 		       size_t counter_count_val = 1;
-		       
+
 		       rw.openWriter();
 
 		       //Func
@@ -690,19 +693,19 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
 
 
 		       rw.wr.BeginStep();
-		       rw.wr.Put(func_count, &func_count_val);			 
+		       rw.wr.Put(func_count, &func_count_val);
 		       rw.wr.Put(func_timestamps, func_data);
 
-		       rw.wr.Put(comm_count, &comm_count_val);			 
+		       rw.wr.Put(comm_count, &comm_count_val);
 		       rw.wr.Put(comm_timestamps, comm_data);
 
-		       rw.wr.Put(counter_count, &counter_count_val);			 
+		       rw.wr.Put(counter_count, &counter_count_val);
 		       rw.wr.Put(counter_timestamps, counter_data);
-		       
+
 		       rw.wr.EndStep();
 
 		       rw.barrier.wait();
-		       
+
 		       rw.closeWriter();
 		     });
 
@@ -714,55 +717,55 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
 
     //Check func
     {
-      ParserError perr = rw.parser->fetchFuncData();    
+      ParserError perr = rw.parser->fetchFuncData();
       EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
-      
+
       unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       expect_data[IDX_R] = rid;
       const unsigned long* rdata = rw.parser->getFuncData(0);
       std::cout << "Func data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, FUNC_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     //Check comm
     {
-      ParserError perr = rw.parser->fetchCommData();    
+      ParserError perr = rw.parser->fetchCommData();
       EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCommData(), 1 );
-      
+
       unsigned long expect_data[COMM_EVENT_DIM]; for(int i=0;i<COMM_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       expect_data[IDX_R] = rid;
       const unsigned long* rdata = rw.parser->getCommData(0);
       std::cout << "Comm data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COMM_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COMM_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     //Check counter
     {
-      ParserError perr = rw.parser->fetchCounterData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );     
+      ParserError perr = rw.parser->fetchCounterData();
+      EXPECT_EQ(perr , chimbuko::ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCounterData(), 1 );
-      
+
       unsigned long expect_data[COUNTER_EVENT_DIM]; for(int i=0;i<COUNTER_EVENT_DIM;i++) expect_data[i] = i;
       expect_data[IDX_P] = pid;
       expect_data[IDX_R] = rid;
       const unsigned long* rdata = rw.parser->getCounterData(0);
       std::cout << "Counter data expect rid " << rid << " got " << rdata[IDX_R] << std::endl;
 
-      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COUNTER_EVENT_DIM*sizeof(unsigned long) ) );    
+      EXPECT_TRUE( 0 == std::memcmp( expect_data, rdata, COUNTER_EVENT_DIM*sizeof(unsigned long) ) );
     }
 
     rw.parser->endStep();
 
     rw.barrier.wait();
-    
+
     rw.closeReader();
-  
+
     wthr.join();
   }catch(std::exception &e){
     std::cout << "Caught exception:\n" << e.what() << std::endl;

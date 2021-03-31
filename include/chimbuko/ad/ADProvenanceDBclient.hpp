@@ -22,7 +22,7 @@ namespace chimbuko{
   struct OutstandingRequest{
     sonata::AsyncRequest req; /**< The request instance */
     std::vector<uint64_t> ids; /**< The ids of the inserted data, *populated only once request is complete* */
-    
+
     /**
      * @brief Default constructor. For async sends it is safe to use this as the ids array is resized by the send functions
      */
@@ -83,13 +83,14 @@ namespace chimbuko{
     sonata::Collection m_coll_metadata; /**< The metadata collection */
     sonata::Collection m_coll_normalexecs; /**< The normal executions collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
-    
+
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
 
     int m_rank; /**< MPI rank of current process */
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+    thallium::remote_procedure *m_stop_server; /** RPC to shutdown server*/
     bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
     PerfStats *m_stats; /**< Performance data gathering*/
@@ -101,7 +102,7 @@ namespace chimbuko{
      * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
      */
     void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
-    
+
   public:
     ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
 
@@ -111,7 +112,7 @@ namespace chimbuko{
      * @brief Enable or disable the client<->server handshake (call before connecting)
      */
     void setEnableHandshake(const bool to){ m_perform_handshake = to; }
-    
+
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
@@ -123,11 +124,11 @@ namespace chimbuko{
      * @brief Check if connnection has been established to provider
      */
     bool isConnected() const{ return m_is_connected; }
-    
+
     /**
      * @brief Disconnect if presently connected
      */
-    void disconnect(); 
+    void disconnect();
 
 
     /**
@@ -135,7 +136,7 @@ namespace chimbuko{
      */
     sonata::Collection & getCollection(const ProvenanceDataType type);
     const sonata::Collection & getCollection(const ProvenanceDataType type) const;
-		
+
     /**
      * @brief Send data JSON objects synchronously to the database (blocking)
      * @param entry JSON data
@@ -215,7 +216,7 @@ namespace chimbuko{
 
     /**
      * @brief Execute arbitrary jx9 code on the database
-     * 
+     *
      * Note that this acts on the *database* and not the individual collections. The code should access the appropriate collection ("anomalies" or "metadata")
      * @param code Jx9 code to execute
      * @param vars A set of variables that are assigned by the code
@@ -232,6 +233,12 @@ namespace chimbuko{
      * @brief Get the number of incomplete (outstanding) asynchronous stores
      */
     size_t getNoutstandingAsyncReqs(){ return anom_send_man.getNoutstanding(); }
+
+
+    /**
+     * @brief Issue a stop request to the server
+     */
+    void stopServer() const;
 
   };
 

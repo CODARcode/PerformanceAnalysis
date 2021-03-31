@@ -4,9 +4,6 @@
 #include "chimbuko/util/RunStats.hpp"
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include <vector>
-#include <iostream>
-
 
 namespace chimbuko {
 
@@ -123,6 +120,7 @@ namespace chimbuko {
      * @brief Get the internal map between global function index and statistics
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
+
     /**
      * @brief Get the algorithm parameters associated with a given function
      */
@@ -138,6 +136,5 @@ namespace chimbuko {
   private:
     std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of global function index to statistics*/
   };
-
 
 } // end of chimbuko namespace

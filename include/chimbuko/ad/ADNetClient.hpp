@@ -19,10 +19,10 @@ namespace chimbuko{
     ADNetClient();
 
     ~ADNetClient();
-    
+
     /**
      * @brief check if the parameter server is in use
-     * 
+     *
      * @return true if the parameter server is in use
      * @return false if the parameter server is not in use
      */
@@ -30,7 +30,7 @@ namespace chimbuko{
 
     /**
      * @brief connect to the parameter server
-     * 
+     *
      * @param rank this process rank
      * @param srank server process rank. If using ZMQnet this is not applicable
      * @param sname server name. If using ZMQNet this is the server ip address, for MPINet it is not applicable
@@ -38,7 +38,7 @@ namespace chimbuko{
     void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
     /**
      * @brief disconnect from the connected parameter server
-     * 
+     *
      * Called automatically by destructor if not previously called
      */
     void disconnect_ps();
@@ -57,8 +57,8 @@ namespace chimbuko{
      * @brief Send a message to the parameter server and receive the response in a serialized format
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
-     */       
-    std::string send_and_receive(const Message &msg);
+     */
+    std::string send_and_receive(const Message &msg) const;
 
     /**
      * @brief Send a message to the parameter server and receive the response both as Message objects
@@ -66,7 +66,7 @@ namespace chimbuko{
      * @param recv The received message
      *
      * Note recv and send can be the same object
-     */       
+     */
     void send_and_receive(Message &recv, const Message &send);
 
     /**
@@ -89,7 +89,11 @@ namespace chimbuko{
      * @brief Get the zeroMQ context
      */
     void * getZMQcontext(){ return m_context; }
-    
+
+    /**
+     * @brief Issue a stop command to the server. The server will then stop once all clients have disconnected and all messages processed
+     */
+    void stopServer() const;
 #endif
 
 
@@ -107,7 +111,7 @@ namespace chimbuko{
     PerfStats * m_perf;                      /**< Performance monitoring */
   };
 
-  
+
 
 
 

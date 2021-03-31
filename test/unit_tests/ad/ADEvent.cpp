@@ -628,3 +628,59 @@ TEST(ADEvent, testIteratorWindowDetermination){
   EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[9].get_id());
 
 }
+
+TEST(ADEventTest, DetectsCorrelationIDerrors){
+  ADEvent event_man;
+
+  std::unordered_map<int, std::string> event_types = { {0, "ENTRY"}, {1, "EXIT" } };
+  std::unordered_map<int, std::string> func_names = { {111, "cpu_func"}, {222, "gpu_func" } };
+  std::unordered_map<int, std::string> counter_names = { {0, "Correlation ID"} };
+  std::unordered_map<unsigned long, GPUvirtualThreadInfo> gpu_threads = { {6, GPUvirtualThreadInfo(1,2,3,4) } };
+
+  event_man.linkEventType(&event_types);
+  event_man.linkFuncMap(&func_names);
+  event_man.linkCounterMap(&counter_names);
+  event_man.linkGPUthreadMap(&gpu_threads);
+
+  Event_t cpu_entry = createFuncEvent_t(0,0,0, 0, 111, 1000);
+  Event_t cpu_exit = createFuncEvent_t(0,0,0, 1, 111, 2000);
+
+  Event_t cpu_corrid1 = createCounterEvent_t(0,0,0,  0,  99,  1200);
+  Event_t cpu_corrid2 = createCounterEvent_t(0,0,0,  0,  500,  1999);
+
+  Event_t gpu_entry = createFuncEvent_t(0,0,6, 0, 222, 1200);
+  Event_t gpu_exit = createFuncEvent_t(0,0,6, 1, 222, 1800);
+
+  Event_t gpu_corrid1 = createCounterEvent_t(0,0,6,  0,  99,  1799);
+  Event_t gpu_corrid2 = createCounterEvent_t(0,0,6,  0,  100,  1800);
+
+  event_man.addFunc(cpu_entry);
+
+  event_man.addFunc(gpu_entry);
+  event_man.addCounter(cpu_corrid1);
+
+  event_man.addCounter(gpu_corrid1);
+  event_man.addCounter(gpu_corrid2);
+
+  //GPU events not allowed to have multiple correlation IDs
+  bool got_error = false;
+  try{
+    event_man.addFunc(gpu_exit);
+  }catch(const std::exception &err){
+    std::cout << "Caught intentional error: " << err.what() << std::endl;
+    got_error = true;
+  }
+  EXPECT_EQ(got_error, true);
+
+  //CPU events are allowed to have multiple correlation IDs
+  event_man.addCounter(cpu_corrid2);
+
+  got_error = false;
+  try{
+    event_man.addFunc(cpu_exit);
+  }catch(const std::exception &err){
+    std::cout << "Caught *un*intentional error: " << err.what() << std::endl;
+    got_error = true;
+  }
+  EXPECT_EQ(got_error, false);
+}

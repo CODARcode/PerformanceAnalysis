@@ -1,5 +1,5 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
-LDADD = ../src/libchimbuko.la -lstdc++fs 
+LDADD = ../src/libchimbuko.la -lstdc++fs
 
 bin_PROGRAMS = driver pclient pclient_stats hpserver pserver pshutdown sstSinker sst_view bpfile_replay
 
@@ -32,13 +32,16 @@ bpfile_replay_LDADD = $(LDADD)
 
 
 if ENABLE_PROVDB
-bin_PROGRAMS += provdb_admin provdb_query
+bin_PROGRAMS += provdb_admin provdb_query provdb_shutdown
 
 provdb_admin_SOURCES = provdb_admin.cpp
 provdb_admin_LDADD = $(LDADD)
 
 provdb_query_SOURCES = provdb_query.cpp
 provdb_query_LDADD = $(LDADD)
+
+provdb_shutdown_SOURCES = provdb_shutdown.cpp
+provdb_shutdown_LDADD = $(LDADD)
 
 else
 	echo "Provenance DB not being built"
