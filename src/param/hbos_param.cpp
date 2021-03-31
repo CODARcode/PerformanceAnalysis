@@ -195,7 +195,9 @@ using namespace chimbuko;
          if (index_it != combined.bin_edges().end()){
            const int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
            const int inc = l.counts().at(i);
+           verboseStream << "id: " << id << ", inc: " << inc << std::endl;
            if (id >= 0 && id < combined.counts().size())
+
             combined.add2counts(id, inc);
          }
 
@@ -231,7 +233,8 @@ using namespace chimbuko;
          }
        }
      }
-
+     verboseStream << "comb_binedges size: " << comb_binedges.size() << std::endl;
+     
      comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
 
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
@@ -240,6 +243,7 @@ using namespace chimbuko;
        if (index_it != comb_binedges.end()){
          const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = g.counts().at(i);
+         verboseStream << "id: " << id << ", inc: " << inc << std::endl;
          if (id >= 0 && id < comb_counts.size())
           comb_counts[id] += inc;
        }
@@ -251,6 +255,7 @@ using namespace chimbuko;
        if (index_it != comb_binedges.end()){
          const int id = std::distance(comb_binedges.begin(), index_it) - 1;
          const int inc = l.counts().at(i);
+         verboseStream << "id: " << id << ", inc: " << inc  << std::endl;
          if (id >= 0 && id < comb_counts.size())
           comb_counts[id] += inc;
        }
