@@ -1,0 +1,22 @@
+FROM chimbuko/adios2:ubuntu18.04 AS ad-build
+
+WORKDIR /Downloads
+
+RUN echo "FORCE UPDATE 6_25_20_17_02" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN cd PerformanceAnalysis/ && ./autogen.sh
+
+WORKDIR /build
+
+RUN CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad
+
+RUN make -j 4 install && cd /opt/chimbuko/ad/test && ./run_all.sh
+
+
+
+FROM chimbuko/adios2:ubuntu18.04
+
+RUN mkdir -p /opt/chimbuko/ad
+COPY --from=ad-build /opt/chimbuko/ad /opt/chimbuko/ad
+
+WORKDIR /opt/chimbuko/ad/test
+ENTRYPOINT [ "./run_all.sh" ]

@@ -1,0 +1,14 @@
+FROM chimbuko/mocu:ubuntu18.04-cuda10.1-provdb AS mocu
+
+COPY --from=chimbuko/ad:ubuntu18.04-cuda10.1-provdb /opt /opt
+COPY --from=chimbuko/ad:ubuntu18.04-cuda10.1-provdb /spack /spack
+COPY --from=chimbuko/ad:ubuntu18.04-cuda10.1-provdb /sds /sds
+COPY --from=chimbuko/ad:ubuntu18.04-cuda10.1-provdb /root/.spack /root/.spack
+COPY --from=chimbuko/viz:ubuntu18.04 /opt /opt
+
+ENV PATH=/opt/chimbuko/ad/bin/:${PATH}
+
+COPY run_mocu_chimbuko.sh /Downloads/MOCU_Kuramoto/
+RUN chmod a+x run_mocu_chimbuko.sh
+
+ENTRYPOINT [ "./run_mocu_chimbuko.sh" ]

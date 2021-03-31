@@ -1,0 +1,50 @@
+#This dockerfile enables a collection of docker containers to act as an MPI cluster
+#It is designed to deploy the Chimbuko stack with components running in separate images
+FROM chimbuko/tau2:ubuntu18.04 AS tau2
+FROM chimbuko/ad:ubuntu18.04-provdb
+
+COPY --from=tau2 /opt /opt
+
+SHELL ["/bin/bash", "-c"]
+
+ENV PATH=/opt/tau2/x86_64/bin/:${PATH}
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+#Setup the ssh-server
+RUN apt-get update && apt-get install -y openssh-server
+RUN mkdir -p /run/sshd
+RUN echo 'root:rootpass' | chpasswd
+#RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN echo PermitRootLogin yes >> /etc/ssh/sshd_config
+RUN echo PubkeyAuthentication yes >> /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+ENV NOTVISIBLE "in users profile"
+RUN echo "export VISIBLE=now" >> /etc/profile
+
+#Copy in the pregenerated public key (password: rootpass)
+RUN mkdir -p /root/.ssh/
+COPY docker_cluster_rsa_key docker_cluster_rsa_key.pub /root/.ssh/
+#Allow this same key to be used to login to this container from other containers in the cluster
+RUN cat /root/.ssh/docker_cluster_rsa_key.pub >> /root/.ssh/authorized_keys
+
+#Copy in the startup script and add it to bashrc so that Sonata is automatically loaded
+COPY startup.sh /opt/chimbuko/
+RUN chmod a+x /opt/chimbuko/startup.sh
+
+#Get startup script to run for interactive shells
+RUN echo "source /opt/chimbuko/startup.sh" >> /etc/bash.bashrc
+
+RUN apt-get update && apt-get install -y emacs-nox vim
+
+#The following automatically sets up ssh-agen with our key/pass
+RUN echo "echo rootpass" > /root/getpass.sh && chmod a+x /root/getpass.sh
+RUN echo 'eval `ssh-agent`' >> /etc/bash.bashrc && \
+    echo 'cat ~/.ssh/docker_cluster_rsa_key | DISPLAY= SSH_ASKPASS=/root/getpass.sh ssh-add -' >> /etc/bash.bashrc
+
+#The following disables host key checking
+RUN echo -e "Host *\nStrictHostKeyChecking no" > /root/.ssh/config
+
+ENTRYPOINT ["/usr/sbin/sshd", "-D"]
