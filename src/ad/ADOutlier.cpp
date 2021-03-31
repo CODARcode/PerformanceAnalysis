@@ -379,13 +379,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
-      auto bin_it = std::lower_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i);
+      auto bin_it = std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i);
       if(bin_it == param[func_id].bin_edges().end()) {// Not in histogram
         ad_score = max_score;
       }
       else{ //Found in Histogram
-        const int index = std::distance(param[func_id].bin_edges().begin(), bin_it) - 1;
-        ad_score = out_scores_i.at(index); 
+        const int index = std::distance(param[func_id].bin_edges().begin(), bin_it);
+        ad_score = out_scores_i.at(index);
       }
       // int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
       //
