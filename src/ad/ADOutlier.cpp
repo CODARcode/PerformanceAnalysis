@@ -379,53 +379,53 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
-      auto bin_it = std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i);
-      if(bin_it == param[func_id].bin_edges().end()) {// Not in histogram
-        ad_score = max_score;
+      // auto bin_it = std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i);
+      // if(bin_it == param[func_id].bin_edges().end()) {// Not in histogram
+      //   ad_score = max_score;
+      // }
+      // else{ //Found in Histogram
+      //   const int index = std::distance(param[func_id].bin_edges().begin(), bin_it);
+      //   ad_score = out_scores_i.at(index);
+      // }
+      int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
+
+      // If the sample does not belong to any bins
+      // bin_ind == 0 (fall outside since it is too small)
+      if( bin_ind == 0){
+        double first_bin_edge = param[func_id].bin_edges().at(0);
+        double dist = first_bin_edge - runtime_i;
+        if( dist <= (bin_width * 0.05) ){
+
+          ad_score = out_scores_i.at(0);
+        }
+        else{
+
+          ad_score = max_score;
+
+        }
+        //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
-      else{ //Found in Histogram
-        const int index = std::distance(param[func_id].bin_edges().begin(), bin_it);
-        ad_score = out_scores_i.at(index);
+      // If the sample does not belong to any bins
+      else if(bin_ind == num_bins + 1){
+        int last_idx = param[func_id].bin_edges().size() - 1;
+        double last_bin_edge = param[func_id].bin_edges().at(last_idx);
+        double dist = runtime_i - last_bin_edge;
+
+        if (dist <= (bin_width * 0.05)) {
+
+          ad_score = out_scores_i.at(num_bins - 1);
+        }
+        else{
+
+          ad_score = max_score;
+        }
+        //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
-      // int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      //
-      // // If the sample does not belong to any bins
-      // // bin_ind == 0 (fall outside since it is too small)
-      // if( bin_ind == 0){
-      //   double first_bin_edge = param[func_id].bin_edges().at(0);
-      //   double dist = first_bin_edge - runtime_i;
-      //   if( dist <= (bin_width * 0.05) ){
-      //
-      //     ad_score = out_scores_i.at(0);
-      //   }
-      //   else{
-      //
-      //     ad_score = max_score;
-      //
-      //   }
-      //   //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
-      // }
-      // // If the sample does not belong to any bins
-      // else if(bin_ind == num_bins + 1){
-      //   int last_idx = param[func_id].bin_edges().size() - 1;
-      //   double last_bin_edge = param[func_id].bin_edges().at(last_idx);
-      //   double dist = runtime_i - last_bin_edge;
-      //
-      //   if (dist <= (bin_width * 0.05)) {
-      //
-      //     ad_score = out_scores_i.at(num_bins - 1);
-      //   }
-      //   else{
-      //
-      //     ad_score = max_score;
-      //   }
-      //   //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
-      // }
-      // else {
-      //
-      //   ad_score = out_scores_i.at( bin_ind - 1);
-      //   //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
-      // }
+      else {
+
+        ad_score = out_scores_i.at( bin_ind - 1);
+        //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+      }
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
@@ -463,7 +463,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
 
   for(int j=1; j < bin_edges.size(); j++){
 
-    if(X <= bin_edges.at(j)){
+    if(X < bin_edges.at(j)){  //X <= bin_edges.at(j)){
 
       return (j-1);
     }
