@@ -227,11 +227,11 @@ using namespace chimbuko;
          comb_binedges[1] = edge_val + bin_width;
        }
        else{
-         comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 1);
+         comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 2);
          size_t i = 0;
          comb_binedges[i++] = edge_val;
 
-         while(edge_val < max_runtime) {
+         while(edge_val <= max_runtime) {
            edge_val += bin_width;
            //combined->add2binedges(edge_val);
 
