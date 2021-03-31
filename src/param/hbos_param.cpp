@@ -8,6 +8,9 @@
 #include <limits>
 #include <cmath>
 
+#define MIN(x, y) x < y ? x : y;
+#define MAX(x, y) x > y ? x : y;
+
 using namespace chimbuko;
 
 /**
@@ -138,12 +141,13 @@ using namespace chimbuko;
   * @brief Histogram Class Implementation
   */
 
-  /**
-   * @brief Merge Histogram
-   */
+
  Histogram::Histogram(){clear();}
  Histogram::~Histogram(){}
 
+ /**
+  * @brief Merge Histogram
+  */
  Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime, max_runtime;
@@ -162,8 +166,8 @@ using namespace chimbuko;
    }
    else {
      double bin_width;
-     if(g.counts().size() > 0 && g.bin_edges().size() > 1 && l.counts().size() > 0 && l.bin_edges().size() > 1){
-       bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
+     if(g.counts().size() > 0 && g.bin_edges().size() > 1 && l.counts().size() > 0 && l.bin_edges().size() > 1){ /**< If g and l are non-empty Histograms*/
+       bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
 
        std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
        if (bin_width < 0){
@@ -176,8 +180,13 @@ using namespace chimbuko;
        exit(1);
      }
 
-     (l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
-     (l.bin_edges().at(l.bin_edges().size()-1) > g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
+     /**
+      * Compute most minimum bin edges and most maximum bin edges from two histograms (g & l)
+      */
+      min_runtime = MIN(l.bin_edges().at(0), g.bin_edges().at(0));
+      max_runtime = MAX(l.bin_edges().at(l.bin_edges().size()-1), g.bin_edges().at(g.bin_edges().size()-1)));
+     //(l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
+     //(l.bin_edges().at(l.bin_edges().size()-1) > g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
 
      std::vector<double> comb_binedges;
      std::vector<int> comb_counts;
@@ -189,7 +198,7 @@ using namespace chimbuko;
        for (int i = 0; i < l.bin_edges().size() - 1; i++) {
          for(int j = 1; j < combined.bin_edges().size(); j++) {
            if(l.bin_edges().at(i) < combined.bin_edges().at(j) && l.bin_edges().at(i) >= combined.bin_edges().at(j-1)) {
-             int id = i, inc = l.counts().at(i);
+             int id = j-1, inc = l.counts().at(i);
              combined.add2counts(id, inc);
 
              break;
@@ -238,6 +247,9 @@ using namespace chimbuko;
      //combined->set_counts(std::vector<int> (combined->bin_edges().size() - 1, 0)); //count);
      comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
      //Expensive
+     //const int larger_binedges_size = g.bin_edges().size() < comb_binedges.size() ? comb_binedges.size() : g.bin_edges().size();
+     int i=0, j=0, id=0;
+     while(i < )
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
        for(int j = 1; j < comb_binedges.size(); j++) {
          if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
