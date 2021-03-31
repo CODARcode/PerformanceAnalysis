@@ -346,7 +346,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   //std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
-  double l_threshold = m_threshold * max_score;//min_score + (m_threshold * (max_score - min_score));
+  double l_threshold = min_score + (m_threshold * (max_score - min_score));//m_threshold * max_score;
   if(m_use_global_threshold) {
     if(l_threshold < param[func_id].get_threshold()) {
       l_threshold = param[func_id].get_threshold();
