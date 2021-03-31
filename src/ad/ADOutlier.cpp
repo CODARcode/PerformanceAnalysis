@@ -325,11 +325,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
-  //std::cout<< "out_scores_i: " << std::endl;
+  verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    //std::cout<<l<<std::endl;
+    verboseStream << "Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -339,6 +339,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
     }
   }
+  verboseStream << std::endl;
   // std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
   // std::cout << "min_score = " << min_score << std::endl;
   // std::cout << "max_score = " << max_score << std::endl;
@@ -346,7 +347,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   //std::cout << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
-  double l_threshold = m_threshold * max_score;//min_score + (m_threshold * (max_score - min_score));
+  double l_threshold = min_score + (m_threshold * (max_score - min_score));//m_threshold * max_score;
   if(m_use_global_threshold) {
     if(l_threshold < param[func_id].get_threshold()) {
       l_threshold = param[func_id].get_threshold();
@@ -379,21 +380,28 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
+      // auto bin_it = std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i);
+      // if(bin_it == param[func_id].bin_edges().end()) {// Not in histogram
+      //   ad_score = max_score;
+      // }
+      // else{ //Found in Histogram
+      //   const int index = std::distance(param[func_id].bin_edges().begin(), bin_it);
+      //   ad_score = out_scores_i.at(index);
+      // }
       int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
       // If the sample does not belong to any bins
       // bin_ind == 0 (fall outside since it is too small)
       if( bin_ind == 0){
         double first_bin_edge = param[func_id].bin_edges().at(0);
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
-
+          verboseStream << runtime_i << " is small but NOT outlier" << std::endl;
           ad_score = out_scores_i.at(0);
         }
         else{
-
+          verboseStream << runtime_i << " is small and outlier" << std::endl;
           ad_score = max_score;
-
         }
         //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
@@ -404,21 +412,22 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         double dist = runtime_i - last_bin_edge;
 
         if (dist <= (bin_width * 0.05)) {
-
+          verboseStream << runtime_i << " is large but NOT outlier" << std::endl;
           ad_score = out_scores_i.at(num_bins - 1);
         }
         else{
-
+          verboseStream << runtime_i << " is large and outlier" << std::endl;
           ad_score = max_score;
         }
         //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
       else {
-
+        verboseStream << runtime_i << " can be an outlier" << std::endl;
         ad_score = out_scores_i.at( bin_ind - 1);
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
 
+      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 

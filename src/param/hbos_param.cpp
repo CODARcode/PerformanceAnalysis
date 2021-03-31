@@ -195,6 +195,7 @@ using namespace chimbuko;
          if (index_it != combined.bin_edges().end()){
            const int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
            const int inc = l.counts().at(i);
+           //if(id < 0) {id = 0;}
            if (id >= 0 && id < combined.counts().size())
             combined.add2counts(id, inc);
          }
