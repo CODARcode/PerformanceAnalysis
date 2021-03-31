@@ -329,7 +329,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    verbosStream << l << ", ";
+    verboseStream << l << ", ";
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
