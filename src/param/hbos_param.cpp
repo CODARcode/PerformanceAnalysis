@@ -184,7 +184,7 @@ using namespace chimbuko;
       * Compute most minimum bin edges and most maximum bin edges from two histograms (g & l)
       */
       min_runtime = MIN(l.bin_edges().at(0), g.bin_edges().at(0));
-      max_runtime = MAX(l.bin_edges().at(l.bin_edges().size()-1), g.bin_edges().at(g.bin_edges().size()-1)));
+      max_runtime = MAX(l.bin_edges().at(l.bin_edges().size()-1), g.bin_edges().at(g.bin_edges().size()-1));
      //(l.bin_edges().at(0) < g.bin_edges().at(0)) ? min_runtime = l.bin_edges().at(0) : min_runtime = g.bin_edges().at(0);
      //(l.bin_edges().at(l.bin_edges().size()-1) > g.bin_edges().at(g.bin_edges().size()-1)) ? max_runtime = l.bin_edges().at(l.bin_edges().size()-1) : max_runtime = g.bin_edges().at(g.bin_edges().size()-1);
 
@@ -248,8 +248,8 @@ using namespace chimbuko;
      comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
      //Expensive
      //const int larger_binedges_size = g.bin_edges().size() < comb_binedges.size() ? comb_binedges.size() : g.bin_edges().size();
-     int i=0, j=0, id=0;
-     while(i < )
+     //int i=0, j=0, id=0;
+     //while(i < )
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
        for(int j = 1; j < comb_binedges.size(); j++) {
          if(g.bin_edges().at(i) < comb_binedges.at(j) && g.bin_edges().at(i) >= comb_binedges.at(j-1)) {
