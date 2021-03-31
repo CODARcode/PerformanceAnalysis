@@ -374,7 +374,7 @@ using namespace chimbuko;
    std::cout << "Final Variance in _scott_binWidth: " << var << std::endl;
    std = sqrt(var);
    std::cout << "STD in _scott_binWidth: " << std << std::endl;
-   //if (std <= 1.0) {return 0;}
+   if (std <= 1.0) {return 0;}
 
    return ((3.5 * std ) / pow(size, 1/3));
    //return sqrt(size);
@@ -393,6 +393,7 @@ using namespace chimbuko;
    var = var / vals.size();
    std = sqrt(var);
    std::cout << "STD in _scott_binWidth: " << std << std::endl;
+
    return ((3.5 * std ) / pow(vals.size(), 1/3));
  }
 
