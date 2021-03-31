@@ -340,7 +340,7 @@ using namespace chimbuko;
    const double mean = sum / size;
    std::cout << "mean in _xcott_binWidth: " << mean << std::endl;
 
-   double var = 0.0;
+   double var = 0.0, std=0.0;
    for (int i=0;i<global_counts.size();i++){
      var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
    }
@@ -352,7 +352,11 @@ using namespace chimbuko;
 
    var = var / size;
    std::cout << "Final Variance in _scott_binWidth: " << var << std::endl;
-   return ((3.5 * sqrt(var) ) / pow(size, 1/3));
+   std = sqrt(var);
+   std::cout << "STD in _scott_binWidth: " << std << std::endl;
+   if (std <= 0.1) {return 0;}
+   
+   return ((3.5 * std ) / pow(size, 1/3));
    //return sqrt(size);
  }
 
