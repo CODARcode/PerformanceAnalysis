@@ -428,14 +428,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
-      if(ad_score != min_score){
+      if(ad_score != (-1 * log2(0.0 + m_alpha))) {
       //Compare the ad_score with the threshold
-      if (ad_score >= l_threshold) {
+        if (ad_score >= l_threshold) {
 
-          itt->set_label(-1);
-          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
-          n_outliers += 1;
+            itt->set_label(-1);
+            verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+            outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+            n_outliers += 1;
 
       }
     }
