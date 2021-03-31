@@ -428,6 +428,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+      if(ad_score != min_score){
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 
@@ -437,6 +438,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           n_outliers += 1;
 
       }
+    }
       else {
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
