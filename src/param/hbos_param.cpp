@@ -147,16 +147,16 @@ using namespace chimbuko;
  Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime, max_runtime;
-   verboseStream << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
-   verboseStream << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
+   std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
+   std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
 
    if (g.counts().size() <= 0) {
-     verboseStream << "Global Histogram is empty" << std::endl;
+     std::cout << "Global Histogram is empty" << std::endl;
      combined = l;
      return combined;
    }
    else if (l.counts().size() <= 0) {
-     verboseStream << "Local Histogram is empty" << std::endl;
+     std::cout << "Local Histogram is empty" << std::endl;
      combined = g;
      return combined;
    }
@@ -165,14 +165,14 @@ using namespace chimbuko;
      if(g.counts().size() > 0 && g.bin_edges().size() > 1 && l.counts().size() > 0 && l.bin_edges().size() > 1){ /**< If g and l are non-empty Histograms*/
        bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
 
-       verboseStream << "BIN WIDTH while merging: " << bin_width << std::endl;
+       std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
        if (bin_width < 0){
-         verboseStream << "Incorrect Bin Width Computed" << std::endl;
+         std::cout << "Incorrect Bin Width Computed" << std::endl;
          exit(1);
        }
      }
      else{
-       verboseStream << "INCORRECT histograms" << std::endl;
+       std::cout << "INCORRECT histograms" << std::endl;
        exit(1);
      }
 
@@ -186,7 +186,7 @@ using namespace chimbuko;
      std::vector<int> comb_counts;
 
      if (bin_width == 0){
-       verboseStream << "BINWIDTH is Zero" << std::endl;
+       std::cout << "BINWIDTH is Zero" << std::endl;
        combined = g;
 
        for (int i = 0; i < l.bin_edges().size() - 1; i++) {
@@ -205,12 +205,12 @@ using namespace chimbuko;
        return combined;
      }
      else{ // bin_width is > 0
-       verboseStream << "BindWidth is > 0 here: " << std::endl;
+       std::cout << "BindWidth is > 0 here: " << std::endl;
 
-       verboseStream << "min_runtime:" << min_runtime << std::endl;
-       verboseStream << "max_runtime:" << max_runtime << std::endl;
+       std::cout << "min_runtime:" << min_runtime << std::endl;
+       std::cout << "max_runtime:" << max_runtime << std::endl;
        if (max_runtime < min_runtime){
-         verboseStream << "Incorrect boundary for runtime" << std::endl;
+         std::cout << "Incorrect boundary for runtime" << std::endl;
          exit(1);
        }
 
@@ -295,8 +295,8 @@ using namespace chimbuko;
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
-   verboseStream << "Size of Vector global_counts: " << global_counts.size() << std::endl;
-   verboseStream << "Size of Vector local_counts: " << local_counts.size() << std::endl;
+   std::cout << "Size of Vector global_counts: " << global_counts.size() << std::endl;
+   std::cout << "Size of Vector local_counts: " << local_counts.size() << std::endl;
 
    int size = 0;
    for(int i = 0; i < global_counts.size(); i++) {
@@ -304,44 +304,44 @@ using namespace chimbuko;
      if (count < 0)
       count = -1 * count;
      if (count != 0)
-      verboseStream << std::to_string(count) << ", ";
+      std::cout << std::to_string(count) << ", ";
      size += count;
      sum += (count * global_edges.at(i));
    }
-   verboseStream << std::endl;
-   verboseStream << "Size in _scott_binWidth: " << size << std::endl;
-   verboseStream << "Global sum in _scott_binWidth: " << sum << std::endl;
+   std::cout << std::endl;
+   std::cout << "Size in _scott_binWidth: " << size << std::endl;
+   std::cout << "Global sum in _scott_binWidth: " << sum << std::endl;
 
    for(int i = 0; i < local_counts.size(); i++) {
      int count = local_counts[i];
      if (count < 0)
       count = -1 * count;
      if (count != 0)
-      verboseStream << std::to_string(count) << ", ";
+      std::cout << std::to_string(count) << ", ";
      size += count;
      sum += (count * local_edges.at(i));
    }
-   verboseStream << std::endl;
-   verboseStream << "total Size in _scott_binWidth: " << size << std::endl;
-   verboseStream << "total sum in _scott_binWidth: " << sum << std::endl;
+   std::cout << std::endl;
+   std::cout << "total Size in _scott_binWidth: " << size << std::endl;
+   std::cout << "total sum in _scott_binWidth: " << sum << std::endl;
 
    const double mean = sum / size;
-   verboseStream << "mean in _xcott_binWidth: " << mean << std::endl;
+   std::cout << "mean in _xcott_binWidth: " << mean << std::endl;
 
    double var = 0.0, std=0.0;
    for (int i=0;i<global_counts.size();i++){
      var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
    }
-   verboseStream << "Global var in _scott_binWidth: " << var << std::endl;
+   std::cout << "Global var in _scott_binWidth: " << var << std::endl;
    for (int i=0;i<local_counts.size();i++){
      var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
    }
-   verboseStream << "total var in _scott_binWidth: " << var << std::endl;
+   std::cout << "total var in _scott_binWidth: " << var << std::endl;
 
    var = var / size;
-   verboseStream << "Final Variance in _scott_binWidth: " << var << std::endl;
+   std::cout << "Final Variance in _scott_binWidth: " << var << std::endl;
    std = sqrt(var);
-   verboseStream << "STD in _scott_binWidth: " << std << std::endl;
+   std::cout << "STD in _scott_binWidth: " << std << std::endl;
    if (std <= 10.0) {return 0;}
 
    return ((3.5 * std ) / pow(size, 1/3));
@@ -360,7 +360,7 @@ using namespace chimbuko;
    }
    var = var / vals.size();
    std = sqrt(var);
-   verboseStream << "STD in _scott_binWidth: " << std << std::endl;
+   std::cout << "STD in _scott_binWidth: " << std << std::endl;
 
    return ((3.5 * std ) / pow(vals.size(), 1/3));
  }
@@ -393,7 +393,7 @@ using namespace chimbuko;
      m_histogram.bin_edges.push_back(prev + bin_width);
      prev += bin_width;
    }
-   //verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
+   //std::cout << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
 
    if (m_histogram.counts.size() > 0) m_histogram.counts.clear();
    m_histogram.counts = std::vector<int>(m_histogram.bin_edges.size()-1, 0);
@@ -405,7 +405,7 @@ using namespace chimbuko;
        }
      }
    }
-   //verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
+   //std::cout << "Size of counts: " << m_histogram.counts.size() << std::endl;
 
    //m_histogram.runtimes.clear();
    const double min_threshold = -1 * log2(1.00001);
@@ -428,7 +428,7 @@ using namespace chimbuko;
    }
 
    m_histogram.glob_threshold = g.get_threshold();
-   // verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
+   // std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
    this->create_histogram(r_times);
    //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 
