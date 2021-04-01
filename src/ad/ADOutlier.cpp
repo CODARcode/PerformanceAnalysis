@@ -437,7 +437,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
       else {
 
-        if(param[func_id].counts().at(bin_ind) == 0) { //- 1) == 0) { // Ignore zero counts
+        if(param[func_id].counts().at(bin_ind) == 0) { // Ignore zero counts
 
           ad_score = l_threshold - 1;
           verboseStream << "corrected ad_score: " << ad_score << std::endl;
@@ -446,7 +446,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           verboseStream << runtime_i << " can be an outlier" << std::endl;
           ad_score = out_scores_i.at( bin_ind); //bin_ind - 1);
         }
-        
+
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
