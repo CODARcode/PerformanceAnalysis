@@ -389,7 +389,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //   ad_score = out_scores_i.at(index);
       // }
       // int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      int bin_ind = std::distance(param[func_id].bin_edges().begin(), std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i));
+      int bin_ind = std::distance(param[func_id].bin_edges().begin(), std::upper_bound(param[func_id].bin_edges().begin(), param[func_id].bin_edges().end(), runtime_i)) - 1;
       verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
       // If the sample does not belong to any bins
       // bin_ind == 0 (fall outside since it is too small)
