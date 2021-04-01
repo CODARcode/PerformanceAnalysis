@@ -189,19 +189,19 @@ using namespace chimbuko;
        std::cout << "BINWIDTH is Zero" << std::endl;
        combined = g;
 
-       for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-
-         auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
-         if (index_it != combined.bin_edges().end()){
-           const int id = std::distance(combined.bin_edges().begin(), index_it); // - 1;
-           const int inc = l.counts().at(i);
-           std::cout << "In l " << "id: " << id << ", inc: " << inc << std::endl;
-           //if(id < 0) {id = 0;}
-           if (id >= 0 && id < combined.counts().size())
-            combined.add2counts(id, inc);
-         }
-
-       }
+       // for (int i = 0; i < l.bin_edges().size() - 1; i++) {
+       //
+       //   auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
+       //   if (index_it != combined.bin_edges().end()){
+       //     const int id = std::distance(combined.bin_edges().begin(), index_it); // - 1;
+       //     const int inc = l.counts().at(i);
+       //     std::cout << "In l " << "id: " << id << ", inc: " << inc << std::endl;
+       //     //if(id < 0) {id = 0;}
+       //     if (id >= 0 && id < combined.counts().size())
+       //      combined.add2counts(id, inc);
+       //   }
+       //
+       // }
        return combined;
      }
      else{ // bin_width is > 0
