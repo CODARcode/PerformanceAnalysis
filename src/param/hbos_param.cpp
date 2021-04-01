@@ -242,9 +242,9 @@ using namespace chimbuko;
 
      for (int i = 0; i < g.bin_edges().size() -1; i++) {
 
-       auto index_it = std::upper_bound(comb_binedges.begin(), comb_binedges.end(), g.bin_edges().at(i));
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), g.bin_edges().at(i));
        if (index_it != comb_binedges.end()){
-         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int id = std::distance(comb_binedges.begin(), index_it);// - 1;
          const int inc = g.counts().at(i);
          std::cout << "In g " << "id: " << id << ", inc: " << inc << std::endl;
          if (id >= 0 && id < comb_counts.size())
@@ -254,9 +254,9 @@ using namespace chimbuko;
 
      for (int i = 0; i < l.bin_edges().size() -1; i++) {
 
-       auto index_it = std::upper_bound(comb_binedges.begin(), comb_binedges.end(), l.bin_edges().at(i));
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), l.bin_edges().at(i));
        if (index_it != comb_binedges.end()){
-         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int id = std::distance(comb_binedges.begin(), index_it);// - 1;
          const int inc = l.counts().at(i);
          std::cout << "In l " << "id: " << id << ", inc: " << inc << std::endl;
          if (id >= 0 && id < comb_counts.size())
