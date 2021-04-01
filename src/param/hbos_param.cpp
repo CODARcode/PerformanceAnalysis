@@ -200,19 +200,7 @@ using namespace chimbuko;
             combined.add2counts(id, inc);
          }
        }
-       // for (int i = 0; i < l.bin_edges().size() - 1; i++) {
-       //
-       //   auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
-       //   if (index_it != combined.bin_edges().end()){
-       //     const int id = std::distance(combined.bin_edges().begin(), index_it); // - 1;
-       //     const int inc = l.counts().at(i);
-       //     std::cout << "In l " << "id: " << id << ", inc: " << inc << std::endl;
-       //     //if(id < 0) {id = 0;}
-       //     if (id >= 0 && id < combined.counts().size())
-       //      combined.add2counts(id, inc);
-       //   }
-       //
-       // }
+
        return combined;
      }
      else{ // bin_width is > 0
@@ -353,7 +341,7 @@ using namespace chimbuko;
    std::cout << "Final Variance in _scott_binWidth: " << var << std::endl;
    std = sqrt(var);
    std::cout << "STD in _scott_binWidth: " << std << std::endl;
-   if (std <= 10.0) {return 0;}
+   if (std <= 100.0) {return 0;}
 
    return ((3.5 * std ) / pow(size, 1/3));
 

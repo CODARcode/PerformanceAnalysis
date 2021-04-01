@@ -184,7 +184,6 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     unsigned long n_outliers = 0, n_tot_events = 0; //n_executions = 0,
     std::set<unsigned long> n_functions;
 
-    ASSERT_EQ(step, -1);
 
     unsigned long first_event_ts, last_event_ts;
 
