@@ -396,7 +396,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         double first_bin_edge = param[func_id].bin_edges().at(0);
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
-          verboseStream << runtime_i << " is small but NOT outlier" << std::endl;
+          verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
           if(param[func_id].counts().at(0) == 0) { // Ignore zero counts
 
             ad_score = l_threshold - 1;
@@ -419,14 +419,21 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         double dist = runtime_i - last_bin_edge;
 
         if (dist <= (bin_width * 0.05)) {
-          verboseStream << runtime_i << " is large but NOT outlier" << std::endl;
-          ad_score = out_scores_i.at(num_bins - 1);
+          if(param[func_id].counts().at(bin_ind) == 0) { //- 1) == 0) { // Ignore zero counts
+
+            ad_score = l_threshold - 1;
+            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+          }
+          else {
+            verboseStream << runtime_i << " is farther but NOT outlier" << std::endl;
+            ad_score = out_scores_i.at(num_bins - 1);
+          }
         }
         else{
-          verboseStream << runtime_i << " is large and outlier" << std::endl;
+          verboseStream << runtime_i << " is farther and outlier" << std::endl;
           ad_score = max_score;
         }
-        //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+
       }
       else {
 
@@ -439,7 +446,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           verboseStream << runtime_i << " can be an outlier" << std::endl;
           ad_score = out_scores_i.at( bin_ind); //bin_ind - 1);
         }
-        //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
+        
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
