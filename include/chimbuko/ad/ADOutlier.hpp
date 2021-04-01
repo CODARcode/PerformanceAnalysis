@@ -237,7 +237,7 @@ namespace chimbuko {
      */
     double _scott_binWidth(std::vector<double>& vals);
 
-    int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
+    const int &np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
 
   private:
     double m_alpha; /**< alpha */

@@ -388,7 +388,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //   const int index = std::distance(param[func_id].bin_edges().begin(), bin_it);
       //   ad_score = out_scores_i.at(index);
       // }
-      int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
+      const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
       std::cout << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
       // If the sample does not belong to any bins
       // bin_ind == 0 (fall outside since it is too small)
@@ -444,7 +444,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         }
         else {
           std::cout << runtime_i << " can be an outlier" << std::endl;
-          ad_score = out_scores_i.at( bin_ind); //bin_ind - 1);
+          ad_score = out_scores_i.at( bin_ind - 1); //bin_ind - 1);
         }
 
       }
@@ -478,7 +478,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 }
 
 
-int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
+const int & ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
 
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
@@ -494,7 +494,7 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
     }
   }
 
-  int ret_val = bin_edges.size();
+  const int ret_val = bin_edges.size();
 
   return  ret_val;
 }
