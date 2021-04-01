@@ -502,11 +502,11 @@ public:
     /**
      * @brief Get the json object of this execution data
      *
-     * @param with_message if true, including all message (communication) information
+     * @param with_message if true, include all message (communication) information
+     * @param with_counter if true, include all counter information
      * @return nlohmann::json json object
      */
-    nlohmann::json get_json(bool with_message=false) const;
-
+    nlohmann::json get_json(bool with_message=false, bool with_counter=false) const;
 
     /**
      * @brief Determine whether the event can be deleted by the garbage collection at the end of the io step

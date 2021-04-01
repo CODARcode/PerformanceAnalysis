@@ -9,19 +9,18 @@ RUN echo FORCE_REDOWNLOAD_10_30_20_12_53 >> /dev/null && \
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
     mkdir /sds && cd /sds && \
-    git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git && \
-    spack repo add sds-repo
+    git clone https://github.com/mochi-hpc/mochi-spack-packages.git && \
+    spack repo add mochi-spack-packages
 
 COPY packages.yaml /root/.spack/
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
         spack install mercury ^libfabric@1.9.0 && \
-	spack install mochi-sonata@master ^libfabric@1.9.0 && \
-	spack install py-mochi-sonata ^mochi-sonata@master ^python@3.6.0 ^libfabric@1.9.0 && \
+	spack install mochi-sonata ^libfabric@1.9.0 && \
+	spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 && \
 	spack gc -y && spack clean -a
 
 WORKDIR /
 
 ENTRYPOINT [ "/bin/bash" ]
 #To setup spack you need to run "source /spack/spack/share/spack/setup-env.sh" inside your image
-

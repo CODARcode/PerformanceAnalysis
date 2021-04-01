@@ -9,7 +9,6 @@
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/Anomalies.hpp"
 
-
 namespace chimbuko {
   /**
    * @brief abstract class for anomaly detection algorithms

@@ -90,6 +90,7 @@ namespace chimbuko{
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
+    thallium::remote_procedure *m_stop_server; /** RPC to shutdown server*/
     bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
     PerfStats *m_stats; /**< Performance data gathering*/
@@ -232,6 +233,12 @@ namespace chimbuko{
      * @brief Get the number of incomplete (outstanding) asynchronous stores
      */
     size_t getNoutstandingAsyncReqs(){ return anom_send_man.getNoutstanding(); }
+
+
+    /**
+     * @brief Issue a stop request to the server
+     */
+    void stopServer() const;
 
   };
 

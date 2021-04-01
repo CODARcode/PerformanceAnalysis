@@ -265,7 +265,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   ps_thr.join();
   out_thr.join();
 
-  
+
 
 #else
 #error "Requires compiling with MPI or ZMQ net"

@@ -1,6 +1,7 @@
 #pragma once
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/util/map.hpp"
 #include <string>
 #include <vector>
@@ -164,6 +165,13 @@ namespace chimbuko {
      */
     void linkCounterMap(const std::unordered_map<int, std::string>* m) { m_counterMap = m; }
 
+
+    /**
+     * @brief Optional: give the event manager knowledge of which threads are GPU threads, improves error checking
+     */
+    void linkGPUthreadMap(const std::unordered_map<unsigned long, GPUvirtualThreadInfo> *m){ m_gpu_thread_Map = m; }
+
+
     /**
      * @brief Get the Func Map object
      *
@@ -273,6 +281,10 @@ namespace chimbuko {
      */
     CallListMap_p_t* trimCallList(int n_keep_thread = 0);
 
+    /**
+     * @brief Get the total number of function events in the call list over all pid/rid/tid
+     */
+    size_t getCallListSize() const;
 
     /**
      * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
@@ -317,6 +329,11 @@ namespace chimbuko {
     int m_eidx_comm_send; /**< If previously seen, the eid corresponding to the comm send event (-1 otherwise)*/
     int m_eidx_comm_recv; /**< If previously seen, the eid corresponding to the comm recv event (-1 otherwise)*/
 
+
+    /**
+     * @brief Optional: give the event manager knowledge of which threads are GPU threads, improves error checking
+     */
+    const std::unordered_map<unsigned long, GPUvirtualThreadInfo> *m_gpu_thread_Map;
 
 
     /**

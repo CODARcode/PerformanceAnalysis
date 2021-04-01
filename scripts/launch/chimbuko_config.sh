@@ -27,6 +27,7 @@ provdb_nshards=4  #number of database shards
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database
 provdb_nthreads=4 #number of worker threads; should be >= the number of shards
+provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***
@@ -38,15 +39,14 @@ provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (
 pserver_extra_args="" #any extra command line arguments to pass
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads
-pserver_ad="hbos"
 ####################################
 #Options for the AD module
 ####################################
-ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. chimbuko/logs is automatically created by services script
-ad_outlier_sigma=12 #number of standard deviations that defines an outlier
-ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this
-ad_alg=${pserver_ad}
-hbos_thres=0.99
+ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
+ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this so keep it small!
+ad_alg="hbos" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
+ad_outlier_hbos_threshold=0.99  #the percentile of events outside of which are considered anomalies by the HBOS algorithm
+ad_outlier_sstd_sigma=12 #number of standard deviations that defines an outlier in the SSTD algorithm
 ####################################
 #Options for TAU
 #Note: Only the TAU_ADIOS2_PATH, TAU_ADIOS2_FILE_PREFIX, EXE_NAME and TAU_ADIOS2_ENGINE variables are used by the Chimbuko services script and there only to generate the suggested
