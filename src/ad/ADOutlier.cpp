@@ -143,12 +143,12 @@ Anomalies ADOutlierSSTD::run(int step) {
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
-  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
 
 
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
-    verboseStream << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
+    std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
     return 0;
   }
   unsigned long n_outliers = 0;
@@ -165,7 +165,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
       itt->set_label(label);
       if (label == -1) {
-	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
   std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
@@ -173,7 +173,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       }else{
 	//Capture maximum of one normal execution per io step
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	  std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 
 	  outliers.insert(itt, Anomalies::EventType::Normal);
@@ -206,7 +206,7 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
   const HbosParam & l = *(HbosParam const*)param; //local parameter set
 
     if (!m_use_ps) {
-        verboseStream << "m_use_ps not USED!" << std::endl;
+        std::cout << "m_use_ps not USED!" << std::endl;
         g.update(l);
         return std::make_pair(0, 0);
     }
@@ -293,7 +293,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
 
-  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
 
@@ -325,11 +325,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
-  verboseStream << "out_scores_i: " << std::endl;
+  std::cout << "out_scores_i: " << std::endl;
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    std::cout << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -339,7 +339,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
     }
   }
-  verboseStream << std::endl;
+  std::cout << std::endl;
   // std::cout << "out_score_i size: " << out_scores_i.size() << std::endl;
   // std::cout << "min_score = " << min_score << std::endl;
   // std::cout << "max_score = " << max_score << std::endl;
@@ -389,25 +389,25 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //   ad_score = out_scores_i.at(index);
       // }
       int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
+      std::cout << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
       // If the sample does not belong to any bins
       // bin_ind == 0 (fall outside since it is too small)
       if( bin_ind == 0){
         double first_bin_edge = param[func_id].bin_edges().at(0);
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
-          verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
+          std::cout << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
           if(param[func_id].counts().at(0) == 0) { // Ignore zero counts
 
             ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+            std::cout << "corrected ad_score: " << ad_score << std::endl;
           }
           else {
             ad_score = out_scores_i.at(0);
           }
         }
         else{
-          verboseStream << runtime_i << " is small and outlier" << std::endl;
+          std::cout << runtime_i << " is small and outlier" << std::endl;
           ad_score = max_score;
         }
         //std::cout << "bin_index=0: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
@@ -422,15 +422,15 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           if(param[func_id].counts().at(bin_ind) == 0) { //- 1) == 0) { // Ignore zero counts
 
             ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+            std::cout << "corrected ad_score: " << ad_score << std::endl;
           }
           else {
-            verboseStream << runtime_i << " is farther but NOT outlier" << std::endl;
+            std::cout << runtime_i << " is farther but NOT outlier" << std::endl;
             ad_score = out_scores_i.at(num_bins - 1);
           }
         }
         else{
-          verboseStream << runtime_i << " is farther and outlier" << std::endl;
+          std::cout << runtime_i << " is farther and outlier" << std::endl;
           ad_score = max_score;
         }
 
@@ -440,22 +440,22 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         if(param[func_id].counts().at(bin_ind) == 0) { // Ignore zero counts
 
           ad_score = l_threshold - 1;
-          verboseStream << "corrected ad_score: " << ad_score << std::endl;
+          std::cout << "corrected ad_score: " << ad_score << std::endl;
         }
         else {
-          verboseStream << runtime_i << " can be an outlier" << std::endl;
+          std::cout << runtime_i << " can be an outlier" << std::endl;
           ad_score = out_scores_i.at( bin_ind); //bin_ind - 1);
         }
 
       }
 
-      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+      std::cout << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 
           itt->set_label(-1);
-          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
           outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
 
@@ -465,7 +465,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-      	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+      	   std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       	   outliers.insert(itt, Anomalies::EventType::Normal);
 
         }
