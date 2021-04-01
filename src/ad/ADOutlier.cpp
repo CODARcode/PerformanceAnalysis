@@ -428,7 +428,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
-      //if(ad_score != (-1 * log2(0.0 + m_alpha))) {
+      if(ad_score >= 16.6096) { ad_score = l_threshold/2;}
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 
