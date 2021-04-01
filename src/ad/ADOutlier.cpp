@@ -397,7 +397,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         double dist = first_bin_edge - runtime_i;
         if( dist <= (bin_width * 0.05) ){
           verboseStream << runtime_i << " is small but NOT outlier" << std::endl;
-          ad_score = out_scores_i.at(0);
+          if(param[func_id].counts().at(0) == 0) { // Ignore zero counts
+
+            ad_score = l_threshold/2;
+            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+          }
+          else {
+            ad_score = out_scores_i.at(0);
+          }
         }
         else{
           verboseStream << runtime_i << " is small and outlier" << std::endl;
@@ -422,13 +429,21 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         //std::cout << "bin_index=num_bins+1: Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
       else {
-        verboseStream << runtime_i << " can be an outlier" << std::endl;
-        ad_score = out_scores_i.at( bin_ind - 1);
+        
+        if(param[func_id].counts().at(bin_ind - 1) == 0) { // Ignore zero counts
+
+          ad_score = l_threshold/2;
+          verboseStream << "corrected ad_score: " << ad_score << std::endl;
+        }
+        else {
+          verboseStream << runtime_i << " can be an outlier" << std::endl;
+          ad_score = out_scores_i.at( bin_ind - 1);
+        }
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
 
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
-      if(ad_score >= 16.6096) { ad_score = l_threshold/2;}
+
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 
