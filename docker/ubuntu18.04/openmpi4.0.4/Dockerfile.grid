@@ -1,0 +1,73 @@
+FROM chimbuko/base:ubuntu18.04 AS lime-build
+
+WORKDIR /Codar
+
+RUN wget http://usqcd-software.github.io/downloads/c-lime/lime-1.3.2.tar.gz && \
+    tar -xvzf lime-1.3.2.tar.gz && \
+    cd lime-1.3.2 && \
+    ./configure --prefix=/Codar/lime_install && \
+    make install
+
+
+FROM chimbuko/tau2:ubuntu18.04 AS grid-build
+
+ENV PATH=${PATH}:/opt/tau2/x86_64/bin
+ENV PATH=${PATH}:/opt/adios2/bin
+
+# libfabric, blosc, pdt-3.25, papi-5.6.0, sz-1.4.13, adios2, tau2
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/libfabric/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/blosc/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/pdt/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/papi/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/tau2/x86_64/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/adios2/lib
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
+ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+RUN apt-get install -y libssl-dev
+RUN apt-get install -y libgmp-dev
+RUN apt-get install -y libmpfr-dev
+
+RUN mkdir -p /Codar
+COPY --from=lime-build /Codar/lime_install /Codar/install/lime
+
+
+WORKDIR /Codar/Grid
+
+RUN git clone https://github.com/paboyle/Grid.git
+
+WORKDIR /Codar/Grid/Grid
+
+RUN cat Makefile.am | sed 's/Hadrons //' > tmp; mv tmp Makefile.am
+RUN ./bootstrap.sh
+
+WORKDIR /Codar/Grid/build
+#CC=mpicc CXX=mpic++
+
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+RUN CC=tau_cc.sh CXX=tau_cxx.sh  ../Grid/configure --enable-gen-scalar --prefix=/Codar/Grid/install --with-lime=/Codar/install/lime
+
+RUN touch Grid/Version.h
+
+RUN make -j 4 V=1
+
+
+
+
+
+
+
+
+
+
+
+#COPY ./examples/heat2d ./heat2d
+
+#ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+#WORKDIR /Codar/heat2d
+#RUN make heatSimulation
+
+#FROM chimbuko/tau2
+#COPY --from=heat2d-build /Codar /Codar
+#WORKDIR /Codar/heat2d

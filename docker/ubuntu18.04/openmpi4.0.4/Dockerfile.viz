@@ -1,0 +1,15 @@
+FROM chimbuko/mochi:ubuntu18.04 as build
+
+WORKDIR /Downloads
+RUN echo "FORCE UPDATE 12/2/20 9.47am" >> /dev/null && \
+    git clone https://github.com/CODARcode/ChimbukoVisualizationII.git && \
+    cd ChimbukoVisualizationII && \
+    curl -O http://download.redis.io/redis-stable.tar.gz && \
+    tar xvzf redis-stable.tar.gz &&  rm redis-stable.tar.gz && \
+    cd redis-stable && make && \
+    mkdir -p /opt/chimbuko/viz && mv /Downloads/ChimbukoVisualizationII/* /opt/chimbuko/viz
+
+FROM chimbuko/mochi:ubuntu18.04
+
+RUN mkdir -p /opt/chimbuko/viz
+COPY --from=build /opt/chimbuko/viz /opt/chimbuko/viz

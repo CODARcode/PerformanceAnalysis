@@ -1,0 +1,53 @@
+#!/bin/bash
+# Begin LSF Directives
+#BSUB -P CSC299
+#BSUB -W 30
+#BSUB -nnodes NNODES
+#BSUB -J JOBNAME
+#BSUB -o JOBNAME.o.%J
+#BSUB -e JOBNAME.e.%J
+
+module load gcc/8.1.1
+module load curl/7.63.0
+module load zlib
+module load zeromq
+module load bzip2
+#module load cuda
+module unload darshan-runtime
+
+set -x
+
+CODAR=/ccs/proj/csc299/codar
+export NWCHEM=$CODAR/NWChem/nwchem-1
+export NWCHEM_TOP=${NWCHEM}
+export NWCHEM_DAT=$CODAR/NWX_TA/TM_BI_4PGS/nwc_md
+
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$CODAR/sw/adios2/lib64
+
+cd $MEMBERWORK/csc299
+mkdir -p JOB
+
+cd JOB
+rm -rf JOBNAME
+mkdir JOBNAME
+cd JOBNAME
+
+# copy nwchme binary
+cp $NWCHEM/bin/LINUX64/nwchem .
+# copy required data for the preparation
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat.top .
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat.db .
+cp $NWCHEM_DAT/4pgs-1M-amber-manual-lipid-ion-dat_md.rst .
+cp $NWCHEM_DAT/4pgs-1M-prepare-equil-md.nw .
+
+date
+hostname
+ls -l
+ 
+jsrun -n NSETS -a NMPIS -c NCORES -g NGPUS -r NSETSNODE ./nwchem 4pgs-1M-prepare-equil-md.nw
+ 
+# clean
+cd ..
+rm -rf JOBNAME
+#rm nwchem
+#rm *.top *.db *.rst *.nw
