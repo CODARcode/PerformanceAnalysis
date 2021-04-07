@@ -258,13 +258,16 @@ Anomalies ADOutlierHBOS::run(int step) {
     }
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
-        param[func_id].create_histogram(runtimes);
+        const int r = param[func_id].create_histogram(runtimes);
+        if (r < 0) {return outliers;}
       }
       else { //merge with exisiting func_id, not overwrite
 
-        param[func_id].merge_histograms(g[func_id], runtimes);
+        const int r = param[func_id].merge_histograms(g[func_id], runtimes);
+	if (r < 0) {return outliers;}
       }
     }
+    else { return outliers;}
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -332,7 +335,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   verboseStream << "min_score = " << min_score << std::endl;
   verboseStream << "max_score = " << max_score << std::endl;
 
-  if (out_scores_i.size() == 0) return 0;
+  if (out_scores_i.size() <= 0) {return 0;}
 
   //compute threshold
   verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
@@ -359,7 +362,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       double ad_score;
 
       const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << std::endl;
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << param[func_id].bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
       /**
        * If the sample does not belong to any bins
        * bin_ind == 0 (fall outside since it is too small)
@@ -367,20 +370,24 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       if( bin_ind == 0){
         const double first_bin_edge = param[func_id].bin_edges().at(0);
         const double dist = first_bin_edge - runtime_i;
+	verboseStream << "First_bin_edge: " << first_bin_edge << std::endl;
         if( dist <= (bin_width * 0.05) ){
           verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
+	  if(param[func_id].counts().size() < 1) {return 0;}
           if(param[func_id].counts().at(0) == 0) { /**< Ignore zero counts */
-
+	    
             ad_score = l_threshold - 1;
             verboseStream << "corrected ad_score: " << ad_score << std::endl;
           }
           else {
             ad_score = out_scores_i.at(0);
+	    verboseStream << "ad_score: " << ad_score << std::endl;
           }
         }
         else{
           verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
           ad_score = max_score;
+	  verboseStream << "ad_score(max_score): " << ad_score << std::endl;
         }
 
       }
@@ -391,9 +398,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         const int last_idx = param[func_id].bin_edges().size() - 1;
         const double last_bin_edge = param[func_id].bin_edges().at(last_idx);
         const double dist = runtime_i - last_bin_edge;
-
+	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
         if (dist <= (bin_width * 0.05)) {
-          if(param[func_id].counts().at(bin_ind) == 0) {  /**< Ignore zero counts */
+          if(param[func_id].counts().at(num_bins - 1) == 0) {   //bin_ind) == 0) {  /**< Ignore zero counts */
 
             ad_score = l_threshold - 1;
             verboseStream << "corrected ad_score: " << ad_score << std::endl;
@@ -401,11 +408,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           else {
             verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
             ad_score = out_scores_i.at(num_bins - 1);
+	    verboseStream << "ad_score: " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
           }
         }
         else{
           verboseStream << runtime_i << " is on right of histogram and an outlier" << std::endl;
           ad_score = max_score;
+	  verboseStream << "ad_score(max_score): " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
         }
 
       }
@@ -419,6 +428,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         else {
           verboseStream << runtime_i << " maybe be an outlier" << std::endl;
           ad_score = out_scores_i.at( bin_ind - 1);
+	  verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
         }
 
       }

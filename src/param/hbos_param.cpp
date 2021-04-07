@@ -147,7 +147,7 @@ using namespace chimbuko;
  Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
    Histogram combined;
    double min_runtime, max_runtime;
-   verboseStream << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
+   //verboseStream << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
    verboseStream << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
 
    if (g.counts().size() <= 0) {
@@ -222,12 +222,17 @@ using namespace chimbuko;
          comb_binedges[1] = edge_val + bin_width;
        }
        else{
+	/*
          comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 2);
          for (int i = 0; i < comb_binedges.size(); i++) {
            comb_binedges[i] = edge_val;
            edge_val += bin_width;
          }
-
+	*/
+	for(edge_val = min_runtime; edge_val < max_runtime;) {
+	   comb_binedges.push_back(edge_val);
+           edge_val += bin_width;
+	}
        }
      }
 
@@ -282,7 +287,7 @@ using namespace chimbuko;
 
 
     *this = combined;
-    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
@@ -334,7 +339,7 @@ using namespace chimbuko;
    var = var / size;
    verboseStream << "Final Variance in _scott_binWidth: " << var << std::endl;
    std = sqrt(var);
-   verboseStream << "STD in _scott_binWidth: " << std << std::endl;
+   verboseStream << "STD in merging _scott_binWidth: " << std << std::endl;
    if (std <= 100.0) {return 0;}
 
    return ((3.5 * std ) / pow(size, 1/3));
@@ -370,10 +375,11 @@ using namespace chimbuko;
   // m_histogram.runtimes.push_back(x);
  //}
 
- void Histogram::create_histogram(const std::vector<double>& r_times)
+ int Histogram::create_histogram(const std::vector<double>& r_times)
  {
    std::vector<double> runtimes = r_times;
    const double bin_width = Histogram::_scott_binWidth(runtimes);
+   if (bin_width <= 0) {return -1;}
    std::sort(runtimes.begin(), runtimes.end());
    const int h = runtimes.size() - 1;
 
@@ -406,10 +412,10 @@ using namespace chimbuko;
      m_histogram.glob_threshold = min_threshold;
    }
    this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-
+   return 0;
  }
 
- void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
+ int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
 
    std::vector<double> r_times = runtimes;
@@ -421,10 +427,10 @@ using namespace chimbuko;
    }
 
    m_histogram.glob_threshold = g.get_threshold();
-   // verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
-   this->create_histogram(r_times);
+   //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
+   return this->create_histogram(r_times);
    //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-
+   
  }
 
  nlohmann::json Histogram::get_json() const {
