@@ -22,6 +22,7 @@ backend_root="infer"  #The root install directory of the PerformanceAnalysis lib
 ####################################
 #Options for the provenance database
 ####################################
+use_provdb=1 #enable or disable the provDB. If disabled the provenance data will be written as JSON ASCII into the ${provdb_writedir} set below
 provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
@@ -36,6 +37,7 @@ provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (
 ####################################
 #Options for the parameter server
 ####################################
+use_pserver=1 #enable or disable the pserver
 pserver_extra_args="" #any extra command line arguments to pass
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads

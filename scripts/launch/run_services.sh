@@ -90,7 +90,7 @@ echo "Chimbuko Services: Launching Chimbuko services on interface ${service_node
 #Provenance database
 extra_args=${ad_extra_args}
 ps_extra_args=${pserver_extra_args}
-if (( 1 )); then
+if (( ${use_provdb} == 1 )); then
     echo "==========================================="
     echo "Instantiating provenance database"
     echo "==========================================="
@@ -126,10 +126,19 @@ if (( 1 )); then
     ps_extra_args+=" -provdb_addr \"${prov_add}\""
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
+else
+    echo "Chimbuko Services: Provenance database is not in use, provenance data will be stored in ASCII format at ${provdb_writedir}"
+    extra_args+=" -prov_outputpath ${provdb_writedir}"
+    ps_extra_args+=" -prov_outputpath ${provdb_writedir}"
 fi
 
 #Visualization
-if (( ${use_viz} )); then
+if (( ${use_viz} == 1 )); then
+    if (( ${use_pserver} != 1 )); then
+	echo "Chimbuko Services: Error - cannot use viz without the pserver"
+	exit 1
+    fi
+
     cd ${viz_dir}
     HOST=`hostname`
     export SHARDED_NUM=${provdb_nshards}
@@ -186,7 +195,7 @@ if (( ${use_viz} )); then
     echo "Chimbuko Services: Webserver is running on ${HOST}:${viz_port} and is ready for the user to connect"
 fi
 
-if (( 1 )); then
+if (( ${use_pserver} == 1 )); then
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
 
     echo "==========================================="
@@ -227,10 +236,11 @@ echo "Or equivalent"
 echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
 
 
-
-#Wait for pserver to exit, which means it's time to end the viz
-echo "Chimbuko Services: waiting for pserver (pid ${ps_pid}) to terminate"
-wait ${ps_pid}
+if (( ${use_pserver} == 1 )); then
+    #Wait for pserver to exit, which means it's time to end the viz
+    echo "Chimbuko Services: waiting for pserver (pid ${ps_pid}) to terminate"
+    wait ${ps_pid}
+fi
 
 if (( ${use_viz} == 1 )); then
     echo "Chimbuko Services: Terminating Chimbuko visualization"
@@ -258,5 +268,11 @@ if (( ${use_viz} == 1 )); then
 
     cd -
 fi
+
+if (( ${use_provdb} == 1 )); then
+    echo "Chimbuko Services: waiting for provdb (pid ${provdb_pid}) to terminate"
+    wait ${provdb_pid}
+fi
+
 
 echo "Chimbuko Services: Service script complete" $(date)
