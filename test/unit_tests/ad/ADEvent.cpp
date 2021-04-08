@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/util/map.hpp>
+#include<chimbuko/util/error.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -662,25 +663,31 @@ TEST(ADEventTest, DetectsCorrelationIDerrors){
   event_man.addCounter(gpu_corrid1);
   event_man.addCounter(gpu_corrid2);
 
-  //GPU events not allowed to have multiple correlation IDs
-  bool got_error = false;
-  try{
+  //GPU events not allowed to have multiple correlation IDs (non-fatal)
+  {
+    std::stringstream err_str;
+    Error().setStream(&err_str);
+
     event_man.addFunc(gpu_exit);
-  }catch(const std::exception &err){
-    std::cout << "Caught intentional error: " << err.what() << std::endl;
-    got_error = true;
+
+    std::string got = err_str.str();
+    size_t loc = got.find("Encountered a GPU kernel execution with multiple correlation IDs!");
+    std::cout << "Got intentional error: " << got << std::endl;
+    EXPECT_NE(loc, std::string::npos);
   }
-  EXPECT_EQ(got_error, true);
 
   //CPU events are allowed to have multiple correlation IDs
-  event_man.addCounter(cpu_corrid2);
+  {
+    event_man.addCounter(cpu_corrid2);
+    
+    std::stringstream err_str;
+    Error().setStream(&err_str);
 
-  got_error = false;
-  try{
     event_man.addFunc(cpu_exit);
-  }catch(const std::exception &err){
-    std::cout << "Caught *un*intentional error: " << err.what() << std::endl;
-    got_error = true;
+
+    std::string got = err_str.str();
+    size_t loc = got.find("Encountered a GPU kernel execution with multiple correlation IDs!");
+    std::cout << "This should be empty: " << got << std::endl;
+    EXPECT_EQ(loc, std::string::npos);
   }
-  EXPECT_EQ(got_error, false);
 }
