@@ -159,6 +159,7 @@ int rebuildGlobalDB(int nargs, char** args){
   delete admin;
   delete provider;
   progressStream << "Done" << std::endl;
+  return 0;
 }
 
 
@@ -205,6 +206,7 @@ int getRank(const std::string &path){
   }else{
     fatal_error("Rank match failure " + path);
   }
+  return -1;
 }
 
 struct shardDB{
@@ -315,6 +317,7 @@ int rebuildProvDB(int nargs, char** args){
   delete provider;
 
   progressStream << "Done" << std::endl;
+  return 0;
 }
 
 
