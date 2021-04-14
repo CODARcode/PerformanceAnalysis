@@ -11,7 +11,7 @@ ADNetClient::ADNetClient()
 #ifdef _USE_ZMQNET
     m_context = nullptr;
     m_socket = nullptr;
-    m_recv_timeout_ms = 30000;
+    m_recv_timeout_ms = 200000; //30000;
 #endif
 }
 
