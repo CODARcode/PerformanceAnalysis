@@ -32,7 +32,7 @@ bpfile_replay_LDADD = $(LDADD)
 
 
 if ENABLE_PROVDB
-bin_PROGRAMS += provdb_admin provdb_query provdb_shutdown
+bin_PROGRAMS += provdb_admin provdb_query provdb_shutdown provdb_rebuild_ascii
 
 provdb_admin_SOURCES = provdb_admin.cpp
 provdb_admin_LDADD = $(LDADD)
@@ -42,6 +42,9 @@ provdb_query_LDADD = $(LDADD)
 
 provdb_shutdown_SOURCES = provdb_shutdown.cpp
 provdb_shutdown_LDADD = $(LDADD)
+
+provdb_rebuild_ascii_SOURCES = provdb_rebuild_ascii.cpp
+provdb_rebuild_ascii_LDADD = $(LDADD)
 
 else
 	echo "Provenance DB not being built"

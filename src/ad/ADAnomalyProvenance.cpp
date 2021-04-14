@@ -49,46 +49,56 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
       //Note a GPU event can only be partnered to one CPU event but a CPU event can be partnered to multiple GPU events
       if(call.n_GPU_correlationID_partner() != 1){
 	std::stringstream ss; ss << "GPU event has multiple correlation ID partners?? Event details:" << std::endl << call.get_json(false,true).dump() << std::endl;
-	fatal_error(ss.str());
-      }
+	recoverable_error(ss.str());
 
-      verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0).toString() << std::endl;
+	m_gpu_event_parent_info = "Chimbuko error: Multiple host parent event correlation IDs found, likely due to trace corruption";
+      }else{
+	verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0).toString() << std::endl;
 
-      const eventID &gpu_event_parent = call.get_GPU_correlationID_partner(0);
-      m_gpu_event_parent_info["event_id"] = gpu_event_parent.toString();
+	const eventID &gpu_event_parent = call.get_GPU_correlationID_partner(0);
+	m_gpu_event_parent_info["event_id"] = gpu_event_parent.toString();
 
-      //Get the parent event
-      CallListIterator_t pit;
-      bool got_parent = true;
-      try{
-	pit = event_man.getCallData(gpu_event_parent);
-      }catch(const std::exception &e){
-	recoverable_error("Could not find GPU parent " + gpu_event_parent.toString() + " in call list due to : " + e.what());
-	got_parent = false;
-      }
-
-      if(got_parent){
-	m_gpu_event_parent_info["tid"] = pit->get_tid();
-
-	//Generate the parent stack
-	nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
-	gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
-
-	eventID parent = pit->get_parent();
-	while(parent != eventID::root()){
-	  CallListIterator_t call_it;
-	  try{
-	    call_it = event_man.getCallData(parent);
-	  }catch(const std::exception &e){
-	    recoverable_error("Could not find GPU stack event parent " + parent.toString() + " in call list due to : " + e.what());
-	    break;
-	  }
-	  gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
-	  parent = call_it->get_parent();
+	//Get the parent event
+	CallListIterator_t pit;
+	bool got_parent = true;
+	try{
+	  pit = event_man.getCallData(gpu_event_parent);
+	}catch(const std::exception &e){
+	  recoverable_error("Could not find GPU parent " + gpu_event_parent.toString() + " in call list due to : " + e.what());
+	  got_parent = false;
 	}
-	m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
-      }
-    }//have correlation ID partner
+
+	if(got_parent){
+	  m_gpu_event_parent_info["tid"] = pit->get_tid();
+
+	  //Generate the parent stack
+	  nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
+	  gpu_event_parent_stack.push_back(getCallStackEntry(*pit));
+
+	  eventID parent = pit->get_parent();
+	  while(parent != eventID::root()){
+	    CallListIterator_t call_it;
+	    try{
+	      call_it = event_man.getCallData(parent);
+	    }catch(const std::exception &e){
+	      recoverable_error("Could not find GPU stack event parent " + parent.toString() + " in call list due to : " + e.what());
+	      break;
+	    }
+	    gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
+	    parent = call_it->get_parent();
+	  }
+	  m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
+	}else{
+	  //Could not get parent event
+	  m_gpu_event_parent_info = "Chimbuko error: Host parent event could not be reached";
+	}
+
+      }//have *one* correlation ID partner
+    }else{ 
+      //No correlation ID recorded
+      m_gpu_event_parent_info = "Chimbuko error: Correlation ID of host parent event was not recorded";
+    }
+
   }//m_is_gpu_event
 }
 

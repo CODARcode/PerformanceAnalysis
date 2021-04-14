@@ -119,7 +119,7 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
        << it->get_json(false, true).dump() << std::endl
        << "GPU details: " << std::endl
        << m_gpu_thread_Map->find(it->get_tid())->second.get_json().dump() << std::endl;
-    fatal_error(ss.str());
+    recoverable_error(ss.str());
   }
 }
 
