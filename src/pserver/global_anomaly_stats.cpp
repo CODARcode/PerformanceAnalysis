@@ -2,17 +2,23 @@
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/util/error.hpp>
+#include <chimbuko/util/string.hpp>
 
 using namespace chimbuko;
 
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
-  auto sit = m_anomaly_stats.find(anom.get_stat_id());
-  if(sit == m_anomaly_stats.end()){ //new app_idx/rank detected
-    m_anomaly_stats[anom.get_stat_id()].set_do_accumulate(true);
-    sit = m_anomaly_stats.find(anom.get_stat_id());
+  auto pit = m_anomaly_stats.find(anom.get_app());
+  if(pit == m_anomaly_stats.end()){
+    typename std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> >::value_type v(anom.get_app(), std::unordered_map<unsigned long, AnomalyStat>());
+    pit = m_anomaly_stats.insert(std::move(v)).first;
   }
-  sit->second.add(anom);
+  auto rit = pit->second.find(anom.get_rank());
+  if(rit == pit->second.end()){
+    typename std::unordered_map<unsigned long, AnomalyStat>::value_type v(anom.get_rank(), AnomalyStat(true)); //enable accumulate
+    rit = pit->second.insert(std::move(v)).first;
+  }
+  rit->second.add(anom);
 }
 
 void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data){
@@ -50,64 +56,68 @@ void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
   }
 }
 
-std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
-{
-  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const int pid, const unsigned long rid) const{
+  auto pit = m_anomaly_stats.find(pid);
+  if(pit == m_anomaly_stats.end()) fatal_error("Could not find pid " + std::to_string(pid));
+  auto rit = pit->second.find(rid);
+  if(rit == pit->second.end()) fatal_error("Could not find rid " + std::to_string(rid));
+  return rit->second;
+}
+
+RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const int pid, const unsigned long rid) const{
+  return get_anomaly_stat_container(pid, rid).get_stats();  
+}
+
+std::string GlobalAnomalyStats::get_anomaly_stat(const int pid, const unsigned long rid) const{
+  RunStats stat;
+  try{
+    stat = get_anomaly_stat_obj(pid,rid);
+  }catch(const std::exception &e){
     return "";
-  
-  RunStats stat = m_anomaly_stats.find(stat_id)->second.get_stats();
+  }
   return stat.get_json().dump();
 }
 
-RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) const
-{
-  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
-    throw std::runtime_error("GlobalAnomalyStats::get_anomaly_stat_obj stat_id " + stat_id + " does not exist");
-  return m_anomaly_stats.find(stat_id)->second.get_stats();
-}
-
-const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const std::string &stat_id) const{
-  auto it = m_anomaly_stats.find(stat_id);
-  if(it == m_anomaly_stats.end()) fatal_error("Could not find stat_id = " + stat_id);
-  return it->second;
-}
-
-
-
-size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
-{
-    if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
-        return 0;
-
-    return m_anomaly_stats.find(stat_id)->second.get_n_data();
+size_t GlobalAnomalyStats::get_n_anomaly_data(const int pid, const unsigned long rid) const{
+  AnomalyStat const* s;
+  try{
+    s = &get_anomaly_stat_container(pid,rid);
+  }catch(const std::exception &e){
+    return 0;
+  }  
+  return s->get_n_data();
 }
 
 nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
-    
+
   //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
   //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
   //that have been collected from that rank since the last flush
-  for (auto &pair: m_anomaly_stats){
-    std::string stat_id = pair.first;
-    auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
+  for(auto & pp : m_anomaly_stats){
+    int pid = pp.first;
+    for(auto & rp: pp.second){
+      unsigned long rid = rp.first;
+      
+      auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
       //We now own the std::list<std::string>* pointer and have to delete it
       
-    if (stats.second && stats.second->size()){
-      nlohmann::json object;
-      object["key"] = stat_id;
-      object["stats"] = stats.first.get_json();
-
-      object["data"] = nlohmann::json::array();
-      for (auto strdata: *stats.second)
-	{
-	  object["data"].push_back(
-				   AnomalyData(strdata).get_json()
-				   );
+      if(stats.second){
+	if(stats.second->size()){
+	  nlohmann::json object;
+	  object["key"] = stringize("%d:%d", pid,rid);
+	  object["stats"] = stats.first.get_json();
+	  
+	  object["data"] = nlohmann::json::array();
+	  for (auto strdata: *stats.second){
+	    object["data"].push_back(
+				     AnomalyData(strdata).get_json()
+				     );
+	  }
+	  jsonObjects.push_back(object);
 	}
-
-      jsonObjects.push_back(object);
-      delete stats.second;            
+	delete stats.second;
+      }
     }
   }
 

@@ -39,28 +39,32 @@ namespace chimbuko{
 
     /**
      * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */
-    std::string get_anomaly_stat(const std::string& stat_id) const;
+    std::string get_anomaly_stat(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the RunStats object corresponding to the anomaly statistics for a given program/rank (throw error if not present)
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */
-    RunStats get_anomaly_stat_obj(const std::string& stat_id) const;
+    RunStats get_anomaly_stat_obj(const int pid, const unsigned long rid) const;
 
 
     /**
      * @brief Const accessor to the AnomalyStat instance corresponding to a particular stat_id (throw error if not present)
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */    
-    const AnomalyStat & get_anomaly_stat_container(const std::string &stat_id) const;
+    const AnomalyStat & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */
-    size_t get_n_anomaly_data(const std::string& stat_id) const;
+    size_t get_n_anomaly_data(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Update internal data to include additional information
@@ -108,12 +112,10 @@ namespace chimbuko{
     nlohmann::json collect();
 
   protected:    
-    // for global anomaly statistics
-    mutable std::mutex m_mutex_anom;
-    std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Map of stat_id of form "${app_id}:${rank_id}" to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
-    // for global function statistics
-    mutable std::mutex m_mutex_func;
+    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
+    mutable std::mutex m_mutex_anom; /**< Mutex for global anomaly statistics */
+    mutable std::mutex m_mutex_func; /**< Mutex for global function statistics */
   };
 
   /**

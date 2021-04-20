@@ -28,12 +28,10 @@ namespace chimbuko {
      * @param min_ts The first timestamp at which an anomaly was observed in this io step
      * @param max_ts The last timestamp at which an anomaly was observed in this io step
      * @param n_anomalies The number of anomalies observed in this io step
-     * @param stat_id An optional string tag attached to this class instance
      */
     AnomalyData(
 		unsigned long app, unsigned long rank, unsigned step,
-		unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-		std::string stat_id="");
+		unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies);
 
     /**
      * @brief Construct using JSON-serialized data
@@ -48,12 +46,9 @@ namespace chimbuko {
      * @param min_ts The first timestamp at which an anomaly was observed in this io step
      * @param max_ts The last timestamp at which an anomaly was observed in this io step
      * @param n_anomalies The number of anomalies observed in this io step
-     * @param stat_id An optional string tag attached to this class instance
      */
-    void set(
-	     unsigned long app, unsigned long rank, unsigned step,
-	     unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-	     std::string stat_id="");
+    void set(unsigned long app, unsigned long rank, unsigned step,
+	     unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies);
 
     /**
      * @brief Get the application index
@@ -86,11 +81,6 @@ namespace chimbuko {
     unsigned long get_n_anomalies() const { return m_n_anomalies; }
 
     /**
-     * @brief Get the tag associated with this class instance
-     */
-    std::string get_stat_id() const { return m_stat_id; }
-
-    /**
      * @brief Comparison operator
      */
     friend bool operator==(const AnomalyData& a, const AnomalyData& b);
@@ -110,7 +100,7 @@ namespace chimbuko {
      */
     template<class Archive>
     void serialize(Archive & archive){
-      archive(m_app, m_rank, m_step, m_min_timestamp, m_max_timestamp, m_n_anomalies, m_stat_id);
+      archive(m_app, m_rank, m_step, m_min_timestamp, m_max_timestamp, m_n_anomalies);
     }
 
   private:
@@ -120,7 +110,6 @@ namespace chimbuko {
     unsigned long m_min_timestamp; /**<  The first timestamp at which an anomaly was observed in this io step*/
     unsigned long m_max_timestamp; /**<  The last timestamp at which an anomaly was observed in this io step*/
     unsigned long m_n_anomalies; /**< The number of anomalies observed in this io step */
-    std::string   m_stat_id; /**< An optional string tag attached to this class instance */
   };
 
   bool operator==(const AnomalyData& a, const AnomalyData& b);

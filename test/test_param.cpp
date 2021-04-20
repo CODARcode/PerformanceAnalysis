@@ -174,19 +174,22 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     EXPECT_EQ(0 , j["data"][0]["min_timestamp"]);
     EXPECT_EQ(10, j["data"][0]["max_timestamp"]);
     EXPECT_EQ(10, j["data"][0]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][0]["stat_id"].get<std::string>().c_str());
-
+    EXPECT_EQ(0, j["data"][0]["app"]);
+    EXPECT_EQ(0, j["data"][0]["rank"]);
+    
     EXPECT_EQ(1 , j["data"][1]["step"]);
     EXPECT_EQ(11 , j["data"][1]["min_timestamp"]);
     EXPECT_EQ(20, j["data"][1]["max_timestamp"]);
     EXPECT_EQ(20, j["data"][1]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][1]["stat_id"].get<std::string>().c_str());
+    EXPECT_EQ(0, j["data"][1]["app"]);
+    EXPECT_EQ(0, j["data"][1]["rank"]);
 
     EXPECT_EQ(2 , j["data"][2]["step"]);
     EXPECT_EQ(21 , j["data"][2]["min_timestamp"]);
     EXPECT_EQ(30, j["data"][2]["max_timestamp"]);
     EXPECT_EQ(30, j["data"][2]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][2]["stat_id"].get<std::string>().c_str());
+    EXPECT_EQ(0, j["data"][2]["app"]);
+    EXPECT_EQ(0, j["data"][2]["rank"]);
 
     EXPECT_STREQ("0:0", j["key"].get<std::string>().c_str());
 
@@ -215,7 +218,8 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(11 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(20, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(20, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("1:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(1, jj["data"][0]["app"]);
+	    EXPECT_EQ(0, jj["data"][0]["rank"]);
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(20.0, jj["stats"]["mean"], 1e-3);
@@ -234,9 +238,10 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(0 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(10, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(10, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("0:1" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(0, jj["data"][0]["app"]);
+	    EXPECT_EQ(1, jj["data"][0]["rank"]);
 
-            EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
+	    EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["mean"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["accumulate"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["maximum"], 1e-3);
@@ -253,7 +258,8 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(31 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(40, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(40, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("0:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(0, jj["data"][0]["app"]);
+	    EXPECT_EQ(0, jj["data"][0]["rank"]);
 
             EXPECT_NEAR(-1.36, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(25.0, jj["stats"]["mean"], 1e-3);

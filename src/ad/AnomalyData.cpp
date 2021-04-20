@@ -5,35 +5,25 @@ using namespace chimbuko;
 
 AnomalyData::AnomalyData()
 : m_app(0), m_rank(0), m_step(0), m_min_timestamp(0), m_max_timestamp(0),
-  m_n_anomalies(0), m_stat_id("")
+  m_n_anomalies(0)
 {
 }
 
 AnomalyData::AnomalyData(
     unsigned long app, unsigned long rank, unsigned step,
-    unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-    std::string stat_id)
-{
-    set(app, rank, step, min_ts, max_ts, n_anomalies, stat_id);
+    unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies){
+    set(app, rank, step, min_ts, max_ts, n_anomalies);
 }
 
 void AnomalyData::set(
     unsigned long app, unsigned long rank, unsigned step,
-    unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies,
-    std::string stat_id
-)
-{
+    unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies){
     m_app = app;
     m_rank = rank;
     m_step = step;
     m_min_timestamp = min_ts;
     m_max_timestamp = max_ts,
     m_n_anomalies = n_anomalies;
-    m_stat_id = stat_id;
-    if (stat_id.length() == 0)
-    {
-        m_stat_id = std::to_string(m_app) + ":" + std::to_string(m_rank);
-    }
 }
 
 AnomalyData::AnomalyData(const std::string& s)
@@ -45,7 +35,6 @@ AnomalyData::AnomalyData(const std::string& s)
     m_min_timestamp = j["min_timestamp"];
     m_max_timestamp = j["max_timestamp"];
     m_n_anomalies = j["n_anomalies"];
-    m_stat_id = j["stat_id"];
 }
 
 nlohmann::json AnomalyData::get_json() const
@@ -57,7 +46,6 @@ nlohmann::json AnomalyData::get_json() const
         {"min_timestamp", get_min_ts()},
         {"max_timestamp", get_max_ts()},
         {"n_anomalies", get_n_anomalies()},
-        {"stat_id", get_stat_id()}
     };
 }
 

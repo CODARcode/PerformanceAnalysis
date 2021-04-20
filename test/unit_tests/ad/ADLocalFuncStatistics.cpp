@@ -89,8 +89,8 @@ TEST(ADLocalFuncStatisticsTestUpdateGlobalStatisticsWithPS, Works){
   
   std::string anom_stat_id = stringize("%d:%d", pid,rank);
   
-  EXPECT_EQ( glob.get_n_anomaly_data(anom_stat_id), 1 ); //1 set of data added
-  RunStats stats = glob.get_anomaly_stat_obj(anom_stat_id);
+  EXPECT_EQ( glob.get_n_anomaly_data(pid, rank), 1 ); //1 set of data added
+  RunStats stats = glob.get_anomaly_stat_obj(pid, rank);
   EXPECT_EQ( stats.accumulate(), 200);
 
   nlohmann::json gdata = glob.collect();

@@ -76,8 +76,6 @@ TEST(TestGlobalAnomalyStats, UpdateAnomalyStat){
 
   AnomalyData d1(app, rank, step1, min_ts1, max_ts1, n_anomalies1);
   
-  EXPECT_EQ(d1.get_stat_id(), stat_id );
-
   int step2= 1;
   int min_ts2 = 1000;
   int max_ts2 = 2000;
@@ -88,7 +86,7 @@ TEST(TestGlobalAnomalyStats, UpdateAnomalyStat){
   stats.update_anomaly_stat(d1);
   stats.update_anomaly_stat(d2);
 
-  const AnomalyStat & astats = stats.get_anomaly_stat_container(stat_id);
+  const AnomalyStat & astats = stats.get_anomaly_stat_container(app, rank);
   RunStats astatsr = astats.get_stats();
   
   EXPECT_EQ(astatsr.count(), 2);
