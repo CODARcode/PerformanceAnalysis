@@ -25,6 +25,11 @@ public:
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
     return this->compute_outliers(anomalies,func_id, data);
   }
+
+  double computeScoreTest(CallListIterator_t ev, const SstdParam &stats) const{
+    return this->computeScore(ev, stats);
+  }
+
 };
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
@@ -347,4 +352,42 @@ TEST(ADOutlierTestRunWithoutPS, OutlierStatisticSelection){
     size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_child, 1);
   }
+}
+
+
+TEST(ADOutlierSSTtest, TestAnomalyScore){
+  ADOutlierSSTDTest outlier(ADOutlier::ExclusiveRuntime);
+  
+  int fid = 100;
+  SstdParam params;
+  RunStats & stats = params[fid];
+
+  RunStats::State state;
+  double mean = 100;
+  state.eta = mean;
+  
+  double std_dev = 10;
+  double var = pow(std_dev,2);
+  
+  state.count = 1000;
+  state.rho = var * (state.count - 1);
+  
+  stats.set_state(state);
+
+  std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  100, "myfunc", 1000, mean + std_dev) };
+  CallListIterator_t it = events.begin();
+  
+  double score = outlier.computeScoreTest(it, params);
+  std::cout << "Score for " << it->get_json().dump() << " : " << score << std::endl;
+  
+  double expect = (1-0.682689492137086)/2.; //half of probability of 1-sigma up/down fluctuation from https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
+  EXPECT_NEAR(score, expect, 1e-7);
+
+  events.push_back(createFuncExecData_t(0,0,0,  100, "myfunc", 1000, mean - std_dev));
+
+  it++;
+  score = outlier.computeScoreTest(it, params);
+  std::cout << "Score for " << it->get_json().dump() << " : " << score << std::endl;
+  
+  EXPECT_NEAR(score, expect, 1e-7); //should be same probability
 }

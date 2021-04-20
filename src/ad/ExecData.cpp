@@ -9,7 +9,7 @@ ExecData_t::ExecData_t()
   : m_pid(0), m_rid(0), m_tid(0), m_fid(0),
     m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
     m_n_children(0), m_n_messages(0),
-    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0){}
+    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0), m_score(-1){}
 
 ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
@@ -82,6 +82,7 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     if (!(m_parent == other.m_parent)) return false;
     if (!(m_n_children == other.m_n_children)) return false;
     if (!(m_n_messages == other.m_n_messages)) return false;
+    if (!(m_score == other.m_score)) return false;    
     return true;
 }
 
@@ -93,7 +94,7 @@ nlohmann::json ExecData_t::get_json(bool with_message, bool with_counter) const
         {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
         {"entry", m_entry}, {"exit", m_exit},
         {"runtime", m_runtime}, {"exclusive", m_exclusive},
-        {"label", m_label},
+        {"label", m_label}, {"outlier_score", m_score},
         {"parent", m_parent.toString()},
         {"n_children", m_n_children}, {"n_messages", m_n_messages}, {"n_counters", m_counters.size() }
     };

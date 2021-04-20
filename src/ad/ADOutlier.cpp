@@ -6,6 +6,7 @@
 #include "chimbuko/util/error.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
+#include <boost/math/distributions/normal.hpp>
 
 using namespace chimbuko;
 
@@ -138,6 +139,22 @@ Anomalies ADOutlierSSTD::run(int step) {
   return outliers;
 }
 
+
+double ADOutlierSSTD::computeScore(CallListIterator_t ev, const SstdParam &stats) const{
+  auto it = stats.get_runstats().find(ev->get_fid());
+  if(it == stats.get_runstats().end()) fatal_error("Function not in stats!");
+  double runtime = this->getStatisticValue(*ev);
+  double mean = it->second.mean();
+  double std_dev = it->second.stddev();
+  if(std_dev == 0.) std_dev = 1e-10; //distribution throws an error if std.dev = 0
+  boost::math::normal_distribution<double> dist(mean, std_dev);
+  double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
+  double score = std::min(cdf_val, 1-cdf_val); //two-tailed
+  verboseStream << "ADOutlierSSTD::computeScore " << ev->get_funcname() << " runtime " << runtime << " mean " << mean << " std.dev " << std_dev << " -> score " << score << std::endl;
+  return score;
+}
+
+
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
@@ -162,6 +179,8 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       const double runtime = this->getStatisticValue(*itt);
       int label = (thr_lo > runtime || thr_hi < runtime) ? -1: 1;
       itt->set_label(label);
+      itt->set_outlier_score(computeScore(itt, param));
+
       if (label == -1) {
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
@@ -273,7 +292,7 @@ Anomalies ADOutlierHBOS::run(int step) {
   std::pair<size_t, size_t> msgsz = sync_param(&param);
 
   if(m_perf != nullptr){
-    m_perf->add("param_update_us", timer.elapsed_us());
+    m_perf->add("param_update_ms", timer.elapsed_ms());
     m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
@@ -416,6 +435,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         ad_score = out_scores_i.at( bin_ind - 1);
         //std::cout << "Anomaly score of " << runtime_i << " = " << ad_score <<std::endl;
       }
+
+      itt->set_outlier_score(ad_score);
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {

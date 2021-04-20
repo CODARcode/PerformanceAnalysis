@@ -4,6 +4,7 @@
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
+#include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/util/hash.hpp"
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/util/PerfStats.hpp"
@@ -175,6 +176,11 @@ namespace chimbuko {
      * @param param The local statistics
      */
     std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
+
+    /**
+     * @brief Compute the anomaly score (probability) for an event assuming a Gaussian distribution
+     */
+    double computeScore(CallListIterator_t ev, const SstdParam &stats) const;
 
   private:
     double m_sigma; /**< sigma */

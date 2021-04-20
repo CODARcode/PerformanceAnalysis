@@ -432,11 +432,22 @@ public:
     unsigned long get_n_counter() const { return m_counters.size(); }
 
     /**
+     * @brief Return the outlier score assigned to the data point
+     */
+    double get_outlier_score() const{ return m_score; }
+
+    /**
      * @brief Set the label
      *
      * @param label 1 for normal, -1 for anomaly.
      */
     void set_label(int label) { m_label = label; }
+
+    /**
+     * @brief Set the outlier score
+     */
+    void set_outlier_score(double score) { m_score = score; }
+
     /**
      * @brief Set the parent function of this execution
      *
@@ -556,6 +567,7 @@ private:
         m_runtime,                       /**< inclusive running time (i.e. including time of child calls) */
         m_exclusive;                     /**< exclusive running time (i.e. excluding time of child calls) */
     int m_label;                         /**< 1 for normal, -1 for abnormal execution */
+    double m_score;                      /**< Outlier score (implementation dependent) */ 
     eventID m_parent;                    /**< parent execution */
     unsigned long m_n_children;          /**< the number of childrent executions */
     unsigned long m_n_messages;          /**< the number of messages */
