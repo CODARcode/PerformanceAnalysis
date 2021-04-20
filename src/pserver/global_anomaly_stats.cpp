@@ -66,6 +66,12 @@ RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) co
   return m_anomaly_stats.find(stat_id)->second.get_stats();
 }
 
+const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const std::string &stat_id) const{
+  auto it = m_anomaly_stats.find(stat_id);
+  if(it == m_anomaly_stats.end()) fatal_error("Could not find stat_id = " + stat_id);
+  return it->second;
+}
+
 
 
 size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const

@@ -68,7 +68,7 @@ RunStats AnomalyStat::get_stats() const{
     return m_stats;
 }
 
-std::list<std::string>* AnomalyStat::get_data() {
+std::list<std::string>* AnomalyStat::get_data() const{
     std::lock_guard<std::mutex> _(m_mutex);
     return m_data;
 }

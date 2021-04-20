@@ -38,7 +38,7 @@ namespace chimbuko{
     void add_anomaly_data_cerealpb(const std::string& data);
 
     /**
-     * @brief Get the JSON-formatted string corresponding to the anomaly statistics for a given program/rank
+     * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
      * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
      */
     std::string get_anomaly_stat(const std::string& stat_id) const;
@@ -48,6 +48,13 @@ namespace chimbuko{
      * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
      */
     RunStats get_anomaly_stat_obj(const std::string& stat_id) const;
+
+
+    /**
+     * @brief Const accessor to the AnomalyStat instance corresponding to a particular stat_id (throw error if not present)
+     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     */    
+    const AnomalyStat & get_anomaly_stat_container(const std::string &stat_id) const;
 
     /**
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank

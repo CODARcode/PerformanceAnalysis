@@ -66,7 +66,7 @@ namespace chimbuko {
      * 
      * @return std::list<std::string>* 
      */
-    std::list<std::string>* get_data();
+    std::list<std::string>* get_data() const;
 
     /**
      * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
