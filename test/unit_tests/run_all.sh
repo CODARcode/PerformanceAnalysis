@@ -29,5 +29,6 @@ set -o pipefail
 ./util/memutils
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
+./pserver/global_anomaly_stats
 ./net/ZMQMENet
 ./net/ZMQNet

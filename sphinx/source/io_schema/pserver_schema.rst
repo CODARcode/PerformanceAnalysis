@@ -53,17 +53,17 @@ The schema for the **'anomaly_stats'** object is as follows:
 |           **'data'**: *Number of anomalies and anomaly time window for process/rank broken down by io step (array)*
 |                [  
 |                   {
-|                      **'app'**: *Application index*,
+|                      **'app'**: *Program index*,
 |                      **'max_timestamp'**: *Latest time of anomaly in io step*,
 |                      **'min_timestamp'**: *Earliest time of anomaly in io step*,
 |                      **'n_anomalies'**: *Number of anomalies in io step*,
 |     		       **'rank'**: *Process rank*,
-|   		       **'stat_id'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
+|   		       **'stat_id'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
 |                      **'step'**: *io step index*
 |		    },
 |                   ...
 |                ],
-|           **'key'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
+|           **'key'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
 |           **'stats'**:   *Statistics on anomalies on this process/rank over the steps broken down above (object)*
 |                {
 |	           **'accumulate'**: *Total anomalies*,

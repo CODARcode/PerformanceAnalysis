@@ -94,10 +94,17 @@ namespace chimbuko {
       void serialize(Archive & archive){
 	archive(count, minimum, maximum, accumulate, mean, stddev, skewness, kurtosis);
       }
+
+      /**
+       * @brief Comparison operator
+       */
+      bool operator==(const RunStatsValues &r) const{ 
+	return count == r.count && minimum == r.minimum && maximum == r.maximum && accumulate == r.accumulate &&
+	  mean == r.mean && stddev == r.stddev && skewness == r.skewness && kurtosis == r.kurtosis;
+      }
+
     };
 
-
-  public:
     /**
      * @brief Constructor
      * @param do_accumulate If true the sum of the provided values will also be collected
@@ -185,6 +192,10 @@ namespace chimbuko {
     double count() const;
     double minimum() const;
     double maximum() const;
+
+    /**
+     * @brief If m_do_accumulate, the accumulated sum of all values added, otherwise 0
+     */
     double accumulate() const;
     double mean() const;
     double variance(double ddof=1.0) const;

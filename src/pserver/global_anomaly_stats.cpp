@@ -1,6 +1,7 @@
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/util/error.hpp>
 
 using namespace chimbuko;
 
@@ -143,17 +144,17 @@ nlohmann::json GlobalAnomalyStats::collect(){
 }
 
 
-void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::string& name, 
+void GlobalAnomalyStats::update_func_stat(int pid, unsigned long fid, const std::string& name, 
 					  unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
   std::lock_guard<std::mutex> _(m_mutex_func);
   //Determine if previously seen
   bool first_encounter = false;
   auto pit = m_funcstats.find(pid);
-  if(pit == m_funcstats.end() || pit->second.count(id) == 0) 
+  if(pit == m_funcstats.end() || pit->second.count(fid) == 0) 
     first_encounter = true;
 
   //Get stats struct (will create entries if needed)
-  FuncStats &fstats = m_funcstats[pid][id];   
+  FuncStats &fstats = m_funcstats[pid][fid];   
 
   if(first_encounter){
     fstats.func = name;
@@ -163,4 +164,13 @@ void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::
   fstats.func_anomaly.push(n_anomaly);
   fstats.inclusive += inclusive;
   fstats.exclusive += exclusive;
+}
+
+const GlobalAnomalyStats::FuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned long fid) const{
+  std::lock_guard<std::mutex> _(m_mutex_func);
+  auto pit = m_funcstats.find(pid);
+  if(pit == m_funcstats.end()) fatal_error("Could not find program index");
+  auto fit = pit->second.find(fid);
+  if(fit == pit->second.end()) fatal_error("Could not find function index");
+  return fit->second;
 }

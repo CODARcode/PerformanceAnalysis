@@ -64,18 +64,25 @@ namespace chimbuko{
     /**
      * @brief Update internal data to include additional information
      * @param pid Program index
-     * @param id Function index
+     * @param fid Function index
      * @param name Function name
      * @param n_anomaly The number of anomalies detected
      * @param inclusive Statistics on inclusive timings
      * @param exclusive Statistics on exclusive timings
      */
     void update_func_stat(int pid,
-			  unsigned long id, 
+			  unsigned long fid, 
 			  const std::string& name, 
 			  unsigned long n_anomaly,
 			  const RunStats& inclusive, 
 			  const RunStats& exclusive);
+
+    /**
+     * @brief Get the FuncStats object containing the profile information for the specified function
+     * @param pid Program index
+     * @param fid Function index
+     */
+    const FuncStats & get_func_stats(int pid, unsigned long fid) const;
 
     /**
      * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
