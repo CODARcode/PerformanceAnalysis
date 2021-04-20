@@ -29,8 +29,7 @@ namespace chimbuko {
      * @param max_ts The last timestamp at which an anomaly was observed in this io step
      * @param n_anomalies The number of anomalies observed in this io step
      */
-    AnomalyData(
-		unsigned long app, unsigned long rank, unsigned step,
+    AnomalyData(unsigned long app, unsigned long rank, unsigned step,
 		unsigned long min_ts, unsigned long max_ts, unsigned long n_anomalies);
 
     /**

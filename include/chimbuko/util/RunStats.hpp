@@ -71,6 +71,16 @@ namespace chimbuko {
       bool operator==(const State &r) const{
 	return count == r.count && eta == r.eta && rho == r.rho && tau == r.tau  && phi == r.phi && min == r.min && max == r.max && acc == r.acc;
       }
+
+      /**
+       * @brief Get this object as a JSON instance
+       */
+      nlohmann::json get_json() const;
+      
+      /**
+       * @brief Set this object to the values stored in the JSON instance
+       */
+      void set_json(const nlohmann::json &to);
     };
 
     /**
