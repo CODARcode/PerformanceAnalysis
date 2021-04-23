@@ -7,6 +7,29 @@
 
 using namespace chimbuko;
 
+
+nlohmann::json ADLocalFuncStatistics::State::FuncData::get_json() const{
+  nlohmann::json obj;
+  obj["pid"] = pid;
+  obj["id"] = id;
+  obj["name"] = name;
+  obj["n_anomaly"] = n_anomaly;
+  obj["inclusive"] = inclusive.get_json();
+  obj["exclusive"] = exclusive.get_json();
+  return obj;
+}
+nlohmann::json ADLocalFuncStatistics::State::get_json() const{
+  nlohmann::json g_info;
+  g_info["func"] = nlohmann::json::array();
+  for(const auto &e : func){
+    g_info["func"].push_back(e.get_json());
+  }
+  g_info["anomaly"] = anomaly.get_json();
+  return g_info;
+}
+
+
+
 std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
   std::stringstream ss;
   {    
@@ -52,28 +75,6 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
   m_n_anomalies += anom.nEvents(Anomalies::EventType::Outlier);
 }
 
-nlohmann::json ADLocalFuncStatistics::get_json_state() const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  nlohmann::json g_info;
-  g_info["func"] = nlohmann::json::array();
-  for (auto it : m_func) { //loop over function index
-    const unsigned long func_id = it.first;
-    const unsigned long n = m_anomaly_count.find(func_id)->second;
-
-    nlohmann::json obj;
-    obj["pid"] = m_program_idx;
-    obj["id"] = func_id;
-    obj["name"] = it.second;
-    obj["n_anomaly"] = n;
-    obj["inclusive"] = m_inclusive.find(func_id)->second.get_json_state();
-    obj["exclusive"] = m_exclusive.find(func_id)->second.get_json_state();
-    g_info["func"].push_back(obj);
-  }
-
-  g_info["anomaly"] = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
-  return g_info;
-}
-
 
 ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
@@ -93,6 +94,11 @@ ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
   g_info.anomaly = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies);
   return g_info;
 }
+nlohmann::json ADLocalFuncStatistics::get_json_state() const{
+  return get_state().get_json();
+}
+
+
 
 
 std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{

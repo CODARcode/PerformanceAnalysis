@@ -32,6 +32,11 @@ namespace chimbuko{
 	void serialize(Archive & archive){
 	  archive(pid,id,name,n_anomaly,inclusive,exclusive);
 	}
+
+	/**
+	 * @brief Create a JSON object from this instance
+	 */
+	nlohmann::json get_json() const;
       };
       std::vector<FuncData> func; /** Function stats for each function*/
       AnomalyData anomaly; /** Statistics on overall anomalies */
@@ -53,8 +58,13 @@ namespace chimbuko{
        * Serialize from Cereal portable binary format
        */     
       void deserialize_cerealpb(const std::string &strstate);
-    };    
 
+	/**
+	 * @brief Create a JSON object from this instance
+	 */
+      nlohmann::json get_json() const;
+    };    
+    
 
     ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf = nullptr);
 
