@@ -12,13 +12,11 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
     git clone https://github.com/mochi-hpc/mochi-spack-packages.git && \
     spack repo add mochi-spack-packages
 
-COPY packages.yaml /root/.spack/
+COPY modules.yaml packages.yaml /root/.spack/
 
-RUN source /spack/spack/share/spack/setup-env.sh && \
-        spack install mercury ^libfabric@1.9.0 && \
-	spack install mochi-sonata ^libfabric@1.9.0 && \
-	spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 && \
-	spack gc -y && spack clean -a
+RUN pip3 install cython pkgconfig
+RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 ^py-numpy@1.19.5 && \
+    spack gc -y && spack clean -a
 
 WORKDIR /
 

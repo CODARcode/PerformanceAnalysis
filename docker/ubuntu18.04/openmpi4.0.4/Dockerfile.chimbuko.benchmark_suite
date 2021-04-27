@@ -8,7 +8,7 @@ ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 RUN apt-get update && apt-get install -y gdb emacs-nox vim psmisc
 
 #Create a setup script
-RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load py-mochi-sonata" >> /root/.bashrc
+RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load boost py-mochi-sonata" >> /root/.bashrc
 
 FROM base AS build
 
