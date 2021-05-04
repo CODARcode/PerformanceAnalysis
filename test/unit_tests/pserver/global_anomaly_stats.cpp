@@ -92,8 +92,10 @@ TEST(TestGlobalAnomalyStats, UpdateAnomalyStat){
   EXPECT_EQ(astatsr.count(), 2);
   EXPECT_EQ(astatsr.accumulate(), n_anomalies1 + n_anomalies2);
 
-  std::list<std::string> const* adata = astats.get_data();
+  std::list<AnomalyData> const* adata = astats.get_data();
   EXPECT_EQ(adata->size(), 2);
+  EXPECT_EQ( *adata->begin(), d1 );
+  EXPECT_EQ( *std::next(adata->begin(),1), d2 );
 
   nlohmann::json astats_j = stats.collect_stat_data();
   EXPECT_EQ(astats_j.is_array(), true );

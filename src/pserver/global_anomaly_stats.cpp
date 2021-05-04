@@ -99,8 +99,8 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
     for(auto & rp: pp.second){
       unsigned long rid = rp.first;
       
-      auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
-      //We now own the std::list<std::string>* pointer and have to delete it
+      auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<AnomalyData>*>,  and flushes the state of pair.second. 
+      //We now own the std::list<AnomalyData>* pointer and have to delete it
       
       if(stats.second){
 	if(stats.second->size()){
@@ -109,10 +109,8 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
 	  object["stats"] = stats.first.get_json();
 	  
 	  object["data"] = nlohmann::json::array();
-	  for (auto strdata: *stats.second){
-	    object["data"].push_back(
-				     AnomalyData(strdata).get_json()
-				     );
+	  for (auto const &adata: *stats.second){
+	    object["data"].push_back(adata.get_json());
 	  }
 	  jsonObjects.push_back(object);
 	}
