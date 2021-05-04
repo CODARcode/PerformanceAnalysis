@@ -14,10 +14,24 @@ namespace chimbuko{
   class ADLocalFuncStatistics{
   public:
     /**
-     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
+     * @brief Structure to store the profile statistics associated with a specific function
      */
-    struct State{
-      struct FuncData{
+    struct FuncStats{
+      unsigned long pid; /**< Program index*/
+      unsigned long id; /**< Function index*/
+      std::string name; /**< Function name*/
+      unsigned long n_anomaly; /**< Number of anomalies*/
+      RunStats inclusive; /**< Inclusive runtime stats*/
+      RunStats exclusive; /**< Exclusive runtime stats*/
+
+      FuncStats(): n_anomaly(0){}
+      
+      /**
+       * @brief Create a FuncStats instance of a particular pid, id, name
+       */
+      FuncStats(const unsigned long pid, const unsigned long id, const std::string &name): pid(pid), id(id), name(name), n_anomaly(0){}
+                
+      struct State{
 	unsigned long pid; /**< Program index*/
 	unsigned long id; /**< Function index*/
 	std::string name; /**< Function name*/
@@ -25,6 +39,12 @@ namespace chimbuko{
 	RunStats::State inclusive; /**< Inclusive runtime stats*/
 	RunStats::State exclusive; /**< Exclusive runtime stats*/
       
+	State(){}
+	/**
+	 * @brief Create the State from the FuncStats instance
+	 */
+	State(const FuncStats &p);
+
 	/**
 	 * @brief Serialize using cereal
 	 */
@@ -38,9 +58,20 @@ namespace chimbuko{
 	 */
 	nlohmann::json get_json() const;
       };
-      std::vector<FuncData> func; /** Function stats for each function*/
+
+      /**
+       *@brief Get the State object corresponding to this object
+       */
+      inline State get_state() const{ return State(*this); }
+    };
+
+    /**
+     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
+     */
+    struct State{
+      std::vector<FuncStats::State> func; /** Function stats for each function*/
       AnomalyData anomaly; /** Statistics on overall anomalies */
-    
+   
       /**
        * @brief Serialize using cereal
        */
@@ -124,11 +155,9 @@ namespace chimbuko{
     unsigned long m_program_idx; /**< Program index*/
     unsigned long m_min_ts; /**< lowest timestamp */
     unsigned long m_max_ts; /**< highest timestamp */
-    std::unordered_map<unsigned long, std::string> m_func; /**< map of function index to function name */
-    std::unordered_map<unsigned long, RunStats> m_inclusive; /**< map of function index to function call time including child calls */
-    std::unordered_map<unsigned long, RunStats> m_exclusive; /**< map of function index to function call time excluding child calls */
-    std::unordered_map<unsigned long, size_t> m_anomaly_count; /**< map of function index to number of anomalies */
     size_t m_n_anomalies; /**< Number of anomalies in total */
+
+    std::unordered_map<unsigned long, FuncStats> m_funcstats; /**< map of function index to function profile statistics */
 
     PerfStats *m_perf; /**< Store performance data */
   };
