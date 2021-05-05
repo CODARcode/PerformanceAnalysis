@@ -4,6 +4,8 @@
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>
+#include <climits>
+#include <algorithm>
 
 using namespace chimbuko;
 
@@ -52,9 +54,11 @@ void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strst
 }
 
 ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
-  m_program_idx(program_idx), m_rank(rank), m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf), m_n_anomalies(0){}
+  m_perf(nullptr), m_anom_data(program_idx, rank, step, 0,0,0){}
 
 void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
+  unsigned long min_ts = ULONG_MAX, max_ts = 0;
+
   for (auto it : *exec_data) { //loop over functions (key is function index)
     if(it.second.size() == 0) continue;
 
@@ -64,19 +68,20 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
     //Create new entry if it doesn't exist
     if(fstats_it == m_funcstats.end()){
       const std::string &name = it.second.front()->get_funcname(); //it.second has already been checked to have size >= 1
-      fstats_it = m_funcstats.insert( std::unordered_map<unsigned long, FuncStats>::value_type(func_id, FuncStats(m_program_idx, func_id, name)) ).first;
+      fstats_it = m_funcstats.insert( std::unordered_map<unsigned long, FuncStats>::value_type(func_id, FuncStats(m_anom_data.get_app(), func_id, name)) ).first;
     }
 
     for (auto itt : it.second) { //loop over events for that function
       fstats_it->second.inclusive.push(static_cast<double>(itt->get_inclusive()));
       fstats_it->second.exclusive.push(static_cast<double>(itt->get_exclusive()));
 
-      if (m_min_ts == 0 || m_min_ts > itt->get_entry())
-	m_min_ts = itt->get_entry();
-      if (m_max_ts == 0 || m_max_ts < itt->get_exit())
-	m_max_ts = itt->get_exit();      
+      min_ts = std::min(min_ts, static_cast<unsigned long>(itt->get_entry()) );
+      max_ts = std::max(max_ts, static_cast<unsigned long>(itt->get_exit()));
     }
   }
+
+  m_anom_data.set_min_ts(min_ts);
+  m_anom_data.set_max_ts(max_ts);
 }
 
 void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
@@ -86,7 +91,7 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
     fstats.second.n_anomaly += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
   }
   //Total anomalies
-  m_n_anomalies += anom.nEvents(Anomalies::EventType::Outlier);
+  m_anom_data.incr_n_anomalies(anom.nEvents(Anomalies::EventType::Outlier));
 }
 
 ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
@@ -96,7 +101,7 @@ ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
     g_info.func.push_back(fstats.second.get_state());
   }
 
-  g_info.anomaly = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies);
+  g_info.anomaly = m_anom_data;
   return g_info;
 }
 nlohmann::json ADLocalFuncStatistics::get_json_state() const{
@@ -108,7 +113,7 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetCli
   State g_info = get_state();
   PerfTimer timer;
   timer.start();
-  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step);
+  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_anom_data.get_step());
   
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_ms", timer.elapsed_ms());

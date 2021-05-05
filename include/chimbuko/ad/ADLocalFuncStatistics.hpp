@@ -150,13 +150,7 @@ namespace chimbuko{
      */
     static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step);
 
-    int m_step; /**< io step */
-    unsigned long m_rank; /**< Rank*/
-    unsigned long m_program_idx; /**< Program index*/
-    unsigned long m_min_ts; /**< lowest timestamp */
-    unsigned long m_max_ts; /**< highest timestamp */
-    size_t m_n_anomalies; /**< Number of anomalies in total */
-
+    AnomalyData m_anom_data; /**< AnomalyData instance holding information about the anomalies */
     std::unordered_map<unsigned long, FuncStats> m_funcstats; /**< map of function index to function profile statistics */
 
     PerfStats *m_perf; /**< Store performance data */

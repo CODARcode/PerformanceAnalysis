@@ -80,6 +80,21 @@ namespace chimbuko {
     unsigned long get_n_anomalies() const { return m_n_anomalies; }
 
     /**
+     * @brief Set the earliest timestamp
+     */
+    void set_min_ts(unsigned long to){ m_min_timestamp = to; }
+
+    /**
+     * @brief Set the last timestamp
+     */
+    void set_max_ts(unsigned long to){ m_max_timestamp = to; }
+
+    /**
+     * @brief Increment the number of anomalies
+     */
+    void incr_n_anomalies(unsigned long by){ m_n_anomalies += by; }
+
+    /**
      * @brief Comparison operator
      */
     friend bool operator==(const AnomalyData& a, const AnomalyData& b);

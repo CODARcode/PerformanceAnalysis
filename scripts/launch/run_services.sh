@@ -107,6 +107,9 @@ if (( ${use_provdb} == 1 )); then
 	provdb_addr="${provdb_domain}/${provdb_addr}"
     fi
 
+    #Enable better error reporting from Mercury
+    export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
+
     provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} 2>&1 | tee ${log_dir}/provdb.log &
     provdb_pid=$!
 
