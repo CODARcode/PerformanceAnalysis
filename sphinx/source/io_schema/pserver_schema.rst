@@ -59,7 +59,18 @@ The schema for the **'anomaly_stats'** object is as follows:
 |                      **'n_anomalies'**: *Number of anomalies in io step*,
 |     		       **'rank'**: *Process rank*,
 |   		       **'stat_id'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
-|                      **'step'**: *io step index*
+|                      **'step'**: *io step index*,
+|                      **'outlier_scores'**: *Statistics on the outlier scores for the outliers collected in this step*,
+|                       {
+|                           **'accumulate'**: *The sum of the outlier scores*,
+|                           **'count'**: *The number of outliers*,
+|                           **'kurtosis'**: *kurtosis of distribution of scores*,
+|                           **'maximum'**: *maximum score*,
+|                           **'mean'**: *mean score*,
+|                           **'minimum'**: *minimum score*,
+|                           **'skewness'**: *skewness of scores*,
+|                           **'stddev'**: *std.dev of scores*
+|                       },
 |		    },
 |                   ...
 |                ],
