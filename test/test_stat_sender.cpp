@@ -120,7 +120,7 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   loc.gatherAnomalies(anom);
 
   GlobalAnomalyStats glob;
-  glob.add_anomaly_data_json(loc.get_json_state().dump());
+  glob.add_anomaly_data(loc);
 
   PSstatSender stat_sender;
   int calls = 0;

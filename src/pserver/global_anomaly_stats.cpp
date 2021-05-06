@@ -21,40 +21,17 @@ void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   rit->second.add(anom);
 }
 
-void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data){
-  nlohmann::json j = nlohmann::json::parse(data);
-  if (j.count("anomaly")){ 
-    AnomalyData d(j["anomaly"].dump());
-    update_anomaly_stat(d);
+void GlobalAnomalyStats::add_anomaly_data(const ADLocalFuncStatistics& data){
+  update_anomaly_stat(data.getAnomalyData());
+
+  for (auto const &fp: data.getFuncStats()) {
+    const ADLocalFuncStatistics::FuncStats &f = fp.second;
+    update_func_stat(f.pid, f.id, f.name, f.n_anomaly, f.inclusive, f.exclusive);
   }
-  
-  if (j.count("func")){
-    for (auto f: j["func"]) {
-      update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
-		       RunStats::from_strstate(f["inclusive"].dump()), 
-		       RunStats::from_strstate(f["exclusive"].dump())
-		       ); //locks
-    }
-  } 
-}
+}  
 
 
 
-void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
-{
-  ADLocalFuncStatistics::State j;
-  j.deserialize_cerealpb(data);
-
-  const AnomalyData &d = j.anomaly;
-  update_anomaly_stat(d);
-
-  for (auto f: j.func) {
-    update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
-		     RunStats::from_state(f.inclusive), 
-		     RunStats::from_state(f.exclusive)
-		     ); //locks
-  }
-}
 
 const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const int pid, const unsigned long rid) const{
   auto pit = m_anomaly_stats.find(pid);

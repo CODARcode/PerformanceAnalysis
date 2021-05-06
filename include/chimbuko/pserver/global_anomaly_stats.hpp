@@ -9,6 +9,7 @@
 #include "chimbuko/pserver/AnomalyStat.hpp"
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 
 namespace chimbuko{
 
@@ -28,14 +29,10 @@ namespace chimbuko{
     GlobalAnomalyStats(){}
 
     /**
-     * @brief Merge internal statistics with those contained within the JSON-formatted string 'data'
+     * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
      */
-    void add_anomaly_data_json(const std::string& data);
+    void add_anomaly_data(const ADLocalFuncStatistics& data);
 
-    /**
-     * @brief Merge internal statistics with those contained within the Cereal portable binary  formatted string 'data'
-     */
-    void add_anomaly_data_cerealpb(const std::string& data);
 
     /**
      * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
@@ -130,7 +127,11 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-      m_global_anom_stats->add_anomaly_data_cerealpb(message.buf());
+
+      ADLocalFuncStatistics loc;
+      loc.net_deserialize(message.buf());
+
+      m_global_anom_stats->add_anomaly_data(loc);
       response.set_msg("", false);
     }
   };

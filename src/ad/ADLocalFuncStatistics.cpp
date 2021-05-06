@@ -1,9 +1,7 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/ad/AnomalyData.hpp>
 
-#include <cereal/archives/portable_binary.hpp>
-#include <cereal/types/vector.hpp>
-#include <cereal/types/string.hpp>
+#include <chimbuko/util/serialize.hpp>
 #include <climits>
 #include <algorithm>
 
@@ -24,6 +22,17 @@ nlohmann::json ADLocalFuncStatistics::FuncStats::State::get_json() const{
   return obj;
 }
 
+void ADLocalFuncStatistics::FuncStats::set_state(const State &to){
+  pid = to.pid;
+  id = to.id;
+  name = to.name;
+  n_anomaly = to.n_anomaly;
+  inclusive.set_state(to.inclusive);
+  exclusive.set_state(to.exclusive);
+}
+
+
+
 nlohmann::json ADLocalFuncStatistics::State::get_json() const{
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();
@@ -37,20 +46,11 @@ nlohmann::json ADLocalFuncStatistics::State::get_json() const{
 
 
 std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
-  std::stringstream ss;
-  {    
-    cereal::PortableBinaryOutputArchive wr(ss);
-    wr(*this);    
-  }
-  return ss.str();
+  return cereal_serialize(*this);
 }
 
 void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
-  std::stringstream ss; ss << strstate;;
-  {    
-    cereal::PortableBinaryInputArchive rd(ss);
-    rd(*this);    
-  }
+  cereal_deserialize(*this, strstate);
 }
 
 ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
@@ -90,8 +90,13 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
     unsigned long func_id = fstats.second.id;
     fstats.second.n_anomaly += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
   }
-  //Total anomalies
-  m_anom_data.incr_n_anomalies(anom.nEvents(Anomalies::EventType::Outlier));
+
+  //Gather information on the number of anomalies and stats on their scores
+  const std::vector<CallListIterator_t> &anomalies = anom.allEvents(Anomalies::EventType::Outlier);
+  m_anom_data.incr_n_anomalies(anomalies.size());
+  
+  for(auto const &it : anomalies)
+    m_anom_data.add_outlier_score(it->get_outlier_score());
 }
 
 ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
@@ -101,19 +106,43 @@ ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
     g_info.func.push_back(fstats.second.get_state());
   }
 
-  g_info.anomaly = m_anom_data;
+  g_info.anomaly = m_anom_data.get_state();
   return g_info;
 }
+
+
+void ADLocalFuncStatistics::set_state(const ADLocalFuncStatistics::State &s){
+  m_funcstats.clear();
+  for(auto const &fstats_s : s.func)
+    m_funcstats[fstats_s.id].set_state(fstats_s);
+  
+  m_anom_data.set_state(s.anomaly);
+}
+
+
+
+
 nlohmann::json ADLocalFuncStatistics::get_json_state() const{
   return get_state().get_json();
 }
 
+
+std::string ADLocalFuncStatistics::net_serialize() const{
+  return get_state().serialize_cerealpb();
+}
+
+void ADLocalFuncStatistics::net_deserialize(const std::string &s){
+  State state;
+  state.deserialize_cerealpb(s);
+  set_state(state);
+}
+
+
+
 std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  State g_info = get_state();
   PerfTimer timer;
   timer.start();
-  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_anom_data.get_step());
+  auto msgsz = updateGlobalStatistics(net_client, net_serialize(), m_anom_data.get_step());
   
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_ms", timer.elapsed_ms());

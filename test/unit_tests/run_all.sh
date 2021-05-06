@@ -21,6 +21,7 @@ set -o pipefail
 ./ad/HBOSOutlierDistributions
 ./ad/HBOSOutlierTestBPFile
 ./ad/utils
+./ad/AnomalyData
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

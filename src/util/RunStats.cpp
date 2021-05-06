@@ -1,4 +1,5 @@
 #include "chimbuko/util/RunStats.hpp"
+#include <chimbuko/util/serialize.hpp>
 #include <cmath>
 #include <limits>
 #include <sstream>
@@ -29,6 +30,13 @@ void RunStats::State::set_json(const nlohmann::json& state){
   acc = state["acc"];
 }
 
+std::string RunStats::State::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void RunStats::State::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
 
 
 RunStats::RunStats(bool do_accumulate)
@@ -223,6 +231,16 @@ nlohmann::json RunStats::get_json() const {
         {"skewness", skewness()},
         {"kurtosis", kurtosis()}
     };
+}
+
+std::string RunStats::net_serialize() const{
+  return get_state().serialize_cerealpb();
+}
+
+void RunStats::net_deserialize(const std::string &s){
+  State state;
+  state.deserialize_cerealpb(s);
+  set_state(state);
 }
 
 RunStats::RunStatsValues RunStats::get_stat_values() const{

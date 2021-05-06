@@ -81,6 +81,18 @@ namespace chimbuko {
        * @brief Set this object to the values stored in the JSON instance
        */
       void set_json(const nlohmann::json &to);
+
+
+      /**
+       * Serialize into Cereal portable binary format
+       */
+      std::string serialize_cerealpb() const;
+      
+      /**
+       * Serialize from Cereal portable binary format
+       */     
+      void deserialize_cerealpb(const std::string &strstate);
+
     };
 
     /**
@@ -190,6 +202,16 @@ namespace chimbuko {
       stats.set_strstate(s);
       return stats;
     }
+
+    /**
+     * @brief Serialize this class for communication over the network
+     */
+    std::string net_serialize() const;
+
+    /**
+     * @brief Unserialize this class after communication over the network
+     */
+    void net_deserialize(const std::string &s);
 
     /**
      * @brief Add a new value to be included in internal statistics

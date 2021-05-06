@@ -45,30 +45,12 @@ TEST(TestRunStats, TestStateToFromJSON){
 TEST(TestRunStats, serialize){
   RunStats stats;
   for(int i=0;i<100;i++) stats.push(i);
-  RunStats::State stats_state = stats.get_state();
 
-  std::string str_state;
-  {
-    std::stringstream ss;  
-    {
-      cereal::PortableBinaryOutputArchive wr(ss);
-      wr(stats_state);    
-    }
-    str_state = ss.str();
-  }
-  std::cout << str_state.size() << " / " << stats.get_json_state().dump().size() << std::endl;
-
-  RunStats::State stats_state_rd;
-  {
-    std::stringstream ss;
-    ss << str_state;
-    {
-      cereal::PortableBinaryInputArchive rd(ss);
-      rd(stats_state_rd);    
-    }
-  }
+  std::string ser = stats.net_serialize();
+  RunStats stats_rd;
+  stats_rd.net_deserialize(ser);
   
-  EXPECT_EQ(stats_state, stats_state_rd);
+  EXPECT_EQ(stats, stats_rd);
 }
   
 

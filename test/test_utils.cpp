@@ -147,7 +147,10 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
     d.set(1, 1000, 2000, 1234567890, 912345678, 123);
     d2.set(1, 1001, 2000, 1234567890, 912345678, 123);
 
-    AnomalyData c_d(d.get_json().dump());
+    std::string ser = d.net_serialize();
+
+    AnomalyData c_d;
+    c_d.net_deserialize(ser);
 
     EXPECT_EQ(d, c_d);
     EXPECT_TRUE(d==c_d);
@@ -184,7 +187,7 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
                 const int n_anomalies = std::max((int)dist(generator), 0);
                 // std::cout << "Step: " << step << ", n: " << n_anomalies << std::endl;
                 AnomalyData d(app_id, rank_id, step, 0, 0, n_anomalies);
-                anomaly_data.push_back(d.get_json().dump());
+                anomaly_data.push_back(d.net_serialize());
 
                 if (step == 0)
                 {
@@ -204,8 +207,9 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
     for (int i = 0; i < (int)anomaly_data.size(); ++i)
     {
         v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, i](){
-            AnomalyData d(anomaly_data[i]);
-            anomaly_stats[d.get_app()][d.get_rank()]->add(anomaly_data[i]);
+	      AnomalyData d;
+	      d.net_deserialize(anomaly_data[i]);
+	      anomaly_stats[d.get_app()][d.get_rank()]->add(d);
         }));
     }
     for (auto& item: v)
