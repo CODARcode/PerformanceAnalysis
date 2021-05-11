@@ -12,6 +12,78 @@
 
 using namespace chimbuko;
 
+TEST(ADLocalCounterStatisticsTest, TestToFromState){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  ADLocalCounterStatistics::State state = cs.get_state();
+  ADLocalCounterStatistics cs2(0, 0, nullptr);
+  cs2.set_state(state);
+
+  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
+  EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
+  EXPECT_EQ(cs.getStats(), cs2.getStats());
+}
+
+TEST(ADLocalCounterStatisticsTest, TestJSONstate){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  nlohmann::json state = cs.get_json_state();
+
+  EXPECT_EQ(state["step"], 77);
+  EXPECT_EQ(state["counters"].size(), 3);
+
+  bool got_a(false), got_b(false), got_c(false);
+
+  for(int i=0;i<3;i++){
+    if(state["counters"][i]["name"] == "counter1"){
+      got_a = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), a.get_json_state().dump());
+    }else if(state["counters"][i]["name"] == "counter2"){
+      got_b = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), b.get_json_state().dump());
+    }else if(state["counters"][i]["name"] == "counter3"){
+      got_c = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), c.get_json_state().dump());
+    }
+  }
+  EXPECT_EQ(got_a,true);
+  EXPECT_EQ(got_b,true);
+  EXPECT_EQ(got_c,true);
+}
+
+TEST(ADLocalCounterStatisticsTest, TestSerialize){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  std::string ser = cs.net_serialize();
+  ADLocalCounterStatistics cs2(0, 0, nullptr);
+  cs2.net_deserialize(ser);
+
+  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
+  EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
+  EXPECT_EQ(cs.getStats(), cs2.getStats());
+}
+
 
 TEST(ADLocalCounterStatisticsTest, GathersCorrectly){
   std::unordered_set<std::string> which_counters = {"MyCounter1", "MyCounter2"};
@@ -63,7 +135,7 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   GlobalCounterStats glob;
 
   cs.setStats(nm, a);
-  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
+  glob.add_counter_data(cs);
   
   auto gstats = glob.get_stats();
   auto pit = gstats.find(pid);
@@ -72,7 +144,7 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   EXPECT_EQ( pit->second[nm], a );
   
   cs.setStats(nm, b);
-  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
+  glob.add_counter_data(cs);
 
   gstats = glob.get_stats();
   pit = gstats.find(pid);
