@@ -196,14 +196,14 @@ namespace chimbuko {
 
 
     /**
-     * @brief Get the Exec Data Map object
+     * @brief Get the Exec Data Map object ( map of function id -> vector of iterators to ExecData objects )
      *
      * @return const ExecDataMap_t* pointer to ExecDataMap_t object
      */
     const ExecDataMap_t* getExecDataMap() const { return &m_execDataMap; }
 
     /**
-     * @brief Get the Call List Map object
+     * @brief Get the Call List Map object ( map of pid/rid/tid -> list of ExecData objects )
      *
      * @return const CallListMap_p_t* pointer to CallListMap_p_t object
      */

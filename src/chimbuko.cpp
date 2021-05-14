@@ -562,6 +562,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
     m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
 
+    //Flush counters
+    timer.start();
+    delete m_counter->flushCounters();
+    m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
+
     m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
     //Record periodic performance data

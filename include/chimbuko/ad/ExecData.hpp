@@ -181,7 +181,7 @@ public:
     ~CommData_t() {};
 
     /**
-     * @brief return communication type
+     * @brief return communication type ("SEND", "RECV")
      */
     std::string type() const { return m_commType; }
     /**
@@ -203,14 +203,14 @@ public:
     unsigned long tag() const{ return m_tag; }
 
     /**
-     * @brief Set the execution key id (i.e. where this communication event occurs). This is equal to the "id" string associated with a parent ExecData_t object
+     * @brief Set the execution key id (i.e. where this communication event occurs). This is equal to the "id" object associated with a parent ExecData_t object
      *
      * @param key execution id
      */
     void set_exec_key(const eventID &key) { m_execkey = key; }
 
     /**
-     * @brief Get the execution key id. This is equal to the "id" string associated with a parent ExecData_t object
+     * @brief Get the execution key id. This is equal to the "id" object associated with a parent ExecData_t object
      */
     const eventID & get_exec_key() const { return m_execkey; }
 
