@@ -6,6 +6,7 @@
 #endif
 #include "chimbuko/util/commandLineParser.hpp"
 #include "chimbuko/util/string.hpp"
+#include "chimbuko/util/time.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -74,6 +75,13 @@ void client_stop_rpc(const tl::request& req) {
   progressStream << "ProvDB Admin: Received shutdown request from client" << std::endl;
 }
 
+margo_instance_id margo_id;
+
+void margo_dump_rpc(const tl::request& req) {
+  std::string fn = std::string("margo_dump.") + getDateTimeFileExt();
+  progressStream << "ProvDB Admin: margo dump to " << fn << std::endl;
+  margo_state_dump(margo_id, fn.c_str(), 0, nullptr);
+}
 
 
 
@@ -134,6 +142,7 @@ int main(int argc, char** argv) {
 
     //Initialize provider engine
     tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
+    margo_id = engine.get_margo_instance();
 
 #ifdef _PERF_METRIC
     //Get Margo to output profiling information
@@ -155,6 +164,7 @@ int main(int argc, char** argv) {
     engine.define("pserver_hello",pserver_hello).disable_response();
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
     engine.define("stop_server",client_stop_rpc).disable_response();
+    engine.define("margo_dump", margo_dump_rpc).disable_response();
 
     std::string addr = (std::string)engine.self();  //ip and port of admin
 
@@ -213,7 +223,6 @@ int main(int argc, char** argv) {
 	  typedef std::chrono::high_resolution_clock Clock;
 	  Clock::time_point commit_timer_start = Clock::now();
 
-
 	  //Spin quietly until SIGTERM sent
 	  signal(SIGTERM, termSignalHandler);  
 	  progressStream << "ProvDB Admin: main thread waiting for completion" << std::endl;
@@ -223,8 +232,11 @@ int main(int argc, char** argv) {
 	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
 	    if(commit_timer_ms >= args.db_commit_freq){
 	      verboseStream << "ProvDB Admin: committing database to disk" << std::endl;
-	      for(int s=0;s<args.nshards;s++)
+	      for(int s=0;s<args.nshards;s++){		
+		progressStream << "ProvDB Admin: committing shard " << s << std::endl;
 		db[s].commit();
+	      }
+	      progressStream << "ProvDB Admin: committing global db" << std::endl;
 	      glob_db.commit();
 	      commit_timer_start = Clock::now();
 	    }

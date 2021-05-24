@@ -21,6 +21,9 @@ hpserver_LDADD = $(LDADD)
 pshutdown_SOURCES = pshutdown.cpp
 pshutdown_LDADD = $(LDADD)
 
+provdb_dump_state_SOURCES = provdb_dump_state.cpp
+provdb_dump_state_LDADD = $(LDADD)
+
 sstSinker_SOURCES = sstSinker.cpp
 sstSinker_LDADD = $(LDADD)
 
@@ -32,7 +35,7 @@ bpfile_replay_LDADD = $(LDADD)
 
 
 if ENABLE_PROVDB
-bin_PROGRAMS += provdb_admin provdb_query provdb_shutdown provdb_rebuild_ascii
+bin_PROGRAMS += provdb_admin provdb_query provdb_shutdown provdb_rebuild_ascii provdb_dump_state
 
 provdb_admin_SOURCES = provdb_admin.cpp
 provdb_admin_LDADD = $(LDADD)
