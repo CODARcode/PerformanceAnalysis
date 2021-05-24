@@ -28,7 +28,7 @@ namespace chimbuko{
      * @param io_step_tend Timestamp of end of io frame
      */
     ADAnomalyProvenance(const ExecData_t &call,
-			const ADEvent &event_man, //for stack trace
+			const ADEventIDmap &event_man, //for stack trace
 			const ParamInterface &algo_params, //algorithm parameters
 			const ADCounter &counters, //for counters
 			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
@@ -68,7 +68,7 @@ namespace chimbuko{
 				     const unsigned long last_event_ts,
 				     const unsigned int anom_win_size,
 				     const ParamInterface &algo_params,
-				     const ADEvent &event_man,
+				     const ADEventIDmap &event_man,
 				     const ADCounter &counters,
 				     const ADMetadataParser &metadata);
 
@@ -97,7 +97,7 @@ namespace chimbuko{
 				     const unsigned long last_event_ts,
 				     const unsigned int anom_win_size,
 				     const ParamInterface &algo_params,
-				     const ADEvent &event_man,
+				     const ADEventIDmap &event_man,
 				     const ADCounter &counters,
 				     const ADMetadataParser &metadata){
       PerfStats perf;
@@ -110,7 +110,7 @@ namespace chimbuko{
     /**
      * @brief Get the call stack
      */
-    void getStackInformation(const ExecData_t &call, const ADEvent &event_man);
+    void getStackInformation(const ExecData_t &call, const ADEventIDmap &event_man);
 
     /**
      * @brief Get counters in execution window
@@ -120,14 +120,14 @@ namespace chimbuko{
     /**
      * @brief Determine if it is a GPU event, and if so get the context
      */
-    void getGPUeventInfo(const ExecData_t &call, const ADEvent &event_man, const ADMetadataParser &metadata);
+    void getGPUeventInfo(const ExecData_t &call, const ADEventIDmap &event_man, const ADMetadataParser &metadata);
 
     /**
      * @brief Get the execution window
      * @param window_size The number of events either side of the call that are captured
      */
     void getExecutionWindow(const ExecData_t &call,
-			    const ADEvent &event_man,
+			    const ADEventIDmap &event_man,
 			    const int window_size);
 
 

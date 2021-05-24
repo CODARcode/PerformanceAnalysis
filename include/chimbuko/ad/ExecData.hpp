@@ -444,6 +444,14 @@ public:
     void set_label(int label) { m_label = label; }
 
     /**
+     * @brief Set the id
+     *
+     * @param id The id
+     */
+    void set_id(const eventID &id) { m_id = id; }
+
+
+    /**
      * @brief Set the outlier score
      */
     void set_outlier_score(double score) { m_score = score; }

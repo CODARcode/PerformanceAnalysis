@@ -8,7 +8,7 @@ inline nlohmann::json getCallStackEntry(const ExecData_t &call){
   return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry",call.get_entry()}, {"exit", call.get_exit()}, {"event_id", call.get_id().toString()}, {"is_anomaly", call.get_label() == -1} };
 };
 
-void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEvent &event_man){
+void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEventIDmap &event_man){
   //Get stack information
   m_callstack.push_back(getCallStackEntry(call));
   eventID parent = call.get_parent();
@@ -37,7 +37,7 @@ void ADAnomalyProvenance::getWindowCounters(const ExecData_t &call){
   }
 }
 
-void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent &event_man, const ADMetadataParser &metadata){
+void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEventIDmap &event_man, const ADMetadataParser &metadata){
  //Determine if it is a GPU event, and if so get the context
   m_is_gpu_event = metadata.isGPUthread(call.get_tid());
   if(m_is_gpu_event){
@@ -103,7 +103,7 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEvent 
 }
 
 void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
-					     const ADEvent &event_man,
+					     const ADEventIDmap &event_man,
 					     const int window_size){
   m_exec_window["exec_window"] = nlohmann::json::array();
   m_exec_window["comm_window"] = nlohmann::json::array();
@@ -135,7 +135,7 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 
 
 
-ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEvent &event_man, const ParamInterface &algo_params,
+ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEventIDmap &event_man, const ParamInterface &algo_params,
 					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size,
 					 const int io_step,
 					 const unsigned long io_step_tstart, const unsigned long io_step_tend):
@@ -197,7 +197,7 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
 					       const unsigned long last_event_ts,
 					       const unsigned int anom_win_size,
 					       const ParamInterface &algo_params,
-					       const ADEvent &event_man,
+					       const ADEventIDmap &event_man,
 					       const ADCounter &counters,
 					       const ADMetadataParser &metadata){
 
