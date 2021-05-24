@@ -72,17 +72,38 @@ ADParser::~ADParser() {
 
 int ADParser::beginStep(bool verbose) {
   if (m_opened){
-    adios2::StepStatus status = m_reader.BeginStep(adios2::StepMode::Read, float(m_beginstep_timeout));
-    if (status == adios2::StepStatus::OK){
-      m_current_step++;
-    }else{
-      if(status == adios2::StepStatus::NotReady){ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out waiting for next step to be ready\n"); }
-      else if(status == adios2::StepStatus::EndOfStream){ headProgressStream(m_rank) << "ADParser::beginStep rank 0 detected end of data stream" << std::endl; }
-      else{ recoverable_error("ADParser::beginStep : ADIOS2::BeginStep returned an unknown error\n"); }
-      m_status = false;
-      m_current_step = -1;
+    typedef std::chrono::high_resolution_clock Clock;
+    auto start = Clock::now();
+
+    while(1){
+      adios2::StepStatus status = m_reader.BeginStep(adios2::StepMode::Read, 0.0f);
+      if (status == adios2::StepStatus::OK){
+	m_current_step++;
+	break;
+      }else if(status == adios2::StepStatus::NotReady){ 
+	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+	if(elapsed > m_beginstep_timeout * 1000){
+	  recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out waiting for next step to be ready\n"); 
+	  m_status = false;
+	  m_current_step = -1;
+	  break;
+	}else{
+	  std::this_thread::sleep_for (std::chrono::seconds(1));
+	}
+      }else if(status == adios2::StepStatus::EndOfStream){ 
+	headProgressStream(m_rank) << "ADParser::beginStep rank 0 detected end of data stream" << std::endl; 
+	m_status = false;
+	m_current_step = -1;
+	break;
+      }else{
+	recoverable_error("ADParser::beginStep : ADIOS2::BeginStep returned an unknown error\n"); 
+	m_status = false;
+	m_current_step = -1;
+	break;
+      }
     }
   }
+
   return m_current_step;
 }
 

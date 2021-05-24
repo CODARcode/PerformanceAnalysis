@@ -178,6 +178,47 @@ TEST(ADParserTestbeginStep, stepStartEndOK){
 }
 
 
+TEST(ADParserTestbeginStep, stepStartTimeoutWorks){
+  int step_idx = 0;
+  double time = 0;
+  bool status = true;
+  bool exc = false;
+  try{
+    SSTrw rw;
+
+    std::thread wthr([&](){
+		       rw.openWriter();
+		       //rw.wr.BeginStep();
+		       //rw.wr.EndStep();
+		       rw.closeWriter();
+		     });
+
+    std::thread rthr([&](){
+		       rw.openReader();
+		       rw.parser->setBeginStepTimeout(5);
+		       typedef std::chrono::high_resolution_clock Clock;
+		       auto start = Clock::now();
+		       step_idx = rw.parser->beginStep(true);
+		       time = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+		       status = rw.parser->getStatus();
+		       rw.closeReader();
+		     });
+  
+    rthr.join();
+    wthr.join();
+  }catch(std::exception &e){
+    std::cout << "Caught exception:\n" << e.what() << std::endl;
+    exc = true;
+  }
+  EXPECT_EQ(exc, false);
+  EXPECT_EQ(step_idx, -1);
+  EXPECT_GT(time, 4999);
+  EXPECT_EQ(status, false);
+}
+
+
+
+
 
 TEST(ADParserTestAttributeIO, funcAttributeCommunicated){
   bool err = false;
