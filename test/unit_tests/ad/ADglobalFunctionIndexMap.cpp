@@ -40,7 +40,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
       try{
-	ADNetClient net_client;
+	ADZMQNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
 	ADglobalFunctionIndexMap local_map(pid, &net_client);
@@ -113,7 +113,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
       try{
-	ADNetClient net_client;
+	ADZMQNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
 	ADglobalFunctionIndexMap local_map(pid, &net_client);
@@ -196,7 +196,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
       try{
-	ADNetClient net_client;
+	ADZMQNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
 	ADglobalFunctionIndexMap local_map(pid, &net_client);

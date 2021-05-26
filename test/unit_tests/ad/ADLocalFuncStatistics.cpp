@@ -102,7 +102,7 @@ TEST(ADLocalFuncStatisticsTest, TestUpdateGlobalStatisticsWithPS){
   std::thread out_thr([&]{
       std::cout << "AD thread waiting to connect" << std::endl;
       try{
-	ADNetClient net_client;
+	ADZMQNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	std::cout << "AD thread updating local stats" << std::endl;
 	loc.updateGlobalStatistics(net_client);

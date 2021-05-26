@@ -193,7 +193,7 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  barrier2.wait();
 			  std::cout << "AD thread updating local stats" << std::endl;
@@ -255,7 +255,7 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  cs.setStats(nm, a);

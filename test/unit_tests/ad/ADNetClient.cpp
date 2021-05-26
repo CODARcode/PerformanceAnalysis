@@ -36,7 +36,7 @@ TEST(ADNetClientTestConnectPS, ConnectsMock){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
@@ -63,7 +63,7 @@ TEST(ADNetClientTestConnectPS, ConnectionTimeoutWorks){
 #elif defined(_USE_ZMQNET)
   std::string sname = "tcp://localhost:55599"; //this should be on a different port than other tests as it is apparently left floating in the ether
 
-  ADNetClient net_client;
+  ADZMQNetClient net_client;
   net_client.setRecvTimeout(100); //100ms
   net_client.connect_ps(0, 0, sname);
   
@@ -100,7 +100,7 @@ TEST(ADNetClientTestConnectPS, ConnectsZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
@@ -165,7 +165,7 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  Message msg;
@@ -247,7 +247,7 @@ TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.setRecvTimeout(1000);
 			  net_client.connect_ps(0, 0, sname);
 
@@ -327,7 +327,7 @@ TEST(ADNetClient, TestRemoteStop){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.setRecvTimeout(1000);
 			  net_client.connect_ps(0, 0, sname);
 

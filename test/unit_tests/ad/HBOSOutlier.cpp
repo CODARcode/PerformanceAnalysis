@@ -242,7 +242,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
