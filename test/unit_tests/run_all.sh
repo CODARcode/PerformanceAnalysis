@@ -33,3 +33,4 @@ set -o pipefail
 ./pserver/global_anomaly_stats
 ./net/ZMQMENet
 ./net/ZMQNet
+./net/LocalNet

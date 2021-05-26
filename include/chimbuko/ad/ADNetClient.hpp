@@ -5,6 +5,7 @@
 #else
 #include "chimbuko/net/zmq_net.hpp"
 #endif
+#include "chimbuko/net/local_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 
@@ -168,6 +169,8 @@ namespace chimbuko{
      */
     void disconnect_ps() override;
 
+    using ADNetClient::send_and_receive;
+
     /**
      * @brief Send a message to the parameter server and receive the response in a serialized format
      * @param msg The message
@@ -183,6 +186,35 @@ namespace chimbuko{
 #endif
 
   
+  /**
+   * @brief Implementation of ADNetClient for intraprocess communications
+   */
+  class ADLocalNetClient: public ADNetClient{
+  public:
+    /**
+     * @brief connect to the parameter server
+     * 
+     * @param rank Ignored
+     * @param srank Ignored
+     * @param sname Ignored
+     */
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
+    /**
+     * @brief disconnect from the connected parameter server
+     * 
+     * Called automatically by destructor if not previously called
+     */
+    void disconnect_ps() override;
+
+    using ADNetClient::send_and_receive;
+    
+    /**
+     * @brief Send a message to the parameter server and receive the response in a serialized format
+     * @param msg The message
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
+     */       
+    std::string send_and_receive(const Message &msg) const override;
+  };
 
 
 

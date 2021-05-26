@@ -359,3 +359,40 @@ TEST(ADNetClient, TestRemoteStop){
 
 
 
+
+TEST(ADLocalNetClientTest, SendRecv){  
+  ADLocalNetClient client;
+  bool err = false;
+  try{
+    client.connect_ps(1,2,"arg");
+  }catch(const std::exception &e){
+    err = true;
+  }
+  EXPECT_EQ(err,true);
+  EXPECT_EQ(client.use_ps(),false);
+
+  err = false;
+  LocalNet net;
+  net.add_payload(new NetPayloadBounceback);
+  
+  try{
+    client.connect_ps(1,2,"arg");
+  }catch(const std::exception &e){
+    err = true;
+  }
+  
+  EXPECT_EQ(err, false);
+  EXPECT_EQ(client.use_ps(), true);
+  
+  Message msg, msg_reply;
+  msg.set_info(0,0,REQ_ECHO,CMD);
+  msg.set_msg("Hello!!");
+
+  client.send_and_receive(msg_reply, msg);
+
+  EXPECT_EQ(msg_reply.buf(), "Hello!!");
+
+  client.disconnect_ps();
+  EXPECT_EQ(client.use_ps(), false);
+}
+

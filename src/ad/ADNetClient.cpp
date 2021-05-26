@@ -231,3 +231,34 @@ std::string ADMPINetClient::send_and_receive(const Message &msg) const{
 }
   
 #endif
+
+
+
+void ADLocalNetClient::connect_ps(int rank, int srank, std::string sname){
+  if(LocalNet::globalInstance() == nullptr) fatal_error("No LocalNet instance exists");
+  m_use_ps = true;
+}
+
+
+void ADLocalNetClient::disconnect_ps(){
+  m_use_ps = false;
+}
+
+
+std::string ADLocalNetClient::send_and_receive(const Message &msg) const{  
+  if(!m_use_ps) fatal_error("User should call connect_ps prior to sending/receiving messages");
+
+  PerfTimer timer;    
+  std::string send_msg = msg.data();
+  std::string recv_msg = LocalNet::send_and_receive(send_msg);
+
+#ifdef _PERF_METRIC
+  if(m_perf){
+    m_perf->add("net_client_send_recv_time_ms", timer.elapsed_ms());
+    m_perf->add("net_client_send_bytes", send_msg.size()); //1 char = 1 byte
+    m_perf->add("net_client_recv_bytes", recv_msg.size());
+  }
+#endif
+
+  return recv_msg;
+}
