@@ -83,7 +83,7 @@ int ADParser::beginStep(bool verbose) {
       }else if(status == adios2::StepStatus::NotReady){ 
 	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
 	if(elapsed > m_beginstep_timeout * 1000){
-	  recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out waiting for next step to be ready\n"); 
+	  recoverable_error("ADParser::beginStep : ADIOS2::BeginStep timed out after " + std::to_string(elapsed) + " ms waiting for next step to be ready\n"); 
 	  m_status = false;
 	  m_current_step = -1;
 	  break;

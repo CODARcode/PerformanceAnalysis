@@ -110,7 +110,7 @@ if (( ${use_provdb} == 1 )); then
     #Enable better error reporting from Mercury
     export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
 
-    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} 2>&1 | tee ${log_dir}/provdb.log &
+    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} -db_commit_freq 0 2>&1 | tee ${log_dir}/provdb.log &
     provdb_pid=$!
 
     start_time=$SECONDS
@@ -133,6 +133,16 @@ else
     echo "Chimbuko Services: Provenance database is not in use, provenance data will be stored in ASCII format at ${provdb_writedir}"
     extra_args+=" -prov_outputpath ${provdb_writedir}"
     ps_extra_args+=" -prov_outputpath ${provdb_writedir}"
+fi
+
+#Committer
+if (( ${use_provdb} == 1 )); then
+    echo "==========================================="
+    echo "Instantiating committer"
+    echo "==========================================="
+    prov_add=$(cat ${provdb_dir}/provider.address)
+    provdb_commit "${prov_add}" ${provdb_nshards} 10000 2>&1 | tee ${log_dir}/committer.log &
+    sleep 3
 fi
 
 #Visualization

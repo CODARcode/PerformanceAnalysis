@@ -20,7 +20,7 @@
 
 #include <spdlog/spdlog.h>
 #include "chimbuko/verbose.hpp"
-
+#include <thallium/serialization/stl/string.hpp>
 
 namespace tl = thallium;
 
@@ -38,6 +38,9 @@ bool a_client_has_connected = false; //has an AD rank previously connected?
 
 bool pserver_connected = false; //is the pserver connected
 bool pserver_has_connected = false; //did the pserver ever connect
+
+bool committer_connected = false; //is the committer connected?
+bool committer_has_connected = false; //did the committer ever connect?
 
 //Allows a client to register with the provider
 void client_hello(const tl::request& req, const int rank) {
@@ -66,6 +69,33 @@ void pserver_goodbye(const tl::request& req) {
   pserver_connected = false;
   progressStream << "ProvDB Admin: Pserver has said goodbye" << std::endl;
 }
+
+//Allows the committer to register with the provider
+void committer_hello(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  committer_connected = true;
+  committer_has_connected = true;
+  progressStream << "ProvDB Admin: Committer has said hello" << std::endl;
+}
+//Allows the committer to deregister from the provider
+void committer_goodbye(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  committer_connected = false;
+  progressStream << "ProvDB Admin: Committer has said goodbye" << std::endl;
+}
+
+//Get the connection status as a string of format 
+//"<current clients> <a client has connected (0/1)> <pserver connected (0/1)> <pserver has connected (0/1)> <committer connected (0/1)> <commiter has connected (0/1)>"
+void connection_status(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  std::stringstream ss;
+  ss << connected.size() << " " << int(a_client_has_connected) << " " 
+     << int(pserver_connected) << " " << int(pserver_has_connected) << " "
+     << int(committer_connected) << " " << int(committer_has_connected);
+  req.respond(ss.str());
+}
+
+
 
 bool cmd_shutdown = false; //true if a client has requested that the server shut down
 
@@ -120,7 +150,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
     addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000)");
+    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -140,8 +170,13 @@ int main(int argc, char** argv) {
 
     progressStream << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
 
+    //Disable loopback so that RPC calls from this process are forced to go through the net interface
+    hg_init_info info;
+    memset(&info, 0, sizeof(info));
+    info.no_loopback = HG_TRUE;
+
     //Initialize provider engine
-    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads); 
+    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads, &info); 
     margo_id = engine.get_margo_instance();
 
 #ifdef _PERF_METRIC
@@ -163,8 +198,12 @@ int main(int argc, char** argv) {
     engine.define("client_goodbye",client_goodbye).disable_response();
     engine.define("pserver_hello",pserver_hello).disable_response();
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
+    engine.define("committer_hello",committer_hello).disable_response();
+    engine.define("committer_goodbye",committer_goodbye).disable_response();
     engine.define("stop_server",client_stop_rpc).disable_response();
     engine.define("margo_dump", margo_dump_rpc).disable_response();
+    engine.define("connection_status", connection_status);
+
 
     std::string addr = (std::string)engine.self();  //ip and port of admin
 
@@ -230,7 +269,7 @@ int main(int argc, char** argv) {
 	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
 
 	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
-	    if(commit_timer_ms >= args.db_commit_freq){
+	    if(args.db_commit_freq > 0 && commit_timer_ms >= args.db_commit_freq){
 	      verboseStream << "ProvDB Admin: committing database to disk" << std::endl;
 	      for(int s=0;s<args.nshards;s++){		
 		progressStream << "ProvDB Admin: committing shard " << s << std::endl;
@@ -248,7 +287,8 @@ int main(int argc, char** argv) {
 	    if(
 	       (args.autoshutdown || cmd_shutdown)  && 
 	       ( a_client_has_connected && connected.size() == 0 ) &&
-	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) )
+	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
+	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
 	       ){
 	      progressStream << "ProvDB Admin: detected all clients disconnected, shutting down" << std::endl;
 	      break;
