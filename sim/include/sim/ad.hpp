@@ -5,6 +5,7 @@
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/ad/ADCounter.hpp>
+#include<map>
 
 namespace chimbuko_sim{
   using namespace chimbuko;
@@ -13,32 +14,41 @@ namespace chimbuko_sim{
 
   //An object that represents a rank of the AD
   class ADsim{
-    std::unordered_map<unsigned long, std::list<ExecData_t> > m_all_execs; //map of thread to execs, never flushed
-    std::unordered_map<eventID, CallListIterator_t> m_eventid_map; //map from event index to iterator ; never flushed
-    std::list<CallListIterator_t> m_step_exec_its; //iterators to events on this io step; flushed at end of step
-    std::unordered_map<unsigned long, std::vector<CallListIterator_t>> m_step_func_exec_its; //map of function id to iterators on this io step; flushed at end of step
+    std::unordered_map<unsigned long, std::list<ExecData_t> > m_all_execs; /**< Map of thread to execs */
+    std::unordered_map<eventID, CallListIterator_t> m_eventid_map; /**< Map from event index to iterator */
+    std::map<unsigned long, std::list<CallListIterator_t> > m_step_execs; /**< Events in any given step */
 
-    bool m_step_is_open; /**< Is an io step currently open? */
-    int m_step;
+    unsigned long m_largest_step; /**< Largest step index of an inserted function execution thus far encountered */
+    unsigned long m_program_start;
+    unsigned long m_step_freq; /**< Frequency of IO steps */
+
     int m_window_size;
     int m_pid;
     int m_rid;
-    unsigned long m_step_start_time;
     ADNormalEventProvenance m_normal_events;
-    ADCounter m_counters;
     ADMetadataParser m_metadata;
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
   public:
-    void init(int window_size, int pid, int rid);
+    /** 
+     * @brief Initialize the AD simulator
+     * @param window_size The number of events around an anomaly that are recorded in the provDB
+     * @param pid The program index
+     * @param rid The rank index
+     * @param program_start Timestamp of program start
+     * @param step_freq Frequency at which IO steps are to occur
+     */
+    void init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq);
 
     /** 
      * @brief Instantiate the AD simulator
      * @param window_size The number of events around an anomaly that are recorded in the provDB
      * @param pid The program index
      * @param rid The rank index
+     * @param program_start Timestamp of program start
+     * @param step_freq Frequency at which IO steps are to occur
      */
-    ADsim(int window_size, int pid, int rid): ADsim(){
-      init(window_size, pid, rid);
+    ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq): ADsim(){
+      init(window_size, pid, rid, program_start, step_freq);
     }
     ADsim(){}
 
@@ -101,16 +111,26 @@ namespace chimbuko_sim{
     void bindCPUparentGPUkernel(CallListIterator_t cpu_parent, CallListIterator_t gpu_kern);
 
     /**
-     * @brief Begin an IO step at the provided time
+     * @brief Bind a parent and child execution
      */
-    void beginStep(const unsigned long step_start_time);
+    static void bindParentChild(CallListIterator_t parent, CallListIterator_t child);
 
     /**
-     * @brief End the IO step at the provided time
+     * @brief Analyze the given IO step, sending the data to the pserver/provdb
      * 
      * When this is called the executions added since the start of the step will be gathered and analyzed, and the data send to the pserver/provdb
      */
-    void endStep(const unsigned long step_end_time);
+    void step(const unsigned long step);
+
+    /**
+     * @brief Get the largest step index in the trace
+     */
+    unsigned long largest_step() const{ return m_largest_step; }
+
+    /**
+     * @brief Get the number of executions in a given step
+     */
+    size_t nStepExecs(unsigned long step) const;
   };
 
   /**
