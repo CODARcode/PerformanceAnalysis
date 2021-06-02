@@ -94,6 +94,10 @@ namespace chimbuko {
      */
     bool use_ps() const { return m_outlier->use_ps(); }
 
+#ifndef ENABLE_PROVDB
+#error "Provdb flag not set"
+#endif
+
 #ifdef ENABLE_PROVDB
     /**
      * @brief Whether the provenance database is in use

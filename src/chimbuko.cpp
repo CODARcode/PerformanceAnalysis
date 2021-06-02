@@ -61,7 +61,7 @@ void ChimbukoParams::print() const{
 }
 
 
-Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
+Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr), //m_thrnet_client(nullptr),
 #ifdef ENABLE_PROVDB
 		      m_provdb_client(nullptr),
 #endif
@@ -172,13 +172,18 @@ void Chimbuko::init_net_client(){
     }
 
     m_net_client = new ADNetClient;
+    //m_thrnet_client = new ADThreadNetClient;
     m_net_client->linkPerf(&m_perf);
+    //m_thrnet_client->linkPerf(&m_perf);
 #ifdef _USE_MPINET
     m_net_client->connect_ps(m_params.rank);
+    //m_thrnet_client->connect_ps(m_params.rank);
 #else
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
+    //m_thrnet_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
+    //if(!m_thrnet_client->use_ps()) fatal_error("Could not connect to parameter server");
 
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
   }
@@ -541,19 +546,21 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
 
     if(m_net_client && m_net_client->use_ps()){
+    //if(m_thrnet_client && m_thrnet_client->use_ps()) {
+
       //Gather function profile and anomaly statistics and send to the pserver
       timer.start();
       ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
-      prof_stats.updateGlobalStatistics(*m_net_client);
+      prof_stats.updateGlobalStatistics(*m_net_client, m_params.rank, m_params.pserver_addr);
       m_perf.add("ad_run_gather_update_profile_stats_time_ms", timer.elapsed_ms());
 
       //Gather counter statistics and send to pserver
       timer.start();
       ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
       count_stats.gatherStatistics(m_counter->getCountersByIndex());
-      count_stats.updateGlobalStatistics(*m_net_client);
+      count_stats.updateGlobalStatistics(*m_net_client, m_params.rank, m_params.pserver_addr);
       m_perf.add("ad_run_gather_update_counter_stats_time_ms", timer.elapsed_ms());
     }
 

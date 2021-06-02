@@ -4,6 +4,10 @@
 #include "chimbuko/util/commandLineParser.hpp"
 #include "chimbuko/util/string.hpp"
 
+#ifndef ENABLE_PROVDB
+#error "Provdb flag not set"
+#endif
+
 using namespace chimbuko;
 using namespace std::chrono;
 

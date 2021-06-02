@@ -70,13 +70,13 @@ ADLocalCounterStatistics::State ADLocalCounterStatistics::get_state() const{
 }
 
 
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const{
   //nlohmann::json state = get_json_state();
   State state = get_state();
   PerfTimer timer;
   timer.start();
   //auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
-  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
+  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step, rank, pserver_addr);
   
   if(m_perf != nullptr){
     m_perf->add("counter_stats_stream_update_ms", timer.elapsed_ms());
@@ -86,18 +86,23 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNet
   return msgsz;
 }
 
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
+
+  ADThreadNetClient thrnet;
+  thrnet.connect_ps(rank, 0, pserver_addr);
   
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::COUNTER_STATS, step);
   msg.set_msg(l_stats);
   
   size_t sent_sz = msg.size();
-  std::string strmsg = net_client.send_and_receive(msg);
-  size_t recv_sz = strmsg.size();
-  
+  //std::string strmsg = net_client.send_and_receive(msg);
+  thrnet.async_send(msg);
+  size_t recv_sz = msg.size(); //strmsg.size();
+
+  thrnet.disconnect_ps();  
   return std::make_pair(sent_sz, recv_sz);
 }
 

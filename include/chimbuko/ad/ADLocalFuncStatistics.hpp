@@ -5,6 +5,7 @@
 #include <chimbuko/ad/AnomalyData.hpp>
 #include <chimbuko/util/Anomalies.hpp>
 #include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/chimbuko.hpp"
 
 namespace chimbuko{
 
@@ -75,7 +76,7 @@ namespace chimbuko{
      *
      * The message communicated is the string dump of the output of get_json_state()
      */
-    std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client) const;
+    std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const;
 
     
     /**
@@ -107,7 +108,7 @@ namespace chimbuko{
      * @param step step (or frame) number
      * @return std::pair<size_t, size_t> [sent, recv] message size
      */
-    static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step);
+    static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr);
 
     int m_step; /**< io step */
     unsigned long m_rank; /**< Rank*/
