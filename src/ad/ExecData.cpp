@@ -1,4 +1,5 @@
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/util/error.hpp"
 
 using namespace chimbuko;
 
@@ -22,18 +23,34 @@ ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
     m_parent = eventID::root();
 }
 
-ExecData_t::~ExecData_t() {
+ExecData_t::ExecData_t(const eventID &id, unsigned long pid, unsigned long rid, unsigned long tid, unsigned long fid, 
+		       const std::string &func_name, long entry, long exit) : ExecData_t()
+{
+    m_id = id;
+    m_pid = pid;
+    m_rid = rid;
+    m_tid = tid;
+    m_fid = fid;
+    m_entry = entry;
+    m_parent = eventID::root();
+    m_funcname = func_name;
+    if(exit != -1) update_exit(exit);
+}
 
+ExecData_t::~ExecData_t() {}
+
+void ExecData_t::update_exit(unsigned long exit){
+  m_exit = exit;
+  m_runtime = m_exit - m_entry;
+  m_exclusive += m_runtime;
 }
 
 bool ExecData_t::update_exit(const Event_t& ev)
 {
-    if (m_fid != ev.fid() || m_entry > (long)ev.ts())
-        return false;
-    m_exit = ev.ts();
-    m_runtime = m_exit - m_entry;
-    m_exclusive += m_runtime;
-    return true;
+  if (m_fid != ev.fid() || m_entry > (long)ev.ts())
+    return false;
+  update_exit(ev.ts());
+  return true;
 }
 
 bool ExecData_t::add_message(const CommData_t& comm, ListEnd end) {
@@ -285,6 +302,19 @@ CommData_t::CommData_t(const Event_t& ev, const std::string &commType)
     m_ts = ev.ts();
 }
 
+CommData_t::CommData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+		       unsigned long partner, unsigned long bytes, unsigned long tag,
+		       unsigned long timestamp, const std::string &commType)
+  : m_commType(commType), m_pid(pid), m_rid(rid), m_tid(tid), m_bytes(bytes), m_tag(tag), m_ts(timestamp){
+  if (m_commType.compare("SEND") == 0) {
+    m_src = m_rid;
+    m_tar = partner;
+  } else if (m_commType.compare("RECV") == 0){
+    m_src = partner;
+    m_tar = m_rid;
+  }
+}
+
 bool CommData_t::is_same(const CommData_t& other) const
 {
     if (!(m_commType == other.m_commType)) return false;
@@ -342,6 +372,21 @@ CounterData_t::CounterData_t(const Event_t& ev, const std::string &counter_name)
   m_cid(ev.counter_id()),
   m_value(ev.counter_value()),
   m_ts(ev.ts()){}
+
+
+CounterData_t::CounterData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+			     unsigned long counter_id, const std::string &counter_name, 
+			     unsigned long counter_value,
+			     unsigned long timestamp):
+  m_countername(counter_name),
+  m_pid(pid),
+  m_rid(rid),
+  m_tid(tid),
+  m_cid(counter_id),
+  m_value(counter_value),
+  m_ts(timestamp){}
+
+
 
 nlohmann::json CounterData_t::get_json() const{
   return {

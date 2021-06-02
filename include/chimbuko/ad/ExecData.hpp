@@ -174,6 +174,22 @@ public:
      * @param commType communication type (e.g. SEND/RECV)
      */
     CommData_t(const Event_t& ev, const std::string &commType);
+
+    /**
+     * @brief Construct a new CommData_t object by values
+     * @param pid Program index
+     * @param rid Rank index
+     * @param tid Thread index     
+     * @param partner The other rank involved in the communication
+     * @param bytes The number of bytes sent/received
+     * @param tag The tag of the event
+     * @param timestamp The time of the counter
+     * @param commType Either "SEND" or "RECV" depending on the comm type
+     */
+    CommData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+	       unsigned long partner, unsigned long bytes, unsigned long tag,
+	       unsigned long timestamp, const std::string &commType);    
+
     /**
      * @brief Destroy the CommData_t object
      *
@@ -265,6 +281,21 @@ private:
     CounterData_t(const Event_t& ev, const std::string &counter_name);
 
     /**
+     * @brief Construct a new CounterData_t object by values
+     * @param pid Program index
+     * @param rid Rank index
+     * @param tid Thread index
+     * @param counter_id Counter index
+     * @param counter_name The name of the counter (should match the counter_id through the name map)
+     * @param counter_value The value of the counter
+     * @param timestamp The time of the counter
+     */
+    CounterData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+		  unsigned long counter_id, const std::string &counter_name,
+		  unsigned long counter_value,
+		  unsigned long timestamp);
+
+    /**
      * @brief Get the json object of this communication data
      */
     nlohmann::json get_json() const;
@@ -347,6 +378,24 @@ public:
      * @param ev constant reference to a Event_t object
      */
     ExecData_t(const Event_t& ev);
+
+  
+    /**
+     * @brief Construct a new ExecData_t object by values
+     * @param id The id associated with the instance
+     * @param pid Program index
+     * @param rid Rank index
+     * @param tid Thread index
+     * @param fid Function index
+     * @param func_name The name of the function (should match the function index through the name map)
+     * @param entry Timestamp of function start (entry)
+     * @param exit Timestamp of function exit. A value of -1 (default) indicates that the exit is not yet known. It should be set later using update_exit
+     */
+    ExecData_t(const eventID &id, 
+	       unsigned long pid, unsigned long rid, unsigned long tid, 
+	       unsigned long fid, const std::string &func_name, 
+	       long entry, long exit = -1);
+
     /**
      * @brief Destroy the ExecData_t object
      *
@@ -467,7 +516,7 @@ public:
      *
      * @param funcname function name
      */
-    void set_funcname(std::string funcname) { m_funcname = funcname; }
+    void set_funcname(const std::string &funcname) { m_funcname = funcname; }
 
     /**
      * @brief update exit event of this execution
@@ -477,6 +526,15 @@ public:
      * @return false incorrect exit event
      */
     bool update_exit(const Event_t& ev);
+
+    /**
+     * @brief update exit event of this execution
+     *
+     * @param exit timestamp
+     */
+    void update_exit(unsigned long exit);
+
+
     /**
      * @brief update exclusive running time
      *
