@@ -18,6 +18,7 @@ namespace chimbuko_sim{
     std::list<CallListIterator_t> m_step_exec_its; //iterators to events on this io step; flushed at end of step
     std::unordered_map<unsigned long, std::vector<CallListIterator_t>> m_step_func_exec_its; //map of function id to iterators on this io step; flushed at end of step
 
+    bool m_step_is_open; /**< Is an io step currently open? */
     int m_step;
     int m_window_size;
     int m_pid;
@@ -30,6 +31,12 @@ namespace chimbuko_sim{
   public:
     void init(int window_size, int pid, int rid);
 
+    /** 
+     * @brief Instantiate the AD simulator
+     * @param window_size The number of events around an anomaly that are recorded in the provDB
+     * @param pid The program index
+     * @param rid The rank index
+     */
     ADsim(int window_size, int pid, int rid): ADsim(){
       init(window_size, pid, rid);
     }
@@ -37,7 +44,17 @@ namespace chimbuko_sim{
 
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
 
-    //Add a function execution on a specific thread
+    /**
+     * @brief Add a function execution on a specific thread
+     * @param thread The thread index
+     * @param func_name The name of the function
+     * @param start The timestamp of the function start
+     * @param runtime The function duration
+     * @param is_anomaly Tag the function as anomalous
+     * @param outlier_score If anomalous, provide a score
+     *
+     * The function end time (start + runtime) must be within the current IO step's time window
+     */
     CallListIterator_t addExec(const int thread,
 			       const std::string &func_name,
 			       unsigned long start,
@@ -45,31 +62,60 @@ namespace chimbuko_sim{
 			       bool is_anomaly,
 			       double outlier_score = 0.);
 
-    //Attach a counter to an execution t_delta us after the start of the execution
+    /**
+     * @brief Attach a counter to an execution t_delta us after the start of the execution
+     * @param counter_name The counter name
+     * @param value The counter value
+     * @param t_delta The time after the start of the function execution at which the counter occurs
+     * @param to The function execution
+     */
     void attachCounter(const std::string &counter_name,
 		       unsigned long value,
 		       long t_delta,
 		       CallListIterator_t to);
 
-    //Attach a communication event to an execution t_delta us after the start of the execution
-    //partner_rank is the origin rank of a receive or the destination rank of a send
+    /**
+     * @brief Attach a communication event to an execution t_delta us after the start of the execution
+     * @param type The type of communication
+     * @param partner_rank The origin rank of a receive or the destination rank of a send
+     * @param bytes The number of bytes communicated
+     * @param t_delta The time after the start of the function execution at which the counter occurs
+     * @param to The function execution
+     */     
     void attachComm(CommType type,
 		    unsigned long partner_rank,
 		    unsigned long bytes,
 		    long t_delta,
 		    CallListIterator_t to);
    
-    //Register a thread index as corresponding to a GPU thread, allowing population of GPU information in provenance data
+    /**
+     * @brief Register a thread index as corresponding to a GPU thread, allowing population of GPU information in provenance data
+     */
     void registerGPUthread(const int tid);
     
-    //Register a GPU kernel event as originating from a cpu event
+    /**
+     * @brief Register a GPU kernel event as originating from a cpu event
+     * @param cpu_parent The parent execution
+     * @param gpu_kern The child GPU kernel execution
+     */
     void bindCPUparentGPUkernel(CallListIterator_t cpu_parent, CallListIterator_t gpu_kern);
 
+    /**
+     * @brief Begin an IO step at the provided time
+     */
     void beginStep(const unsigned long step_start_time);
 
+    /**
+     * @brief End the IO step at the provided time
+     * 
+     * When this is called the executions added since the start of the step will be gathered and analyzed, and the data send to the pserver/provdb
+     */
     void endStep(const unsigned long step_end_time);
   };
 
+  /**
+   * @brief Pretty print a function execution
+   */
   inline std::ostream & operator<<(std::ostream &os, const CallListIterator_t it){
     os << it->get_json(true, true).dump(4);
     return os;

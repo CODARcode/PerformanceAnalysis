@@ -3,6 +3,7 @@
 #include<chimbuko/ad/ADLocalCounterStatistics.hpp>
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADAnomalyProvenance.hpp>
+#include<chimbuko/util/error.hpp>
 
 #include<sim/ad.hpp>
 #include<sim/provdb.hpp>
@@ -23,6 +24,7 @@ void ADsim::init(int window_size, int pid, int rid){
   m_pdb_client->setEnableHandshake(false);
   m_pdb_client->connect(getProvDB().getAddr(), getProvDB().getNshards());
   m_counters.linkCounterMap(getCidxManager().getCounterMap());
+  m_step_is_open = false;
 }
 
 CallListIterator_t ADsim::addExec(const int thread,
@@ -31,6 +33,9 @@ CallListIterator_t ADsim::addExec(const int thread,
 				  unsigned long runtime,
 				  bool is_anomaly,
 				  double outlier_score){
+  if(!m_step_is_open) fatal_error("No step is currently open");
+  if(start + runtime < m_step_start_time) fatal_error("Function end time is not within the current step");
+
   auto it = funcIdxMap().find(func_name);
   if(it == funcIdxMap().end()) assert(0);
   unsigned long func_id = it->second;
@@ -107,6 +112,7 @@ void ADsim::bindCPUparentGPUkernel(CallListIterator_t cpu_parent, CallListIterat
 
 void ADsim::beginStep(const unsigned long step_start_time){
   m_step_start_time = step_start_time;
+  m_step_is_open = true;
 }
 
 void ADsim::endStep(const unsigned long step_end_time){
@@ -115,6 +121,8 @@ void ADsim::endStep(const unsigned long step_end_time){
 
   int nanom=0, nnorm=0;
   for(const auto &exec_it : m_step_exec_its){
+    if(exec_it->get_exit() > step_end_time) fatal_error("Event " + exec_it->get_json(true, true).dump(4) + " has an exit time later than the end of the current step, " + std::to_string(step_end_time) );
+
     if(exec_it->get_label() == -1){ anom.insert(exec_it, Anomalies::EventType::Outlier); nanom++; }
     else if(anom.nFuncEvents(exec_it->get_fid(), Anomalies::EventType::Normal) == 0){ anom.insert(exec_it, Anomalies::EventType::Normal); nnorm++; }
   }
@@ -157,4 +165,5 @@ void ADsim::endStep(const unsigned long step_end_time){
   delete m_counters.flushCounters();
 
   m_step++;
+  m_step_is_open = false;
 }
