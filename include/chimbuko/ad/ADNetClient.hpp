@@ -153,7 +153,7 @@ namespace chimbuko{
     ClientActionWait(size_t wait_ms): wait_ms(wait_ms){}
 
     void perform(ADNetClient &client){
-      std::cout << "Worker is waiting for "<< wait_ms << "ms" << std::endl;
+      //std::cout << "Worker is waiting for "<< wait_ms << "ms" << std::endl;
       std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
     }
     bool do_delete() const{ return true; }
@@ -169,7 +169,7 @@ namespace chimbuko{
     ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
 
     void perform(ADNetClient &client){
-      std::cout << "Performing blocking send and receive" << std::endl;
+      //std::cout << "Performing blocking send and receive" << std::endl;
       client.send_and_receive(*recv, *send);
       complete = true;
       cv.notify_one();
@@ -189,12 +189,23 @@ namespace chimbuko{
     ClientActionAsyncSend(const Message &send): send(send){}
 
     void perform(ADNetClient &client){
-      std::cout << "Performing non-blocking send and receive" << std::endl;
+      //std::cout << "Performing non-blocking send and receive" << std::endl;
       Message recv;
       client.send_and_receive(recv, send);
-      std::cout << "Non-blocking send returned " << recv.buf() << std::endl;
+      //std::cout << "Non-blocking send returned " << recv.buf() << std::endl;
     }
     bool do_delete() const{ return true; }
+  };
+
+  struct ClientActionSetRecvTimeout: public ClientAction{
+    int timeout;
+    ClientActionSetRecvTimeout(const int timeout): timeout(timeout){}
+
+    void perform(ADNetClient &client){
+      client.setRecvTimeout(timeout);
+    }
+
+    bool do_delete() const{return true;}
   };
 
   //ADNetClient inside a worker thread with blocking send/receive and non-blocking send
@@ -213,9 +224,9 @@ namespace chimbuko{
       queue.pop();
       return work_item;
     }
-
+    
     void run(){
-      std::cout << "Starting worker thread" << std::endl;
+      //std::cout << "Starting worker thread" << std::endl;
       worker = std::thread([&](){
           ADNetClient client;
           bool shutdown = false;
@@ -232,9 +243,9 @@ namespace chimbuko{
             }
             if(shutdown){
               if(nwork > 0) fatal_error("Worker was shut down before emptying its queue!");
-              std::cout << "Worker received shutdown request" << std::endl;
+              //std::cout << "Worker received shutdown request" << std::endl;
             }else{
-              std::this_thread::sleep_for(std::chrono::milliseconds(20));
+              std::this_thread::sleep_for(std::chrono::milliseconds(80));
             }  
           }
         });
@@ -252,7 +263,10 @@ namespace chimbuko{
     }
 
     void connect_ps(int rank, int srank = 0, std::string sname="MPINET"){
+      m_rank = rank;
+      m_srank = srank;
       enqueue_action(new ClientActionConnect(rank, srank,sname));
+      m_use_ps = true;
     }
     void disconnect_ps(){
         enqueue_action(new ClientActionDisconnect());
@@ -266,11 +280,28 @@ namespace chimbuko{
       enqueue_action(new ClientActionAsyncSend(send));
     }
 
+    bool use_ps() const { return m_use_ps; }
+
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
+
+    int get_server_rank() const{ return m_srank; }
+    
+    int get_client_rank() const{ return m_rank; }
+
+    void setRecvTimeout(const int timeout_ms) {
+      enqueue_action(new ClientActionSetRecvTimeout(timeout_ms));
+    }    
+
     ~ADThreadNetClient(){
-      std::cout << "Joining worker thread" << std::endl;
+      //std::cout << "Joining worker thread" << std::endl;
       worker.join();
     }
-
+   
+   private:
+    int m_rank;
+    int m_srank;
+    bool m_use_ps;
+    PerfStats * m_perf;
   };
 
  

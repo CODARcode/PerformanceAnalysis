@@ -57,6 +57,8 @@ namespace chimbuko {
     std::string outlier_statistic; /**< Set the statistic used in outlier detection*/
 
     int step_report_freq; /**<Steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)*/
+    
+    int net_recv_timeout; /**< Timeout (in ms) used for blocking receives functionality on client (driver) of parameter server */
 
     ChimbukoParams();
 
@@ -207,7 +209,8 @@ namespace chimbuko {
     ADCounter * m_counter;     /**< counter event manager */
     ADOutlier * m_outlier;     /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
-    ADNetClient * m_net_client; /**< client for comms with parameter server */
+    //ADNetClient * m_net_client; /**< client for comms with parameter server */
+    ADThreadNetClient * m_net_client; /**< client for comms with parameter server */
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/

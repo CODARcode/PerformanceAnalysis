@@ -37,7 +37,7 @@ ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & a
   }
 }
 
-void ADOutlier::linkNetworkClient(ADNetClient *client){
+void ADOutlier::linkNetworkClient(ADThreadNetClient *client){
   m_net_client = client;
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }
@@ -209,14 +209,19 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
         return std::make_pair(0, 0);
     }
     else {
+        //ADThreadNetClient thrnet;
+        //thrnet.connect_ps(m_net_client->get_client_rank(), 0, m_net_client->get_server_rank());
         Message msg;
         msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
         msg.set_msg(l.serialize(), false);
         size_t sent_sz = msg.size();
-
-	      m_net_client->send_and_receive(msg, msg);
+   
+	//thrnet.send_and_receive(msg, msg); 
+        m_net_client->send_and_receive(msg, msg);
+        //thrnet.disconnect_ps();
         size_t recv_sz = msg.size();
         g.assign(msg.buf());
+        
         return std::make_pair(sent_sz, recv_sz);
     }
 }
