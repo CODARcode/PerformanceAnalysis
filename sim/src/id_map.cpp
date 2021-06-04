@@ -1,8 +1,19 @@
 #include<sim/id_map.hpp>
+#include<chimbuko/util/error.hpp>
 
 using namespace chimbuko_sim;
 
 std::unordered_map<std::string, unsigned long> & chimbuko_sim::funcIdxMap(){ static std::unordered_map<std::string, unsigned long> _map; return _map; }
+
+unsigned long chimbuko_sim::registerFunc(const std::string &func_name){ 
+  if(funcIdxMap().count(func_name) != 0) fatal_error("Attempting to register function " + func_name + " more than once");
+
+  static unsigned long fidx_s = 0; 
+  unsigned long fidx = fidx_s++;
+  funcIdxMap()[func_name] = fidx;
+  return fidx;
+}
+
 
 long CounterIdxManager::getIndex(const std::string &cname){
   static int cid_cnt = 0;

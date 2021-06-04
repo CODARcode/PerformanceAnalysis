@@ -1,4 +1,5 @@
 #include<sim/pserver.hpp>
+#include<sim/ad_params.hpp>
 
 using namespace chimbuko;
 using namespace chimbuko_sim;
@@ -14,4 +15,15 @@ void pserverSim::writeStreamingOutput() const{
   ++iter;
 
   std::ofstream out(fname.str()); out << json_packet.dump();
+}
+
+pserverSim::pserverSim(): anomaly_stats_payload(&global_func_stats), counter_stats_payload(&global_counter_stats), m_ad_params(nullptr){
+  if(adAlgorithmParams().algorithm != "none"){
+    m_ad_params = ParamInterface::set_AdParam(adAlgorithmParams().algorithm);
+    m_net.add_payload(new NetPayloadUpdateParams(m_ad_params, false));
+  }    
+}
+
+pserverSim::~pserverSim(){
+  if(m_ad_params) delete m_ad_params;
 }

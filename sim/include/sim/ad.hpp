@@ -5,6 +5,7 @@
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/ad/ADCounter.hpp>
+#include<chimbuko/ad/ADOutlier.hpp>
 #include<map>
 
 namespace chimbuko_sim{
@@ -17,6 +18,7 @@ namespace chimbuko_sim{
     std::unordered_map<unsigned long, std::list<ExecData_t> > m_all_execs; /**< Map of thread to execs */
     std::unordered_map<eventID, CallListIterator_t> m_eventid_map; /**< Map from event index to iterator */
     std::map<unsigned long, std::list<CallListIterator_t> > m_step_execs; /**< Events in any given step */
+    std::map<unsigned long, unsigned long> m_entry_step_count; /**< Count of events starting on a given step (used to assign event indices) */
 
     unsigned long m_largest_step; /**< Largest step index of an inserted function execution thus far encountered */
     unsigned long m_program_start;
@@ -28,6 +30,8 @@ namespace chimbuko_sim{
     ADNormalEventProvenance m_normal_events;
     ADMetadataParser m_metadata;
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
+    ADLocalNetClient m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
+    ADOutlier* m_outlier; /**< The local outlier algorithm instance, if used*/
   public:
     /** 
      * @brief Initialize the AD simulator
@@ -50,7 +54,18 @@ namespace chimbuko_sim{
     ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq): ADsim(){
       init(window_size, pid, rid, program_start, step_freq);
     }
-    ADsim(){}
+    ADsim(): m_outlier(nullptr){}
+
+    ADsim(ADsim &&r);
+    
+    ~ADsim(){ if(m_outlier) delete m_outlier; }
+
+    /**
+     * @brief Set up the AD algorithm. Parameters correspond to those in ADOutlier::set_algorithm
+     *
+     * Using an AD algorithm to analyze the data is optional. Set the ad_algorithm() string to a value other than "none" to switch the algorithm
+     */
+    void setupADalgorithm(const double hbos_thres, const bool glob_thres, const double sstd_sigma, ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime);
 
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
 
@@ -69,7 +84,7 @@ namespace chimbuko_sim{
 			       const std::string &func_name,
 			       unsigned long start,
 			       unsigned long runtime,
-			       bool is_anomaly,
+			       bool is_anomaly = false,
 			       double outlier_score = 0.);
 
     /**

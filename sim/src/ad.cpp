@@ -15,6 +15,26 @@
 using namespace chimbuko;
 using namespace chimbuko_sim;
 
+ADsim::ADsim(ADsim &&r): 
+  m_all_execs(std::move(r.m_all_execs)),
+  m_eventid_map(std::move(r.m_eventid_map)),
+  m_step_execs(std::move(r.m_step_execs)),
+  m_entry_step_count(r.m_entry_step_count),
+  m_largest_step(r.m_largest_step),
+  m_program_start(r.m_program_start),
+  m_step_freq(r.m_step_freq),
+  m_window_size(r.m_window_size),
+  m_pid(r.m_pid),
+  m_rid(r.m_rid),
+  m_normal_events(std::move(r.m_normal_events)),
+  m_metadata(std::move(r.m_metadata)),
+  m_pdb_client(std::move(r.m_pdb_client)),
+  m_outlier(r.m_outlier)
+{
+  r.m_outlier = nullptr;
+}
+
+
 void ADsim::init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq){
   m_window_size = window_size;
   m_pid = pid;
@@ -25,6 +45,14 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   m_program_start = program_start;
   m_step_freq = step_freq;
   m_largest_step = 0;
+
+  auto const & p = adAlgorithmParams();
+  if(p.algorithm != "none"){    
+    m_outlier = ADOutlier::set_algorithm(p.stat, p.algorithm, p.hbos_thres, p.glob_thres, p.sstd_sigma);
+    getPserver(); //force construction of pserver
+    m_net_client.connect_ps(m_rid);
+    m_outlier->linkNetworkClient(&m_net_client);
+  }
 }
 
 CallListIterator_t ADsim::addExec(const int thread,
@@ -38,27 +66,29 @@ CallListIterator_t ADsim::addExec(const int thread,
   auto it = funcIdxMap().find(func_name);
   if(it == funcIdxMap().end()) assert(0);
   unsigned long func_id = it->second;
-    
-  unsigned long exit = start + runtime;
-  unsigned long step = ( exit - m_program_start ) / m_step_freq;
 
-  long event_idx = m_step_execs[step].size();
+  unsigned long entry_step = ( start - m_program_start ) / m_step_freq;
     
-  m_largest_step = std::max(m_largest_step, step);
+  unsigned long exit = start + runtime;  
+  unsigned long exit_step = ( exit - m_program_start ) / m_step_freq;
 
-  eventID id(m_rid, step, event_idx);
+  m_largest_step = std::max(m_largest_step, exit_step);
+
+  long event_idx = m_entry_step_count[entry_step]++; //events are indexed by entry step as in real execution    
+  eventID id(m_rid, entry_step, event_idx);
 
   ExecData_t exec(id, m_pid, m_rid, thread, func_id, func_name, start, start+runtime);
-  exec.set_label( is_anomaly ? -1 : 1 );
+  if(!m_outlier) exec.set_label( is_anomaly ? -1 : 1 ); //use user tag
 
   if(is_anomaly) exec.set_outlier_score(outlier_score);
 
   CallListIterator_t exec_it = m_all_execs[thread].insert(m_all_execs[thread].end(), exec);
   m_eventid_map[id] = exec_it;
 
-  m_step_execs[step].push_back(exec_it);
+  m_step_execs[exit_step].push_back(exec_it);
   return exec_it;
 }
+
 
 void ADsim::attachCounter(const std::string &counter_name,
 			  unsigned long value,
@@ -129,19 +159,13 @@ void ADsim::step(const unsigned long step){
     return;
   }
   std::list<CallListIterator_t> const& this_step_execs = mse->second;
-
-  //Collect outliers and 1 normal event/func into Anomalies object
-  //and collect the map of function index to execs
-  Anomalies anom;
-  std::unordered_map<unsigned long, std::vector<CallListIterator_t> > this_step_func_execs;
+  
+  //Collect the map of function index to execs and gather counters
+  std::unordered_map<unsigned long, std::vector<CallListIterator_t> > this_step_func_execs; // == ExecData_t
   ADCounter counters;
   counters.linkCounterMap(getCidxManager().getCounterMap());
 
-  int nanom=0, nnorm=0;
   for(const auto &exec_it : this_step_execs){
-    if(exec_it->get_label() == -1){ anom.insert(exec_it, Anomalies::EventType::Outlier); nanom++; }
-    else if(anom.nFuncEvents(exec_it->get_fid(), Anomalies::EventType::Normal) == 0){ anom.insert(exec_it, Anomalies::EventType::Normal); nnorm++; }
-
     this_step_func_execs[exec_it->get_fid()].push_back(exec_it);
     
     const std::deque<CounterData_t>& ect = exec_it->get_counters();
@@ -149,9 +173,24 @@ void ADsim::step(const unsigned long step){
       counters.addCounter(c);
   }
 
-  //TODO: Normal events need to be processed correctly
+  //Are we going to run the actual AD algorithm on the data?
+  Anomalies anom;
 
-  std::cout << "Step " << step << " rank " << m_rid << " " << nanom << " anomalies and " << nnorm << " normal events" << std::endl;
+  if(adAlgorithmParams().algorithm != "none"){
+    if(!m_outlier) fatal_error("ad_algorithm is set to " + adAlgorithmParams().algorithm + " but the outlier algorithm has not been initialized. User should call ADsim::setupADalgorithm first");
+
+    m_outlier->linkExecDataMap(&this_step_func_execs);
+    anom = m_outlier->run(step);
+  }else{
+    //Collect outliers and 1 normal event/func into Anomalies object
+    for(const auto &exec_it : this_step_execs){
+      if(exec_it->get_label() == -1) anom.insert(exec_it, Anomalies::EventType::Outlier);
+      else if(anom.nFuncEvents(exec_it->get_fid(), Anomalies::EventType::Normal) == 0) anom.insert(exec_it, Anomalies::EventType::Normal);
+    }
+  }
+  int nanom = anom.nEvents(Anomalies::EventType::Outlier);
+  int nnorm = anom.nEvents(Anomalies::EventType::Normal);
+  std::cout << "Step " << step << " rank " << m_rid << " Anomalies object contains : " << nanom << " anomalies and " << nnorm << " normal events (max 1)" << std::endl;
 
   //Extract provenance data and send to the provDB
   if(nanom > 0){
@@ -160,9 +199,10 @@ void ADsim::step(const unsigned long step){
 
     eventIDmap evmap(m_all_execs, m_eventid_map);
       
+    const ParamInterface &params = adAlgorithmParams().algorithm != "none" ? *m_outlier->get_global_parameters() : globalParams();
     ADAnomalyProvenance::getProvenanceEntries(anomalous_events, normal_events, m_normal_events,
 					      anom, step, step_start_time, step_end_time, m_window_size,
-					      globalParams(), evmap, counters, m_metadata);
+					      params, evmap, counters, m_metadata);
     //Send to provdb
     if(anomalous_events.size() > 0)
       m_pdb_client->sendMultipleData(anomalous_events, ProvenanceDataType::AnomalyData); 
