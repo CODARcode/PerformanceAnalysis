@@ -1,9 +1,43 @@
 #include "chimbuko/util/RunStats.hpp"
+#include <chimbuko/util/serialize.hpp>
 #include <cmath>
 #include <limits>
 #include <sstream>
 
 using namespace chimbuko;
+
+
+nlohmann::json RunStats::State::get_json() const {
+    return {
+      {"count", count},
+        {"eta", eta},
+	  {"rho", rho},
+	    {"tau", tau},
+	      {"phi", phi},
+		{"min", min},
+		  {"max", max},
+		    {"acc", acc}
+    };
+}
+void RunStats::State::set_json(const nlohmann::json& state){
+  count = state["count"];
+  eta = state["eta"];
+  rho = state["rho"];
+  tau = state["tau"];
+  phi = state["phi"];
+  min = state["min"];
+  max = state["max"];
+  acc = state["acc"];
+}
+
+std::string RunStats::State::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void RunStats::State::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
 
 RunStats::RunStats(bool do_accumulate)
 : m_do_accumulate(do_accumulate)
@@ -19,45 +53,21 @@ void RunStats::clear() {
     m_state.clear();
 }
 
-void RunStats::set_state(const State& s)
-{
-    m_state.count = s.count;
-    m_state.eta = s.eta;
-    m_state.rho = s.rho;
-    m_state.tau = s.tau;
-    m_state.phi = s.phi;
-    m_state.min = s.min;
-    m_state.max = s.max;
-    m_state.acc = s.acc;
+void RunStats::set_state(const State& s){
+  m_state = s;
 }
 
-std::string RunStats::get_strstate()
-{
-    nlohmann::json s{
-        {"count", m_state.count},
-        {"eta", m_state.eta},
-        {"rho", m_state.rho},
-        {"tau", m_state.tau},
-        {"phi", m_state.phi},
-        {"min", m_state.min},
-        {"max", m_state.max},
-        {"acc", m_state.acc}
-    };
-    return s.dump();
+nlohmann::json RunStats::get_json_state() const {
+  return m_state.get_json();
 }
 
+std::string RunStats::get_strstate(){
+  return m_state.get_json().dump();
+}
 
 void RunStats::set_json_state(const nlohmann::json& state){
-  m_state.count = state["count"];
-  m_state.eta = state["eta"];
-  m_state.rho = state["rho"];
-  m_state.tau = state["tau"];
-  m_state.phi = state["phi"];
-  m_state.min = state["min"];
-  m_state.max = state["max"];
-  m_state.acc = state["acc"];
+  m_state.set_json(state);
 }
-
 
 void RunStats::set_strstate(const std::string& s){
   nlohmann::json state = nlohmann::json::parse(s);
@@ -223,6 +233,16 @@ nlohmann::json RunStats::get_json() const {
     };
 }
 
+std::string RunStats::net_serialize() const{
+  return get_state().serialize_cerealpb();
+}
+
+void RunStats::net_deserialize(const std::string &s){
+  State state;
+  state.deserialize_cerealpb(s);
+  set_state(state);
+}
+
 RunStats::RunStatsValues RunStats::get_stat_values() const{
   RunStatsValues out;
   out.count = count();
@@ -234,20 +254,6 @@ RunStats::RunStatsValues RunStats::get_stat_values() const{
   out.skewness = skewness();
   out.kurtosis = kurtosis();
   return out;
-}
-
-
-nlohmann::json RunStats::get_json_state() const {
-    return {
-        {"count", m_state.count},
-        {"eta", m_state.eta},
-        {"rho", m_state.rho},
-        {"tau", m_state.tau},
-        {"phi", m_state.phi},
-        {"min", m_state.min},
-        {"max", m_state.max},
-        {"acc", m_state.acc}
-    };
 }
 
 bool chimbuko::operator==(const RunStats& a, const RunStats& b)

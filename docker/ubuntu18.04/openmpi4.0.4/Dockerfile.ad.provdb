@@ -7,7 +7,7 @@ FROM build_base AS build
 
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 10_29_20_18_52" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 4_23_21_12_12" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build
@@ -16,13 +16,13 @@ SHELL ["/bin/bash", "-c"]
 
 ENV CPATH=/opt/cereal/include:${CPATH}
 
-RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
+RUN source /spack/spack/share/spack/setup-env.sh && spack load boost mochi-sonata && \
     CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad && \
     make -j 4 install && cd /opt/chimbuko/ad/test 
+
 #&& ./run_all.sh DOCKER_SETUP_MOCHI
 
 RUN cd /Downloads/PerformanceAnalysis && git log | head -1 > /opt/chimbuko/ad/git_version
-
 
 ################
 FROM build_base

@@ -10,7 +10,7 @@ int main(int argc, char** argv){
     std::cout << "Usage: pshutdown <server address e.g. tcp://localhost:5559>" << std::endl;
     return 1;
   }
-  ADNetClient ad;
+  ADZMQNetClient ad;
   ad.connect_ps(0,0,argv[1]);
   ad.stopServer();
   ad.disconnect_ps();

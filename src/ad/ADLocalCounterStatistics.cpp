@@ -1,26 +1,29 @@
 #include <chimbuko/ad/ADLocalCounterStatistics.hpp>
-
-#include <cereal/archives/portable_binary.hpp>
-#include <cereal/types/vector.hpp>
-#include <cereal/types/string.hpp>
+#include <chimbuko/util/serialize.hpp>
 
 using namespace chimbuko;
 
 std::string ADLocalCounterStatistics::State::serialize_cerealpb() const{
-  std::stringstream ss;
-  {    
-    cereal::PortableBinaryOutputArchive wr(ss);
-    wr(*this);    
-  }
-  return ss.str();
+  return cereal_serialize(*this);
 }
 
 void ADLocalCounterStatistics::State::deserialize_cerealpb(const std::string &strstate){
-  std::stringstream ss; ss << strstate;;
-  {    
-    cereal::PortableBinaryInputArchive rd(ss);
-    rd(*this);    
+  cereal_deserialize(*this, strstate);
+}
+
+nlohmann::json ADLocalCounterStatistics::State::get_json() const{
+  nlohmann::json g_info;
+  g_info["counters"] = nlohmann::json::array();
+  for (auto const &it : counters) { //loop over counter name
+    nlohmann::json obj;
+    obj["pid"] = it.pid;
+    obj["name"] = it.name;
+    obj["stats"] = it.stats.get_json();
+    g_info["counters"].push_back(obj);
   }
+  g_info["step"] = step;
+
+  return g_info;
 }
 
 
@@ -40,24 +43,13 @@ void ADLocalCounterStatistics::gatherStatistics(const CountersByIndex_t &cntrs_b
 
 
 nlohmann::json ADLocalCounterStatistics::get_json_state() const{
-  nlohmann::json g_info;
-  g_info["counters"] = nlohmann::json::array();
-  for (auto it : m_stats) { //loop over counter name
-    const std::string &name = it.first;
-
-    nlohmann::json obj;
-    obj["pid"] = m_program_idx;
-    obj["name"] = name;
-    obj["stats"] = it.second.get_json_state();
-    g_info["counters"].push_back(obj);
-  }
-  return g_info;
+  return get_state().get_json();
 }
 
 
 ADLocalCounterStatistics::State ADLocalCounterStatistics::get_state() const{
   ADLocalCounterStatistics::State g_info;
-  for (auto it : m_stats) { //loop over counter name
+  for (auto const &it : m_stats) { //loop over counter name
     const std::string &name = it.first;
 
     State::CounterData obj;
@@ -66,7 +58,28 @@ ADLocalCounterStatistics::State ADLocalCounterStatistics::get_state() const{
     obj.stats = it.second.get_state();
     g_info.counters.push_back(obj);
   }
+  g_info.step = m_step;
+
   return g_info;
+}
+
+void ADLocalCounterStatistics::set_state(const ADLocalCounterStatistics::State &s){
+  m_step = s.step;
+  
+  for(auto const &it : s.counters){
+    m_program_idx = it.pid;
+    m_stats[it.name].set_state(it.stats);
+  }
+}
+
+std::string ADLocalCounterStatistics::net_serialize() const{
+  return get_state().serialize_cerealpb();
+}
+
+void ADLocalCounterStatistics::net_deserialize(const std::string &s){
+  State state;
+  state.deserialize_cerealpb(s);
+  set_state(state);
 }
 
 

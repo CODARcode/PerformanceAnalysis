@@ -5,15 +5,15 @@ COPY --from=chimbuko/viz:ubuntu18.04 /opt/chimbuko/viz /opt/chimbuko/viz
 ENV PATH=/opt/tau2/x86_64/bin/:/opt/chimbuko/ad/bin:${PATH}
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 
-RUN apt-get update && apt-get install -y gdb emacs-nox vim psmisc
+RUN apt-get update && apt-get install -y gdb emacs-nox vim
 
 #Create a setup script
-RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load py-mochi-sonata" >> /root/.bashrc
+RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load boost py-mochi-sonata" >> /root/.bashrc
 
 FROM base AS build
 
 WORKDIR /Downloads
-RUN echo "FORCE UPDATE 10_29_20_18_52" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 4_28_21_09_58" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 
 #Compile the (MPI) examples
 ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2
@@ -47,6 +47,10 @@ ENV TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-pthread-python-pdt-adios
 WORKDIR /benchmark_suite/multiinstance_nompi
 RUN cp /Downloads/PerformanceAnalysis/benchmark_suite/multiinstance_nompi/* . && \
     make
+
+WORKDIR /benchmark_suite/zmq_worker_client
+RUN cp /Downloads/PerformanceAnalysis/benchmark_suite/zmq_worker_client/* . && \
+    source /spack/spack/share/spack/setup-env.sh && spack load boost mochi-sonata && make all
 
 
 #Cleanup

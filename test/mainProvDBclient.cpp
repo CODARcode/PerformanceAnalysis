@@ -4,6 +4,9 @@
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/string.hpp>
 #include <mpi.h>
+#include <dirent.h>
+#include <regex>
+#include <thread>
 
 using namespace chimbuko;
 
@@ -309,6 +312,53 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
     fail = true;
   }
   EXPECT_EQ(fail, false);
+}
+
+
+bool fileExistsMatchingRegex(const std::string &dir, const std::regex &regex){
+  DIR* dirp = opendir(dir.c_str());
+  if (dirp == NULL) return false;
+
+  dirent* dp;
+  while ((dp = readdir(dirp)) != NULL) {
+    std::string fn(dp->d_name);
+    bool m = std::regex_search(fn, regex);
+    if(m){
+      closedir(dirp);
+      return true;
+    }
+  }
+  closedir(dirp);
+  return false;
+}
+
+TEST(ADProvenanceDBclientTest, TestStateDump){
+  if(rank == 0){
+    std::regex fn(R"(margo_dump\.)");
+    if(fileExistsMatchingRegex(".", fn))
+      throw std::runtime_error("Existing file of form margo_dump.* found in test directory, delete this before running");
+
+    bool fail = true;
+    ADProvenanceDBclient client(rank);
+    std::cout << "Client attempting connection" << std::endl;
+    try{
+      client.connect(addr,nshards);
+
+      client.serverDumpState();
+
+      int timeout = 20;
+      for(int i=0;i<timeout;i++){
+	if(fileExistsMatchingRegex(".", fn)){
+	  fail = false;
+	  break;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      }
+    }catch(const std::exception &ex){
+      fail = true;
+    }
+    EXPECT_EQ(fail, false);
+  }
 }
 
 

@@ -180,14 +180,11 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {
-        std::string stat_id = "0:" + std::to_string(rank);
-        // std::cout << stat_id << std::endl;
-
-        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
+        std::string strstats = glob_stats.get_anomaly_stat(0, rank);
         // std::cout << strstats << std::endl;
         ASSERT_GT(strstats.size(), 0);
         
-        size_t n = glob_stats.get_n_anomaly_data(stat_id);
+        size_t n = glob_stats.get_n_anomaly_data(0, rank);
         // std::cout << n << std::endl;
         EXPECT_EQ(MAX_STEPS, (int)n);
 
@@ -247,19 +244,17 @@ TEST_F(NetTest, NetStatSenderTest)
 
     for (int rank = 0; rank < N_MPI_PROCESSORS; rank++)
     {
-        std::string stat_id = "0:" + std::to_string(rank);
-
-        std::string strstats = glob_stats.get_anomaly_stat(stat_id);
-        ASSERT_GT(strstats.size(), 0);
-        
-        // As we send all anomaly data to the web server, 
-        // it should be zero!
-        size_t n = glob_stats.get_n_anomaly_data(stat_id);
-        EXPECT_EQ(0, (int)n);
-
-        nlohmann::json j = nlohmann::json::parse(strstats);
-        EXPECT_NEAR(means[rank], j["mean"], means[rank]*0.1);
-        EXPECT_NEAR(stddevs[rank], j["stddev"], stddevs[rank]*0.1);
+      std::string strstats = glob_stats.get_anomaly_stat(0, rank);
+      ASSERT_GT(strstats.size(), 0);
+      
+      // As we send all anomaly data to the web server, 
+      // it should be zero!
+      size_t n = glob_stats.get_n_anomaly_data(0, rank);
+      EXPECT_EQ(0, (int)n);
+      
+      nlohmann::json j = nlohmann::json::parse(strstats);
+      EXPECT_NEAR(means[rank], j["mean"], means[rank]*0.1);
+      EXPECT_NEAR(stddevs[rank], j["stddev"], stddevs[rank]*0.1);
     }    
 
 #ifdef _USE_ZMQNET

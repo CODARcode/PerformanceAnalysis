@@ -134,24 +134,16 @@ void doWork(std::unordered_map<int,
       Message msg, msg_reply;
       msg.set_msg(strmsg, true);
       
-      msg_reply = msg.createReply();
+      timer.start();
+      NetInterface::find_and_perform_action(msg_reply, msg, payloads_t);
+      perf.add(perf_prefix + "find_and_perform_action_ms", timer.elapsed_ms());
       
-      timer.start();
-      auto kit = payloads_t.find((MessageKind)msg.kind());
-      if(kit == payloads_t.end()) throw std::runtime_error("ZMQMENet::doWork : No payload associated with the message kind provided (did you add the payload to the server?)");
-      auto pit = kit->second.find((MessageType)msg.type());
-      if(pit == kit->second.end()) throw std::runtime_error("ZMQMENet::doWork : No payload associated with the message type provided (did you add the payload to the server?)");
-      perf.add(perf_prefix + "message_kind_type_lookup_ms", timer.elapsed_ms());
-
-      //Apply the payload
-      timer.start();
-      pit->second->action(msg_reply, msg);
-      verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << msg_reply.data().size() << std::endl;
-      perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
+      strmsg = msg_reply.data();
+      verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
 
       //Send the reply
       timer.start();
-      ZMQNet::send(socket, msg_reply.data());
+      ZMQNet::send(socket, strmsg);
       perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());
     } //while(<work in queue>)
 

@@ -24,6 +24,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   exec0.update_exclusive(exec1.get_runtime());
 
   exec2.set_label(-1); //tag it as an anomaly
+  exec2.set_outlier_score(3.14);
 
   ADEvent event_man;
   event_man.addCall(exec0);
@@ -86,6 +87,9 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   EXPECT_EQ(output["io_step"], step);
   EXPECT_EQ(output["io_step_tstart"], step_start);
   EXPECT_EQ(output["io_step_tend"], step_end);
+
+  //Check outlier scoree
+  EXPECT_EQ(output["outlier_score"], 3.14);
 }
 
 

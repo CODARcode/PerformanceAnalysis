@@ -22,6 +22,25 @@ void ADCounter::addCounter(const Event_t& event){
   m_countersByIdx[event.counter_id()].push_back(cit);
 }
 
+void ADCounter::addCounter(const CounterData_t &cdata){
+  //If the counter name map is linked, check the name matches
+  if(m_counterMap){
+    auto it = m_counterMap->find(cdata.get_counterid());
+    if(it == m_counterMap->end()) fatal_error("Counter index " + std::to_string(cdata.get_counterid()) + " could not be found in map");
+    if(it->second != cdata.get_countername()) fatal_error("Counter name " + cdata.get_countername() + " does not match the name in the index map, " + it->second);
+  }
+
+  //If this is the first counter after a flush, we recreate the list
+  if(!m_counters) m_counters = new CounterDataListMap_p_t; 
+
+  auto &count_list_prt = (*m_counters)[cdata.get_pid()][cdata.get_rid()][cdata.get_tid()];
+  CounterDataListIterator_t cit = count_list_prt.insert(count_list_prt.end(), cdata);
+  m_timestampCounterMap[cdata.get_pid()][cdata.get_rid()][cdata.get_tid()][cdata.get_ts()].push_back(cit);
+  m_countersByIdx[cdata.get_counterid()].push_back(cit);
+}
+  
+
+
 CounterDataListMap_p_t* ADCounter::flushCounters(){
   CounterDataListMap_p_t* ret = m_counters;
   m_counters = nullptr;

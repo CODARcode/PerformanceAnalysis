@@ -59,6 +59,7 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |    **"io_step"**: *IO step index*,
 |    **"io_step_tstart"**: *Time of start of IO step*,
 |    **"io_step_tend"**:  *Time of end of IO step*,
+|    **"outlier_score"**: *The anomaly score of the execution (algorithm dependent)*,
 |    **"event_window"**: *Capture of function executions and MPI comms events occuring in window around anomaly on same thread (object)*
 |    {
 |      **"exec_window"**: *The function executions in the window arranged in order of their entry time (array)*

@@ -1,4 +1,5 @@
 #include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/util/error.hpp"
 
 using namespace chimbuko;
 
@@ -9,7 +10,7 @@ ExecData_t::ExecData_t()
   : m_pid(0), m_rid(0), m_tid(0), m_fid(0),
     m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
     m_n_children(0), m_n_messages(0),
-    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0){}
+    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0), m_score(-1){}
 
 ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
@@ -22,18 +23,34 @@ ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
     m_parent = eventID::root();
 }
 
-ExecData_t::~ExecData_t() {
+ExecData_t::ExecData_t(const eventID &id, unsigned long pid, unsigned long rid, unsigned long tid, unsigned long fid, 
+		       const std::string &func_name, long entry, long exit) : ExecData_t()
+{
+    m_id = id;
+    m_pid = pid;
+    m_rid = rid;
+    m_tid = tid;
+    m_fid = fid;
+    m_entry = entry;
+    m_parent = eventID::root();
+    m_funcname = func_name;
+    if(exit != -1) update_exit(exit);
+}
 
+ExecData_t::~ExecData_t() {}
+
+void ExecData_t::update_exit(unsigned long exit){
+  m_exit = exit;
+  m_runtime = m_exit - m_entry;
+  m_exclusive += m_runtime;
 }
 
 bool ExecData_t::update_exit(const Event_t& ev)
 {
-    if (m_fid != ev.fid() || m_entry > (long)ev.ts())
-        return false;
-    m_exit = ev.ts();
-    m_runtime = m_exit - m_entry;
-    m_exclusive += m_runtime;
-    return true;
+  if (m_fid != ev.fid() || m_entry > (long)ev.ts())
+    return false;
+  update_exit(ev.ts());
+  return true;
 }
 
 bool ExecData_t::add_message(const CommData_t& comm, ListEnd end) {
@@ -82,6 +99,7 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     if (!(m_parent == other.m_parent)) return false;
     if (!(m_n_children == other.m_n_children)) return false;
     if (!(m_n_messages == other.m_n_messages)) return false;
+    if (!(m_score == other.m_score)) return false;    
     return true;
 }
 
@@ -93,7 +111,7 @@ nlohmann::json ExecData_t::get_json(bool with_message, bool with_counter) const
         {"pid", m_pid}, {"tid", m_tid}, {"rid", m_rid}, {"fid", m_fid},
         {"entry", m_entry}, {"exit", m_exit},
         {"runtime", m_runtime}, {"exclusive", m_exclusive},
-        {"label", m_label},
+        {"label", m_label}, {"outlier_score", m_score},
         {"parent", m_parent.toString()},
         {"n_children", m_n_children}, {"n_messages", m_n_messages}, {"n_counters", m_counters.size() }
     };
@@ -284,6 +302,19 @@ CommData_t::CommData_t(const Event_t& ev, const std::string &commType)
     m_ts = ev.ts();
 }
 
+CommData_t::CommData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+		       unsigned long partner, unsigned long bytes, unsigned long tag,
+		       unsigned long timestamp, const std::string &commType)
+  : m_commType(commType), m_pid(pid), m_rid(rid), m_tid(tid), m_bytes(bytes), m_tag(tag), m_ts(timestamp){
+  if (m_commType.compare("SEND") == 0) {
+    m_src = m_rid;
+    m_tar = partner;
+  } else if (m_commType.compare("RECV") == 0){
+    m_src = partner;
+    m_tar = m_rid;
+  }
+}
+
 bool CommData_t::is_same(const CommData_t& other) const
 {
     if (!(m_commType == other.m_commType)) return false;
@@ -341,6 +372,21 @@ CounterData_t::CounterData_t(const Event_t& ev, const std::string &counter_name)
   m_cid(ev.counter_id()),
   m_value(ev.counter_value()),
   m_ts(ev.ts()){}
+
+
+CounterData_t::CounterData_t(unsigned long pid, unsigned long rid, unsigned long tid,
+			     unsigned long counter_id, const std::string &counter_name, 
+			     unsigned long counter_value,
+			     unsigned long timestamp):
+  m_countername(counter_name),
+  m_pid(pid),
+  m_rid(rid),
+  m_tid(tid),
+  m_cid(counter_id),
+  m_value(counter_value),
+  m_ts(timestamp){}
+
+
 
 nlohmann::json CounterData_t::get_json() const{
   return {

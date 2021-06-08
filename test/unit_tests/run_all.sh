@@ -17,6 +17,7 @@ set -o pipefail
 ./ad/ADNormalEventProvenance
 ./ad/ADAnomalyProvenance
 ./ad/utils
+./ad/AnomalyData
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats
@@ -25,5 +26,7 @@ set -o pipefail
 ./util/memutils
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
+./pserver/global_anomaly_stats
 ./net/ZMQMENet
 ./net/ZMQNet
+./net/LocalNet

@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs
 
 testdir = $(prefix)/test/unit_tests/ad
-test_PROGRAMS = HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils
+test_PROGRAMS = HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils AnomalyData
 
 HBOSOutlier_SOURCES = HBOSOutlier.cpp ../unit_test_main_mpi.cpp
 HBOSOutlier_LDADD = $(LDADD)
@@ -57,3 +57,6 @@ ADNormalEventProvenance_LDADD = $(LDADD)
 
 utils_SOURCES = utils.cpp ../unit_test_main.cpp
 utils_LDADD = $(LDADD)
+
+AnomalyData_SOURCES = AnomalyData.cpp ../unit_test_main.cpp
+AnomalyData_LDADD = $(LDADD)

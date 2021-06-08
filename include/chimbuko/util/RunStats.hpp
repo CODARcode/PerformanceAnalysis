@@ -71,6 +71,28 @@ namespace chimbuko {
       bool operator==(const State &r) const{
 	return count == r.count && eta == r.eta && rho == r.rho && tau == r.tau  && phi == r.phi && min == r.min && max == r.max && acc == r.acc;
       }
+
+      /**
+       * @brief Get this object as a JSON instance
+       */
+      nlohmann::json get_json() const;
+      
+      /**
+       * @brief Set this object to the values stored in the JSON instance
+       */
+      void set_json(const nlohmann::json &to);
+
+
+      /**
+       * Serialize into Cereal portable binary format
+       */
+      std::string serialize_cerealpb() const;
+      
+      /**
+       * Serialize from Cereal portable binary format
+       */     
+      void deserialize_cerealpb(const std::string &strstate);
+
     };
 
     /**
@@ -94,10 +116,17 @@ namespace chimbuko {
       void serialize(Archive & archive){
 	archive(count, minimum, maximum, accumulate, mean, stddev, skewness, kurtosis);
       }
+
+      /**
+       * @brief Comparison operator
+       */
+      bool operator==(const RunStatsValues &r) const{ 
+	return count == r.count && minimum == r.minimum && maximum == r.maximum && accumulate == r.accumulate &&
+	  mean == r.mean && stddev == r.stddev && skewness == r.skewness && kurtosis == r.kurtosis;
+      }
+
     };
 
-
-  public:
     /**
      * @brief Constructor
      * @param do_accumulate If true the sum of the provided values will also be collected
@@ -175,6 +204,16 @@ namespace chimbuko {
     }
 
     /**
+     * @brief Serialize this class for communication over the network
+     */
+    std::string net_serialize() const;
+
+    /**
+     * @brief Unserialize this class after communication over the network
+     */
+    void net_deserialize(const std::string &s);
+
+    /**
      * @brief Add a new value to be included in internal statistics
      */
     void push(double x);
@@ -185,6 +224,10 @@ namespace chimbuko {
     double count() const;
     double minimum() const;
     double maximum() const;
+
+    /**
+     * @brief If m_do_accumulate, the accumulated sum of all values added, otherwise 0
+     */
     double accumulate() const;
     double mean() const;
     double variance(double ddof=1.0) const;

@@ -46,6 +46,14 @@ namespace chimbuko {
     void addCounter(const Event_t& event);
 
     /**
+     * @brief Insert a new counter in CounterData_t form
+     * @param cdata CounterData_t instance
+     *
+     * This function does not require the counter index->name map to be linked, but if it is a consistency check will be performed
+     */
+    void addCounter(const CounterData_t &cdata);
+
+    /**
      * @brief Return all counters collected in the timestep
      */
     CounterDataListMap_p_t const* getCounters() const{ return m_counters; }

@@ -1,6 +1,7 @@
 #include "chimbuko/net.hpp"
 #include "chimbuko/net/mpi_net.hpp"
 #include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/util/error.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -43,3 +44,21 @@ void NetInterface::list_payloads(std::ostream &os) const{
     }
   }
 }
+
+void NetInterface::find_and_perform_action(int worker_id, Message &msg_reply, const Message &msg, const NetInterface::WorkerPayloadMapType &payloads){
+  auto iit = payloads.find(worker_id);
+  if(iit == payloads.end()){ fatal_error(std::string("Cannot find payloads with worker index ") + std::to_string(worker_id) ); }
+  find_and_perform_action(msg_reply, msg, iit->second);
+}
+
+void NetInterface::find_and_perform_action(Message &msg_reply, const Message &msg, const NetInterface::PayloadMapType &payloads){  
+  auto kit = payloads.find((MessageKind)msg.kind());
+  if(kit == payloads.end()) fatal_error("No payload associated with the message kind provided. Message: " + msg.buf() + " (did you add the payload to the server?)");
+  auto pit = kit->second.find((MessageType)msg.type());
+  if(pit == kit->second.end()) fatal_error("No payload associated with the message type provided. Mesage: " + msg.buf() + " (did you add the payload to the server?)");
+
+  msg_reply = msg.createReply();
+  pit->second->action(msg_reply, msg);
+}
+
+
