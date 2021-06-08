@@ -13,6 +13,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  outlier_sigma(6.),
 				  trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 				  trace_connect_timeout(60),
+                                  net_recv_timeout(30000),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
 					ad_algorithm("hbos"),
@@ -46,6 +47,7 @@ void ChimbukoParams::print() const{
 	    << "\nWindow size: " << anom_win_size
 
 	    << "\nInterval   : " << interval_msec << " msec"
+            << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec"
 	    << "\nPerf. metric outpath : " << perf_outputpath
 	    << "\nPerf. step   : " << perf_step;
 #ifdef ENABLE_PROVDB
@@ -61,7 +63,7 @@ void ChimbukoParams::print() const{
 }
 
 
-Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
+Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr), //m_thrnet_client(nullptr),
 #ifdef ENABLE_PROVDB
 		      m_provdb_client(nullptr),
 #endif
@@ -116,11 +118,10 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_perf.add("ad_initialize_parser_ms", timer.elapsed_ms());
 
   //Event and outlier objects must be initialized in order after parser
-  init_event(); //requires parser
+  init_metadata_parser();
+  init_event(); //requires parser and metadata parser
   init_outlier(); //requires event
   init_counter(); //requires parser
-
-  init_metadata_parser();
 
   m_is_initialized = true;
 
@@ -151,11 +152,13 @@ void Chimbuko::init_parser(){
 }
 
 void Chimbuko::init_event(){
-  if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_event");
+  if(!m_parser) fatal_error("Parser must be initialized before calling init_event");
+  if(!m_metadata_parser) fatal_error("Metadata parser must be initialized before calling init_event");
   m_event = new ADEvent(m_params.verbose);
   m_event->linkFuncMap(m_parser->getFuncMap());
   m_event->linkEventType(m_parser->getEventType());
   m_event->linkCounterMap(m_parser->getCounterMap());
+  m_event->linkGPUthreadMap(&m_metadata_parser->getGPUthreadMap());
 }
 
 void Chimbuko::init_net_client(){
@@ -170,14 +173,23 @@ void Chimbuko::init_net_client(){
       verboseStream << "AD rank " << m_params.rank << " connecting to endpoint " << m_params.pserver_addr << " (base " << orig << ")" << std::endl;
     }
 
-    m_net_client = new ADNetClient;
+    //m_net_client = new ADNetClient;
+    m_net_client = new ADThreadNetClient;
+
     m_net_client->linkPerf(&m_perf);
+    //m_thrnet_client->linkPerf(&m_perf);
+
+    m_net_client->setRecvTimeout(m_params.net_recv_timeout);
+
 #ifdef _USE_MPINET
     m_net_client->connect_ps(m_params.rank);
+    //m_thrnet_client->connect_ps(m_params.rank);
 #else
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
+    //m_thrnet_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
+    //if(!m_thrnet_client->use_ps()) fatal_error("Could not connect to parameter server");
 
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
   }
@@ -192,12 +204,11 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.hbos_use_global_threshold, m_params.outlier_sigma); //"hbos"); //sstd"); //new ADOutlierSSTD(stat);
-	if (m_outlier == nullptr) {
-		fatal_error("INCORRECT Algorithm: Not Found");
-	}
+  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.hbos_use_global_threshold, m_params.outlier_sigma);
+  if (m_outlier == nullptr) {
+	fatal_error("INCORRECT Algorithm: Not Found");
+  }
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
-  //m_outlier->set_sigma(m_params.outlier_sigma);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
 }
@@ -541,19 +552,21 @@ void Chimbuko::run(unsigned long long& n_func_events,
     m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
 
     if(m_net_client && m_net_client->use_ps()){
+    //if(m_thrnet_client && m_thrnet_client->use_ps()) {
+
       //Gather function profile and anomaly statistics and send to the pserver
       timer.start();
       ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
       prof_stats.gatherStatistics(m_event->getExecDataMap());
       prof_stats.gatherAnomalies(anomalies);
-      prof_stats.updateGlobalStatistics(*m_net_client);
+      prof_stats.updateGlobalStatistics(*m_net_client, m_params.rank, m_params.pserver_addr);
       m_perf.add("ad_run_gather_update_profile_stats_time_ms", timer.elapsed_ms());
 
       //Gather counter statistics and send to pserver
       timer.start();
       ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
       count_stats.gatherStatistics(m_counter->getCountersByIndex());
-      count_stats.updateGlobalStatistics(*m_net_client);
+      count_stats.updateGlobalStatistics(*m_net_client, m_params.rank, m_params.pserver_addr);
       m_perf.add("ad_run_gather_update_counter_stats_time_ms", timer.elapsed_ms());
     }
 
@@ -576,6 +589,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
       m_perf_prd.add("ad_mem_usage_kB", resident);
 
       m_perf_prd.add("io_steps", n_steps_accum_prd);
+
+      //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
+      m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
+      m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
 
       //Write accumulated outlier count
       m_perf_prd.add("outlier_count", n_outliers_accum_prd);
@@ -608,6 +625,15 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Always dump perf at end
   m_perf.write();
+
+  //For debug purposes, write out any unmatched correlation ID events that we encountered as recoverable errors
+  if(m_event->getUnmatchCorrelationIDevents().size() > 0){
+    for(auto c: m_event->getUnmatchCorrelationIDevents()){
+      std::stringstream ss;
+      ss << "Unmatched correlation ID: " << c.first << " from event " << c.second->get_json().dump();
+      recoverable_error(ss.str());
+    }
+  }
 
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 }

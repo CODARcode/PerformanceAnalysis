@@ -132,6 +132,7 @@ namespace chimbuko {
     bool m_autoshutdown; /**< The network will shutdown once all clients have disconnected*/
     Status m_status; /**< Monitoring of status */
     long m_poll_timeout; /**< The timeout (in ms) after which on no activity the network with shutdown (default -1: infinite)*/
+    bool m_remote_stop_cmd; /**< Registration of requests for server to stop issued by clients*/
   };
 
 } // end of chimbuko namespace

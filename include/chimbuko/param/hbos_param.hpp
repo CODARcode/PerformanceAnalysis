@@ -74,10 +74,10 @@ namespace chimbuko {
     /**
      * @brief Create new histogram locally for AD module's batch data instances
      */
-    void create_histogram(const std::vector<double>& r_times);
+    int create_histogram(const std::vector<double>& r_times);
 
 
-    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
+    int merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two

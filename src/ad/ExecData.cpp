@@ -85,7 +85,7 @@ bool ExecData_t::is_same(const ExecData_t& other) const {
     return true;
 }
 
-nlohmann::json ExecData_t::get_json(bool with_message) const
+nlohmann::json ExecData_t::get_json(bool with_message, bool with_counter) const
 {
     nlohmann::json j{
         {"key", m_id.toString()},
@@ -95,13 +95,19 @@ nlohmann::json ExecData_t::get_json(bool with_message) const
         {"runtime", m_runtime}, {"exclusive", m_exclusive},
         {"label", m_label},
         {"parent", m_parent.toString()},
-        {"n_children", m_n_children}, {"n_messages", m_n_messages}
+        {"n_children", m_n_children}, {"n_messages", m_n_messages}, {"n_counters", m_counters.size() }
     };
     if (with_message)
     {
         j["messages"] = nlohmann::json::array();
         for (auto comm: m_messages)
             j["messages"].push_back(comm.get_json());
+    }
+    if (with_counter)
+    {
+        j["counters"] = nlohmann::json::array();
+        for (auto count: m_counters)
+            j["counters"].push_back(count.get_json());
     }
     return j;
 }

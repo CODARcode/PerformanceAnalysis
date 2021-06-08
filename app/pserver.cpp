@@ -54,7 +54,9 @@ struct pserverArgs{
   std::string provdb_addr;
 #endif
 
-  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559)
+  std::string prov_outputpath;
+
+  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath("")
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
@@ -85,6 +87,8 @@ struct pserverArgs{
 #ifdef ENABLE_PROVDB
       addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
 #endif
+      addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
+
 
       init = true;
     }
@@ -131,7 +135,7 @@ int main (int argc, char ** argv){
     nlohmann::json in_p;
     in >> in_p;
     global_func_index_map.deserialize(in_p["func_index_map"]);
-    param->assign(in_p["alg_params"].dump()); //param.assign(in_p["alg_params"].dump());
+    param->assign(in_p["alg_params"].dump());
   }
 
 #ifdef _USE_MPINET
@@ -181,8 +185,8 @@ int main (int argc, char ** argv){
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
 
-    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params)); //new NetPayloadUpdateParams(&param, args.freeze_params));
-    net.add_payload(new NetPayloadGetParams(param)); //new NetPayloadGetParams(&param));
+    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params));
+    net.add_payload(new NetPayloadGetParams(param));
     net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
     net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
@@ -210,13 +214,25 @@ int main (int argc, char ** argv){
     stat_sender.stop_stat_sender(1000);
 
 #ifdef ENABLE_PROVDB
-    //Send final statistics to the provenance database
-    if(provdb_client.isConnected()){
-      progressStream << "Pserver: sending final statistics to provDB" << std::endl;
-      provdb_client.sendMultipleData(global_func_stats.collect_func_data(), GlobalProvenanceDataType::FunctionStats);
-      provdb_client.sendMultipleData(global_counter_stats.get_json_state(), GlobalProvenanceDataType::CounterStats);
-      progressStream << "Pserver: disconnecting from provDB" << std::endl;
-      provdb_client.disconnect();
+    //Send final statistics to the provenance database and/or disk
+    if(provdb_client.isConnected() || args.prov_outputpath.size() > 0){
+      nlohmann::json global_func_stats_j = global_func_stats.collect_func_data();
+      nlohmann::json global_counter_stats_j = global_counter_stats.get_json_state();
+
+      if(provdb_client.isConnected()){
+	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
+	provdb_client.sendMultipleData(global_func_stats_j, GlobalProvenanceDataType::FunctionStats);
+	provdb_client.sendMultipleData(global_counter_stats_j, GlobalProvenanceDataType::CounterStats);
+	progressStream << "Pserver: disconnecting from provDB" << std::endl;
+	provdb_client.disconnect();
+      }
+      if(args.prov_outputpath.size() > 0){
+	progressStream << "Pserver: writing final statistics to disk at path " << args.prov_outputpath << std::endl;
+	std::ofstream gf(args.prov_outputpath + "/global_func_stats.json");
+	std::ofstream gc(args.prov_outputpath + "/global_counter_stats.json");
+	gf << global_func_stats_j.dump();
+	gc << global_counter_stats_j.dump();
+      }
     }
 #endif
 
@@ -227,7 +243,7 @@ int main (int argc, char ** argv){
     o.open(args.logdir + "/parameters.txt");
     if (o.is_open())
       {
-	param->show(o); //param.show(o);
+	param->show(o);
 	o.close();
       }
   }
@@ -256,7 +272,7 @@ int main (int argc, char ** argv){
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
     out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param->serialize()); //param.serialize());
+    out_p["alg_params"] = nlohmann::json::parse(param->serialize());
     out << out_p;
   }
 

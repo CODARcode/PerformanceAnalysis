@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/util/map.hpp>
+#include<chimbuko/util/error.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -627,4 +628,66 @@ TEST(ADEvent, testIteratorWindowDetermination){
   EXPECT_EQ(it_p.first->get_id(), execs[7].get_id());
   EXPECT_EQ(std::prev(it_p.second,1)->get_id(), execs[9].get_id());
 
+}
+  
+TEST(ADEventTest, DetectsCorrelationIDerrors){
+  ADEvent event_man;
+    
+  std::unordered_map<int, std::string> event_types = { {0, "ENTRY"}, {1, "EXIT" } };
+  std::unordered_map<int, std::string> func_names = { {111, "cpu_func"}, {222, "gpu_func" } };
+  std::unordered_map<int, std::string> counter_names = { {0, "Correlation ID"} };
+  std::unordered_map<unsigned long, GPUvirtualThreadInfo> gpu_threads = { {6, GPUvirtualThreadInfo(1,2,3,4) } };
+
+  event_man.linkEventType(&event_types);
+  event_man.linkFuncMap(&func_names);
+  event_man.linkCounterMap(&counter_names);
+  event_man.linkGPUthreadMap(&gpu_threads);
+  
+  Event_t cpu_entry = createFuncEvent_t(0,0,0, 0, 111, 1000);
+  Event_t cpu_exit = createFuncEvent_t(0,0,0, 1, 111, 2000);
+
+  Event_t cpu_corrid1 = createCounterEvent_t(0,0,0,  0,  99,  1200);
+  Event_t cpu_corrid2 = createCounterEvent_t(0,0,0,  0,  500,  1999);  
+
+  Event_t gpu_entry = createFuncEvent_t(0,0,6, 0, 222, 1200);
+  Event_t gpu_exit = createFuncEvent_t(0,0,6, 1, 222, 1800);
+
+  Event_t gpu_corrid1 = createCounterEvent_t(0,0,6,  0,  99,  1799);
+  Event_t gpu_corrid2 = createCounterEvent_t(0,0,6,  0,  100,  1800);
+
+  event_man.addFunc(cpu_entry);
+
+  event_man.addFunc(gpu_entry);
+  event_man.addCounter(cpu_corrid1);
+
+  event_man.addCounter(gpu_corrid1);
+  event_man.addCounter(gpu_corrid2);
+
+  //GPU events not allowed to have multiple correlation IDs (non-fatal)
+  {
+    std::stringstream err_str;
+    Error().setStream(&err_str);
+
+    event_man.addFunc(gpu_exit);
+
+    std::string got = err_str.str();
+    size_t loc = got.find("Encountered a GPU kernel execution with multiple correlation IDs!");
+    std::cout << "Got intentional error: " << got << std::endl;
+    EXPECT_NE(loc, std::string::npos);
+  }
+
+  //CPU events are allowed to have multiple correlation IDs
+  {
+    event_man.addCounter(cpu_corrid2);
+    
+    std::stringstream err_str;
+    Error().setStream(&err_str);
+
+    event_man.addFunc(cpu_exit);
+
+    std::string got = err_str.str();
+    size_t loc = got.find("Encountered a GPU kernel execution with multiple correlation IDs!");
+    std::cout << "This should be empty: " << got << std::endl;
+    EXPECT_EQ(loc, std::string::npos);
+  }
 }

@@ -19,12 +19,12 @@ namespace chimbuko{
   /*
    * @brief Generate an event_id string of form ${rank}:${step}:${idx}
    */
-  std::string generate_event_id(int rank, int step, size_t idx);
+  std::string generate_event_id(int rank, int step, long idx);
 
   /*
    * @brief Generate an event_id string of form ${rank}-${eid}:${step}:${idx}
    */
-  std::string generate_event_id(int rank, int step, size_t idx, unsigned long eid);
+  std::string generate_event_id(int rank, int step, long idx, unsigned long eid);
 
 
   /**

@@ -249,6 +249,162 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
 
 
 
+TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
+  int gpu_thr = 9;
+  int corrid_cid = 22; //counter index!
+  
+  ADEvent event_man;
+
+  //Populate all the other stuff required to generate anomaly data
+  RunStats stats;
+  for(int i=0;i<50;i++)
+    stats.push(double(i));
+
+  SstdParam param;
+  param[44] = stats;
+  param[55] = stats;
+  param[11] = stats;
+
+  ADCounter counter;
+
+  ADMetadataParser metadata;
+  std::vector<MetaData_t> mdata = {
+    MetaData_t(0,0, gpu_thr, "CUDA Context", "8"),
+    MetaData_t(0,0, gpu_thr, "CUDA Stream", "1"),
+    MetaData_t(0,0, gpu_thr, "CUDA Device", "7"),
+    MetaData_t(0,0, gpu_thr, "GPU[7] Device Name", "Fake GPU")
+  };
+  metadata.addData(mdata);
+  
+  {
+    std::cout <<  "Testing failure due to missing correlation ID" << std::endl;
+
+    //Have a host correlation ID but not a device one
+    int corridx1 = 1234;
+    ExecData_t exec_gpu = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
+    
+    ExecData_t exec_cpu = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
+    exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx1, 1000, "Correlation ID"));
+    
+    CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);    
+    CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
+    
+    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
+				 event_man,
+				 param,
+				 counter, metadata, 0,
+				 11,900,1200);
+    {
+      nlohmann::json output = prov_gpu.get_json();
+      std::cout << "For GPU event, got: " << output.dump() << std::endl;
+    
+      EXPECT_EQ(output["is_gpu_event"], true);
+      EXPECT_EQ(output["gpu_location"]["context"], 8);
+      EXPECT_EQ(output["gpu_location"]["device"], 7);
+      EXPECT_EQ(output["gpu_location"]["stream"], 1);
+
+      std::string got = output["gpu_parent"];
+      std::string expect = "Chimbuko error: Correlation ID of host parent event was not recorded";
+      std::cout << got << std::endl;
+
+      EXPECT_EQ(got, expect);
+    }
+  }
+
+  //Failure due to multiple correlation IDs
+  {
+    std::cout <<  "Testing failure due to multiple correlation IDs" << std::endl;
+    int corridx2 = 2222, corridx3 = 3333;
+
+    ExecData_t exec_gpu = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
+    exec_gpu.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx2, 1000, "Correlation ID")); //this one has 2 correlation IDs
+    exec_gpu.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx3, 1000, "Correlation ID"));
+    
+    ExecData_t exec_cpu = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
+    exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx2, 1000, "Correlation ID"));
+
+    ExecData_t exec_cpu2 = createFuncExecData_t(0,1, 0, 66, "theothercpufunction", 1000, 100); //not on gpu
+    exec_cpu2.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx3, 1000, "Correlation ID"));
+
+    CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
+    CallListIterator_t exec_cpu2_it = event_man.addCall(exec_cpu2);
+    
+    CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
+
+    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
+				 event_man,
+				 param,
+				 counter, metadata, 0,
+				 11,900,1200);
+    {
+      nlohmann::json output = prov_gpu.get_json();
+      std::cout << "For GPU event, got: " << output.dump() << std::endl;
+
+      EXPECT_EQ(output["is_gpu_event"], true);
+      EXPECT_EQ(output["gpu_location"]["context"], 8);
+      EXPECT_EQ(output["gpu_location"]["device"], 7);
+      EXPECT_EQ(output["gpu_location"]["stream"], 1);
+
+      std::string got = output["gpu_parent"];
+      std::string expect = "Chimbuko error: Multiple host parent event correlation IDs found, likely due to trace corruption";
+      std::cout << got << std::endl;
+
+      EXPECT_EQ(got, expect);
+    }
+  }
+
+  {
+    std::cout <<  "Testing failure due to missing parent event" << std::endl;
+
+    //Have a host correlation ID but not a device one
+    int corridx4 = 4444;
+    ExecData_t exec_gpu = createFuncExecData_t(0,1, gpu_thr, 55, "thegpufunction", 1000, 100); //on gpu
+    exec_gpu.add_counter(createCounterData_t(0,1, gpu_thr, corrid_cid,  corridx4, 1000, "Correlation ID")); //this one has 2 correlation IDs
+    
+    ExecData_t exec_cpu = createFuncExecData_t(0,1, 0, 44, "thecpufunction", 1000, 100); //not on gpu
+    exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx4, 1000, "Correlation ID"));
+    
+    CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
+
+    //Force the trimming out of the cpu event
+    exec_cpu_it->can_delete(true);
+    delete event_man.trimCallList();
+
+    CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
+    
+    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
+				 event_man,
+				 param,
+				 counter, metadata, 0,
+				 11,900,1200);
+    {
+      nlohmann::json output = prov_gpu.get_json();
+      std::cout << "For GPU event, got: " << output.dump() << std::endl;
+    
+      EXPECT_EQ(output["is_gpu_event"], true);
+      EXPECT_EQ(output["gpu_location"]["context"], 8);
+      EXPECT_EQ(output["gpu_location"]["device"], 7);
+      EXPECT_EQ(output["gpu_location"]["stream"], 1);
+
+      std::string got = output["gpu_parent"];
+      std::string expect = "Chimbuko error: Host parent event could not be reached";
+      std::cout << got << std::endl;
+
+      EXPECT_EQ(got, expect);
+    }
+  }
+
+
+  
+
+
+}
+
+
+
+
+
+
 TEST(TestADAnomalyProvenance, extractsExecWindow){
   ExecData_t exec0 = createFuncExecData_t(1,2,3, 33, "theonebefore", 900, 0); //not yet completed
   ExecData_t exec1 = createFuncExecData_t(1,2,3, 55, "theparent", 1000, 100);

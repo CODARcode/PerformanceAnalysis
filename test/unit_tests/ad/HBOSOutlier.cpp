@@ -242,7 +242,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
@@ -265,7 +265,7 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   ps_thr.join();
   out_thr.join();
 
-  
+
 
 #else
 #error "Requires compiling with MPI or ZMQ net"
