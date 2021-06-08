@@ -9,6 +9,7 @@
 #include "chimbuko/pserver/AnomalyStat.hpp"
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 
 namespace chimbuko{
 
@@ -28,32 +29,39 @@ namespace chimbuko{
     GlobalAnomalyStats(){}
 
     /**
-     * @brief Merge internal statistics with those contained within the JSON-formatted string 'data'
+     * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
      */
-    void add_anomaly_data_json(const std::string& data);
+    void add_anomaly_data(const ADLocalFuncStatistics& data);
+
 
     /**
-     * @brief Merge internal statistics with those contained within the Cereal portable binary  formatted string 'data'
+     * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
+     * @param pid program index
+     * @param rid rank
      */
-    void add_anomaly_data_cerealpb(const std::string& data);
-
-    /**
-     * @brief Get the JSON-formatted string corresponding to the anomaly statistics for a given program/rank
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
-     */
-    std::string get_anomaly_stat(const std::string& stat_id) const;
+    std::string get_anomaly_stat(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the RunStats object corresponding to the anomaly statistics for a given program/rank (throw error if not present)
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */
-    RunStats get_anomaly_stat_obj(const std::string& stat_id) const;
+    RunStats get_anomaly_stat_obj(const int pid, const unsigned long rid) const;
+
+
+    /**
+     * @brief Const accessor to the AnomalyStat instance corresponding to a particular stat_id (throw error if not present)
+     * @param pid program index
+     * @param rid rank
+     */    
+    const AnomalyStat & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
-     * @param stat_id A string of the format "<PROGRAM IDX>:<RANK>" (eg "0:1" for program 0, rank 1)
+     * @param pid program index
+     * @param rid rank
      */
-    size_t get_n_anomaly_data(const std::string& stat_id) const;
+    size_t get_n_anomaly_data(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Update internal data to include additional information
@@ -64,18 +72,25 @@ namespace chimbuko{
     /**
      * @brief Update internal data to include additional information
      * @param pid Program index
-     * @param id Function index
+     * @param fid Function index
      * @param name Function name
      * @param n_anomaly The number of anomalies detected
      * @param inclusive Statistics on inclusive timings
      * @param exclusive Statistics on exclusive timings
      */
     void update_func_stat(int pid,
-			  unsigned long id, 
+			  unsigned long fid, 
 			  const std::string& name, 
 			  unsigned long n_anomaly,
 			  const RunStats& inclusive, 
 			  const RunStats& exclusive);
+
+    /**
+     * @brief Get the FuncStats object containing the profile information for the specified function
+     * @param pid Program index
+     * @param fid Function index
+     */
+    const FuncStats & get_func_stats(int pid, unsigned long fid) const;
 
     /**
      * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
@@ -94,12 +109,10 @@ namespace chimbuko{
     nlohmann::json collect();
 
   protected:    
-    // for global anomaly statistics
-    mutable std::mutex m_mutex_anom;
-    std::unordered_map<std::string, AnomalyStat> m_anomaly_stats; /**< Map of stat_id of form "${app_id}:${rank_id}" to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
-    // for global function statistics
-    mutable std::mutex m_mutex_func;
+    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
+    mutable std::mutex m_mutex_anom; /**< Mutex for global anomaly statistics */
+    mutable std::mutex m_mutex_func; /**< Mutex for global function statistics */
   };
 
   /**
@@ -114,7 +127,11 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-      m_global_anom_stats->add_anomaly_data_cerealpb(message.buf());
+
+      ADLocalFuncStatistics loc;
+      loc.net_deserialize(message.buf());
+
+      m_global_anom_stats->add_anomaly_data(loc);
       response.set_msg("", false);
     }
   };

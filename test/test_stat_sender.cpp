@@ -120,7 +120,7 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   loc.gatherAnomalies(anom);
 
   GlobalAnomalyStats glob;
-  glob.add_anomaly_data_json(loc.get_json_state().dump());
+  glob.add_anomaly_data(loc);
 
   PSstatSender stat_sender;
   int calls = 0;
@@ -175,7 +175,7 @@ TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)
   cs.setStats(counter, stats);
   
   GlobalCounterStats glob;
-  glob.add_data_json(cs.get_json_state().dump());
+  glob.add_counter_data(cs);
 
   PSstatSender stat_sender(1000);
   int calls = 0;
@@ -204,7 +204,7 @@ TEST(PSstatSenderTest, DiskWriteWorks)
   cs.setStats(counter, stats);
   
   GlobalCounterStats glob;
-  glob.add_data_json(cs.get_json_state().dump());
+  glob.add_counter_data(cs);
 
   PSstatSenderGlobalCounterStatsPayload *payload = new PSstatSenderGlobalCounterStatsPayload(&glob);
   PSstatSender stat_sender(1000);

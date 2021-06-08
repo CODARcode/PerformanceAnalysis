@@ -149,6 +149,7 @@ TEST_F(ParamTest, SstdMessageTest)
     }
 }
 
+
 TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
     using namespace chimbuko;
@@ -158,9 +159,9 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     // empty case
     EXPECT_EQ(0, param.collect_stat_data().size());
 
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 0,  0, 10, 10).get_json()}}).dump());
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 1, 11, 20, 20).get_json()}}).dump());
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 2, 21, 30, 30).get_json()}}).dump());
+    param.update_anomaly_stat(AnomalyData(0, 0, 0,  0, 10, 10));
+    param.update_anomaly_stat(AnomalyData(0, 0, 1, 11, 20, 20));
+    param.update_anomaly_stat(AnomalyData(0, 0, 2, 21, 30, 30));
 
     nlohmann::json j = param.collect_stat_data();
     ASSERT_EQ(1, j.size());
@@ -174,19 +175,22 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     EXPECT_EQ(0 , j["data"][0]["min_timestamp"]);
     EXPECT_EQ(10, j["data"][0]["max_timestamp"]);
     EXPECT_EQ(10, j["data"][0]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][0]["stat_id"].get<std::string>().c_str());
-
+    EXPECT_EQ(0, j["data"][0]["app"]);
+    EXPECT_EQ(0, j["data"][0]["rank"]);
+    
     EXPECT_EQ(1 , j["data"][1]["step"]);
     EXPECT_EQ(11 , j["data"][1]["min_timestamp"]);
     EXPECT_EQ(20, j["data"][1]["max_timestamp"]);
     EXPECT_EQ(20, j["data"][1]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][1]["stat_id"].get<std::string>().c_str());
+    EXPECT_EQ(0, j["data"][1]["app"]);
+    EXPECT_EQ(0, j["data"][1]["rank"]);
 
     EXPECT_EQ(2 , j["data"][2]["step"]);
     EXPECT_EQ(21 , j["data"][2]["min_timestamp"]);
     EXPECT_EQ(30, j["data"][2]["max_timestamp"]);
     EXPECT_EQ(30, j["data"][2]["n_anomalies"]);
-    EXPECT_STREQ("0:0" , j["data"][2]["stat_id"].get<std::string>().c_str());
+    EXPECT_EQ(0, j["data"][2]["app"]);
+    EXPECT_EQ(0, j["data"][2]["rank"]);
 
     EXPECT_STREQ("0:0", j["key"].get<std::string>().c_str());
 
@@ -198,10 +202,10 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
     EXPECT_NEAR(3.0, j["stats"]["count"], 1e-3);
     EXPECT_NEAR(0.0, j["stats"]["skewness"], 1e-3);
     EXPECT_NEAR(10.0, j["stats"]["stddev"], 1e-3);
-
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 0, 3, 31, 40, 40).get_json()}}).dump());
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(0, 1, 0,  0, 10, 10).get_json()}}).dump());
-    param.add_anomaly_data_json(nlohmann::json::object({{"anomaly", AnomalyData(1, 0, 1, 11, 20, 20).get_json()}}).dump());
+    
+    param.update_anomaly_stat(AnomalyData(0, 0, 3, 31, 40, 40));
+    param.update_anomaly_stat(AnomalyData(0, 1, 0,  0, 10, 10));
+    param.update_anomaly_stat(AnomalyData(1, 0, 1, 11, 20, 20));
 
     j = param.collect_stat_data();
     EXPECT_EQ(3, j.size());
@@ -215,7 +219,8 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(11 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(20, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(20, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("1:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(1, jj["data"][0]["app"]);
+	    EXPECT_EQ(0, jj["data"][0]["rank"]);
 
             EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(20.0, jj["stats"]["mean"], 1e-3);
@@ -234,9 +239,10 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(0 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(10, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(10, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("0:1" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(0, jj["data"][0]["app"]);
+	    EXPECT_EQ(1, jj["data"][0]["rank"]);
 
-            EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
+	    EXPECT_NEAR(0.0, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["mean"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["accumulate"], 1e-3);
             EXPECT_NEAR(10.0, jj["stats"]["maximum"], 1e-3);
@@ -253,7 +259,8 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
             EXPECT_EQ(31 , jj["data"][0]["min_timestamp"]);
             EXPECT_EQ(40, jj["data"][0]["max_timestamp"]);
             EXPECT_EQ(40, jj["data"][0]["n_anomalies"]);
-            EXPECT_STREQ("0:0" , jj["data"][0]["stat_id"].get<std::string>().c_str());
+            EXPECT_EQ(0, jj["data"][0]["app"]);
+	    EXPECT_EQ(0, jj["data"][0]["rank"]);
 
             EXPECT_NEAR(-1.36, jj["stats"]["kurtosis"], 1e-3);
             EXPECT_NEAR(25.0, jj["stats"]["mean"], 1e-3);
@@ -283,7 +290,6 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 
     std::unordered_map<unsigned long, RunStats> g_inclusive, g_exclusive;
     RunStats l_inclusive, l_exclusive;
-    nlohmann::json j;
 
     l_inclusive.clear();
     l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
@@ -294,17 +300,8 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
-    param.add_anomaly_data_json(
-        nlohmann::json::object({
-            {"func", nlohmann::json::array({
-                {
-		    {"pid",0}, {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
-                    {"inclusive", l_inclusive.get_json_state()}, 
-                    {"exclusive", l_exclusive.get_json_state()}
-                }
-            })}
-        }).dump()
-    );
+    
+    param.update_func_stat(0,0, "func 0", 4, l_inclusive, l_exclusive);
     
     // func 1: 10 calls = 4 nomal + 6 abnormal
     l_inclusive.clear();
@@ -316,17 +313,9 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
-    param.add_anomaly_data_json(
-        nlohmann::json::object({
-            {"func", nlohmann::json::array({
-                {
-                    {"pid",0}, {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
-                    {"inclusive", l_inclusive.get_json_state()}, 
-                    {"exclusive", l_exclusive.get_json_state()}
-                }
-            })}
-        }).dump()
-    );
+
+    param.update_func_stat(0, 1, "func 1", 4, l_inclusive, l_exclusive);
+
     // func 0: 10 calls = 6 nomal + 4 abnormal
     l_inclusive.clear();
     l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
@@ -337,17 +326,9 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[0] += l_inclusive; g_exclusive[0] += l_exclusive;
-    param.add_anomaly_data_json(
-        nlohmann::json::object({
-            {"func", nlohmann::json::array({
-                {
-                    {"pid",0}, {"id", 0}, {"name", "func 0"}, {"n_anomaly", 4},
-                    {"inclusive", l_inclusive.get_json_state()}, 
-                    {"exclusive", l_exclusive.get_json_state()}
-                }
-            })}
-        }).dump()
-    );    
+
+    param.update_func_stat(0,0, "func 0", 4, l_inclusive, l_exclusive);
+
     // func 1: 10 calls = 4 nomal + 6 abnormal
     l_inclusive.clear();
     l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);
@@ -358,19 +339,10 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     l_exclusive.push(7); l_exclusive.push(7.5); l_exclusive.push(6.5);
     l_exclusive.push(10); l_exclusive.push(10.5); l_exclusive.push(11.5); l_exclusive.push(4.5);
     g_inclusive[1] += l_inclusive; g_exclusive[1] += l_exclusive;
-    param.add_anomaly_data_json(
-        nlohmann::json::object({
-            {"func", nlohmann::json::array({
-                {
-                    {"pid",0}, {"id", 1}, {"name", "func 1"}, {"n_anomaly", 4},
-                    {"inclusive", l_inclusive.get_json_state()}, 
-                    {"exclusive", l_exclusive.get_json_state()}
-                }
-            })}
-        }).dump()
-    );    
 
-    j = param.collect_func_data();
+    param.update_func_stat(0, 1, "func 1", 4, l_inclusive, l_exclusive);
+
+    nlohmann::json j = param.collect_func_data();
     
     EXPECT_EQ(2, j.size());
 

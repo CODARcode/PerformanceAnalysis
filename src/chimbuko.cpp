@@ -47,7 +47,7 @@ void ChimbukoParams::print() const{
 	    << "\nWindow size: " << anom_win_size
 
 	    << "\nInterval   : " << interval_msec << " msec"
-            << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec" 
+            << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec"
 	    << "\nPerf. metric outpath : " << perf_outputpath
 	    << "\nPerf. step   : " << perf_step;
 #ifdef ENABLE_PROVDB
@@ -175,19 +175,22 @@ void Chimbuko::init_net_client(){
 
     //m_net_client = new ADNetClient;
     m_net_client = new ADThreadNetClient;
-    
+
     m_net_client->linkPerf(&m_perf);
     //m_thrnet_client->linkPerf(&m_perf);
 
     m_net_client->setRecvTimeout(m_params.net_recv_timeout);
 
 #ifdef _USE_MPINET
+    m_net_client = new ADMPINetClient;
     m_net_client->connect_ps(m_params.rank);
     //m_thrnet_client->connect_ps(m_params.rank);
 #else
+    m_net_client = new ADZMQNetClient;
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
     //m_thrnet_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
 #endif
+    m_net_client->linkPerf(&m_perf);
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
     //if(!m_thrnet_client->use_ps()) fatal_error("Could not connect to parameter server");
 
@@ -574,6 +577,11 @@ void Chimbuko::run(unsigned long long& n_func_events,
     timer.start();
     m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
     m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
+
+    //Flush counters
+    timer.start();
+    delete m_counter->flushCounters();
+    m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
 
     m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 

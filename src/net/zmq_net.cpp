@@ -139,37 +139,28 @@ void doWork(void* context,
     }
     perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
 
-    //Receive the message into a json-formatted string
-    timer.start();
     std::string strmsg;
+
+    //Receive the message
+    timer.start();
     ZMQNet::recv(socket, strmsg);
     perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
-
     verboseStream << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl;
 
     //Parse the message and instantiate a reply message with appropriate sender
     timer.start();
     Message msg, msg_reply;
     msg.set_msg(strmsg, true);
-
-    msg_reply = msg.createReply();
-    perf.add(perf_prefix + "message_parse_reply_create_ms", timer.elapsed_ms());
+    perf.add(perf_prefix + "message_parse_ms", timer.elapsed_ms());
 
     timer.start();
-    auto kit = payloads.find((MessageKind)msg.kind());
-    if(kit == payloads.end()) fatal_error("ZMQNet::doWork : No payload associated with the message kind provided. Message: " + strmsg + " (did you add the payload to the server?)");
-    auto pit = kit->second.find((MessageType)msg.type());
-    if(pit == kit->second.end()) fatal_error("ZMQNet::doWork : No payload associated with the message type provided. Mesage: " + strmsg + " (did you add the payload to the server?)");
-    perf.add(perf_prefix + "message_kind_type_lookup_ms", timer.elapsed_ms());
-
-    //Apply the payload
-    timer.start();
-    pit->second->action(msg_reply, msg);
-    strmsg = msg_reply.data();
-    verboseStream << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
-    perf.add(perf_prefix + "perform_action_ms", timer.elapsed_ms());
+    NetInterface::find_and_perform_action(msg_reply, msg, payloads);
+    perf.add(perf_prefix + "find_and_perform_action_ms", timer.elapsed_ms());
 
     //Send the reply
+    strmsg = msg_reply.data();
+    verboseStream << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
+
     timer.start();
     ZMQNet::send(socket, strmsg);
     perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());

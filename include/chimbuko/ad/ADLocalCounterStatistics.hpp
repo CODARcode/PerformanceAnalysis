@@ -31,6 +31,8 @@ namespace chimbuko{
 	  archive(pid,name,stats);
 	}
       };
+
+      int step; /**< Step index*/
       std::vector<CounterData> counters; /**< Statistics for all counters */
       
       /**
@@ -38,7 +40,7 @@ namespace chimbuko{
        */
       template<class Archive>
       void serialize(Archive & archive){
-	archive(counters);
+	archive(counters, step);
       }
 
       /**
@@ -50,6 +52,11 @@ namespace chimbuko{
        * Serialize from Cereal portable binary format
        */     
       void deserialize_cerealpb(const std::string &strstate);
+
+      /**
+       * Serialize into JSON format
+       */
+      nlohmann::json get_json() const;      
     };     
 
     /**
@@ -75,7 +82,7 @@ namespace chimbuko{
      * @param net_client The network client object
      * @return std::pair<size_t, size_t> [sent, recv] message size
      *
-     * The message string is the output of get_json_state() in string format
+     * The message string is the output of net_serialize()
      */
     //std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const;
     std::pair<size_t, size_t> updateGlobalStatistics(ADThreadNetClient &net_client, int rank, std::string pserver_addr) const;
@@ -93,7 +100,6 @@ namespace chimbuko{
     /**
      * @brief Get the JSON object that is sent to the parameter server
      *
-     * The string form of this object is sent to the pserver using updateGlobalStatistics
      */
     nlohmann::json get_json_state() const;
 
@@ -105,10 +111,37 @@ namespace chimbuko{
     State get_state() const;  
 
     /**
+     * @brief Set the internal variables to the given state object
+     *
+     * Note: it does not set the list of counters that are collected by gatherStatistics (m_which_counter)
+     */
+    void set_state(const State &s);
+
+    /**
+     * @brief Serialize this class for communication over the network
+     */
+    std::string net_serialize() const;
+
+    /**
+     * @brief Unserialize this class after communication over the network
+     */
+    void net_deserialize(const std::string &s);
+
+    /**
      * @brief Set the statistics for a particular counter (must be in the list of counters being collected). Primarily used for testing.
      */
     void setStats(const std::string &counter, const RunStats &to);
+
+    /**
+     * @brief Get the program index
+     */
+    unsigned long getProgramIdex() const{ return m_program_idx; }
     
+    /**
+     * @brief Get the IO step
+     */
+    int getIOstep() const{ return m_step; }
+
   protected:
     /**
      * @brief update (send) counter statistics gathered during this io step to the connected parameter server

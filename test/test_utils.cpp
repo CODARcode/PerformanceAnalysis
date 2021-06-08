@@ -147,7 +147,10 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
     d.set(1, 1000, 2000, 1234567890, 912345678, 123);
     d2.set(1, 1001, 2000, 1234567890, 912345678, 123);
 
-    AnomalyData c_d(d.get_json().dump());
+    std::string ser = d.net_serialize();
+
+    AnomalyData c_d;
+    c_d.net_deserialize(ser);
 
     EXPECT_EQ(d, c_d);
     EXPECT_TRUE(d==c_d);
@@ -164,8 +167,8 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
     std::default_random_engine generator;
 
     std::vector<std::string> anomaly_data;
-    std::unordered_map<std::string, AnomalyStat*> anomaly_stats, c_anomaly_stats;
-    std::unordered_map<std::string, int> n_anomaly_data;
+    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat*> > anomaly_stats, c_anomaly_stats;
+    std::unordered_map<int, std::unordered_map<unsigned long, int> > n_anomaly_data;
 
     // generate pseudo data
     for (int app_id = 0; app_id < (int)N_RANKS.size(); app_id++)
@@ -184,16 +187,16 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
                 const int n_anomalies = std::max((int)dist(generator), 0);
                 // std::cout << "Step: " << step << ", n: " << n_anomalies << std::endl;
                 AnomalyData d(app_id, rank_id, step, 0, 0, n_anomalies);
-                anomaly_data.push_back(d.get_json().dump());
+                anomaly_data.push_back(d.net_serialize());
 
                 if (step == 0)
                 {
-                    anomaly_stats[d.get_stat_id()] = new AnomalyStat();
-                    c_anomaly_stats[d.get_stat_id()] = new AnomalyStat();
-                    n_anomaly_data[d.get_stat_id()] = max_steps;
+                    anomaly_stats[app_id][rank_id] = new AnomalyStat();
+                    c_anomaly_stats[app_id][rank_id] = new AnomalyStat();
+                    n_anomaly_data[app_id][rank_id] = max_steps;
                 }
 
-                c_anomaly_stats[d.get_stat_id()]->add(d);
+                c_anomaly_stats[app_id][rank_id]->add(d);
             }
         }
     }
@@ -204,8 +207,9 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
     for (int i = 0; i < (int)anomaly_data.size(); ++i)
     {
         v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, i](){
-            AnomalyData d(anomaly_data[i]);
-            anomaly_stats[d.get_stat_id()]->add(anomaly_data[i]);
+	      AnomalyData d;
+	      d.net_deserialize(anomaly_data[i]);
+	      anomaly_stats[d.get_app()][d.get_rank()]->add(d);
         }));
     }
     for (auto& item: v)
@@ -213,14 +217,19 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
 
 
     // check the result
-    for (auto pair: anomaly_stats) {
-        auto stats = pair.second->get();
-        RunStats c_stats = c_anomaly_stats[pair.first]->get_stats();
+    for(auto &pp: anomaly_stats) {
+      int pid = pp.first;
+      for(auto &rp : pp.second){
+	unsigned long rid = rp.first;
+
+        auto stats = rp.second->get();
+        RunStats c_stats = c_anomaly_stats[pid][rid]->get_stats();
         
         EXPECT_EQ(c_stats, stats.first);
-        EXPECT_EQ(n_anomaly_data[pair.first], stats.second->size());
-        delete pair.second;
+        EXPECT_EQ(n_anomaly_data[pid][rid], stats.second->size());
+        delete rp.second;
         delete stats.second;
-        delete c_anomaly_stats[pair.first];
+        delete c_anomaly_stats[pid][rid];
+      }
     }
 }

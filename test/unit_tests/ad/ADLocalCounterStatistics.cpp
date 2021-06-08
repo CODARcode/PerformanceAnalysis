@@ -12,6 +12,78 @@
 
 using namespace chimbuko;
 
+TEST(ADLocalCounterStatisticsTest, TestToFromState){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  ADLocalCounterStatistics::State state = cs.get_state();
+  ADLocalCounterStatistics cs2(0, 0, nullptr);
+  cs2.set_state(state);
+
+  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
+  EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
+  EXPECT_EQ(cs.getStats(), cs2.getStats());
+}
+
+TEST(ADLocalCounterStatisticsTest, TestJSONstate){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  nlohmann::json state = cs.get_json_state();
+
+  EXPECT_EQ(state["step"], 77);
+  EXPECT_EQ(state["counters"].size(), 3);
+
+  bool got_a(false), got_b(false), got_c(false);
+
+  for(int i=0;i<3;i++){
+    if(state["counters"][i]["name"] == "counter1"){
+      got_a = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), a.get_json_state().dump());
+    }else if(state["counters"][i]["name"] == "counter2"){
+      got_b = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), b.get_json_state().dump());
+    }else if(state["counters"][i]["name"] == "counter3"){
+      got_c = true;
+      EXPECT_EQ( state["counters"][i]["pid"], 33 );
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), c.get_json_state().dump());
+    }
+  }
+  EXPECT_EQ(got_a,true);
+  EXPECT_EQ(got_b,true);
+  EXPECT_EQ(got_c,true);
+}
+
+TEST(ADLocalCounterStatisticsTest, TestSerialize){
+  RunStats a,b, c;
+  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
+
+  ADLocalCounterStatistics cs(33, 77, nullptr);
+  cs.setStats("counter1", a);
+  cs.setStats("counter2", b);
+  cs.setStats("counter3", c);
+
+  std::string ser = cs.net_serialize();
+  ADLocalCounterStatistics cs2(0, 0, nullptr);
+  cs2.net_deserialize(ser);
+
+  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
+  EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
+  EXPECT_EQ(cs.getStats(), cs2.getStats());
+}
+
 
 TEST(ADLocalCounterStatisticsTest, GathersCorrectly){
   std::unordered_set<std::string> which_counters = {"MyCounter1", "MyCounter2"};
@@ -24,27 +96,27 @@ TEST(ADLocalCounterStatisticsTest, GathersCorrectly){
   unsigned long value[4] = {999, 1002, 997, 1005};
   unsigned long ts[4] = {1234, 1235, 1236, 1237};
   std::string name = "MyCounter2"; //just one of the counters
-  
+
   std::list<CounterData_t> counters;
   for(int i=0;i<4;i++) counters.push_back( createCounterData_t(pid,rid,tid, counter_id, value[i], ts[i], name) );
 
   CountersByIndex_t cntrs;
   for(auto it = counters.begin(); it != counters.end(); it++)
     cntrs[counter_id].push_back(it);
-  
+
   ADLocalCounterStatistics cs(pid, 77, &which_counters);
-  
+
   cs.gatherStatistics(cntrs);
-  
+
   const auto &stats = cs.getStats();
   EXPECT_EQ(stats.size(), 1);
   EXPECT_EQ(stats.find(name), stats.begin());
   const RunStats &cstats = stats.begin()->second;
-  
+
   RunStats expect;
   for(int i=0;i<4;i++)
     expect.push(value[i]);
-  
+
   EXPECT_EQ(cstats, expect);
 }
 
@@ -63,16 +135,16 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
   GlobalCounterStats glob;
 
   cs.setStats(nm, a);
-  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
-  
+  glob.add_counter_data(cs);
+
   auto gstats = glob.get_stats();
   auto pit = gstats.find(pid);
   EXPECT_NE( pit, gstats.end() );
   EXPECT_EQ( pit->second.count(nm), 1 );
   EXPECT_EQ( pit->second[nm], a );
-  
+
   cs.setStats(nm, b);
-  glob.add_data_cerealpb(cs.get_state().serialize_cerealpb());
+  glob.add_counter_data(cs);
 
   gstats = glob.get_stats();
   pit = gstats.find(pid);
@@ -106,44 +178,44 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
 		       MockParameterServer ps;
 		       ps.start(barrier2, sinterface);
 		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       
+
 		       barrier2.wait();
 		       std::cout << "PS thread waiting for stat update" << std::endl;
 		       ps.receive_counter_statistics(barrier2,"test");
 		       barrier2.wait();
 		       ps.waitForDisconnect();
 
-		       barrier2.wait();		       
+		       barrier2.wait();
 		       std::cout << "PS thread terminating connection" << std::endl;
 		       ps.end();
 		     });
-		       
+
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADThreadNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  barrier2.wait();
 			  std::cout << "AD thread updating local stats" << std::endl;
 			  ADLocalCounterStatisticsWrapper::updateGlobalStatisticsTest(net_client, "test",0,0,sname);
-			  barrier2.wait();			  
+			  barrier2.wait();
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();			  
+			  barrier2.wait();
 			}catch(const std::exception &e){
 			  std::cerr << e.what() << std::endl;
 			}
 		      });
   ps_thr.join();
   out_thr.join();
-  
+
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
 
-TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){  
+TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
 #ifdef _USE_MPINET
 #warning "Testing with MPINET not available"
 #elif defined(_USE_ZMQNET)
@@ -183,7 +255,7 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADThreadNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  cs.setStats(nm, a);
@@ -200,21 +272,17 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
 			}
 			//barrier2.wait();
 		      });
-  
+
   ps_thr.join();
   out_thr.join();
-  
+
   auto gstats = glob.get_stats();
   auto pit = gstats.find(pid);
   EXPECT_NE( pit, gstats.end() );
   EXPECT_EQ( pit->second.count(nm), 1 );
   EXPECT_EQ( pit->second[nm], sum );
-		         
+
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
-
-
-
-

@@ -9,22 +9,22 @@ using namespace chimbuko;
 
 std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
   std::stringstream ss;
-  {    
+  {
     cereal::PortableBinaryOutputArchive wr(ss);
-    wr(*this);    
+    wr(*this);
   }
   return ss.str();
 }
 
 void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
   std::stringstream ss; ss << strstate;;
-  {    
+  {
     cereal::PortableBinaryInputArchive rd(ss);
-    rd(*this);    
+    rd(*this);
   }
 }
 
-ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
+ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf):
   m_program_idx(program_idx), m_rank(rank), m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf), m_n_anomalies(0){}
 
 
@@ -39,7 +39,7 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
       if (m_min_ts == 0 || m_min_ts > itt->get_entry())
 	m_min_ts = itt->get_entry();
       if (m_max_ts == 0 || m_max_ts < itt->get_exit())
-	m_max_ts = itt->get_exit();      
+	m_max_ts = itt->get_exit();
     }
   }
 }
@@ -95,43 +95,35 @@ ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
 }
 
 
-//std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const{
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, int rank, std::string pserver_addr) const{
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
   //nlohmann::json g_info = get_json_state();
   State g_info = get_state();
   PerfTimer timer;
   timer.start();
   //auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
-  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step, rank, pserver_addr);
-  
+  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step);
+
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_ms", timer.elapsed_ms());
     m_perf->add("func_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
     m_perf->add("func_stats_stream_recv_MB", (double)msgsz.second / 1000000.0); // MB
   }
-  
+
   return msgsz;
 }
 
-//std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
-
-  //ADThreadNetClient thrnet;
-  //thrnet.connect_ps(rank, 0, pserver_addr);
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
   msg.set_msg(l_stats);
-  
+
   size_t sent_sz = msg.size();
-  //std::string strmsg = net_client.send_and_receive(msg);
-  net_client.async_send(msg);
-  //thrnet.async_send(msg);
-  size_t recv_sz =0;// msg.size(); //strmsg.size();
-  
-  //thrnet.disconnect_ps();
+  std::string strmsg = net_client.send_and_receive(msg);
+  size_t recv_sz = strmsg.size();
+
   return std::make_pair(sent_sz, recv_sz);
 }
