@@ -167,12 +167,18 @@ namespace chimbuko{
     bool complete;
 
     ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
+//    ClientActionBlockingSendReceive(Message *recv, const Message &send): send(send), recv(recv), complete(false){}
 
     void perform(ADNetClient &client){
       //std::cout << "Performing blocking send and receive" << std::endl;
       client.send_and_receive(*recv, *send);
-      complete = true;
-      cv.notify_one();
+//      client.send_and_receive(*recv, send);
+
+      {
+        std::unique_lock<std::mutex> lk(m);
+        complete = true;
+        cv.notify_one();
+      }
     }
     bool do_delete() const{ return false; }
 
@@ -236,7 +242,7 @@ namespace chimbuko{
             while(nwork > 0){
               ClientAction* work_item = getWorkItem();
               work_item->perform(client);
-              shutdown = work_item->shutdown_worker();
+              shutdown = shutdown || work_item->shutdown_worker();
 
               if(work_item->do_delete()) delete work_item;
               nwork = getNwork();
@@ -273,6 +279,7 @@ namespace chimbuko{
     }
     void send_and_receive(Message &recv, const Message &send){
       ClientActionBlockingSendReceive action(&recv, &send);
+//      ClientActionBlockingSendReceive action(&recv, send);
       enqueue_action(&action);
       action.wait_for();
     }
