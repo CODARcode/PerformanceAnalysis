@@ -45,6 +45,11 @@ int main(int argc, char** argv){
   int nshards = std::stoi(argv[2]);
   int freq_ms = std::stoi(argv[3]);
 
+  if(freq_ms == 0){
+    progressStream << "ProvDB Commit freq==0, I am not needed. Done" << std::endl;
+    return 0;
+  } 
+
   std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
   if(ADProvenanceDBengine::getProtocol().first != protocol){
     int mode = ADProvenanceDBengine::getProtocol().second;
