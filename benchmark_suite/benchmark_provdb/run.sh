@@ -1,35 +1,40 @@
 #!/bin/bash
-ranks=64
-cycles=60
+set -e
+
+rm -rf chimbuko
+export CHIMBUKO_CONFIG=chimbuko_config.sh
+source ${CHIMBUKO_CONFIG}
+
+if (( 1 )); then
+    echo "Running services"
+    ${backend_root}/scripts/launch/run_services.sh 2>&1 | tee services.log &
+    echo "Waiting"
+    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+    ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
+fi
+
+provdb_addr=$(cat chimbuko/provdb/provider.address)
+exe=./benchmark_client
+cycles=100
+callstack_size=2
+ncounters=5
+winsize=5
+comm_messages_per_winevent=1
+anomalies_per_cycle=1
+normal_events_per_cycle=1
 cycle_time_ms=1000
-anom_per_cyc=10
-norm_per_cyc=10
-shards=2
-threads=2
-#rm -f ps_perf.txt ps_perf_stats.txt
+nshards=${provdb_nshards}
+perf_write_freq=5   #cycles
+perf_dir=chimbuko/logs
+do_state_dump=0
+ranks=4
 
-export CHIMBUKO_VERBOSE=1
-export MARGO_ENABLE_PROFILING=1
+client_cmd="$exe \"${provdb_addr}\" -cycles ${cycles} -callstack_size ${callstack_size} -ncounters ${ncounters} -winsize ${winsize} -comm_messages_per_winevent ${comm_messages_per_winevent} -anomalies_per_cycle ${anomalies_per_cycle} -normal_events_per_cycle ${normal_events_per_cycle} -cycle_time_ms ${cycle_time_ms} -nshards ${nshards} -perf_write_freq ${perf_write_freq} -perf_dir ${perf_dir} -do_state_dump ${do_state_dump} 2>&1 | tee chimbuko/logs/client.log"
 
-rm -f provdb.*.unqlite* provider.address
-ip=$(hostname -i)
-provdb_addr=${ip}:5000
+if (( 1 )); then
+    echo "Instantiating client"
+    echo "Command is " $client_cmd
+    eval "mpirun --allow-run-as-root -n ${ranks} ${client_cmd} &"
+fi
 
-# -engine "na+sm"
-#-db_type "null"
-provdb_admin ${provdb_addr} -autoshutdown true -nshards ${shards} -nthreads ${threads} -db_commit_freq 10000 2>&1 | tee provdb.log &
-admin=$!
-
-sleep 5
-provdb_inaddr=`cat provider.address`
-echo "Provdb addr ${provdb_inaddr}"
-
-
-mpirun --oversubscribe --allow-run-as-root -n ${ranks} ./benchmark_client ${provdb_inaddr} -cycles ${cycles} -cycle_time_ms ${cycle_time_ms} -anomalies_per_cycle ${anom_per_cyc} -normal_events_per_cycle ${norm_per_cyc} -nshards ${shards} 2>&1 | tee client.log
-
-wait $admin
-
-dir=${ranks}rank_cyc${cycle_time_ms}ms_anom${anom_per_cyc}_norm${norm_per_cyc}_shards${shards}_threads${threads}_multithread_prdcommit
-mkdir ${dir}
-mv client_stats.json profile* ${dir}
-echo "ADMIN is $admin"
+wait
