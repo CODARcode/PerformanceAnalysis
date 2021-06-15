@@ -107,10 +107,15 @@ void client_stop_rpc(const tl::request& req) {
 
 margo_instance_id margo_id;
 
-void margo_dump_rpc(const tl::request& req) {
-  std::string fn = std::string("margo_dump.") + getDateTimeFileExt();
+void margo_dump(const std::string &stub){
+  std::string fn = stub + "." + getDateTimeFileExt();
   progressStream << "ProvDB Admin: margo dump to " << fn << std::endl;
   margo_state_dump(margo_id, fn.c_str(), 0, nullptr);
+}
+
+void margo_dump_rpc(const tl::request& req) {
+  const static std::string stub("margo_dump");
+  margo_dump(stub);
 }
 
 
@@ -291,6 +296,7 @@ int main(int argc, char** argv) {
 	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
 	       ){
 	      progressStream << "ProvDB Admin: detected all clients disconnected, shutting down" << std::endl;
+	      margo_dump("margo_dump_all_client_disconnected");
 	      break;
 	    }
 	  }
@@ -303,9 +309,11 @@ int main(int argc, char** argv) {
 	}
 	
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
+	margo_dump("margo_dump_end_admin_scope");
       }//admin scope
 
       progressStream << "ProvDB Admin: ending provider scope" << std::endl;
+      margo_dump("margo_dump_end_provide_scope");
     }//provider scope
 
     progressStream << "ProvDB Admin: shutting down server engine" << std::endl;

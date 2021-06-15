@@ -196,9 +196,12 @@ int main(int argc, char **argv){
     }      
   }//cycle loop
 
+  std::cout << "Rank " << rank << " disconnecting from server" << std::endl;
+  provdb_client.disconnect(); //ensure data is written to stats
   stats.write();  
     
   MPI_Finalize();
 
+  std::cout << "Rank " << rank << " done" << std::endl;
   return 0;
 }

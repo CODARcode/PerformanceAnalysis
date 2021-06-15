@@ -21,7 +21,7 @@ open(IN, $file);
 
 #cf https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
 #Generate profiles by setting env variable MARGO_ENABLE_PROFILING=1
-
+#NB :  Origin are clients and Target is the server
 $i=0;
 $nrpc;
 %rpcnames = ();
