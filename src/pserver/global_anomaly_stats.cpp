@@ -72,22 +72,34 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
   //that have been collected from that rank since the last flush
   for(auto & pp : m_anomaly_stats){
-    int pid = pp.first;
+    int pid = pp.first; //pid
     for(auto & rp: pp.second){
-      unsigned long rid = rp.first;
+      unsigned long rid = rp.first; //rank
       
       auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<AnomalyData>*>,  and flushes the state of pair.second. 
       //We now own the std::list<AnomalyData>* pointer and have to delete it
       
       if(stats.second){
-	if(stats.second->size()){
+	//Decide whether to include the data for this pid/rid
+	//Do this only if any anomalies were seen since the last call
+	bool include = false;
+	for(const AnomalyData &adata: *stats.second){
+	  if(adata.get_n_anomalies() > 0){
+	    include = true;
+	    break;
+	  }
+	}
+
+	if(include){
 	  nlohmann::json object;
 	  object["key"] = stringize("%d:%d", pid,rid);
-	  object["stats"] = stats.first.get_json();
+	  object["stats"] = stats.first.get_json(); //statistics on anomalies to date for this pid/rid
 	  
 	  object["data"] = nlohmann::json::array();
-	  for (auto const &adata: *stats.second){
-	    object["data"].push_back(adata.get_json());
+	  for (const AnomalyData &adata: *stats.second){
+	    //Don't include data for which there are no anomalies
+	    if(adata.get_n_anomalies()>0)
+	      object["data"].push_back(adata.get_json());
 	  }
 	  jsonObjects.push_back(object);
 	}
