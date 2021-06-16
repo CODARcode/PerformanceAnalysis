@@ -31,6 +31,7 @@ struct Args{
   int perf_write_freq;
   std::string perf_dir;
   bool do_state_dump; //have the provdb record its state every time the perf stats are written (by rank 0)
+  int max_outstanding_sends; //if set >0 the benchmark will pause when the number of outstanding asynchronous sends reaches this number until it reaches 0 again
   
   Args(){
     cycles = 10;
@@ -45,6 +46,7 @@ struct Args{
     perf_write_freq = 10;
     perf_dir=".";
     do_state_dump = false;
+    max_outstanding_sends = 0;
   }
 };
 
@@ -73,6 +75,8 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, do_state_dump);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, max_outstanding_sends);
+
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
     cmdline.help();
@@ -182,7 +186,8 @@ int main(int argc, char **argv){
     async_send_calls+=2;
 
     if(c>0 && c % args.perf_write_freq == 0){
-      stats_prd.add("provdb_incomplete_async_sends", provdb_client.getNoutstandingAsyncReqs());
+      int noutstanding = provdb_client.getNoutstandingAsyncReqs();
+      stats_prd.add("provdb_incomplete_async_sends", noutstanding);
       stats_prd.add("io_steps", n_steps_accum_prd);
       stats_prd.add("provdb_total_async_send_calls", async_send_calls);
 
@@ -193,6 +198,15 @@ int main(int argc, char **argv){
 	provdb_client.serverDumpState();
 
       n_steps_accum_prd = 0;
+
+      if(args.max_outstanding_sends > 0 && noutstanding >= args.max_outstanding_sends){
+	std::cout << "Number of outstanding sends, " << noutstanding << " exceeds threshold " << args.max_outstanding_sends << ", sleeping until the queue is flushed" << std::endl;
+	timer.start();	    
+	while(provdb_client.getNoutstandingAsyncReqs()>0){
+	  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
+	std::cout << "Woke up after " << timer.elapsed_ms() << "ms waiting for async send queue to drain" << std::endl;
+      }
     }      
   }//cycle loop
 
