@@ -60,13 +60,6 @@ namespace chimbuko_sim{
     
     ~ADsim(){ if(m_outlier) delete m_outlier; }
 
-    /**
-     * @brief Set up the AD algorithm. Parameters correspond to those in ADOutlier::set_algorithm
-     *
-     * Using an AD algorithm to analyze the data is optional. Set the ad_algorithm() string to a value other than "none" to switch the algorithm
-     */
-    void setupADalgorithm(const double hbos_thres, const bool glob_thres, const double sstd_sigma, ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime);
-
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
 
     /**
