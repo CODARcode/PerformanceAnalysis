@@ -130,6 +130,7 @@ struct ProvdbArgs{
   std::string db_type;
   unsigned long db_commit_freq;
   std::string db_write_dir;
+  bool db_in_mem; //database is in-memory not written to disk, for testing
 
   ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."){}
 };
@@ -157,6 +158,8 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
     addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
+    addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
+
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
@@ -167,6 +170,9 @@ int main(int argc, char** argv) {
     parser.parseCmdLineArgs(args, argc, argv);
 
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
+    if(args.db_in_mem && args.db_type != "unqlite") throw std::runtime_error("-db_in_mem option not valid for backends other than unqlite");
+
+    if(args.db_in_mem){ progressStream << "Using in-memory database" << std::endl; }
 
     std::string eng_opt = args.engine;
     if(args.ip.size() > 0){
@@ -223,7 +229,10 @@ int main(int argc, char** argv) {
 	sonata::Admin admin(engine);
 	progressStream << "ProvDB Admin: creating global data database" << std::endl;
 	std::string glob_db_name = "provdb.global";
+
 	std::string glob_db_config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), glob_db_name.c_str());
+	if(args.db_in_mem) glob_db_config = "{ \"path\" : \":mem:\" }";
+
 	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
 	
 	progressStream << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
@@ -231,7 +240,10 @@ int main(int argc, char** argv) {
 	std::vector<std::string> db_shard_names(args.nshards);
 	for(int s=0;s<args.nshards;s++){
 	  std::string db_name = stringize("provdb.%d",s);
+
 	  std::string config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), db_name.c_str());
+	  if(args.db_in_mem) config = "{ \"path\" : \":mem:\" }";
+
 	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
 	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
 	  db_shard_names[s] = db_name;
