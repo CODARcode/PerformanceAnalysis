@@ -17,6 +17,7 @@
 #include <iostream>
 #include <csignal>
 #include <cassert>
+#include <nlohmann/json.hpp>
 
 #include <spdlog/spdlog.h>
 #include "chimbuko/verbose.hpp"
@@ -131,8 +132,9 @@ struct ProvdbArgs{
   unsigned long db_commit_freq;
   std::string db_write_dir;
   bool db_in_mem; //database is in-memory not written to disk, for testing
-
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."){}
+  std::string db_base_config;
+  
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""){}
 };
 
 
@@ -159,7 +161,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
-
+    addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
@@ -177,6 +179,13 @@ int main(int argc, char** argv) {
     std::string eng_opt = args.engine;
     if(args.ip.size() > 0){
       eng_opt += std::string("://") + args.ip;
+    }
+
+    nlohmann::json base_config;
+    if(args.db_base_config.size() > 0){
+      std::ifstream in(args.db_base_config);
+      if(in.fail()){ throw std::runtime_error("Failed to read db config file " + args.db_base_config); }
+      base_config = nlohmann::json::parse(in);
     }
 
     progressStream << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
@@ -227,13 +236,13 @@ int main(int argc, char** argv) {
 
       { //Scope in which admin object is active
 	sonata::Admin admin(engine);
-	progressStream << "ProvDB Admin: creating global data database" << std::endl;
 	std::string glob_db_name = "provdb.global";
 
-	std::string glob_db_config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), glob_db_name.c_str());
-	if(args.db_in_mem) glob_db_config = "{ \"path\" : \":mem:\" }";
+	nlohmann::json glob_db_config = base_config;
+	glob_db_config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), glob_db_name.c_str());
 
-	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config);
+	progressStream << "ProvDB Admin: creating global data database: " << glob_db_name << " " << glob_db_config.dump() << " " << args.db_type << std::endl;
+	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config.dump());
 	
 	progressStream << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
 
@@ -241,11 +250,11 @@ int main(int argc, char** argv) {
 	for(int s=0;s<args.nshards;s++){
 	  std::string db_name = stringize("provdb.%d",s);
 
-	  std::string config = stringize("{ \"path\" : \"%s/%s.unqlite\" }", args.db_write_dir.c_str(), db_name.c_str());
-	  if(args.db_in_mem) config = "{ \"path\" : \":mem:\" }";
+	  nlohmann::json config = base_config;
+	  config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), db_name.c_str());
 
-	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config << " " << args.db_type << std::endl;
-	  admin.createDatabase(addr, 0, db_name, args.db_type, config);
+	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config.dump() << " " << args.db_type << std::endl;
+	  admin.createDatabase(addr, 0, db_name, args.db_type, config.dump());
 	  db_shard_names[s] = db_name;
 	}
 
