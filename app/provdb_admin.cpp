@@ -133,8 +133,9 @@ struct ProvdbArgs{
   std::string db_write_dir;
   bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
+  std::string db_margo_config;
   
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
 };
 
 
@@ -162,6 +163,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
@@ -181,6 +183,7 @@ int main(int argc, char** argv) {
       eng_opt += std::string("://") + args.ip;
     }
 
+    //Get Sonata config
     nlohmann::json base_config;
     if(args.db_base_config.size() > 0){
       std::ifstream in(args.db_base_config);
@@ -190,13 +193,18 @@ int main(int argc, char** argv) {
 
     progressStream << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
 
-    //Disable loopback so that RPC calls from this process are forced to go through the net interface
-    hg_init_info info;
-    memset(&info, 0, sizeof(info));
-    info.no_loopback = HG_TRUE;
+    //Get Margo config
+    std::string margo_config = stringize("{ \"rpc_thread_count\" : %d, \"use_progress_thread\" : true }", args.nthreads);
+    if(args.db_margo_config.size() > 0){
+      std::ifstream in(args.db_margo_config);
+      if(in.fail()){ throw std::runtime_error("Failed to read Margo config file " + args.db_margo_config); }
+      auto cfg = nlohmann::json::parse(in);
+      margo_config = cfg.dump();
+    }
+    progressStream << "ProvDB Admin: Margo configuration " << margo_config << std::endl;
 
     //Initialize provider engine
-    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, true, args.nthreads, &info); 
+    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, margo_config); 
     margo_id = engine.get_margo_instance();
 
 #ifdef _PERF_METRIC
