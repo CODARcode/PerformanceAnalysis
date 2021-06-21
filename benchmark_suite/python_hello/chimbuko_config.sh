@@ -8,7 +8,7 @@ service_node_iface=eth0 #network interface upon which communication to the servi
 ####################################
 #Options for visualization module
 ####################################
-use_viz=0 #enable or disable the visualization
+use_viz=1 #enable or disable the visualization
 viz_root=/opt/chimbuko/viz    #the root directory of the visualization module  <------------ ***SET ME (if using viz)***
 viz_worker_port=6379  #the port on which to run the redis server for the visualization backend
 viz_port=5002 #the port on which to run the webserver
@@ -43,34 +43,41 @@ use_pserver=1 #enable or disable the pserver
 pserver_extra_args="" #any extra command line arguments to pass
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads
-
 ####################################
 #Options for the AD module
 ####################################
-ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
+ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1 -outlier_statistic \"inclusive_runtime\"" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
 ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this so keep it small!
-ad_alg="sstd" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
+ad_alg="hbos" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
 ad_outlier_hbos_threshold=0.99  #the percentile of events outside of which are considered anomalies by the HBOS algorithm
 ad_outlier_sstd_sigma=12 #number of standard deviations that defines an outlier in the SSTD algorithm
-
 ####################################
 #Options for TAU
+#Note: Only the TAU_ADIOS2_PATH, TAU_ADIOS2_FILE_PREFIX, EXE_NAME and TAU_ADIOS2_ENGINE variables are used by the Chimbuko services script and there only to generate the suggested
+#      command to launch the AD (output to chimbuko/vars/chimbuko_ad_cmdline.var); they can be overridden by the run script if desired providing the appropriate modifications
+#      are made to the AD launch command. The remainder of the variables are used only by TAU and can be freely overridden.
 ####################################
 export TAU_ADIOS2_ENGINE=SST    #online communication engine (alternative BP4 although this goes through the disk system and may be slower unless the BPfiles are stored on a burst disk)
-export TAU_ADIOS2_ONE_FILE=FALSE  #a different connetion file for each rank
+export TAU_ADIOS2_ONE_FILE=FALSE  #a different connection file for each rank
 export TAU_ADIOS2_PERIODIC=1   #enable/disable ADIOS2 periodic output
 export TAU_ADIOS2_PERIOD=1000000  #period in us between ADIOS2 io steps
 export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TAU virtual threads
 export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 
-export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-python-adios2  #The TAU makefile to use <------------ ***SET ME***
-TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,python,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
-TAU_PYTHON="tau_python -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime
+export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-python-pdt-adios2  #The TAU makefile to use <------------ ***SET ME***
+
+#Note: the following 2 variables are not used by the service script but are included here for use from the user's run script allowing the application to be launched with either "${TAU_EXEC} <app>" or "${TAU_PYTHON} <app>"
+#Note: the "binding" -T ... is used by Tau to find the appropriate configuration. It can typically be inferred from the name of the Makefile. If using a non-MPI job the 'mpi' should be changed to 'serial' and a non-MPI build of
+#      ADIOS2/TAU must exist
+#Suggestion: It is useful to test the command without Chimbuko first to ensure TAU picks up the correct binding; this can be done by 'export TAU_ADIOS2_ENGINE=BPFile' and then running the application with Tau but without Chimbuko.
+TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
+TAU_PYTHON="tau_python -T papi,mpi,pthread,python,pdt,adios2 -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it
+                                                                                                                           #to tee in realtime <--- SET ME (if !python3)
 
 export EXE_NAME=python3.6  #the name of the executable (without path) <------------ ***SET ME***
 
 TAU_ADIOS2_PATH=chimbuko/adios2  #path where the adios2 files are to be stored. Chimbuko services creates the directory chimbuko/adios2 in the working directory and this should be used by default
-TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp  
+TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp
 
 
 
@@ -101,3 +108,4 @@ if [[ ${chimbuko_services} == "infer" ]]; then
 	exit 1
     fi
 fi
+    
