@@ -30,7 +30,7 @@ namespace chimbuko_sim{
     ADNormalEventProvenance m_normal_events;
     ADMetadataParser m_metadata;
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
-    ADLocalNetClient m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
+    ADThreadNetClient *m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
     ADOutlier* m_outlier; /**< The local outlier algorithm instance, if used*/
   public:
     /** 
@@ -54,11 +54,14 @@ namespace chimbuko_sim{
     ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq): ADsim(){
       init(window_size, pid, rid, program_start, step_freq);
     }
-    ADsim(): m_outlier(nullptr){}
+    ADsim(): m_outlier(nullptr), m_net_client(nullptr){}
 
     ADsim(ADsim &&r);
     
-    ~ADsim(){ if(m_outlier) delete m_outlier; }
+    ~ADsim(){ 
+      if(m_outlier) delete m_outlier; 
+      if(m_net_client) delete m_net_client;
+    }
 
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
 
