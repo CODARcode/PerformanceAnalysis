@@ -30,13 +30,6 @@ namespace chimbuko {
     void add(const AnomalyData& d, bool bStore = true);
 
     /**
-     * @brief Add the anomaly count from the input string, a JSON-formatted dump of an AnomalyData instance, to the internal statistics
-     * @param d The AnomalyData instance
-     * @param bStore If true the string will be added to the "data list"
-     */
-    void add(const std::string& str, bool bStore = true);
-
-    /**
      * @brief Get copy of the current statistics and the pointer 
      *        to data list.
      * 
@@ -45,9 +38,9 @@ namespace chimbuko {
      * allocated. So, it is callee's responsibility to free the 
      * allocated memory.
      * 
-     * @return std::pair<RunStats, std::list<std::string>*> 
+     * @return std::pair<RunStats, std::list<AnomalyData>*> 
      */
-    std::pair<RunStats, std::list<std::string>*> get();
+    std::pair<RunStats, std::list<AnomalyData>*> get();
 
     /**
      * @brief Return a copy of current statistics
@@ -64,9 +57,9 @@ namespace chimbuko {
      * new data can be added to the list in other threads. 
      * Also, it shouldn't be freed by the callee.
      * 
-     * @return std::list<std::string>* 
+     * @return std::list<AnomalyData>* 
      */
-    std::list<std::string>* get_data();
+    std::list<AnomalyData>* get_data() const;
 
     /**
      * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
@@ -76,7 +69,7 @@ namespace chimbuko {
   private:
     mutable std::mutex               m_mutex;
     RunStats                 m_stats; /** Statistics on the number of anomalies collected per io step since start of run as well as count of total anomalies*/
-    std::list<std::string> * m_data; /**< A list of JSON-formatted strings that represent serializations of the incoming AnomalyData instances since last flush*/
+    std::list<AnomalyData> * m_data; /**< A list of AnomalyData instances captured since last flush*/
   };
 
 } // end of chimbuko namespace

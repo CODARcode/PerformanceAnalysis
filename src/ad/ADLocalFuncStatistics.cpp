@@ -1,109 +1,148 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/ad/AnomalyData.hpp>
 
-#include <cereal/archives/portable_binary.hpp>
-#include <cereal/types/vector.hpp>
-#include <cereal/types/string.hpp>
+#include <chimbuko/util/serialize.hpp>
+#include <climits>
+#include <algorithm>
 
 using namespace chimbuko;
 
-std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
-  std::stringstream ss;
-  {    
-    cereal::PortableBinaryOutputArchive wr(ss);
-    wr(*this);    
-  }
-  return ss.str();
+ADLocalFuncStatistics::FuncStats::State::State(const ADLocalFuncStatistics::FuncStats &p):  pid(p.pid), id(p.id), name(p.name), n_anomaly(p.n_anomaly), 
+										     inclusive(p.inclusive.get_state()), exclusive(p.exclusive.get_state()){}
+  
+
+nlohmann::json ADLocalFuncStatistics::FuncStats::State::get_json() const{
+  nlohmann::json obj;
+  obj["pid"] = pid;
+  obj["id"] = id;
+  obj["name"] = name;
+  obj["n_anomaly"] = n_anomaly;
+  obj["inclusive"] = inclusive.get_json();
+  obj["exclusive"] = exclusive.get_json();
+  return obj;
 }
 
-void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
-  std::stringstream ss; ss << strstate;;
-  {    
-    cereal::PortableBinaryInputArchive rd(ss);
-    rd(*this);    
-  }
+void ADLocalFuncStatistics::FuncStats::set_state(const State &to){
+  pid = to.pid;
+  id = to.id;
+  name = to.name;
+  n_anomaly = to.n_anomaly;
+  inclusive.set_state(to.inclusive);
+  exclusive.set_state(to.exclusive);
 }
 
-ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
-  m_program_idx(program_idx), m_rank(rank), m_step(step), m_min_ts(0), m_max_ts(0), m_perf(perf), m_n_anomalies(0){}
 
 
-void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
-  for (auto it : *exec_data) { //loop over functions (key is function index)
-    unsigned long func_id = it.first;
-    for (auto itt : it.second) { //loop over events for that function
-      m_func[func_id] = itt->get_funcname();
-      m_inclusive[func_id].push(static_cast<double>(itt->get_inclusive()));
-      m_exclusive[func_id].push(static_cast<double>(itt->get_exclusive()));
-
-      if (m_min_ts == 0 || m_min_ts > itt->get_entry())
-	m_min_ts = itt->get_entry();
-      if (m_max_ts == 0 || m_max_ts < itt->get_exit())
-	m_max_ts = itt->get_exit();      
-    }
-  }
-}
-
-void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
-  for(auto fit: m_func){
-    unsigned long func_id = fit.first;
-    m_anomaly_count[func_id] += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
-  }
-  m_n_anomalies += anom.nEvents(Anomalies::EventType::Outlier);
-}
-
-nlohmann::json ADLocalFuncStatistics::get_json_state() const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
+nlohmann::json ADLocalFuncStatistics::State::get_json() const{
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();
-  for (auto it : m_func) { //loop over function index
-    const unsigned long func_id = it.first;
-    const unsigned long n = m_anomaly_count.find(func_id)->second;
-
-    nlohmann::json obj;
-    obj["pid"] = m_program_idx;
-    obj["id"] = func_id;
-    obj["name"] = it.second;
-    obj["n_anomaly"] = n;
-    obj["inclusive"] = m_inclusive.find(func_id)->second.get_json_state();
-    obj["exclusive"] = m_exclusive.find(func_id)->second.get_json_state();
-    g_info["func"].push_back(obj);
+  for(const auto &e : func){
+    g_info["func"].push_back(e.get_json());
   }
-
-  g_info["anomaly"] = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies).get_json();
+  g_info["anomaly"] = anomaly.get_json();
   return g_info;
 }
 
+
+
+std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
+ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
+  m_perf(nullptr), m_anom_data(program_idx, rank, step, 0,0,0){}
+
+void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
+  unsigned long min_ts = ULONG_MAX, max_ts = 0;
+
+  for (auto it : *exec_data) { //loop over functions (key is function index)
+    if(it.second.size() == 0) continue;
+
+    unsigned long func_id = it.first;
+    auto fstats_it = m_funcstats.find(func_id);
+
+    //Create new entry if it doesn't exist
+    if(fstats_it == m_funcstats.end()){
+      const std::string &name = it.second.front()->get_funcname(); //it.second has already been checked to have size >= 1
+      fstats_it = m_funcstats.insert( std::unordered_map<unsigned long, FuncStats>::value_type(func_id, FuncStats(m_anom_data.get_app(), func_id, name)) ).first;
+    }
+
+    for (auto itt : it.second) { //loop over events for that function
+      fstats_it->second.inclusive.push(static_cast<double>(itt->get_inclusive()));
+      fstats_it->second.exclusive.push(static_cast<double>(itt->get_exclusive()));
+
+      min_ts = std::min(min_ts, static_cast<unsigned long>(itt->get_entry()) );
+      max_ts = std::max(max_ts, static_cast<unsigned long>(itt->get_exit()));
+    }
+  }
+
+  m_anom_data.set_min_ts(min_ts);
+  m_anom_data.set_max_ts(max_ts);
+}
+
+void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
+  //Loop over functions and get the number of anomalies
+  for(auto &fstats: m_funcstats){
+    unsigned long func_id = fstats.second.id;
+    fstats.second.n_anomaly += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
+  }
+
+  //Gather information on the number of anomalies and stats on their scores
+  const std::vector<CallListIterator_t> &anomalies = anom.allEvents(Anomalies::EventType::Outlier);
+  m_anom_data.incr_n_anomalies(anomalies.size());
+  
+  for(auto const &it : anomalies)
+    m_anom_data.add_outlier_score(it->get_outlier_score());
+}
 
 ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
   // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
   State g_info;
-  for (auto it : m_func) { //loop over function index
-    const unsigned long func_id = it.first;
-    State::FuncData obj;
-    obj.pid = m_program_idx;
-    obj.id = func_id;
-    obj.name = it.second;
-    obj.n_anomaly = m_anomaly_count.find(func_id)->second;
-    obj.inclusive = m_inclusive.find(func_id)->second.get_state();
-    obj.exclusive = m_exclusive.find(func_id)->second.get_state();
-    g_info.func.push_back(obj);
+  for (auto const &fstats : m_funcstats) { //loop over function index
+    g_info.func.push_back(fstats.second.get_state());
   }
 
-  g_info.anomaly = AnomalyData(m_program_idx, m_rank, m_step, m_min_ts, m_max_ts, m_n_anomalies);
+  g_info.anomaly = m_anom_data.get_state();
   return g_info;
 }
 
 
-//std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const{
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, int rank, std::string pserver_addr) const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  //nlohmann::json g_info = get_json_state();
-  State g_info = get_state();
+void ADLocalFuncStatistics::set_state(const ADLocalFuncStatistics::State &s){
+  m_funcstats.clear();
+  for(auto const &fstats_s : s.func)
+    m_funcstats[fstats_s.id].set_state(fstats_s);
+  
+  m_anom_data.set_state(s.anomaly);
+}
+
+
+
+
+nlohmann::json ADLocalFuncStatistics::get_json_state() const{
+  return get_state().get_json();
+}
+
+
+std::string ADLocalFuncStatistics::net_serialize() const{
+  return get_state().serialize_cerealpb();
+}
+
+void ADLocalFuncStatistics::net_deserialize(const std::string &s){
+  State state;
+  state.deserialize_cerealpb(s);
+  set_state(state);
+}
+
+
+
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client) const{
   PerfTimer timer;
   timer.start();
-  //auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
-  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step, rank, pserver_addr);
+  auto msgsz = updateGlobalStatistics(net_client, net_serialize(), m_anom_data.get_step());
   
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_ms", timer.elapsed_ms());
@@ -114,24 +153,17 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThread
   return msgsz;
 }
 
-//std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
-
-  //ADThreadNetClient thrnet;
-  //thrnet.connect_ps(rank, 0, pserver_addr);
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
   msg.set_msg(l_stats);
   
   size_t sent_sz = msg.size();
-  //std::string strmsg = net_client.send_and_receive(msg);
   net_client.async_send(msg);
-  //thrnet.async_send(msg);
-  size_t recv_sz =0;// msg.size(); //strmsg.size();
+  size_t recv_sz =0;
   
-  //thrnet.disconnect_ps();
   return std::make_pair(sent_sz, recv_sz);
 }

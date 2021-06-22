@@ -34,7 +34,7 @@ TEST(TestZMQMENet, CanConnect){
     std::cout << "Creating AD thread " << c << std::endl;
     clients[c] = std::thread([&,c]{
 	try{
-	  ADNetClient net_client;
+	  ADZMQNetClient net_client;
 	  net_client.connect_ps(0, 0, snames[c]);
 	  std::cout << "AD thread " << c << " connected" << std::endl;
 	  std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -79,7 +79,7 @@ TEST(TestZMQMENet, CanConnectMultiClientsPerEndpoint){
     std::cout << "Creating AD thread " << c << std::endl;
     clients[c] = std::thread([&,c]{
 	try{
-	  ADNetClient net_client;
+	  ADZMQNetClient net_client;
 	  net_client.connect_ps(0, 0, sname);
 	  std::cout << "AD thread " << c << " connected" << std::endl;
 	  std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -151,7 +151,7 @@ TEST(TestZMQMENet, PayloadOperationsWork){
     std::cout << "Creating AD thread " << c << std::endl;
     clients[c] = std::thread([&,c]{
 	try{
-	  ADNetClient net_client;
+	  ADZMQNetClient net_client;
 	  net_client.connect_ps(0, 0, snames[c]);
 	  std::cout << "AD thread " << c << " connected" << std::endl;
 	  std::this_thread::sleep_for(std::chrono::milliseconds(200));

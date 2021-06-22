@@ -36,7 +36,7 @@ TEST(ADNetClientTestConnectPS, ConnectsMock){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
@@ -63,7 +63,7 @@ TEST(ADNetClientTestConnectPS, ConnectionTimeoutWorks){
 #elif defined(_USE_ZMQNET)
   std::string sname = "tcp://localhost:55599"; //this should be on a different port than other tests as it is apparently left floating in the ether
 
-  ADNetClient net_client;
+  ADZMQNetClient net_client;
   net_client.setRecvTimeout(100); //100ms
   net_client.connect_ps(0, 0, sname);
   
@@ -100,7 +100,7 @@ TEST(ADNetClientTestConnectPS, ConnectsZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
@@ -165,7 +165,7 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  Message msg;
@@ -247,7 +247,7 @@ TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.setRecvTimeout(1000);
 			  net_client.connect_ps(0, 0, sname);
 
@@ -327,7 +327,7 @@ TEST(ADNetClient, TestRemoteStop){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADNetClient net_client;
+			  ADZMQNetClient net_client;
 			  net_client.setRecvTimeout(1000);
 			  net_client.connect_ps(0, 0, sname);
 
@@ -358,4 +358,41 @@ TEST(ADNetClient, TestRemoteStop){
 
 
 
+
+
+TEST(ADLocalNetClientTest, SendRecv){  
+  ADLocalNetClient client;
+  bool err = false;
+  try{
+    client.connect_ps(1,2,"arg");
+  }catch(const std::exception &e){
+    err = true;
+  }
+  EXPECT_EQ(err,true);
+  EXPECT_EQ(client.use_ps(),false);
+
+  err = false;
+  LocalNet net;
+  net.add_payload(new NetPayloadBounceback);
+  
+  try{
+    client.connect_ps(1,2,"arg");
+  }catch(const std::exception &e){
+    err = true;
+  }
+  
+  EXPECT_EQ(err, false);
+  EXPECT_EQ(client.use_ps(), true);
+  
+  Message msg, msg_reply;
+  msg.set_info(0,0,REQ_ECHO,CMD);
+  msg.set_msg("Hello!!");
+
+  client.send_and_receive(msg_reply, msg);
+
+  EXPECT_EQ(msg_reply.buf(), "Hello!!");
+
+  client.disconnect_ps();
+  EXPECT_EQ(client.use_ps(), false);
+}
 

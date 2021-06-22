@@ -15,7 +15,7 @@ source ${CHIMBUKO_CONFIG}
 
 if (( 1 )); then
     echo "Running services"
-    ${backend_root}/scripts/launch/run_services.sh 2>&1 | tee services.log &
+    ${chimbuko_services} 2>&1 | tee services.log &
     echo "Waiting"
     while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
     ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)

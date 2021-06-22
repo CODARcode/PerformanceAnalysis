@@ -43,8 +43,8 @@ namespace chimbuko {
      *
      * If this is performed, the parser will replace the local with global index in the incoming data stream
      */
-    //void linkNetClient(ADNetClient *net_client){ m_global_func_idx_map.linkNetClient(net_client); }
     void linkNetClient(ADThreadNetClient *net_client){ m_global_func_idx_map.linkNetClient(net_client); }
+
     /**
      * @brief If linked, performance information will be gathered
      */

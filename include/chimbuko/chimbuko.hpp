@@ -96,10 +96,6 @@ namespace chimbuko {
      */
     bool use_ps() const { return m_outlier->use_ps(); }
 
-#ifndef ENABLE_PROVDB
-#error "Provdb flag not set"
-#endif
-
 #ifdef ENABLE_PROVDB
     /**
      * @brief Whether the provenance database is in use
@@ -209,7 +205,6 @@ namespace chimbuko {
     ADCounter * m_counter;     /**< counter event manager */
     ADOutlier * m_outlier;     /**< outlier detection algorithm */
     ADio * m_io;               /**< output writer */
-    //ADNetClient * m_net_client; /**< client for comms with parameter server */
     ADThreadNetClient * m_net_client; /**< client for comms with parameter server */
     ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 #ifdef ENABLE_PROVDB

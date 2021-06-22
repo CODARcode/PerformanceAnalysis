@@ -131,6 +131,26 @@ namespace chimbuko {
      */
     void list_payloads(std::ostream &os) const;
 
+    typedef std::unordered_map<MessageKind, std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> > > PayloadMapType; /**< Map of message kind/type to payloads */
+    typedef std::unordered_map<int, PayloadMapType> WorkerPayloadMapType; /**< Map of worker index and message type to payloads */
+
+    /**
+     * @brief Find the action associated with the given worker_id and message type and perform the action
+     * @param worker_id The worker index
+     * @param msg_reply The reply message
+     * @param msg The input message
+     * @param payloads The map of worker/message type to payload
+     */
+    static void find_and_perform_action(int worker_id, Message &msg_reply, const Message &msg, const WorkerPayloadMapType &payloads);
+
+    /**
+     * @brief Find the action associated with the given message type and perform the action
+     * @param msg_reply The reply message
+     * @param msg The input message
+     * @param payloads The map of worker/message type to payload
+     */
+    static void find_and_perform_action(Message &msg_reply, const Message &msg, const PayloadMapType &payloads);
+
   protected:
     /**
      * @brief initialize thread pool 
@@ -139,14 +159,9 @@ namespace chimbuko {
      */
     virtual void init_thread_pool(int nt) = 0;
 
-  protected:
     int              m_nt;    /**< The number of threads in the pool */
-    
-    std::unordered_map<int,
-		       std::unordered_map<MessageKind,
-					  std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
-					  >
-		       > m_payloads; /**< Map of worker index (implementation defined), message kind and message type to a payload*/
+
+    WorkerPayloadMapType m_payloads; /**< Map of worker index (implementation defined), message kind and message type to a payload*/
   };
 
   namespace DefaultNetInterface

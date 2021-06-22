@@ -5,6 +5,7 @@
 #else
 #include "chimbuko/net/zmq_net.hpp"
 #endif
+#include "chimbuko/net/local_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/string.hpp"
@@ -21,7 +22,7 @@ namespace chimbuko{
   public:
     ADNetClient();
 
-    ~ADNetClient();
+    virtual ~ADNetClient();
     
     /**
      * @brief check if the parameter server is in use
@@ -38,13 +39,13 @@ namespace chimbuko{
      * @param srank server process rank. If using ZMQnet this is not applicable
      * @param sname server name. If using ZMQNet this is the server ip address, for MPINet it is not applicable
      */
-    void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
+    virtual void connect_ps(int rank, int srank = 0, std::string sname="MPINET") = 0;
     /**
      * @brief disconnect from the connected parameter server
      * 
      * Called automatically by destructor if not previously called
      */
-    void disconnect_ps();
+    virtual void disconnect_ps() = 0;
 
     /**
      * @brief Return the MPI rank of the parameter server
@@ -61,7 +62,7 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    std::string send_and_receive(const Message &msg) const;
+    virtual std::string send_and_receive(const Message &msg) const = 0;
 
     /**
      * @brief Send a message to the parameter server and receive the response both as Message objects
@@ -77,11 +78,59 @@ namespace chimbuko{
      */
     void linkPerf(PerfStats* perf){ m_perf = perf; }
 
+    /**
+     * @brief Set the timeout for receiving messages (implementation dependent)
+     */
+    virtual void setRecvTimeout(const int timeout_ms){ }
+
+  protected:
+    bool m_use_ps;                           /**< true if the parameter server is in use */
+    int m_rank;                              /**< MPI rank of current process */
+    int m_srank;                             /**< server process rank                    */
+    PerfStats * m_perf;                      /**< Performance monitoring */
+  };
+
+  
 #ifdef _USE_ZMQNET
+  /**
+   * @brief Implementation of the ADNetClient interface for the ZMQNet network
+   */
+  class ADZMQNetClient: public ADNetClient{
+  public:
+
+    ADZMQNetClient();
+
+    ~ADZMQNetClient();   
+
+    /**
+     * @brief connect to the parameter server
+     * 
+     * @param rank this process rank
+     * @param srank Ignored for this class
+     * @param sname The server ip address
+     */
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
+    /**
+     * @brief disconnect from the connected parameter server
+     * 
+     * Called automatically by destructor if not previously called
+     */
+    void disconnect_ps() override;
+
+    using ADNetClient::send_and_receive;
+
+    /**
+     * @brief Send a message to the parameter server and receive the response in a serialized format
+     * @param msg The message
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
+     */       
+    std::string send_and_receive(const Message &msg) const override;
+
+
     /**
      * @brief Set the timeout on blocking receives. Must be called prior to connecting
      */
-    void setRecvTimeout(const int timeout_ms){ m_recv_timeout_ms = timeout_ms; }
+    void setRecvTimeout(const int timeout_ms) override{ m_recv_timeout_ms = timeout_ms; }
 
     /**
      * @brief Get the zeroMQ socket
@@ -97,24 +146,83 @@ namespace chimbuko{
      * @brief Issue a stop command to the server. The server will then stop once all clients have disconnected and all messages processed
      */
     void stopServer() const;
-#endif
-
 
   private:
-    bool m_use_ps;                           /**< true if the parameter server is in use */
-    int m_rank;                              /**< MPI rank of current process */
-    int m_srank;                             /**< server process rank                    */
-#ifdef _USE_MPINET
-    MPI_Comm m_comm;                         /**< Instance of the MPI communicator */
-#else
     void* m_context;                         /**< ZeroMQ context */
     void* m_socket;                          /**< ZeroMQ socket */
     int m_recv_timeout_ms;                   /**< Timeout (in ms) on blocking receives (default 30s)*/
-#endif
-    PerfStats * m_perf;                      /**< Performance monitoring */
   };
+#endif
+
+#ifdef _USE_MPINET
+  /**
+   * @brief Implementation of the ADNetClient interface for the MPINet network
+   */
+  class ADMPINetClient: public ADNetClient{
+  public:
+    ~ADMPINetClient();   
+
+    /**
+     * @brief connect to the parameter server
+     * 
+     * @param rank this process rank
+     * @param srank server process rank
+     * @param sname Ignored for this class
+     */
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
+    /**
+     * @brief disconnect from the connected parameter server
+     * 
+     * Called automatically by destructor if not previously called
+     */
+    void disconnect_ps() override;
+
+    using ADNetClient::send_and_receive;
+
+    /**
+     * @brief Send a message to the parameter server and receive the response in a serialized format
+     * @param msg The message
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
+     */       
+    std::string send_and_receive(const Message &msg) const override;
 
   
+  private:
+    MPI_Comm m_comm;                         /**< Instance of the MPI communicator */
+  };
+  
+#endif
+
+  
+  /**
+   * @brief Implementation of ADNetClient for intraprocess communications
+   */
+  class ADLocalNetClient: public ADNetClient{
+  public:
+    /**
+     * @brief connect to the parameter server
+     * 
+     * @param rank Ignored
+     * @param srank Ignored
+     * @param sname Ignored
+     */
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
+    /**
+     * @brief disconnect from the connected parameter server
+     * 
+     * Called automatically by destructor if not previously called
+     */
+    void disconnect_ps() override;
+
+    using ADNetClient::send_and_receive;
+    
+    /**
+     * @brief Send a message to the parameter server and receive the response in a serialized format
+     * @param msg The message
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
+     */       
+    std::string send_and_receive(const Message &msg) const override;
+  };
 
   //Actions performed by the worker thread
   struct ClientAction{
@@ -153,7 +261,6 @@ namespace chimbuko{
     ClientActionWait(size_t wait_ms): wait_ms(wait_ms){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Worker is waiting for "<< wait_ms << "ms" << std::endl;
       std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
     }
     bool do_delete() const{ return true; }
@@ -167,12 +274,9 @@ namespace chimbuko{
     bool complete;
 
     ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
-//    ClientActionBlockingSendReceive(Message *recv, const Message &send): send(send), recv(recv), complete(false){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Performing blocking send and receive" << std::endl;
       client.send_and_receive(*recv, *send);
-//      client.send_and_receive(*recv, send);
 
       {
         std::unique_lock<std::mutex> lk(m);
@@ -195,10 +299,8 @@ namespace chimbuko{
     ClientActionAsyncSend(const Message &send): send(send){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Performing non-blocking send and receive" << std::endl;
       Message recv;
       client.send_and_receive(recv, send);
-      //std::cout << "Non-blocking send returned " << recv.buf() << std::endl;
     }
     bool do_delete() const{ return true; }
   };
@@ -231,17 +333,29 @@ namespace chimbuko{
       return work_item;
     }
     
-    void run(){
-      //std::cout << "Starting worker thread" << std::endl;
+    /**
+     * @brief Create the worker thread
+     * @param local Use a local (in process) communicator if true, otherwise use the default network communicator
+     */
+    void run(bool local = false){
       worker = std::thread([&](){
-          ADNetClient client;
+	  ADNetClient *client = nullptr;
+	  if(local){
+	    client = new ADLocalNetClient;
+	  }else{
+#ifdef _USE_MPINET
+	    client = new ADMPINetClient;
+#else
+	    client = new ADZMQNetClient;
+#endif
+	  }
           bool shutdown = false;
 
           while(!shutdown){
             size_t nwork = getNwork();
             while(nwork > 0){
               ClientAction* work_item = getWorkItem();
-              work_item->perform(client);
+              work_item->perform(*client);
               shutdown = shutdown || work_item->shutdown_worker();
 
               if(work_item->do_delete()) delete work_item;
@@ -249,17 +363,21 @@ namespace chimbuko{
             }
             if(shutdown){
               if(nwork > 0) fatal_error("Worker was shut down before emptying its queue!");
-              //std::cout << "Worker received shutdown request" << std::endl;
             }else{
               std::this_thread::sleep_for(std::chrono::milliseconds(80));
             }  
           }
+	  delete client;
         });
     }
 
   public:
-    ADThreadNetClient(){
-      run();
+    /**
+     * @brief Constructor
+     * @param local Use a local (in process) communicator if true, otherwise use the default network communicator
+     */
+    ADThreadNetClient(bool local = false){
+      run(local);
     }
     
     //Use only if you know what you are doing!
@@ -279,7 +397,6 @@ namespace chimbuko{
     }
     void send_and_receive(Message &recv, const Message &send){
       ClientActionBlockingSendReceive action(&recv, &send);
-//      ClientActionBlockingSendReceive action(&recv, send);
       enqueue_action(&action);
       action.wait_for();
     }
@@ -300,7 +417,7 @@ namespace chimbuko{
     }    
 
     ~ADThreadNetClient(){
-      //std::cout << "Joining worker thread" << std::endl;
+      disconnect_ps();
       worker.join();
     }
    

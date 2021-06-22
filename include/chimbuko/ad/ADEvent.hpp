@@ -119,7 +119,27 @@ namespace chimbuko {
 
   };
 
+  
+  /**
+   * @brief An abstract interface for obtaining events given an event index
+   */
+  class ADEventIDmap{
+  public:
+    /**
+     * @brief Get an iterator to an ExecData_t instance with given event index string
+     *
+     * throws a runtime error if the call is not present in the call-list
+     */
+    virtual CallListIterator_t getCallData(const eventID &event_id) const = 0;
 
+    /**
+     * @brief Get a pair of iterators marking the start and one-past-the-end of a window of size (up to) win_size events
+     *        on either size around the given event occurring on the same thread
+     */
+    virtual std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const = 0;
+    
+    virtual ~ADEventIDmap(){}
+  };
 
 
   /**
@@ -129,7 +149,7 @@ namespace chimbuko {
    * on their respective stacks. When a function call with EXIT signature on the same thread is inserted, a complete call is generated and placed in the call list, and all comm and
    * counter events on their stacks are associated with that call.
    */
-  class ADEvent {
+  class ADEvent: public ADEventIDmap {
 
   public:
     /**
@@ -196,14 +216,14 @@ namespace chimbuko {
 
 
     /**
-     * @brief Get the Exec Data Map object
+     * @brief Get the Exec Data Map object ( map of function id -> vector of iterators to ExecData objects )
      *
      * @return const ExecDataMap_t* pointer to ExecDataMap_t object
      */
     const ExecDataMap_t* getExecDataMap() const { return &m_execDataMap; }
 
     /**
-     * @brief Get the Call List Map object
+     * @brief Get the Call List Map object ( map of pid/rid/tid -> list of ExecData objects )
      *
      * @return const CallListMap_p_t* pointer to CallListMap_p_t object
      */
@@ -220,13 +240,13 @@ namespace chimbuko {
      *
      * throws a runtime error if the call is not present in the call-list
      */
-    CallListIterator_t getCallData(const eventID &event_id) const;
+    CallListIterator_t getCallData(const eventID &event_id) const override;
 
     /**
      * @brief Get a pair of iterators marking the start and one-past-the-end of a window of size (up to) win_size events
      *        on either size around the given event occurring on the same thread
      */
-    std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const;
+    std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const override;
 
     /**
      * @brief clear

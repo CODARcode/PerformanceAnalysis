@@ -1,106 +1,110 @@
 #include <chimbuko/pserver/global_anomaly_stats.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/util/error.hpp>
+#include <chimbuko/util/string.hpp>
 
 using namespace chimbuko;
 
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
-  auto sit = m_anomaly_stats.find(anom.get_stat_id());
-  if(sit == m_anomaly_stats.end()){ //new app_idx/rank detected
-    m_anomaly_stats[anom.get_stat_id()].set_do_accumulate(true);
-    sit = m_anomaly_stats.find(anom.get_stat_id());
+  auto pit = m_anomaly_stats.find(anom.get_app());
+  if(pit == m_anomaly_stats.end()){
+    typename std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> >::value_type v(anom.get_app(), std::unordered_map<unsigned long, AnomalyStat>());
+    pit = m_anomaly_stats.insert(std::move(v)).first;
   }
-  sit->second.add(anom);
+  auto rit = pit->second.find(anom.get_rank());
+  if(rit == pit->second.end()){
+    typename std::unordered_map<unsigned long, AnomalyStat>::value_type v(anom.get_rank(), AnomalyStat(true)); //enable accumulate
+    rit = pit->second.insert(std::move(v)).first;
+  }
+  rit->second.add(anom);
 }
 
-void GlobalAnomalyStats::add_anomaly_data_json(const std::string& data){
-  nlohmann::json j = nlohmann::json::parse(data);
-  if (j.count("anomaly")){ 
-    AnomalyData d(j["anomaly"].dump());
-    update_anomaly_stat(d);
+void GlobalAnomalyStats::add_anomaly_data(const ADLocalFuncStatistics& data){
+  update_anomaly_stat(data.getAnomalyData());
+
+  for (auto const &fp: data.getFuncStats()) {
+    const ADLocalFuncStatistics::FuncStats &f = fp.second;
+    update_func_stat(f.pid, f.id, f.name, f.n_anomaly, f.inclusive, f.exclusive);
   }
-  
-  if (j.count("func")){
-    for (auto f: j["func"]) {
-      update_func_stat(f["pid"], f["id"], f["name"], f["n_anomaly"],
-		       RunStats::from_strstate(f["inclusive"].dump()), 
-		       RunStats::from_strstate(f["exclusive"].dump())
-		       ); //locks
-    }
-  } 
+}  
+
+
+
+
+const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const int pid, const unsigned long rid) const{
+  auto pit = m_anomaly_stats.find(pid);
+  if(pit == m_anomaly_stats.end()) fatal_error("Could not find pid " + std::to_string(pid));
+  auto rit = pit->second.find(rid);
+  if(rit == pit->second.end()) fatal_error("Could not find rid " + std::to_string(rid));
+  return rit->second;
 }
 
-
-
-void GlobalAnomalyStats::add_anomaly_data_cerealpb(const std::string& data)
-{
-  ADLocalFuncStatistics::State j;
-  j.deserialize_cerealpb(data);
-
-  const AnomalyData &d = j.anomaly;
-  update_anomaly_stat(d);
-
-  for (auto f: j.func) {
-    update_func_stat(f.pid, f.id, f.name, f.n_anomaly,
-		     RunStats::from_state(f.inclusive), 
-		     RunStats::from_state(f.exclusive)
-		     ); //locks
-  }
+RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const int pid, const unsigned long rid) const{
+  return get_anomaly_stat_container(pid, rid).get_stats();  
 }
 
-std::string GlobalAnomalyStats::get_anomaly_stat(const std::string& stat_id) const
-{
-  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
+std::string GlobalAnomalyStats::get_anomaly_stat(const int pid, const unsigned long rid) const{
+  RunStats stat;
+  try{
+    stat = get_anomaly_stat_obj(pid,rid);
+  }catch(const std::exception &e){
     return "";
-  
-  RunStats stat = m_anomaly_stats.find(stat_id)->second.get_stats();
+  }
   return stat.get_json().dump();
 }
 
-RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const std::string& stat_id) const
-{
-  if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
-    throw std::runtime_error("GlobalAnomalyStats::get_anomaly_stat_obj stat_id " + stat_id + " does not exist");
-  return m_anomaly_stats.find(stat_id)->second.get_stats();
-}
-
-
-
-size_t GlobalAnomalyStats::get_n_anomaly_data(const std::string& stat_id) const
-{
-    if (stat_id.length() == 0 || m_anomaly_stats.count(stat_id) == 0)
-        return 0;
-
-    return m_anomaly_stats.find(stat_id)->second.get_n_data();
+size_t GlobalAnomalyStats::get_n_anomaly_data(const int pid, const unsigned long rid) const{
+  AnomalyStat const* s;
+  try{
+    s = &get_anomaly_stat_container(pid,rid);
+  }catch(const std::exception &e){
+    return 0;
+  }  
+  return s->get_n_data();
 }
 
 nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
-    
+
   //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
   //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
   //that have been collected from that rank since the last flush
-  for (auto &pair: m_anomaly_stats){
-    std::string stat_id = pair.first;
-    auto stats = pair.second.get(); //returns a std::pair<RunStats, std::list<std::string>*>,  and flushes the state of pair.second. 
-      //We now own the std::list<std::string>* pointer and have to delete it
+  for(auto & pp : m_anomaly_stats){
+    int pid = pp.first; //pid
+    for(auto & rp: pp.second){
+      unsigned long rid = rp.first; //rank
       
-    if (stats.second && stats.second->size()){
-      nlohmann::json object;
-      object["key"] = stat_id;
-      object["stats"] = stats.first.get_json();
-
-      object["data"] = nlohmann::json::array();
-      for (auto strdata: *stats.second)
-	{
-	  object["data"].push_back(
-				   AnomalyData(strdata).get_json()
-				   );
+      auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<AnomalyData>*>,  and flushes the state of pair.second. 
+      //We now own the std::list<AnomalyData>* pointer and have to delete it
+      
+      if(stats.second){
+	//Decide whether to include the data for this pid/rid
+	//Do this only if any anomalies were seen since the last call
+	bool include = false;
+	for(const AnomalyData &adata: *stats.second){
+	  if(adata.get_n_anomalies() > 0){
+	    include = true;
+	    break;
+	  }
 	}
 
-      jsonObjects.push_back(object);
-      delete stats.second;            
+	if(include){
+	  nlohmann::json object;
+	  object["key"] = stringize("%d:%d", pid,rid);
+	  object["stats"] = stats.first.get_json(); //statistics on anomalies to date for this pid/rid
+	  
+	  object["data"] = nlohmann::json::array();
+	  for (const AnomalyData &adata: *stats.second){
+	    //Don't include data for which there are no anomalies
+	    if(adata.get_n_anomalies()>0)
+	      object["data"].push_back(adata.get_json());
+	  }
+	  jsonObjects.push_back(object);
+	}
+	delete stats.second;
+      }
     }
   }
 
@@ -143,17 +147,17 @@ nlohmann::json GlobalAnomalyStats::collect(){
 }
 
 
-void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::string& name, 
+void GlobalAnomalyStats::update_func_stat(int pid, unsigned long fid, const std::string& name, 
 					  unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
   std::lock_guard<std::mutex> _(m_mutex_func);
   //Determine if previously seen
   bool first_encounter = false;
   auto pit = m_funcstats.find(pid);
-  if(pit == m_funcstats.end() || pit->second.count(id) == 0) 
+  if(pit == m_funcstats.end() || pit->second.count(fid) == 0) 
     first_encounter = true;
 
   //Get stats struct (will create entries if needed)
-  FuncStats &fstats = m_funcstats[pid][id];   
+  FuncStats &fstats = m_funcstats[pid][fid];   
 
   if(first_encounter){
     fstats.func = name;
@@ -163,4 +167,13 @@ void GlobalAnomalyStats::update_func_stat(int pid, unsigned long id, const std::
   fstats.func_anomaly.push(n_anomaly);
   fstats.inclusive += inclusive;
   fstats.exclusive += exclusive;
+}
+
+const GlobalAnomalyStats::FuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned long fid) const{
+  std::lock_guard<std::mutex> _(m_mutex_func);
+  auto pit = m_funcstats.find(pid);
+  if(pit == m_funcstats.end()) fatal_error("Could not find program index");
+  auto fit = pit->second.find(fid);
+  if(fit == pit->second.end()) fatal_error("Could not find function index");
+  return fit->second;
 }

@@ -53,18 +53,29 @@ The schema for the **'anomaly_stats'** object is as follows:
 |           **'data'**: *Number of anomalies and anomaly time window for process/rank broken down by io step (array)*
 |                [  
 |                   {
-|                      **'app'**: *Application index*,
+|                      **'app'**: *Program index*,
 |                      **'max_timestamp'**: *Latest time of anomaly in io step*,
 |                      **'min_timestamp'**: *Earliest time of anomaly in io step*,
 |                      **'n_anomalies'**: *Number of anomalies in io step*,
 |     		       **'rank'**: *Process rank*,
-|   		       **'stat_id'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
-|                      **'step'**: *io step index*
+|   		       **'stat_id'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
+|                      **'step'**: *io step index*,
+|                      **'outlier_scores'**: *Statistics on the outlier scores for the outliers collected in this step*,
+|                       {
+|                           **'accumulate'**: *The sum of the outlier scores*,
+|                           **'count'**: *The number of outliers*,
+|                           **'kurtosis'**: *kurtosis of distribution of scores*,
+|                           **'maximum'**: *maximum score*,
+|                           **'mean'**: *mean score*,
+|                           **'minimum'**: *minimum score*,
+|                           **'skewness'**: *skewness of scores*,
+|                           **'stddev'**: *std.dev of scores*
+|                       },
 |		    },
 |                   ...
 |                ],
-|           **'key'**: *A string label of the form "$PROCESS ID:$RANK" (eg "0:12")*,
-|           **'stats'**:   *Statistics on anomalies on this process/rank over the steps broken down above (object)*
+|           **'key'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
+|           **'stats'**:   *Statistics on anomalies on this process/rank over all steps to date
 |                {
 |	           **'accumulate'**: *Total anomalies*,
 |                  **'count'**: *Number of io steps included in statistics*,

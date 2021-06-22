@@ -4,6 +4,7 @@
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/param.hpp"
+#include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/util/hash.hpp"
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/util/PerfStats.hpp"
@@ -57,7 +58,6 @@ namespace chimbuko {
     /**
      * @brief Link the interface for communicating with the parameter server
      */
-    //void linkNetworkClient(ADNetClient *client);
     void linkNetworkClient(ADThreadNetClient *client);
 
     /**
@@ -113,7 +113,6 @@ namespace chimbuko {
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
-    //ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
     ADThreadNetClient* m_net_client;                 /**< interface for communicating to parameter server */
     
     std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
@@ -177,6 +176,11 @@ namespace chimbuko {
      * @param param The local statistics
      */
     std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
+
+    /**
+     * @brief Compute the anomaly score (probability) for an event assuming a Gaussian distribution
+     */
+    double computeScore(CallListIterator_t ev, const SstdParam &stats) const;
 
   private:
     double m_sigma; /**< sigma */

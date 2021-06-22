@@ -9,6 +9,7 @@
 #include <chimbuko/util/RunStats.hpp>
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/ad/ADLocalCounterStatistics.hpp>
 
 namespace chimbuko{
 
@@ -18,18 +19,9 @@ namespace chimbuko{
   class GlobalCounterStats{
   public:
     /**
-     * @brief Merge internal statistics with those contained within the JSON-formatted string 'data'
-     *
-     * For data format see ADLocalCounterStatistics::get_json_state()
+     * @brief Merge internal statistics with those contained within the ADLocalCounterStatistics instance
      */
-    void add_data_json(const std::string& data);
-
-    /**
-     * @brief Merge internal statistics with those contained within the Cereal portable binary string 'data'
-     *
-     * For data format see ADLocalCounterStatistics::State::serialize_cerealpb()
-     */
-    void add_data_cerealpb(const std::string& data);
+    void add_counter_data(const ADLocalCounterStatistics &loc);
 
     /**
      * @brief Return a copy of the internal counter statistics
@@ -58,7 +50,10 @@ namespace chimbuko{
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
-      m_global_counter_stats->add_data_cerealpb(message.buf()); //note, this uses a mutex lock internally
+
+      ADLocalCounterStatistics loc(0,0,nullptr);
+      loc.net_deserialize(message.buf());
+      m_global_counter_stats->add_counter_data(loc); //note, this uses a mutex lock internally
       response.set_msg("", false);
     }
   };

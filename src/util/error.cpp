@@ -14,7 +14,13 @@ namespace chimbuko{
 
   void ErrorWriter::recoverable(const std::string &msg, const std::string &func, const std::string &file,  const unsigned long line){
     std::lock_guard<std::mutex> _(m_mutex);
-    *m_ostream << getErrStr("recoverable", msg, func, file, line);
+    std::string err = getErrStr("recoverable", msg, func, file, line);
+    *m_ostream << err;
+    m_ostream->flush();
+    if(m_ostream != &std::cerr){
+      std::cerr << err;
+      std::cerr.flush();
+    }
   }
   void ErrorWriter::fatal(const std::string &msg, const std::string &func, const std::string &file,  const unsigned long line){
     std::string err = getErrStr("FATAL", msg, func, file, line);
@@ -42,6 +48,7 @@ namespace chimbuko{
   void ErrorWriter::flushError(const std::exception &e){
     std::lock_guard<std::mutex> _(m_mutex);
     (*m_ostream) << e.what();
+    m_ostream->flush();
   }
 
   ErrorWriter & Error(){
