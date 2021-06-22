@@ -16,10 +16,6 @@ set -o pipefail
 ./ad/ADglobalFunctionIndexMap
 ./ad/ADNormalEventProvenance
 ./ad/ADAnomalyProvenance
-./ad/HBOSOutlier
-./ad/HBOSOutlierADs
-./ad/HBOSOutlierDistributions
-./ad/HBOSOutlierTestBPFile
 ./ad/utils
 ./ad/AnomalyData
 ./util/DispatchQueue

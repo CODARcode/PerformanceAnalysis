@@ -1,4 +1,5 @@
 #include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/unordered_map.hpp>
@@ -6,6 +7,9 @@
 #include <cereal/types/vector.hpp>
 #include <limits>
 #include <cmath>
+
+#define MIN(x, y) x < y ? x : y;
+#define MAX(x, y) x > y ? x : y;
 
 using namespace chimbuko;
 
@@ -107,11 +111,12 @@ using namespace chimbuko;
 
  void HbosParam::update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats)
  {
-     std::lock_guard<std::mutex> _(m_mutex);
+    std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
-         m_hbosstats[pair.first] += pair.second;
-         pair.second = m_hbosstats[pair.first];
+         hbosstats[pair.first] += pair.second;
+         pair.second = hbosstats[pair.first];
      }
+
  }
 
  nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
@@ -132,82 +137,155 @@ using namespace chimbuko;
   * @brief Histogram Class Implementation
   */
 
-  /**
-   * @brief Merge Histogram
-   */
- Histogram::Histogram(){}
+
+ Histogram::Histogram(){clear();}
  Histogram::~Histogram(){}
 
- const Histogram Histogram::combine_two_histograms (const Histogram& g, const Histogram& l) {
+ /**
+  * @brief Merge Histogram
+  */
+ Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
    Histogram combined;
-   double min_runtime = std::numeric_limits<double>::max(), max_runtime = 0;
-   // std::cout << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
-   // std::cout << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
-   if (g.bin_edges().size() <= 1) {
-     combined.set_glob_threshold(l.get_threshold());
-     combined.set_counts(l.counts());
-     combined.set_bin_edges(l.bin_edges());
+   double min_runtime, max_runtime;
+   //verboseStream << "Bin_Edges Size of Global Histogram: " << std::to_string(g.bin_edges().size()) << ", Bin_Edges Size of Local Histogram: " << std::to_string(l.bin_edges().size()) << std::endl;
+   verboseStream << "Counts Size of Global Histogram: " << std::to_string(g.counts().size()) << ", Counts Size of Local Histogram: " << std::to_string(l.counts().size()) << std::endl;
+
+   if (g.counts().size() <= 0) {
+     verboseStream << "Global Histogram is empty" << std::endl;
+     combined = l;
+     return combined;
    }
-   else if (l.bin_edges().size() <= 1) {
-     combined.set_glob_threshold(g.get_threshold());
-     combined.set_counts(g.counts());
-     combined.set_bin_edges(g.bin_edges());
+   else if (l.counts().size() <= 0) {
+     verboseStream << "Local Histogram is empty" << std::endl;
+     combined = g;
+     return combined;
    }
    else {
+     double bin_width;
+     if(g.counts().size() > 0 && g.bin_edges().size() > 1 && l.counts().size() > 0 && l.bin_edges().size() > 1){ /**< If g and l are non-empty Histograms*/
+       bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
 
-     const double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());
-     //std::cout << "BIN WIDTH while merging: " << bin_width << std::endl;
-
-     combined.add2binedges(min_runtime);
-     //std::cout << "Minimum Runtime: " << std::to_string(min_runtime) << ", Maximum Runtime: " << std::to_string(max_runtime) << std::endl;
-     //std::cout << "Combined Bin Edges: [" << std::to_string(min_runtime) << ", " ;
-     double prev = min_runtime;
-     while(prev < max_runtime) {
-       const double b = bin_width + prev;
-       //std::cout << std::to_string(b) << ", ";
-       combined.add2binedges(b);
-       prev = b;
-
+       verboseStream << "BIN WIDTH while merging: " << bin_width << std::endl;
+       if (bin_width < 0){
+         verboseStream << "Incorrect Bin Width Computed" << std::endl;
+         exit(1);
+       }
      }
-     //std::cout << "]" << std::endl;
+     else{
+       verboseStream << "INCORRECT histograms" << std::endl;
+       exit(1);
+     }
 
-     //verboseStream << "Number of bins: " << combined.data.bin_edges.size()-1 << std::endl;
-     std::vector<int> count = std::vector<int>(combined.bin_edges().size()-1, 0);
-     combined.set_counts(count);
-     for (int i = 0; i < g.bin_edges().size() -1; i++) {
-       for(int j = 1; j < combined.bin_edges().size(); j++) {
-         if(g.bin_edges().at(i) < combined.bin_edges().at(j)) {
-           int id = j-1, inc = g.counts().at(i);
-           combined.add2counts(id, inc);
-           break;
+     /**
+      * Compute most minimum bin edges and most maximum bin edges from two histograms (g & l)
+      */
+      min_runtime = MIN(l.bin_edges().at(0), g.bin_edges().at(0));
+      max_runtime = MAX(l.bin_edges().at(l.bin_edges().size()-1), g.bin_edges().at(g.bin_edges().size()-1));
+
+     std::vector<double> comb_binedges;
+     std::vector<int> comb_counts;
+
+     if (bin_width == 0){
+       verboseStream << "BINWIDTH is Zero" << std::endl;
+       combined = g;
+
+       for (int i = 0; i < l.bin_edges().size() -1; i++) {
+
+         auto index_it = std::lower_bound(combined.bin_edges().begin(), combined.bin_edges().end(), l.bin_edges().at(i));
+         if (index_it != combined.bin_edges().end()){
+           const int id = std::distance(combined.bin_edges().begin(), index_it) - 1;
+           const int inc = l.counts().at(i);
+           verboseStream << "In l " << "id: " << id << ", inc: " << inc << std::endl;
+           if (id >= 0 && id < combined.counts().size())
+            combined.add2counts(id, inc);
          }
+       }
+
+       return combined;
+     }
+     else{ // bin_width is > 0
+       verboseStream << "BindWidth is > 0 here: " << std::endl;
+
+       verboseStream << "min_runtime:" << min_runtime << std::endl;
+       verboseStream << "max_runtime:" << max_runtime << std::endl;
+       if (max_runtime < min_runtime){
+         verboseStream << "Incorrect boundary for runtime" << std::endl;
+         exit(1);
+       }
+
+       double edge_val=min_runtime;
+
+       if (min_runtime == max_runtime) {
+         comb_binedges.resize(2);
+
+         comb_binedges[0] = edge_val;
+         comb_binedges[1] = edge_val + bin_width;
+       }
+       else{
+	/*
+         comb_binedges.resize(floor((max_runtime - min_runtime)/bin_width) + 2);
+         for (int i = 0; i < comb_binedges.size(); i++) {
+           comb_binedges[i] = edge_val;
+           edge_val += bin_width;
+         }
+	*/
+	for(edge_val = min_runtime; edge_val < max_runtime;) {
+	   comb_binedges.push_back(edge_val);
+           edge_val += bin_width;
+	}
+       }
+     }
+
+     comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
+
+     for (int i = 0; i < g.bin_edges().size() -1; i++) {
+
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), g.bin_edges().at(i));
+       if (index_it != comb_binedges.end()){
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int inc = g.counts().at(i);
+         verboseStream << "In g " << "id: " << id << ", inc: " << inc << std::endl;
+         if (id >= 0 && id < comb_counts.size())
+          comb_counts[id] += inc;
        }
      }
 
      for (int i = 0; i < l.bin_edges().size() -1; i++) {
-       for(int j = 1; j < combined.bin_edges().size(); j++) {
-         if(l.bin_edges().at(i) < combined.bin_edges().at(j)) {
-           int id = j-1, inc = l.counts().at(i);
-           combined.add2counts(id, inc);
-           break;
-         }
+
+       auto index_it = std::lower_bound(comb_binedges.begin(), comb_binedges.end(), l.bin_edges().at(i));
+       if (index_it != comb_binedges.end()){
+         const int id = std::distance(comb_binedges.begin(), index_it) - 1;
+         const int inc = l.counts().at(i);
+         verboseStream << "In l " << "id: " << id << ", inc: " << inc << std::endl;
+         if (id >= 0 && id < comb_counts.size())
+          comb_counts[id] += inc;
        }
      }
 
+     double new_threshold;
      if(l.get_threshold() > g.get_threshold())
-      combined.set_glob_threshold(l.get_threshold());
+      new_threshold = l.get_threshold();
      else
-      combined.set_glob_threshold(g.get_threshold());
+      new_threshold = g.get_threshold();
 
-     //const Histogram::Data d_tmp(combined.get_threshold(), combined.counts(), combined.bin_edges() );
 
+     combined = g;
+
+     combined.set_glob_threshold(new_threshold);
+     combined.set_counts(comb_counts);
+     combined.set_bin_edges(comb_binedges);
      return combined;
    }
+
+
  }
 
  Histogram& Histogram::operator+=(const Histogram& h)
  {
-    const Histogram combined = combine_two_histograms(*this, h);
+
+    Histogram combined = *this + h;
+
+
     *this = combined;
     this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
@@ -215,24 +293,57 @@ using namespace chimbuko;
 
  double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
    double sum = 0.0;
-   const double size = (double) (std::accumulate(global_counts.begin(), global_counts.end(), 0) + std::accumulate(local_counts.begin(), local_counts.end(), 0));
-   for (int i=0;i<global_counts.size();i++){
-     sum += global_counts.at(i) * global_edges.at(i);
+   verboseStream << "Size of Vector global_counts: " << global_counts.size() << std::endl;
+   verboseStream << "Size of Vector local_counts: " << local_counts.size() << std::endl;
+
+   int size = 0;
+   for(int i = 0; i < global_counts.size(); i++) {
+     int count = global_counts[i];
+     if (count < 0)
+      count = -1 * count;
+     if (count != 0)
+      verboseStream << std::to_string(count) << ", ";
+     size += count;
+     sum += (count * global_edges.at(i));
    }
-   for (int i=0;i<local_counts.size();i++){
-     sum += local_counts.at(i) * local_edges.at(i);
+   verboseStream << std::endl;
+   verboseStream << "Size in _scott_binWidth: " << size << std::endl;
+   verboseStream << "Global sum in _scott_binWidth: " << sum << std::endl;
+
+   for(int i = 0; i < local_counts.size(); i++) {
+     int count = local_counts[i];
+     if (count < 0)
+      count = -1 * count;
+     if (count != 0)
+      verboseStream << std::to_string(count) << ", ";
+     size += count;
+     sum += (count * local_edges.at(i));
    }
+   verboseStream << std::endl;
+   verboseStream << "total Size in _scott_binWidth: " << size << std::endl;
+   verboseStream << "total sum in _scott_binWidth: " << sum << std::endl;
 
    const double mean = sum / size;
-   double var = 0.0;
+   verboseStream << "mean in _xcott_binWidth: " << mean << std::endl;
+
+   double var = 0.0, std=0.0;
    for (int i=0;i<global_counts.size();i++){
      var += global_counts.at(i) * pow((global_edges.at(i) - mean), 2);
    }
+   verboseStream << "Global var in _scott_binWidth: " << var << std::endl;
    for (int i=0;i<local_counts.size();i++){
      var += local_counts.at(i) * pow((local_edges.at(i) - mean), 2);
    }
+   verboseStream << "total var in _scott_binWidth: " << var << std::endl;
+
    var = var / size;
-   return ((3.5 * sqrt(var) ) / pow(size, 1/3));
+   verboseStream << "Final Variance in _scott_binWidth: " << var << std::endl;
+   std = sqrt(var);
+   verboseStream << "STD in merging _scott_binWidth: " << std << std::endl;
+   if (std <= 100.0) {return 0;}
+
+   return ((3.5 * std ) / pow(size, 1/3));
+
  }
 
  double Histogram::_scott_binWidth(const std::vector<double> & vals){
@@ -241,13 +352,15 @@ using namespace chimbuko;
    double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
 
    double mean = sum / vals.size();
-   double var = 0.0;
+   double var = 0.0, std = 0.0;
    for(int i=0; i<vals.size(); i++){
      var += pow(vals.at(i) - mean, 2);
    }
    var = var / vals.size();
+   std = sqrt(var);
+   verboseStream << "STD in _scott_binWidth: " << std << std::endl;
 
-   return ((3.5 * sqrt(var) ) / pow(vals.size(), 1/3));
+   return ((3.5 * std ) / pow(vals.size(), 1/3));
  }
 
  void Histogram::set_hist_data(const Histogram::Data& d)
@@ -262,10 +375,11 @@ using namespace chimbuko;
   // m_histogram.runtimes.push_back(x);
  //}
 
- void Histogram::create_histogram(const std::vector<double>& r_times)
+ int Histogram::create_histogram(const std::vector<double>& r_times)
  {
    std::vector<double> runtimes = r_times;
    const double bin_width = Histogram::_scott_binWidth(runtimes);
+   if (bin_width <= 0) {return -1;}
    std::sort(runtimes.begin(), runtimes.end());
    const int h = runtimes.size() - 1;
 
@@ -298,10 +412,10 @@ using namespace chimbuko;
      m_histogram.glob_threshold = min_threshold;
    }
    this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-
+   return 0;
  }
 
- void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
+ int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
 
    std::vector<double> r_times = runtimes;
@@ -313,10 +427,10 @@ using namespace chimbuko;
    }
 
    m_histogram.glob_threshold = g.get_threshold();
-   // std::cout << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
-   this->create_histogram(r_times);
+   //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
+   return this->create_histogram(r_times);
    //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-
+   
  }
 
  nlohmann::json Histogram::get_json() const {

@@ -61,7 +61,7 @@ TEST(ADLocalFuncStatisticsTest, Serialization){
 }
 
 struct ADLocalFuncStatisticsTest: public ADLocalFuncStatistics{
-  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADNetClient &net_client, const std::string &l_stats, int step){
+  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADThreadNetClient &net_client, const std::string &l_stats, int step){
     return ADLocalFuncStatistics::updateGlobalStatistics(net_client, l_stats, step);
   }
 };
@@ -102,7 +102,7 @@ TEST(ADLocalFuncStatisticsTest, TestUpdateGlobalStatisticsWithPS){
   std::thread out_thr([&]{
       std::cout << "AD thread waiting to connect" << std::endl;
       try{
-	ADZMQNetClient net_client;
+	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	std::cout << "AD thread updating local stats" << std::endl;
 	loc.updateGlobalStatistics(net_client);

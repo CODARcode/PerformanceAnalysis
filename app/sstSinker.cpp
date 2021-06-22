@@ -20,10 +20,10 @@ int main(int argc, char ** argv){
 
   int world_rank, world_size;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);    
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
   bool error = false;
-  try 
+  try
     {
       commandLineParser<SinkerArgs> cmdline;
       addOptionalCommandLineArg(cmdline, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
@@ -35,19 +35,19 @@ int main(int argc, char ** argv){
 		  << "Options:" << std::endl;
 	cmdline.help(std::cout);
 	return 0;
-      }      
+      }
 
       std::string engineType = argv[1]; // BPFile or SST
       std::string data_dir = argv[2]; // *.bp location
       std::string prefix = argv[3]; // "tau-metrics-nwchem"
       std::string inputFile = prefix + "-" + std::to_string(world_rank) + ".bp";
       int fetch_data = atoi(argv[4]);
-      
+
       SinkerArgs args;
       cmdline.parse(args, argc-5, (const char**)(argv+5) );
 
       if (world_rank == 0) {
-	std::cout << "\n" 
+	std::cout << "\n"
 		  << "rank       : " << world_rank << "\n"
 		  << "Engine     : " << engineType << "\n"
 		  << "BP in dir  : " << data_dir << "\n"
@@ -62,7 +62,7 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       ADParser * parser;
 
-      // int step = 0; 
+      // int step = 0;
 
       // -----------------------------------------------------------------------
       // Measurement variables
@@ -92,7 +92,7 @@ int main(int argc, char ** argv){
 	  if (!parser->getStatus())
 	    {
 	      // No more steps available.
-	      break;                
+	      break;
 	    }
 
 	  // step = parser->getCurrentStep();
@@ -128,7 +128,7 @@ int main(int argc, char ** argv){
 	total_processing_time = global_measures[0];
 	total_frames = global_measures[1];
       }
-        
+
       if (false && world_rank == 0) {
 	std::cout << "\n"
 		  << "Avg. num. frames     : " << (double)total_frames/(double)world_size << "\n"

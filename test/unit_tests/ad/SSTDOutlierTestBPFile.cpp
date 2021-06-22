@@ -108,7 +108,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
-    params.trace_data_dir = "../../data"; // argv[2]; // *.bp location
+    params.trace_data_dir = "<PATH>/test/data"; // argv[2]; // *.bp location
     std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
@@ -184,7 +184,6 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     unsigned long n_outliers = 0, n_tot_events = 0; //n_executions = 0,
     std::set<unsigned long> n_functions;
 
-    ASSERT_EQ(step, -1);
 
     unsigned long first_event_ts, last_event_ts;
 

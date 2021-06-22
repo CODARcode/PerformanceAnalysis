@@ -58,7 +58,7 @@ namespace chimbuko {
     /**
      * @brief Link the interface for communicating with the parameter server
      */
-    void linkNetworkClient(ADNetClient *client);
+    void linkNetworkClient(ADThreadNetClient *client);
 
     /**
      * @brief abstract method to run the implemented anomaly detection algorithm
@@ -113,8 +113,8 @@ namespace chimbuko {
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
-    ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
-
+    ADThreadNetClient* m_net_client;                 /**< interface for communicating to parameter server */
+    
     std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
 
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */

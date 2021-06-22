@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
       progressStream << "ProvDB Admin: Enabling verbose debug output" << std::endl;
       enableVerboseLogging() = true;
       spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
-    }       
+    }
 
     //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
 
       //Initialize provider
       sonata::Provider provider(engine, 0);
-    
+
       progressStream << "ProvDB Admin: Provider is running on " << addr << std::endl;
 
       { //Scope in which admin object is active
@@ -269,7 +269,7 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
-	  
+
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(args.nshards);
 	  for(int s=0;s<args.nshards;s++){
@@ -297,7 +297,7 @@ int main(int argc, char** argv) {
 	  Clock::time_point commit_timer_start = Clock::now();
 
 	  //Spin quietly until SIGTERM sent
-	  signal(SIGTERM, termSignalHandler);  
+	  signal(SIGTERM, termSignalHandler);
 	  progressStream << "ProvDB Admin: main thread waiting for completion" << std::endl;
 	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
 	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
@@ -313,13 +313,13 @@ int main(int argc, char** argv) {
 	      glob_db.commit();
 	      commit_timer_start = Clock::now();
 	    }
-      
+
 	    //If at least one client has previously connected but none are now connected, shutdown the server
 	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
 
 	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
 	    if(
-	       (args.autoshutdown || cmd_shutdown)  && 
+	       (args.autoshutdown || cmd_shutdown)  &&
 	       ( a_client_has_connected && connected.size() == 0 ) &&
 	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
 	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
@@ -336,7 +336,7 @@ int main(int argc, char** argv) {
 	  progressStream << "ProvDB Admin: destroying pserver database as it didn't connect (connection is optional)" << std::endl;
 	  admin.destroyDatabase(addr, 0, glob_db_name);
 	}
-	
+
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
 	margo_dump("margo_dump_end_admin_scope");
       }//admin scope
@@ -346,10 +346,10 @@ int main(int argc, char** argv) {
     }//provider scope
 
     progressStream << "ProvDB Admin: shutting down server engine" << std::endl;
-    delete mtx; //delete mutex prior to engine finalize    
+    delete mtx; //delete mutex prior to engine finalize
     engine.finalize();
-    progressStream << "ProvDB Admin: finished, exiting engine scope" << std::endl;  
+    progressStream << "ProvDB Admin: finished, exiting engine scope" << std::endl;
   }
-  progressStream << "ProvDB Admin: finished, exiting main scope" << std::endl;    
+  progressStream << "ProvDB Admin: finished, exiting main scope" << std::endl;
   return 0;
 }

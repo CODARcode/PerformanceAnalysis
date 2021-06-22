@@ -52,7 +52,7 @@ namespace chimbuko {
     };
 
 
-    void clear();
+    void clear() {m_histogram.clear();}
 
     void push (double x);
 
@@ -74,20 +74,20 @@ namespace chimbuko {
     /**
      * @brief Create new histogram locally for AD module's batch data instances
      */
-    void create_histogram(const std::vector<double>& r_times);
+    int create_histogram(const std::vector<double>& r_times);
 
 
-    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
-
-    /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
-     */
-    const Histogram combine_two_histograms(const Histogram& g, const Histogram& l);
+    int merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
      */
-    Histogram & operator+=(const Histogram& rs);
+    friend Histogram operator+(const Histogram& g, const Histogram& l);
+
+    /**
+     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
+     */
+    Histogram & operator+=(const Histogram& h);
 
 
     /**
@@ -98,7 +98,7 @@ namespace chimbuko {
     /*
      * @brief set bin counts in Histogram
      */
-    void set_counts(const std::vector<int>& c) { m_histogram.counts = c; }
+    void set_counts(const std::vector<int> & c) { m_histogram.counts = c; }
 
     /*
      * @brief set bin edges in Histogram
@@ -159,6 +159,7 @@ namespace chimbuko {
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
   };
+  Histogram operator+(const Histogram& g, const Histogram& l);
 
   /**
    * @@brief Implementation of ParamInterface for HBOS based anomaly detection

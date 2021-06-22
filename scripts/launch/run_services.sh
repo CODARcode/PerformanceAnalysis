@@ -101,7 +101,7 @@ if (( ${use_provdb} == 1 )); then
 
     cd ${provdb_dir}
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address
-    
+
     provdb_addr="${service_node_iface}:${provdb_port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
     if [[ ${provdb_engine} == "verbs" ]]; then
 	provdb_addr="${provdb_domain}/${provdb_addr}"

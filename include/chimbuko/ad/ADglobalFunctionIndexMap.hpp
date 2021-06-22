@@ -14,7 +14,7 @@ namespace chimbuko{
    * If the parameter server is not connected it will simply return the local index
    */
   class ADglobalFunctionIndexMap{
-    ADNetClient *m_net_client;
+    ADThreadNetClient *m_net_client;
     std::unordered_map<unsigned long, unsigned long> m_idxmap; /**< Map of local function index to global function index*/
     unsigned long m_pid; /**< Program index*/
   public:
@@ -26,7 +26,7 @@ namespace chimbuko{
      *
      *If a pointer to the net client is not provided the local index will not be synchronized betwee nodes
      */
-    ADglobalFunctionIndexMap(unsigned long pid, ADNetClient *net_client = nullptr): m_net_client(net_client), m_pid(pid){}
+    ADglobalFunctionIndexMap(unsigned long pid, ADThreadNetClient *net_client = nullptr): m_net_client(net_client), m_pid(pid){}
 
     /**
      * @brief Check if the pserver is connected
@@ -36,7 +36,7 @@ namespace chimbuko{
     /**
      * @brief Link the net client
      */
-    void linkNetClient(ADNetClient *net_client){ m_net_client = net_client; }
+    void linkNetClient(ADThreadNetClient *net_client){ m_net_client = net_client; }
 
     /**
      * @brief Lookup the global index corresponding to the input local index
@@ -63,7 +63,7 @@ namespace chimbuko{
     /**
      * @brief Return a pointer to the net client
      */
-    ADNetClient* getNetClient(){ return m_net_client; }
+    ADThreadNetClient* getNetClient(){ return m_net_client; }
   };
 
 }

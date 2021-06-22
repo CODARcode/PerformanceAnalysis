@@ -83,12 +83,11 @@ void ADLocalCounterStatistics::net_deserialize(const std::string &s){
 }
 
 
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client) const{
   //nlohmann::json state = get_json_state();
   State state = get_state();
   PerfTimer timer;
   timer.start();
-  //auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
   auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
   
   if(m_perf != nullptr){
@@ -99,18 +98,18 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNet
   return msgsz;
 }
 
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
-  
+
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::COUNTER_STATS, step);
   msg.set_msg(l_stats);
   
   size_t sent_sz = msg.size();
-  std::string strmsg = net_client.send_and_receive(msg);
-  size_t recv_sz = strmsg.size();
-  
+  net_client.async_send(msg);
+  size_t recv_sz = 0;
+
   return std::make_pair(sent_sz, recv_sz);
 }
 

@@ -22,4 +22,3 @@ WORKDIR /
 
 ENTRYPOINT [ "/bin/bash" ]
 #To setup spack you need to run "source /spack/spack/share/spack/setup-env.sh" inside your image
-

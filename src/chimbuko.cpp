@@ -13,6 +13,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  outlier_sigma(6.),
 				  trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 				  trace_connect_timeout(60),
+                                  net_recv_timeout(30000),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
 					ad_algorithm("hbos"),
@@ -46,6 +47,7 @@ void ChimbukoParams::print() const{
 	    << "\nWindow size: " << anom_win_size
 
 	    << "\nInterval   : " << interval_msec << " msec"
+            << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec" 
 	    << "\nPerf. metric outpath : " << perf_outputpath
 	    << "\nPerf. step   : " << perf_step;
 #ifdef ENABLE_PROVDB
@@ -171,14 +173,10 @@ void Chimbuko::init_net_client(){
       verboseStream << "AD rank " << m_params.rank << " connecting to endpoint " << m_params.pserver_addr << " (base " << orig << ")" << std::endl;
     }
 
-#ifdef _USE_MPINET
-    m_net_client = new ADMPINetClient;
-    m_net_client->connect_ps(m_params.rank);
-#else
-    m_net_client = new ADZMQNetClient;
-    m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
-#endif
+    m_net_client = new ADThreadNetClient;
     m_net_client->linkPerf(&m_perf);
+    m_net_client->setRecvTimeout(m_params.net_recv_timeout);
+    m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);	
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
 
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
@@ -627,6 +625,6 @@ void Chimbuko::run(unsigned long long& n_func_events,
       recoverable_error(ss.str());
     }
   }
-  
+
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 }

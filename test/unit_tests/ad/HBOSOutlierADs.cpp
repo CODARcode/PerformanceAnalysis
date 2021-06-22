@@ -128,7 +128,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::cout << "Initializing AD thread 1" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
@@ -175,7 +175,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  ADOutlierHBOSTest outlier;
 			  outlier.linkNetworkClient(&net_client);
@@ -223,7 +223,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 
 
-  EXPECT_EQ(nout, 0);
+  EXPECT_EQ(nout, 1);
   EXPECT_EQ(nout2, 1);
 #else
 #error "Requires compiling with MPI or ZMQ net"

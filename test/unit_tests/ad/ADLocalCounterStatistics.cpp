@@ -158,7 +158,7 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
 
 
 struct ADLocalCounterStatisticsWrapper: public ADLocalCounterStatistics{
-  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADNetClient &net_client, const std::string &l_stats, int step){
+  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADThreadNetClient &net_client, const std::string &l_stats, int step){
     return ADLocalCounterStatistics::updateGlobalStatistics(net_client, l_stats, step);
   }
 };
@@ -193,7 +193,7 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  barrier2.wait();
 			  std::cout << "AD thread updating local stats" << std::endl;
@@ -255,7 +255,7 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  cs.setStats(nm, a);
