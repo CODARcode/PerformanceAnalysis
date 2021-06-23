@@ -18,6 +18,7 @@ export C_FORCE_ROOT=1 #required only for docker runs, allows celery to execute p
 #General options for Chimbuko backend (pserver, ad, provdb)
 ############################################################
 backend_root="infer"  #The root install directory of the PerformanceAnalysis libraries. If set to "infer" it will be inferred from the path of the executables
+chimbuko_services="infer" #The location of the Chimbuko service script. If set to "infer" it will be inferred from backend_root
 
 ####################################
 #Options for the provenance database
@@ -29,6 +30,7 @@ provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi 
 provdb_port=5000 #the port of the provenance database
 provdb_nthreads=4 #number of worker threads; should be >= the number of shards
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
+provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***
@@ -86,9 +88,6 @@ TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filena
 
 
 
-
-
-
 ###########################################################################
 # NON-USER VARIABLES BELOW  = DON'T MODIFY THESE!!
 ###########################################################################
@@ -97,10 +96,13 @@ export TAU_ADIOS2_FILENAME="${TAU_ADIOS2_PATH}/${TAU_ADIOS2_FILE_PREFIX}"
 
 if [[ ${backend_root} == "infer" ]]; then
     backend_root=$( readlink -f $(which provdb_admin | sed 's/provdb_admin//')/../ )
+fi
 
-    #Check run script exists
-    if [ ! -f "${backend_root}/scripts/launch/run_services.sh" ]; then
-	echo "Could not infer backend root directory: service script does not exist!"
+if [[ ${chimbuko_services} == "infer" ]]; then
+    chimbuko_services="${backend_root}/scripts/launch/run_services.sh"
+    if [ ! -f "${chimbuko_services}" ]; then
+	echo "Could not infer service script location: service script does not exist at ${chimbuko_services}!"
 	exit 1
     fi
 fi
+    

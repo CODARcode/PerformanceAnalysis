@@ -2,14 +2,13 @@
 set -e
 
 rm -rf chimbuko
-rm -f provider.address
 
 export CHIMBUKO_CONFIG=chimbuko_config.sh
 source ${CHIMBUKO_CONFIG}
 
 if (( 1 )); then
     echo "Running services"
-    ${backend_root}/scripts/launch/run_services.sh 2>&1 | tee services.log &
+    ${chimbuko_services} 2>&1 | tee services.log &
     echo "Waiting"
     while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
     ad_opts=$(cat chimbuko/vars/chimbuko_ad_opts.var)

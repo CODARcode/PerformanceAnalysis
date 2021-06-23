@@ -16,11 +16,11 @@ void clientWait(int wait_ms){
   std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 }
 
-void rpcWaitAndRespond(ADNetClient &client, int wait_ms){
-  Message msg;
-  msg.set_info(0,0,  REQ_CMD, DEFAULT);
-  msg.set_msg(std::to_string(wait_ms));
-  client.send_and_receive(msg); //ignore return
+void rpcWaitAndRespond(ADThreadNetClient &client, int wait_ms){
+  Message send, recv;
+  send.set_info(0,0,  REQ_CMD, DEFAULT);
+  send.set_msg(std::to_string(wait_ms));
+  client.send_and_receive(recv,send); //ignore return
 }
 
 int main(int argc, char** argv){ 
@@ -34,7 +34,7 @@ int main(int argc, char** argv){
   Log << "Client executing with parameters:  cycles=" << cycles << " cycle_time=" << cycle_time << "ms anom_freq=" << anom_freq << " anom_mult=" << anom_mult << std::endl;
 
   Log << "connecting to server with address " << server_addr << std::endl;
-  ADNetClient client;
+  ADThreadNetClient client;
   client.connect_ps(0,0,server_addr);
 
   for(int i=0;i<cycles;i++){
