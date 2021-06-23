@@ -18,6 +18,9 @@ RUN pip3 install cython pkgconfig
 RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 ^py-numpy@1.19.5 ^argobots@main+stackunwind+tool ^mochi-margo@main ^mercury@2.0.1   && \
     spack gc -y && spack clean -a
 
+COPY fixup_spack_python.sh /root/.spack/
+RUN /root/.spack/fixup_spack_python.sh
+
 WORKDIR /
 
 ENTRYPOINT [ "/bin/bash" ]

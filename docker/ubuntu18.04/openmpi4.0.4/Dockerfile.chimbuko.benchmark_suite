@@ -52,12 +52,13 @@ WORKDIR /benchmark_suite/zmq_worker_client
 RUN cp /Downloads/PerformanceAnalysis/benchmark_suite/zmq_worker_client/* . && \
     source /spack/spack/share/spack/setup-env.sh && spack load boost mochi-sonata && make all
 
-
 #Cleanup
 FROM base
 
 COPY --from=build /benchmark_suite /benchmark_suite
 WORKDIR /benchmark_suite
 
+#Fix redis path
+ENV PATH=/opt/chimbuko/viz/redis-stable/src/:${PATH}
 
 ENTRYPOINT [ "/bin/bash" ]
