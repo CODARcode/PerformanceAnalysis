@@ -81,11 +81,7 @@ The second step is to instantiate the visualization module:
 
     cd -
 
-Where the variables are as follows:
-
-- **${VIZ_PORT}** : The port to assign to the visualization module
-- **${VIZ_DATA_DIR}**: A directory for storing logs and temporary data (assumed to exist)
-- **${VIZ_INSTALL_DIR}**: The directory where the visualization module is installed
+Description of the variables can be found `here <../appendix/appendix_usage.html#visualization-variables>`_.
 
 Henceforth we assign the variable **${VIZ_ADDRESS}=${HEAD_NODE_IP}:${VIZ_PORT}**.
 
@@ -100,15 +96,7 @@ The third step is to start the parameter server:
 	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} -provdb_addr ${PROVDB_ADDR} -ad ${PSERVER_ALG} &
 	  sleep 2
 
-Where the variables are as follows:
-
-- **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
-- **PSERVER_LOGDIR** : A directory for logging output
-- **VIZ_ADDRESS** : Address of the visualization module (see above).
-- **PROVDB_ADDR**: The address of the provenance database (see above). This option enables the storing of the final globally-aggregated function profile information into the provenance database.
-- **PSERVER_ALG** : Set AD algorithm to use for online analysis: "sstd" or "hbos". Default value is "hbos".
-
-Note that all the above are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
+Description of the variables can be found `here <../appendix/appendix_usage.html#parameter-server-variables>`_.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
 
@@ -121,15 +109,7 @@ The fourth step is to instantiate the AD modules:
 	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
 	  sleep 2
 
-Where the variables are as follows:
-
-- **RANKS** : The number of MPI ranks that the application will be run on
-- **ADIOS2_ENGINE** : The ADIOS2 communications engine. For online analysis this should be **SST** by default (an alternative, **BP4** is discussed below)
-- **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
-- **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
-- **PSERVER_ADDR**:  The address of the parameter server from above.
-- **PROVDB_ADDR**:  The address of the provenance database from above.
-- **NSHARDS**: The number of provenance database shards
+Description of the variables can be found `here <../appendix/appendix_usage.html#ad-variables>`_.
 
 The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
@@ -137,16 +117,7 @@ The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former use
 
 In the above we have assumed that the provenance database is being used. However if this component is not in use, the AD will automatically output the provenance data as JSON documents "${STEP}.anomalies.json", "${STEP}.normalexecs.json" and "${STEP}.metadata.json" placed in the directory "${PROV_DIR}/${PROGRAM_IDX}/${RANK}", where STEP is the i/o step; PROGRAM_IDX is the program index; RANK is the rank of the AD instance; and PROV_DIR is set by default to the working directory but can specified manually using the optional argument -prov_outputpath (cf. below).
 
-The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
-
-- **-prov_outputpath** : The directory in which the provenance data will be output. This can be used in place of or in conjunction with the provenance database. An empty string (default) disables this output.
-- **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
-- **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
-- **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.
-- **-rank** : By default the data rank assigned to an AD instance is taken from its MPI rank in MPI_COMM_WORLD. This rank is used to verify the incoming trace data. This option allows the user to manually set the rank index.
-- **-override_rank** : This option disables the data rank verification and instead overwrites the data rank of the incoming trace data with the data rank stored in the AD instance. The value supplied must be the original data rank (this is used to generate the correct trace filename).
-- **-ad_algorithm** : This is an option which sets AD algorithm to use for online analysis: "sstd" or "hbos". Default value is "hbos".
-- **-hbos_threshold** : This is the threshold to control density of detected anomalies used by HBOS algorithm. Its value ranges between 0 and 1. Default value is 0.99
+The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described `here <../appendix/appendix_usage.html#additional-ad-variables>`_.
 
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
 
