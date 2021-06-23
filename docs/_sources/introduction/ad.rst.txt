@@ -57,8 +57,12 @@ the more anomalies or the more false positives).
 
 Advanced anomaly analysis
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-TBD
+A determistic and non-parametric statistical anomaly detection algorithm called Histogram Based Outilier Scoring (HBOS) is implemented as part of Chimbuko's anomaly analysis module. HBOS is an unsupervised anomaly detection algorithm which scores data in linear time. It supports dynamic bin widths which ensures long-tail distributions of function executions are captured and global anomalies are detected better. HBOS normalizes the histogram and calculates the anomaly scores by taking inverse of estimated densities of function executions. The score is a multiplication of the inverse of the estimated densities given by the following Equation
 
+.. math::
+    HBOS_score_{i} = log2 (1 / exec_density_{i})
+
+where :math:`i` is a function execution and :math:`exec_density_{i}` is function execution probability. HBOS works in :math:`O(nlogn)` using dynamic bin-width or in linear time :math:`O(n)` using fixed bin width. After scoring, the top 1% of scores are filtered as anomalous function executions. This filter value can be set at runtime to adjust the density of detected anomalies. 
 
 Stream local viz data
 ---------------------
