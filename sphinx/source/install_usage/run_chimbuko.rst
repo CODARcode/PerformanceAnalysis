@@ -81,37 +81,26 @@ The second step is to instantiate the visualization module:
 
     cd -
 
-Where the variables are as follows:
-
-- **${VIZ_PORT}** : The port to assign to the visualization module
-- **${VIZ_DATA_DIR}**: A directory for storing logs and temporary data (assumed to exist)
-- **${VIZ_INSTALL_DIR}**: The directory where the visualization module is installed
+Description of the variables can be found `here <../appendix/appendix_usage.html#visualization-variables>`_.
 
 Henceforth we assign the variable **${VIZ_ADDRESS}=${HEAD_NODE_IP}:${VIZ_PORT}**.
 
 For details on the installation and usage of the visualization module, please refer to the `readme <https://github.com/CODARcode/ChimbukoVisualizationII>`_.
-  
+
 ----------------------------------
 
 The third step is to start the parameter server:
 
 .. code:: bash
 
-	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} -provdb_addr ${PROVDB_ADDR} &
+	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} -provdb_addr ${PROVDB_ADDR} -ad ${PSERVER_ALG} &
 	  sleep 2
 
-Where the variables are as follows:
-
-- **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
-- **PSERVER_LOGDIR** : A directory for logging output
-- **VIZ_ADDRESS** : Address of the visualization module (see above).
-- **PROVDB_ADDR**: The address of the provenance database (see above). This option enables the storing of the final globally-aggregated function profile information into the provenance database.
-  
-Note that all the above are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
+Description of the variables can be found `here <../appendix/appendix_usage.html#parameter-server-variables>`_.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
-  
-----------------------------------  
+
+----------------------------------
 
 The fourth step is to instantiate the AD modules:
 
@@ -120,38 +109,23 @@ The fourth step is to instantiate the AD modules:
 	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
 	  sleep 2
 
-Where the variables are as follows:
-
-- **RANKS** : The number of MPI ranks that the application will be run on
-- **ADIOS2_ENGINE** : The ADIOS2 communications engine. For online analysis this should be **SST** by default (an alternative, **BP4** is discussed below)
-- **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
-- **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
-- **PSERVER_ADDR**:  The address of the parameter server from above. 
-- **PROVDB_ADDR**:  The address of the provenance database from above.
-- **NSHARDS**: The number of provenance database shards
+Description of the variables can be found `here <../appendix/appendix_usage.html#ad-variables>`_.
 
 The **ADIOS2_FILE_DIR** and **ADIOS2_FILE_PREFIX** arguments can be obtained by combining the **${TAU_ADIOS2_FILENAME}** environment variable with the name of the application. For example, for an application "main" and "TAU_ADIOS2_FILENAME=/path/to/tau-metrics", **ADIOS2_FILE_DIR=/path/to** and **ADIOS2_FILE_PREFIX=tau-metrics-main**. Note that if the environment variable is not set, the prefix will default to "tau-metrics" and the output placed in the current directory.
 
 The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former uses RDMA and should be the default choice. However we have observed that in some cases the **BP4** option (available in ADIOS2 2.6+), which writes the traces to disk rather than to memory, can reduce the overhead of running Chimbuko alongside the application. Note however that BP4 mode can interfere with disk I/O-heavy components of the main application and so local burst buffers (e.g. Summit's NVME) should be used if necessary.
 
-In the above we have assumed that the provenance database is being used. However if this component is not in use, the AD will automatically output the provenance data as JSON documents "${STEP}.anomalies.json", "${STEP}.normalexecs.json" and "${STEP}.metadata.json" placed in the directory "${PROV_DIR}/${PROGRAM_IDX}/${RANK}", where STEP is the i/o step; PROGRAM_IDX is the program index; RANK is the rank of the AD instance; and PROV_DIR is set by default to the working directory but can specified manually using the optional argument -prov_outputpath (cf. below). 
+In the above we have assumed that the provenance database is being used. However if this component is not in use, the AD will automatically output the provenance data as JSON documents "${STEP}.anomalies.json", "${STEP}.normalexecs.json" and "${STEP}.metadata.json" placed in the directory "${PROV_DIR}/${PROGRAM_IDX}/${RANK}", where STEP is the i/o step; PROGRAM_IDX is the program index; RANK is the rank of the AD instance; and PROV_DIR is set by default to the working directory but can specified manually using the optional argument -prov_outputpath (cf. below).
 
-The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described below:
+The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described `here <../appendix/appendix_usage.html#additional-ad-variables>`_.
 
-- **-prov_outputpath** : The directory in which the provenance data will be output. This can be used in place of or in conjunction with the provenance database. An empty string (default) disables this output.
-- **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
-- **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
-- **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.
-- **-rank** : By default the data rank assigned to an AD instance is taken from its MPI rank in MPI_COMM_WORLD. This rank is used to verify the incoming trace data. This option allows the user to manually set the rank index.
-- **-override_rank** : This option disables the data rank verification and instead overwrites the data rank of the incoming trace data with the data rank stored in the AD instance. The value supplied must be the original data rank (this is used to generate the correct trace filename). 
-  
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
 
 **Note**: For workflows with multiple different component executables, the AD instances must be provided with a program index such that the data is appropriately tagged.
 
 **Note**: If a program is executed multiple times but without MPI, the 'rank' index of the data must be set manually by the AD. In this case the 'rank' becomes a way of indexing the different instances of the program. This can be achieved setting ***-rank ${DESIRED_RANK} -override_rank 0**,  which will set the data rank to **${DESIRED_RANK}**. (The 0 provided to -override rank is because for non-MPI applications the rank assigned by Tau is always 0.)
 
-----------------------------------  
+----------------------------------
 
 The final step is to instantiate the application
 
@@ -160,7 +134,7 @@ The final step is to instantiate the application
 	  mpirun -n ${RANKS} ${APPLICATION} ${APPLICATION_ARGS}
 
 Aside from interacting with the visualization module, once complete the user can also interact directly with the provenance database using the **provdb_query** tool as described below: :ref:`install_usage/run_chimbuko:Interacting with the Provenance Database`.
-	  
+
 Offline Analysis
 ~~~~~~~~~~~~~~~~
 
@@ -180,7 +154,7 @@ On the analysis machine, the provenance database and parameter server should be 
 
 	  mpirun -n ${RANKS} driver BPFile ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} ${OUTPUT_LOC} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} ...
 
-Note that the first argument of **driver**, which specifies the ADIOS2 engine, has been set to **BPFile**, and the process is not run in the background.	  
+Note that the first argument of **driver**, which specifies the ADIOS2 engine, has been set to **BPFile**, and the process is not run in the background.
 
 Examples
 ~~~~~~~~
@@ -203,7 +177,7 @@ For GPU workflows we presently have examples only for Nvidia GPUS:
 For convenience we provide docker images in which these examples can be run alongside the full Chimbuko stack. The CPU examples can be run as:
 
 .. code:: bash
-	  
+
    docker pull chimbuko/run_examples:latest
    docker run --rm -it -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_examples:latest
 
@@ -212,11 +186,11 @@ And connect to this visualization server at **localhost:5002**.
 For the GPU examples the user must have access to a system with an installation of the NVidia CUDA driver and runtime compatible with CUDA 10.1 as well as a Docker installation configured to support the GPU. Internally we use the `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ tool to start the Docker images. To run,
 
 .. code:: bash
-	  
+
 	  docker pull chimbuko/run_examples:latest-gpu
 	  nvidia-docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_examples:latest-gpu
 
-And connect to this visualization server at **localhost:5002**.	  
+And connect to this visualization server at **localhost:5002**.
 
 We also provide DockerFiles and run scripts for two real-world scientific applications described below:
 
@@ -226,7 +200,7 @@ NWChem
 `NWChem <https://www.nwchem-sw.org/>`_ (Northwest Computational Chemistry Package) is the US DOE's premier massively parallel computational chemistry package, largely written in Fortran. We provide a `Docker image <https://hub.docker.com/r/chimbuko/run_nwchem>`_ demonstrating the coupling of an NWChem molecular dynamics simulation of the ethanol molecule with Chimbuko. To run the image:
 
 .. code:: bash
-	  
+
 	  docker pull chimbuko/run_nwchem:latest
 	  docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_nwchem:latest
 
@@ -240,7 +214,7 @@ The MOCU application is part of the `ExaLearn <https://github.com/exalearn>`_ pr
 To run the image the user must have access to a system with an installation of the NVidia CUDA driver and runtime compatible with CUDA 10.1 as well as a Docker installation configured to support the GPU. Internally we use the `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ tool to start the Docker images. To run:
 
 .. code:: bash
-	  
+
 	  docker pull chimbuko/run_mocu:latest
 	  nvidia-docker run -p 5002:5002 --cap-add=SYS_PTRACE --security-opt seccomp=unconfined chimbuko/run_mocu:latest
 
@@ -270,7 +244,7 @@ For the provenance database (provdb_admin) we recommend using the OFI "verbs" tr
 
 	  jsrun -n 1 fi_info
 
-within an interactive session, and searching for one that supports verbs. However the following setup has been verified:	  
+within an interactive session, and searching for one that supports verbs. However the following setup has been verified:
 
 .. code:: bash
 
@@ -303,7 +277,7 @@ Where the variables are as follows:
 
 - **COLLECTION** : One of the three collections in the database, **anomalies**, **normalexecs**, **metadata** (cf :ref:`introduction/provdb:Provenance Database`).
 - **QUERY**: The query, format described below.
- 
+
 The **QUERY** argument should be a jx9 function returning a bool and enclosed in quotation marks. It should be of the format
 
 .. code:: bash
@@ -312,8 +286,8 @@ The **QUERY** argument should be a jx9 function returning a bool and enclosed in
 
 
 Alternatively the query can be set to "DUMP", which will output all entries.
-	  
-The function is applied sequentially to each element of the collection. Inside the function the entry is described by the variable **$entry**. Note that the backslash-dollar (\\$) is necessary to prevent the shell from trying to expand the variable. Fields of **$entry** can be queried using the square-bracket notation with the field name inside. In the sketch above the field "some_field" is compared to a value **${SOME_VALUE}** (here representing a numerical value or a value expanded by the shell, *not* a jx9 variable!). 
+
+The function is applied sequentially to each element of the collection. Inside the function the entry is described by the variable **$entry**. Note that the backslash-dollar (\\$) is necessary to prevent the shell from trying to expand the variable. Fields of **$entry** can be queried using the square-bracket notation with the field name inside. In the sketch above the field "some_field" is compared to a value **${SOME_VALUE}** (here representing a numerical value or a value expanded by the shell, *not* a jx9 variable!).
 
 Some examples:
 
@@ -342,9 +316,9 @@ Where the variables are as follows:
 
 - **COLLECTION** : One of the two collections in the database, **func_stats**, **counter_stats**.
 - **QUERY**: The query, format described below.
- 
+
 The formatting of the **QUERY** argument is described above.
-	  
+
 Execute mode
 ------------
 
@@ -359,6 +333,6 @@ Where the variables are as follows:
 - **CODE** : The jx9 script
 - **VARIABLES** : a comma-separated list (without spaces) of the variables assigned by the script
 
-The **CODE** argument is a complete jx9 script. As above, backslashes ('\') must be placed before internal '$' and '"' characters to prevent shell expansion.  
+The **CODE** argument is a complete jx9 script. As above, backslashes ('\') must be placed before internal '$' and '"' characters to prevent shell expansion.
 
 If the option **-from_file** is specified the **${CODE}** variable above will be treated as a filename from which to obtain the script. Note that in this case the backslashes before the special characters are not necessary.

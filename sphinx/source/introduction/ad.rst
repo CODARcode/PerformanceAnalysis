@@ -9,7 +9,7 @@ Below we provide a brief overview of the steps performed by the AD in processing
 Parser
 ------
 
-Currently, the trace data is streamed from a TAU-instrumented binary via `ADIOS2 <https://github.com/ornladios/ADIOS2>`_. The streaming is performed in a "stepped" fashion, whereby trace data is collected over some short time period and then communicated to the AD instances, after which the next step begins. We will refer to these steps as "I/O steps" or "I/O frames" throughout this document. We provide a class, `ADParser <../api/api_code.html#adparser>`__ to connect to an ADIOS2 writer side and 
+Currently, the trace data is streamed from a TAU-instrumented binary via `ADIOS2 <https://github.com/ornladios/ADIOS2>`_. The streaming is performed in a "stepped" fashion, whereby trace data is collected over some short time period and then communicated to the AD instances, after which the next step begins. We will refer to these steps as "I/O steps" or "I/O frames" throughout this document. We provide a class, `ADParser <../api/api_code.html#adparser>`__ to connect to an ADIOS2 writer side and
 fetch necessary data for the performance analysis. The parser performs some rudimentary validation on the data, and, depending on the context might augment the data with additional tags; for example, when running a workflow with multiple distinct binaries, the parser appends a 'program index' to the data to allow the programs to be differentiated within Chimbuko.
 
 Pre-processing
@@ -25,32 +25,38 @@ With the preprocessed data the AD instance applies its anomaly detection algorit
 Anomaly detection algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At present we use the following algorithm to detect anomalous function executions: An anomaly function call is a function call that has a longer (or shorter) execution time than 
+At present we use the following algorithm to detect anomalous function executions: An anomaly function call is a function call that has a longer (or shorter) execution time than
 a upper (or a lower) threshold. By default the exclusive execution time (excluding child calls) is used but the inclusive time can be used with the appropriate command line option to the AD. The thresholds are defined as follows:
 
 .. math::
     threshold_{upper} = \mu_{i} + \alpha * \sigma_{i} \\
     threshold_{lower} = \mu_{i} - \alpha * \sigma_{i}
 
-where :math:`\mu_{i}` and :math:`\sigma_{i}` are the mean and standard deviation of the execution time 
+where :math:`\mu_{i}` and :math:`\sigma_{i}` are the mean and standard deviation of the execution time
 of a function :math:`i`, respectively, and :math:`\alpha` is a control parameter (smaller values increase the number of anomalies detected while potentially increasing the number of false-positives).
 
 (See `ADOutlier <../api/api_code.html#adoutlier>`__ and `RunStats <../api/api_code.html#runstats>`__).
 
-..
-  Advanced anomaly analysis
-  ~~~~~~~~~~~~~~~~~~~~~~~~~
-  TBD
+Advanced anomaly analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~
+A determistic and non-parametric statistical anomaly detection algorithm called Histogram Based Outilier Scoring (HBOS) is implemented as part of Chimbuko's anomaly analysis module. HBOS is an unsupervised anomaly detection algorithm which scores data in linear time. It supports dynamic bin widths which ensures long-tail distributions of function executions are captured and global anomalies are detected better. HBOS normalizes the histogram and calculates the anomaly scores by taking inverse of estimated densities of function executions. The score is a multiplication of the inverse of the estimated densities given by the following Equation
+
+.. math::
+    HBOS_{i} = \log_{2} (1 / density_{i})
+
+where :math:`i` is a function execution and :math:`density_{i}` is function execution probability. HBOS works in :math:`O(nlogn)` using dynamic bin-width or in linear time :math:`O(n)` using fixed bin width. After scoring, the top 1% of scores are filtered as anomalous function executions. This filter value can be set at runtime to adjust the density of detected anomalies.
+
+(See `ADOutlier <../api/api_code.html#adoutlier>`__ and `HbosParam <../api/api_code.html#hbosparam>`__).
 
 Provenance data collection
 --------------------------
 
 Once anomalous and non-anomalous functions are tagged, Chimbuko walks the call stack and generates detailed provenance information of the anomalous executions and a select number of normal executions (for comparison). (See `ADAnomalyProvenance <../api/api_code.html#adanomalyprovenance>`__) These data are sent to the centralized "provenance database" for later analysis.
-  
+
 Stream local vizualisation data
 -------------------------------
 
-The visualization module displays various real-time statistics such as the number of anomalies per rank. This information is collected by the AD (cf. `ADLocalFuncStatistics <../api/api_code.html#adlocalfuncstatistics>`__ and `ADLocalCounterStatistics <../api/api_code.html#adlocalcounterstatistics>`__) and is aggregated on the parameter server, from which it is sent periodically (via curl) to the visualization module. The visualization module is capable also of interacting with the provenance database to obtain detailed information on specific anomalies per user request. 
+The visualization module displays various real-time statistics such as the number of anomalies per rank. This information is collected by the AD (cf. `ADLocalFuncStatistics <../api/api_code.html#adlocalfuncstatistics>`__ and `ADLocalCounterStatistics <../api/api_code.html#adlocalcounterstatistics>`__) and is aggregated on the parameter server, from which it is sent periodically (via curl) to the visualization module. The visualization module is capable also of interacting with the provenance database to obtain detailed information on specific anomalies per user request.
 
 
 Post-processing

@@ -1,0 +1,44 @@
+*********
+Usage
+*********
+
+Visualization Variables
+~~~~~~~~~~~~~~~~~~~~~~~
+
+- **${VIZ_PORT}** : The port to assign to the visualization module
+- **${VIZ_DATA_DIR}**: A directory for storing logs and temporary data (assumed to exist)
+- **${VIZ_INSTALL_DIR}**: The directory where the visualization module is installed
+
+Parameter Server Variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- **PSERVER_NT** : The number of threads used to handle incoming communications from the AD modules
+- **PSERVER_LOGDIR** : A directory for logging output
+- **VIZ_ADDRESS** : Address of the visualization module (see above).
+- **PROVDB_ADDR**: The address of the provenance database (see above). This option enables the storing of the final globally-aggregated function profile information into the provenance database.
+- **PSERVER_ALG** : Set AD algorithm to use for online analysis: "sstd" or "hbos". Default value is "hbos".
+
+Note that all the above are optional arguments, although if the **VIZ_ADDRESS** is not provided, no information will be sent to the webserver.
+
+AD Variables
+~~~~~~~~~~~~
+
+- **RANKS** : The number of MPI ranks that the application will be run on
+- **ADIOS2_ENGINE** : The ADIOS2 communications engine. For online analysis this should be **SST** by default (an alternative, **BP4** is discussed below)
+- **ADIOS2_FILE_DIR** : The directory in which the ADIOS2 file is written (see below)
+- **ADIOS2_FILE_PREFIX** : The ADIOS2 file prefix (see below)
+- **PSERVER_ADDR**:  The address of the parameter server from above.
+- **PROVDB_ADDR**:  The address of the provenance database from above.
+- **NSHARDS**: The number of provenance database shards
+
+Additional AD Variables
+~~~~~~~~~~~~~~~~~~~~~~~
+
+- **-prov_outputpath** : The directory in which the provenance data will be output. This can be used in place of or in conjunction with the provenance database. An empty string (default) disables this output.
+- **-outlier_sigma** : The number of standard deviations from the mean function execution time outside which the execution is considered anomalous (default 6)
+- **-anom_win_size** : The number of events around an anomalous function execution that are captured as contextual information and placed in the provenance database and displayed in the visualization (default 10)
+- **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.
+- **-rank** : By default the data rank assigned to an AD instance is taken from its MPI rank in MPI_COMM_WORLD. This rank is used to verify the incoming trace data. This option allows the user to manually set the rank index.
+- **-override_rank** : This option disables the data rank verification and instead overwrites the data rank of the incoming trace data with the data rank stored in the AD instance. The value supplied must be the original data rank (this is used to generate the correct trace filename).
+- **-ad_algorithm** : This is an option which sets AD algorithm to use for online analysis: "sstd" or "hbos". Default value is "hbos".
+- **-hbos_threshold** : This is the threshold to control density of detected anomalies used by HBOS algorithm. Its value ranges between 0 and 1. Default value is 0.99

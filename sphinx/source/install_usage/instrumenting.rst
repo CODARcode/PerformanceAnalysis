@@ -6,13 +6,7 @@ In this section we briefly describe how to instrument an application with Tau. F
 
 The communication between Tau and Chimbuko's AD module is performed using Tau's ADIOS2 plugin. The communication is performed in batches known as *IO steps* or *IO frames*. During an IO step Tau collects data which is communicated to Chimbuko at the end of the step.
 
-In order to enable the ADIOS2 plugin Tau must be compiled with the **-adios** compile option, pointing to the ADIOS2 install directory. The user must set the following environment variables:
-
-- **TAU_MAKEFILE=${PATH_TO_TAU_MAKEFILE}** : Ensure the Makefile is one that supports ADIOS2; these contain "adios2" in the filename
-- **TAU_ADIOS2_PERIODIC=1** : This tells Tau to use stepped IO
-- **TAU_ADIOS2_PERIOD=${PERIOD}** : This is the period in microseconds(?) between IO steps. A value of **PERIOD=100000** is a common choice, but a larger value may be necessary if Chimbuko is not able to keep pace with the data flow.
-- **TAU_ADIOS2_ENGINE=SST** : The engine should be SST for an online analysis in which Chimbuko and the application are running simultaneously. Chimbuko also supports offline analysis whereby an application is run without Chimbuko and the engine is set to **BPfile**.
-- **TAU_ADIOS2_FILENAME=${STUB}** : Here ${STUB} becomes the first component of the ADIOS2 filename, eg for "${STUB}=tau-metrics" and an application "main", the filename will be "tau-metrics-main". This filename is needed to start Chimbuko; in online mode the file exists only temporarily and is used to instantiate the communication, whereas for offline mode the filename becomes the location where the trace dump is written.
+In order to enable the ADIOS2 plugin Tau must be compiled with the **-adios** compile option, pointing to the ADIOS2 install directory. The user must set a few environment variables as `described here <../appendix/appendix_instrument_with_tau.html#environment-variables-tau>`_.
 
 How Tau is used depends on the language in which the application is written. Below we describe how to instrument applications written in several common languages.
 
@@ -40,7 +34,7 @@ Calls to the GPU via CUDA are instrumented through CUDA's CUPTI performance API 
 For example
 
 .. code:: bash
-	  
+
 	  tau_exec -cupti -env -um -T papi,mpi,pthread,cupti,pdt,adios2 ${APPLICATION} ${APPLICATION_OPTS}
 
 The C++ components of the application should be compiled as in the previous section. In the special case of mixed C++/CUDA code, for which the user desires to instrument also the C++ component, the CUDA compiler first separates the	CUDA and C++ code and passes the components to their corresponding compilers. We must therefore specify to the CUDA compiler that it should use the **tau_cxx.sh** compiler wrapper as its C++ compiler, thus:
@@ -51,9 +45,9 @@ For example
 
 	  nvcc -ccbin tau_cxx.sh -x cu code.cc
 
-Here the **-x cu** option ensures that the compiler treats the file as CUDA/C++ and ignores the extension. Note that options passed to the C++ compiler should be prefixed with **-Xcompiler** (for more information see the CUDA compiler documentation). 
+Here the **-x cu** option ensures that the compiler treats the file as CUDA/C++ and ignores the extension. Note that options passed to the C++ compiler should be prefixed with **-Xcompiler** (for more information see the CUDA compiler documentation).
 
-  
+
 Python
 ~~~~~~
 
@@ -62,7 +56,7 @@ As an interpreted language, Python applications must be wrapped by Tau's Python 
 For example, for a python3 application:
 
 .. code:: bash
-	  
+
 	  tau_python -vv -tau-python-interpreter=python3 -adios2_trace ${APPLICATION}.py
 
 Note that the ADIOS2 filename required by Chimbuko will be set not to the application name but to the name of the python interpreter, e.g. for **TAU_ADIOS2_FILENAME=tau-metrics** and using python3.6, the filename will be "tau-metrics-python3.6".
