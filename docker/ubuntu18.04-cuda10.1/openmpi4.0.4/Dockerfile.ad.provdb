@@ -16,7 +16,7 @@ SHELL ["/bin/bash", "-c"]
 
 ENV CPATH=/opt/cereal/include:${CPATH}
 
-RUN source /spack/spack/share/spack/setup-env.sh && spack load mochi-sonata && \
+RUN source /spack/spack/share/spack/setup-env.sh && spack load boost mochi-sonata && \
     CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad && \
     make -j 4 install && cd /opt/chimbuko/ad/test 
 #&& ./run_all.sh DOCKER_SETUP_MOCHI
