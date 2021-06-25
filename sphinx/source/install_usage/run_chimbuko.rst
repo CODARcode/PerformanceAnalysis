@@ -37,10 +37,12 @@ The user should also choose a port for the provenance database, to which we assi
 
 .. code:: bash
 
-	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} -nshards ${NSHARDS} -nthreads ${NTHREADS} &
+	  provdb_admin ${HEAD_NODE_IP}:${PROVDB_PORT} -nshards ${NSHARDS} -nthreads ${NTHREADS} ${provdb_extra_args} &
 	  sleep 2
 
 For performance reasons the provenance database is **sharded** and the writing is threaded allowing parallel writes to different shards. By default there is only a single shard and thread, but for larger jobs the user should specify more shards and threads using the **-nshards ${NSHARDS}** and **-nthreads ${NTHREADS}** options respectively. The number of shards must also be communicated to the AD module below. The optimal number of shards and threads will depend on the system characteristics, however the number of threads should be at least as large as the number of shards. We recommend that the user run our provided benchmark application and increase the number of each to minimize the round-trip latency.
+
+**${provdb_extra_args}** is a variable that is used to provide any additional arguments to provdb_admin. A list of such additional variables can be found `here <../appendix/appendix_usage.html#additional-provdb-variables>`_.
 
 The database will be written to disk into the directory from which the **provdb_admin** application is called, under the filename **provdb.${SHARD}.unqlite** where **${SHARD}** is the index of the database shard.
 
@@ -48,7 +50,7 @@ For use below we define the variable **PROVDB_ADDR=tcp://${HEAD_NODE_IP}:${PROVD
 
 ----------------------------------
 
-The second step is to instantiate the visualization module:
+The second step is to instantiate the visualization module.
 
 .. code:: bash
 
@@ -56,9 +58,9 @@ The second step is to instantiate the visualization module:
     export ANOMALY_STATS_URL="sqlite:///${VIZ_DATA_DIR}/anomaly_stats.sqlite"
     export ANOMALY_DATA_URL="sqlite:///${VIZ_DATA_DIR}/anomaly_data.sqlite"
     export FUNC_STATS_URL="sqlite:///${VIZ_DATA_DIR}/func_stats.sqlite"
-    export PROVENANCE_DB="${PWD}/"
+    export PROVENANCE_DB="${provdb_writedir}"
     export PROVDB_ADDR=$(cat provider.address)
-    export SHARDED_NUM=1
+    export SHARDED_NUM=${provdb_nshards}
     export C_FORCE_ROOT=1   #REQUIRED FOR DOCKER IMAGES ONLY
 
     cd ${VIZ_INSTALL_DIR}
@@ -89,25 +91,36 @@ For details on the installation and usage of the visualization module, please re
 
 ----------------------------------
 
-The third step is to start the parameter server:
+The third step is to start the parameter server. This can be achieved by running the following **pserver** command.
 
 .. code:: bash
 
-	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ws_addr ${VIZ_ADDRESS} -provdb_addr ${PROVDB_ADDR} -ad ${PSERVER_ALG} &
+	  pserver -nt ${PSERVER_NT} -logdir ${PSERVER_LOGDIR} -ad ${PSERVER_ALG} &
 	  sleep 2
 
-Description of the variables can be found `here <../appendix/appendix_usage.html#parameter-server-variables>`_.
+Description of the variables can be found `here <../appendix/appendix_usage.html#parameter-server-variables>`_. **${ps_extra_args}** can be used to provide additional arguments to the pserver command, as described `here <../appendix/appendix_usage.html#additional-pserver-variables>`_.
 
 The parameter server opens communications on TCP port 5559. For use below we define the variable **PSERVER_ADDR=${HEAD_NODE_IP}:5559**.
 
 ----------------------------------
 
-The fourth step is to instantiate the AD modules:
+The provenance database, visualization module and parameter server are launched using the following **jsrun** command:
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} driver ${ADIOS2_ENGINE} ${ADIOS2_FILE_DIR} ${ADIOS2_FILE_PREFIX} -pserver_addr ${PSERVER_ADDR} -provdb_addr ${PROVDB_ADDR} -nprovdb_shards ${NSHARDS} &
-	  sleep 2
+		#Run the services
+		jsrun ${SERVICES}
+
+**${SERVICES}** is the path to a script which includes commands from the previously described first, second and third step, respectively. This command should successfully launch the provenance database, the visualization module, and the parameter server.
+
+----------------------------------
+
+Next, the AD module can be instantiated using **jsrun** command as follows:
+
+.. code:: bash
+
+    jsrun -e prepended driver ${ADIOS2_ENGINE} ${ADIOS2_PATH} ${ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts}
+    sleep 2
 
 Description of the variables can be found `here <../appendix/appendix_usage.html#ad-variables>`_.
 
@@ -117,7 +130,7 @@ The **ADIOS2_ENGINE** can be chosen as either **SST** or **BP4**. The former use
 
 In the above we have assumed that the provenance database is being used. However if this component is not in use, the AD will automatically output the provenance data as JSON documents "${STEP}.anomalies.json", "${STEP}.normalexecs.json" and "${STEP}.metadata.json" placed in the directory "${PROV_DIR}/${PROGRAM_IDX}/${RANK}", where STEP is the i/o step; PROGRAM_IDX is the program index; RANK is the rank of the AD instance; and PROV_DIR is set by default to the working directory but can specified manually using the optional argument -prov_outputpath (cf. below).
 
-The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described `here <../appendix/appendix_usage.html#additional-ad-variables>`_.
+The AD module has a number of additional options that can be used to tune its behavior. The full list can be obtained by running **driver** without any arguments. However a few useful options are described `here <../appendix/appendix_usage.html#additional-ad-variables>`_. These are part of the **${ad_opts}** in the above command.
 
 For debug purposes, the AD module can be made more verbose by setting the environment variable **CHIMBUKO_VERBOSE=1**.
 
@@ -131,9 +144,10 @@ The final step is to instantiate the application
 
 .. code:: bash
 
-	  mpirun -n ${RANKS} ${APPLICATION} ${APPLICATION_ARGS}
+	  jsrun -e prepended ${APPLICATION} ${APPLICATION_ARGS}
 
 Aside from interacting with the visualization module, once complete the user can also interact directly with the provenance database using the **provdb_query** tool as described below: :ref:`install_usage/run_chimbuko:Interacting with the Provenance Database`.
+Description of variables is provided `here <../appendix/appendix_usage.html#application-variables>`_.
 
 Offline Analysis
 ~~~~~~~~~~~~~~~~
