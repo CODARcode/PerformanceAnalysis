@@ -108,6 +108,7 @@ void client_stop_rpc(const tl::request& req) {
 
 margo_instance_id margo_id;
 
+#ifdef ENABLE_MARGO_STATE_DUMP
 void margo_dump(const std::string &stub){
   std::string fn = stub + "." + getDateTimeFileExt();
   progressStream << "ProvDB Admin: margo dump to " << fn << std::endl;
@@ -118,8 +119,7 @@ void margo_dump_rpc(const tl::request& req) {
   const static std::string stub("margo_dump");
   margo_dump(stub);
 }
-
-
+#endif
 
 
 struct ProvdbArgs{
@@ -229,9 +229,10 @@ int main(int argc, char** argv) {
     engine.define("committer_hello",committer_hello).disable_response();
     engine.define("committer_goodbye",committer_goodbye).disable_response();
     engine.define("stop_server",client_stop_rpc).disable_response();
-    engine.define("margo_dump", margo_dump_rpc).disable_response();
     engine.define("connection_status", connection_status);
-
+#ifdef ENABLE_MARGO_STATE_DUMP
+    engine.define("margo_dump", margo_dump_rpc).disable_response();
+#endif
 
     std::string addr = (std::string)engine.self();  //ip and port of admin
 
@@ -325,7 +326,9 @@ int main(int argc, char** argv) {
 	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
 	       ){
 	      progressStream << "ProvDB Admin: detected all clients disconnected, shutting down" << std::endl;
+#ifdef ENABLE_MARGO_STATE_DUMP
 	      margo_dump("margo_dump_all_client_disconnected");
+#endif
 	      break;
 	    }
 	  }
@@ -338,11 +341,15 @@ int main(int argc, char** argv) {
 	}
 
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
+#ifdef ENABLE_MARGO_STATE_DUMP
 	margo_dump("margo_dump_end_admin_scope");
+#endif
       }//admin scope
 
       progressStream << "ProvDB Admin: ending provider scope" << std::endl;
+#ifdef ENABLE_MARGO_STATE_DUMP
       margo_dump("margo_dump_end_provide_scope");
+#endif
     }//provider scope
 
     progressStream << "ProvDB Admin: shutting down server engine" << std::endl;
