@@ -332,6 +332,7 @@ bool fileExistsMatchingRegex(const std::string &dir, const std::regex &regex){
   return false;
 }
 
+#ifdef ENABLE_MARGO_STATE_DUMP
 TEST(ADProvenanceDBclientTest, TestStateDump){
   if(rank == 0){
     std::regex fn(R"(margo_dump\.)");
@@ -360,7 +361,7 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
     EXPECT_EQ(fail, false);
   }
 }
-
+#endif
 
 
 int main(int argc, char** argv) 

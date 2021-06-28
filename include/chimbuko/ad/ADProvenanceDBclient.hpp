@@ -91,8 +91,9 @@ namespace chimbuko{
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
     thallium::remote_procedure *m_stop_server; /** RPC to shutdown server*/
+#ifdef ENABLE_MARGO_STATE_DUMP
     thallium::remote_procedure *m_margo_dump; /** RPC to request the server dump its state*/
-    
+#endif    
     bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
     PerfStats *m_stats; /**< Performance data gathering*/
@@ -106,7 +107,11 @@ namespace chimbuko{
     void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
     
   public:
-    ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_stop_server(nullptr), m_margo_dump(nullptr), m_perform_handshake(true){}
+    /**
+     * @brief Constructor
+     * @param The rank of the current process
+     */
+    ADProvenanceDBclient(int rank);
 
     ~ADProvenanceDBclient();
 
@@ -242,10 +247,12 @@ namespace chimbuko{
      */
     void stopServer() const;
 
+#ifdef ENABLE_MARGO_STATE_DUMP
     /**
      * @brief Issue an RPC request telling the server to dump its state
      */
     void serverDumpState() const;
+#endif
 
   };
 

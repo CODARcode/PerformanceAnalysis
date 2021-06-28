@@ -96,13 +96,24 @@ TEST(ADOutlierTestSyncParamWithoutPS, Works){
 
   std::cout << local_params_ps_in[0].get_json().dump();
 
+  EXPECT_EQ(local_params_ps.get_runstats().size(), 1);
+  EXPECT_EQ(local_params_ps.get_runstats().begin()->second, local_params_ps_in.begin()->second);
+
   ADOutlierSSTDTest outlier;
   outlier.sync_param_test(&local_params_ps);
 
   //internal copy should be equal to global copy
-  std::string in_state = outlier.get_global_parameters()->serialize();
+  SstdParam const* glob_params = dynamic_cast<SstdParam const*>(outlier.get_global_parameters());
 
-  EXPECT_EQ(local_params_ps.serialize(), in_state);
+  EXPECT_EQ(glob_params->get_runstats(), local_params_ps.get_runstats());
+
+  //Check serialization
+  std::string glob_params_ser = glob_params->serialize();
+
+  SstdParam glob_params_unser;
+  glob_params_unser.assign(glob_params_ser);
+
+  EXPECT_EQ(glob_params_unser.get_runstats(), local_params_ps.get_runstats());
 }
 
 

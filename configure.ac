@@ -142,6 +142,12 @@ fi
 #AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[PS_FLAGS+=" -D_PERF_METRIC"],[])
 
+#Enable ProvdDB margo state dump (currently requires master branch of margo)
+AC_ARG_ENABLE([margo-state-dump],
+  [AS_HELP_STRING([--enable-margo-state-dump], [Enable ProvdDB margo state dump (currently requires master branch of margo)] )],
+  [AC_DEFINE([ENABLE_MARGO_STATE_DUMP],[1],[Use margo state dump])],
+  [:]
+)
 
 #Check for boost
 AC_ARG_WITH([boost], AS_HELP_STRING([--with-boost], [Specify Boost install directory]),[],[])
