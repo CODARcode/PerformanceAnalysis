@@ -2,124 +2,107 @@
 Installation
 ************
 
-For x86 systems we provide pre-built docker images users can quickly start with their own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_). Otherwise, first, download (or clone) **Chimbuko** AD module.
+For x86 systems we provide pre-built docker images users can quickly start with their own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_). Otherwise, we recommend that Chimbuko be installed via the `Spack package manager <https://spack.io/>`_. Below we provide instructions for installing Chimbuko on a typical Ubuntu desktop and also on the Summit computer. Some details on installing Chimbuko in absence of Spack can be found in the :ref:`Appendix <manual_installation_of_chimbuko>`. 
+
+In all cases, the first step is to download and install Spack following the instructions `here <https://github.com/spack/spack>`_ . Note that installing Spack requires Python.
+
+We require Spack repositories for Chimbuko and for the Mochi stack:
 
 .. code:: bash
 
-   git clone https://github.com/CODARcode/PerformanceAnalysis.git
-
+	  git clone https://github.com/mochi-hpc/mochi-spack-packages.git
+	  spack repo add mochi-spack-packages
+	  git clone https://github.com/CODARcode/PerformanceAnalysis.git
+	  spack repo add PerformanceAnalysis/spack/repo/chimbuko	  
+	  
 Then follow the build instructions below.
 
-The AD module requires ADIOS2_ for communicating between TAU and Chimbuko, ZeroMQ_ for communication between the AD components, and Sonata_ for the provenance database. Sonata is not required if the provenance database will not be used. GoogleTest_ is required to build the unit and integration tests.
+Basic installation
+~~~~~~~~~~~~~~~~~~
 
-Note that in the documentation below, we will use bash-style variables such as ${AD_SOURCE_DIR} and ${ADIOS2_INSTALL_DIR} to indicate directories that the user must specify.
-
-Ubuntu 18.04
-~~~~~~~~~~~~
-
-To install ADIOS2_, please check `it's website <https://adios2.readthedocs.io/en/latest/setting_up/setting_up.html>`_. The online analysis requires ADIOS2 to be built with MPI (ADIOS2_USE_MPI) the SST engine (ADIOS2_USE_SST).
-
-For ZeroMQ_,
+A basic installation of Chimbuko can be achieved very easily:
 
 .. code:: bash
 
-   apt-get install libzmq3-dev
+	  spack install chimbuko^py-setuptools-scm+toml
 
-Sonata_ is most conveniently installed using Spack_. For detailed instructions on the usage and installation of Spack please check `it's website <https://spack.readthedocs.io/en/latest/>`_, and details of the installation of Sonata can be found `here <https://xgitlab.cels.anl.gov/sds/sonata>`_. We recommend building Sonata as follows:
+Note that the dependency on :code:`py-setuptools-scm+toml` resolves a dependency conflict likely resulting from a bug in Spack's current dependency resolution.
 
-.. code:: bash
+A Dockerfile (instructions for building a Docker image) that installs Chimbuko on top of a basic Ubuntu 18.04 image following the above steps can be found `here <https://github.com/CODARcode/PerformanceAnalysis/blob/master/docker/ubuntu18.04/openmpi4.0.4/Dockerfile.chimbuko.spack>`_ .
 
-   git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git
-   spack repo add sds-repo
-   spack install mochi-sonata@master ^libfabric fabrics=tcp,rxm
-
-If libfabric is pre-installed on the user's system it should be indicated to Spack via the packages.yaml (cf `here <https://spack-tutorial.readthedocs.io/en/latest/tutorial_configuration.html>`_). In order to build and run with Sonata it is necessary to ensure the **mochi-sonata** spack package is loaded:
+Once installed, the unit and integration tests can be run as:
 
 .. code:: bash
 
-   spack load mochi-sonata
-
-To build test cases, users need to install gtest. See Instructions to installs gtest `here <../appendix/appendix_install.html>`_.
-
-Finally, to build the AD module
-
-.. code:: bash
-
-   cd ${AD_SOURCE_DIR}
-   ./autogen.sh
-   cd ${AD_BUILD_DIR}
-   ${AD_SOURCE_DIR}/configure --with-adios2=${ADIOS2_INSTALL_DIR} --with-network=ZMQ --with-perf-metric --prefix=${AD_INSTALL_DIR}
-   make install
-
-Here **--with-perf-metric** is an optional flag that enables generation of performance information of Chimbuko. The ZMQ network is the only one presently supported; an MPI network is maintained for legacy purposes and is not recommended for use. Assuming Sonata is installed and the mochi-sonata spack module loaded, the configure script will automatically detect the installation and will build the provenance database.
-
-Once installed the unit and integration tests can be run as:
-
-.. code:: bash
-
-   cd ${AD_INSTALL_DIR}/test
+   cd $(spack location -i chimbuko-performance-analysis)/test
    ./run_all.sh
 
+A note on libfabric providers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+The Mercury library used for the provenance database requires a libfabric provider that supports the **FI_EP_RDM** endpoint. By default spack installs libfabric with the **sockets**, **tcp** and **udp** providers, of which only **sockets** supports this endpoint. However **sockets** is being deprecated as its performance is not as good as other dedicated providers. We recommend installing the **rxm** utility provider alongside **tcp** for most purposes, by appending the spack spec with :code:`^libfabric fabrics=sockets,tcp,rxm`.
+
+For network hardware supporting the Linux Verbs API (such as Infiniband) the **verbs** provider (with **rxm**) may provide better performance. This can be added to the spec as, for example, :code:`^libfabric fabrics=sockets,tcp,rxm,verbs`.
+
+Details of how to choose the libfabrics provider used by Mercury can be found `here <>`_. For further information consider the `Mercury documentation <https://mercury-hpc.github.io/documentation/#network-abstraction-layer>`_ .
+
+Integrating with system-installed MPI
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chimbuko requires an installation of MPI. While Spack can install MPI automatically as a dependency of Chimbuko, in most cases it is desirable to utilize the system installation. Instructions on configuring Spack to use external dependencies can be found `here <https://spack.readthedocs.io/en/latest/build_settings.html#external-packages>`_ . The simplest approach in general is to edit (create) a **packages.yaml** in one of Spack's search paths, e.g. :code:`~/.spack/packages.yaml`, with the following content:
+
+.. code:: yaml
+
+  packages:
+    openmpi:
+      buildable: false
+      externals:
+        - spec: openmpi@4.0.4
+          prefix: /opt/openmpi4.0.4
+
+Modified as necessary to point to your installation.	  
 
 Summit
 ~~~~~~
 
-Prior to building anything the user should ensure to load the required modules:
+While the above instructions are sufficient for building Chimbuko on Summit, it is advantageous to take advantage of the pre-existing modules for many of the dependencies. For convenience we provide a Spack **environment** which can be used to install in a self-contained environment Chimbuko using various system libraries. To install, first download the Chimbuko and Mochi repositories:
 
 .. code:: bash
 
-   source ${AD_SOURCE_DIR}/env.summit.sh
+	  git clone https://github.com/mochi-hpc/mochi-spack-packages.git
+	  git clone https://github.com/CODARcode/PerformanceAnalysis.git
 
-..
-   We provide :download:`an installation script<files/install_adios2.sh>` for ADIOS2_,
-   if the latest version is not availale on Summit.
+Copy the file :code:`spack/environments/summit.yaml` from the PerformanceAnalysis git repository to a convenient location and edit the paths in the :code:`repos` section to point to the paths at which you downloaded the repositories:
 
-A build of ADIOS2 that has been tested as compatible with Chimbuko can be found `here <../appendix/appendix_install.html#ADIOS2-build>`_.
+.. code:: yaml
 
-The process for building Sonata_ is somewhat more complicated on Summit. The Mochi developers recommend using a Spack environment that can be setup as follows:
+	  repos:
+	    - /autofs/nccs-svm1_home1/ckelly/install/mochi-spack-packages
+	    - /autofs/nccs-svm1_home1/ckelly/src/AD/PerformanceAnalysis/spack/repo/chimbuko
 
-.. code:: bash
-
-   cd ${SDS_REPO_INSTALL_DIR}
-   git clone https://xgitlab.cels.anl.gov/sds/sds-repo.git
-   cp ${AD_SOURCE_DIR}/scripts/summit/summit_spack.yaml .
-
-The user must then edit the summit_spack.yaml, replacing line 22 (below "repos:") with the path to the sds-repo directory created by cloning sds-repo.git (i.e. ${SDS_REPO_INSTALL_DIR}/sds-repo)
-
-Then:
+This environment uses the :code:`gcc/9.1.0` and :code:`cuda/11.1.0` modules, which must be loaded prior to installation and running:
 
 .. code:: bash
 
-   spack env create mochi summit_spack.yaml
-   spack env activate mochi
-   spack install
+	  module load gcc/9.1.0 cuda/11.2.0
 
-The user must henceforth ensure to activate the **mochi** environment prior to building and using Chimbuko as follows:
+Then simply create a new environment and install:
 
 .. code:: bash
 
-   spack env activate mochi
-   spack load mochi-sonata
+	  spack env create my_chimbuko_env summit.yaml
+	  spack env activate my_chimbuko_env
+	  spack install
 
-GoogleTest_ is not installed by default on Summit, hence we must install it as described `here <../appendix/appendix_install.html#googletest-on-summit>`_.
-
-To build the AD:
+Once installed, simply
 
 .. code:: bash
 
-   cd ${AD_SOURCE_DIR}
-   ./autogen.sh
-   cd ${AD_BUILD_DIR}
+	  spack env activate my_chimbuko_env
+	  spack load tau chimbuko-performance-analysis chimbuko-visualization2
 
-   CXXFLAGS_IN="-I${GTEST_INSTALL_DIR}/include"
-   LDFLAGS_IN="-L${GTEST_INSTALL_DIR}/lib64"
-
-   CC=mpicc CXX=mpicxx LDFLAGS=${LDFLAGS_IN} CXXFLAGS=${CXXFLAGS_IN} \
-   /path/to/ad/source/configure --with-adios2=${ADIOS2_INSTALL_DIR} --with-network=ZMQ --with-perf-metric --prefix=${AD_INSTALL_DIR}
-   make install
-
-
+after loading the modules above.	  
+	  
 .. _ADIOS2: https://github.com/ornladios/ADIOS2
 .. _ZeroMQ: https://zeromq.org/
 .. _CURL: https://curl.haxx.se/
