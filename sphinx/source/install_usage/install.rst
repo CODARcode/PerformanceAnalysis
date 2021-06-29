@@ -37,6 +37,8 @@ Once installed, the unit and integration tests can be run as:
    cd $(spack location -i chimbuko-performance-analysis)/test
    ./run_all.sh
 
+.. _a_note_on_libfabric_providers:
+   
 A note on libfabric providers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -44,7 +46,7 @@ The Mercury library used for the provenance database requires a libfabric provid
 
 For network hardware supporting the Linux Verbs API (such as Infiniband) the **verbs** provider (with **rxm**) may provide better performance. This can be added to the spec as, for example, :code:`^libfabric fabrics=sockets,tcp,rxm,verbs`.
 
-Details of how to choose the libfabrics provider used by Mercury can be found `here <>`_. For further information consider the `Mercury documentation <https://mercury-hpc.github.io/documentation/#network-abstraction-layer>`_ .
+Details of how to choose the libfabrics provider used by Mercury can be found :ref:`here <online_analysis>`. For further information consider the `Mercury documentation <https://mercury-hpc.github.io/documentation/#network-abstraction-layer>`_ .
 
 Integrating with system-installed MPI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
