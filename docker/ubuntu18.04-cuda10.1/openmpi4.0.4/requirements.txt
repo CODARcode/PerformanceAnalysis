@@ -39,7 +39,7 @@ mpi4py==3.0.2
 numpy==1.16.4
 pycodestyle==2.5.0
 pyflakes==2.1.1
-Pygments==2.4.2
+Pygments==2.7.4
 python-engineio==3.9.3
 python-socketio==4.3.1
 pytz==2019.1
