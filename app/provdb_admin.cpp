@@ -193,33 +193,84 @@ int main(int argc, char** argv) {
 
     progressStream << "ProvDB Admin: initializing thallium with address: " << eng_opt << std::endl;
 
-    //Get Margo config
-    std::string margo_config = stringize("{ \"rpc_thread_count\" : %d, \"use_progress_thread\" : true }", args.nthreads);
-    if(args.db_margo_config.size() > 0){
-      std::ifstream in(args.db_margo_config);
-      if(in.fail()){ throw std::runtime_error("Failed to read Margo config file " + args.db_margo_config); }
-      auto cfg = nlohmann::json::parse(in);
-      margo_config = cfg.dump();
+    //Initialize margo once to get initial configuration
+    margo_id = margo_init(eng_opt.c_str(), MARGO_SERVER_MODE, 0, -1);
+    char* config = margo_get_config(margo_id);
+
+    std::cout << "Initial config\n" << config << std::endl;
+
+    nlohmann::json config_j = nlohmann::json::parse(config);
+    
+    free(config); //yuck c-strings
+    margo_finalize(margo_id);
+ 
+    //Initial number of pools should be 1: the primary pool
+    assert(config_j["argobots"]["pools"].size() == 1);
+    
+    //Initial number of streams should be 1: the primary bound to pool 0
+    assert(config_j["argobots"]["xstreams"].size() == 1);
+    assert(config_j["argobots"]["xstreams"][0]["scheduler"]["pools"].size() == 1);
+    assert(config_j["argobots"]["xstreams"][0]["scheduler"]["pools"][0] == 0);
+    
+
+    //Add a new pool and xstream for each shard, binding the xstream to the pool
+    //Also add a pool for the global db
+    static const int glob_pool_idx = 1;
+    static const int shard_pool_offset = 2;
+
+    nlohmann::json pool_templ = { {"access","mpmc"}, {"kind","fifo_wait"}, {"name","POOL_NAME"} };
+    nlohmann::json xstream_templ = { {"affinity",nlohmann::json::array()} , {"cpubind",-1}, {"name","STREAM_NAME"}, {"scheduler", { {"pools",nlohmann::json::array({0})}, {"type","basic_wait"} }  }   };
+
+    //Global pool
+    {
+      nlohmann::json pool = pool_templ;
+      pool["name"] = "pool_glob";
+      config_j["argobots"]["pools"].push_back(pool);
+
+      nlohmann::json xstream = xstream_templ;
+      xstream["name"] = "stream_glob";
+      xstream["scheduler"]["pools"][0] = glob_pool_idx;
+	
+      config_j["argobots"]["xstreams"].push_back(xstream);
+    }      
+
+    //Pools for shards
+    for(int s=0;s<args.nshards;s++){
+      nlohmann::json pool = pool_templ;
+      pool["name"] = stringize("pool_s%d",s);
+      config_j["argobots"]["pools"].push_back(pool);
+
+      nlohmann::json xstream = xstream_templ;
+      xstream["name"] = stringize("stream_s%d",s);
+      xstream["scheduler"]["pools"][0] = s+shard_pool_offset;
+      config_j["argobots"]["xstreams"].push_back(xstream);
     }
-    progressStream << "ProvDB Admin: Margo configuration " << margo_config << std::endl;
 
-    //Initialize provider engine
-    tl::engine engine(eng_opt, THALLIUM_SERVER_MODE, margo_config); 
-    margo_id = engine.get_margo_instance();
+    //Get the new config
+    std::string new_config = config_j.dump(4);
 
-#ifdef _PERF_METRIC
-    //Get Margo to output profiling information
-    //A .diag and .csv file will be produced in the run directory
-    //Description can be found at https://xgitlab.cels.anl.gov/sds/margo/blob/master/doc/instrumentation.md#generating-a-profile-and-topology-graph
-    //For timing information, the .csv profile output is more useful. In the table section the even lines give the timings
-    //Their format is name, avg, rpc_breadcrumb, addr_hash, origin_or_target, cumulative, _min, _max, count, abt_pool_size_hwm, abt_pool_size_lwm, abt_pool_size_cumulative, abt_pool_total_size_hwm, abt_pool_total_size_lwm, abt_pool_total_size_cumulative
-    //Generate a profile plot automatically by running margo-gen-profile in the run directory
-    // auto margo_instance = engine.get_margo_instance();
-    // margo_diag_start(margo_instance);
-    // margo_profile_start(margo_instance);
+    std::cout << "New config\n" << new_config << std::endl;
 
-    //Edit: This doesn't seem very reliable, often not outputing all the data. Use the MARGO_ENABLE_PROFILING for more reliable output
-#endif
+    margo_init_info margo_args; memset(&margo_args, 0, sizeof(margo_init_info));
+    margo_args.json_config   = new_config.c_str();
+    margo_id = margo_init_ext(eng_opt.c_str(), MARGO_SERVER_MODE, &margo_args);
+
+    //Get the thallium pools to pass to the providers
+    tl::pool glob_pool;
+    {
+      ABT_pool p;
+      assert(margo_get_pool_by_index(margo_id, glob_pool_idx, &p) == 0);
+      glob_pool = tl::pool(p);
+    }
+
+    std::vector<tl::pool> shard_pools(args.nshards);
+    for(int s=0;s<args.nshards;s++){
+      ABT_pool p;
+      assert(margo_get_pool_by_index(margo_id, s+shard_pool_offset, &p) == 0);
+      shard_pools[s] = tl::pool(p);
+    }
+
+    tl::engine engine(margo_id); 
 
     mtx = new tl::mutex;
     engine.define("client_hello",client_hello).disable_response();
@@ -238,9 +289,16 @@ int main(int argc, char** argv) {
 
     { //Scope in which provider is active
 
-      //Initialize provider
-      sonata::Provider provider(engine, 0);
+      //Initialize providers
+      static const int glob_provider_idx = 0;
+      static const int shard_provider_offset = 1;
 
+      sonata::Provider glob_provider(engine, glob_provider_idx, "", glob_pool);
+
+      std::vector<std::unique_ptr<sonata::Provider> > shard_providers(args.nshards);
+      for(int s=0;s<args.nshards;s++)
+	shard_providers[s].reset(new sonata::Provider(engine, s+shard_provider_offset, "", shard_pools[s]));
+						  
       progressStream << "ProvDB Admin: Provider is running on " << addr << std::endl;
 
       { //Scope in which admin object is active
@@ -249,9 +307,10 @@ int main(int argc, char** argv) {
 
 	nlohmann::json glob_db_config = base_config;
 	glob_db_config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), glob_db_name.c_str());
+	glob_db_config["mutex"] = "none"; //as we have only 1 ES per DB we don't need a mutex
 
 	progressStream << "ProvDB Admin: creating global data database: " << glob_db_name << " " << glob_db_config.dump() << " " << args.db_type << std::endl;
-	admin.createDatabase(addr, 0, glob_db_name, args.db_type, glob_db_config.dump());
+	admin.createDatabase(addr, glob_provider_idx, glob_db_name, args.db_type, glob_db_config.dump());
 	
 	progressStream << "ProvDB Admin: creating " << args.nshards << " database shards" << std::endl;
 
@@ -261,9 +320,10 @@ int main(int argc, char** argv) {
 
 	  nlohmann::json config = base_config;
 	  config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), db_name.c_str());
+	  config["mutex"] = "none";
 
 	  progressStream << "ProvDB Admin: Shard " << s << ": " << db_name << " " << config.dump() << " " << args.db_type << std::endl;
-	  admin.createDatabase(addr, 0, db_name, args.db_type, config.dump());
+	  admin.createDatabase(addr, s+shard_provider_offset, db_name, args.db_type, config.dump());
 	  db_shard_names[s] = db_name;
 	}
 
@@ -274,14 +334,14 @@ int main(int argc, char** argv) {
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(args.nshards);
 	  for(int s=0;s<args.nshards;s++){
-	    db[s] = client.open(addr, 0, db_shard_names[s]);
+	    db[s] = client.open(addr, s+shard_provider_offset, db_shard_names[s]);
 	    db[s].create("anomalies");
 	    db[s].create("metadata");
 	    db[s].create("normalexecs");
 	  }
 
 	  //Initialize the global provdb
-	  sonata::Database glob_db = client.open(addr, 0, glob_db_name);
+	  sonata::Database glob_db = client.open(addr, glob_provider_idx, glob_db_name);
 	  glob_db.create("func_stats");
 	  glob_db.create("counter_stats");
 
@@ -337,7 +397,7 @@ int main(int argc, char** argv) {
 	//If the pserver didn't connect (it is optional), delete the empty database
 	if(!pserver_has_connected){
 	  progressStream << "ProvDB Admin: destroying pserver database as it didn't connect (connection is optional)" << std::endl;
-	  admin.destroyDatabase(addr, 0, glob_db_name);
+	  admin.destroyDatabase(addr, glob_provider_idx, glob_db_name);
 	}
 
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
@@ -346,7 +406,7 @@ int main(int argc, char** argv) {
 #endif
       }//admin scope
 
-      progressStream << "ProvDB Admin: ending provider scope" << std::endl;
+      progressStream << "ProvDB Admin: ending provider scope" << std::endl;           
 #ifdef ENABLE_MARGO_STATE_DUMP
       margo_dump("margo_dump_end_provide_scope");
 #endif

@@ -62,10 +62,13 @@ void PSProvenanceDBclient::connect(const std::string &addr){
 
     std::string db_name = "provdb.global";
 
+    static const int glob_provider_idx = 0;
+
+
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
     verboseStream << "PSProvenanceDBclient connecting to database " << db_name << " on address " << addr << std::endl;
-    m_database = m_client.open(addr, 0, db_name);
+    m_database = m_client.open(addr, glob_provider_idx, db_name);
     verboseStream << "PSProvenanceDBclient opening function stats collection" << std::endl;
     m_coll_funcstats = m_database.open("func_stats");
     verboseStream << "PSProvenanceDBclient opening counter stats collection" << std::endl;

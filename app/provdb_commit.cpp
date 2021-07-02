@@ -67,15 +67,18 @@ int main(int argc, char** argv){
   thallium::remote_procedure connection_status(eng.define("connection_status"));
   client_hello.on(server)();
 
+  static const int glob_provider_idx = 0;
+  static const int shard_provider_offset = 1;
+
   {
     sonata::Client client = sonata::Client(eng);
     {    
       std::vector<sonata::Database> databases(nshards);
       for(int i=0;i<nshards;i++){
 	std::string db_name = stringize("provdb.%d", i);
-	databases[i] = client.open(addr, 0, db_name);
+	databases[i] = client.open(addr, i+shard_provider_offset, db_name);
       }
-      sonata::Database glob_db  = client.open(addr, 0, "provdb.global");
+      sonata::Database glob_db  = client.open(addr, glob_provider_idx, "provdb.global");
     
       typedef std::chrono::high_resolution_clock Clock;
       Clock::time_point commit_timer_start = Clock::now();

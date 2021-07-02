@@ -115,8 +115,11 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
+    static const int shard_provider_offset = 1;
+      
     int shard = m_rank % nshards;
     std::string db_name = stringize("provdb.%d", shard);
+    int provider = shard + shard_provider_offset;
 
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
@@ -139,7 +142,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 	  }
 	});	    
 
-      m_database = m_client.open(addr, 0, db_name);
+      m_database = m_client.open(addr, provider, db_name);
       ready.store(true, std::memory_order_relaxed);
       heartbeat.join();
     }
