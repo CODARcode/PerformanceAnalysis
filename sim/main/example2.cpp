@@ -25,18 +25,18 @@ int main(int argc, char **argv){
     ad.push_back(ADsim(window_size, pid, r, program_start, step_freq));
 
   //Setup some functions
-  registerFunc("main");
+  //registerFunc("main");
   registerFunc("child");
 
   //Setup some systems
   std::vector<int> cpu_threads(4); for(int i=0;i<4;i++) cpu_threads[i] = i;
 
-  int gpus = 2;
-  std::vector<int> gpu_threads(gpus); //assign virtual thread indices to gpus and register
-  for(int g=0;g<gpus;g++){    
-    gpu_threads[g] = cpu_threads.size() + g; //GPU virtual index should not correspond with a CPU core thread index
-    ad[0].registerGPUthread(gpu_threads[g]);
-  }
+  //int gpus = 2;
+  //std::vector<int> gpu_threads(gpus); //assign virtual thread indices to gpus and register
+  //for(int g=0;g<gpus;g++){    
+  //  gpu_threads[g] = cpu_threads.size() + g; //GPU virtual index should not correspond with a CPU core thread index
+  //  ad[0].registerGPUthread(gpu_threads[g]);
+  //}
 
   std::default_random_engine gen;
   std::normal_distribution<double> dist(100,20); //normal std.dev = 20
@@ -57,10 +57,10 @@ int main(int argc, char **argv){
 
   int program_end = starts.back() + runtimes.back() + 50;
 
-  auto main = ad[0].addExec(0, "main", program_start, program_end - program_start);
+  //auto main = ad[0].addExec(0, "main", program_start, program_end - program_start);
   for(int i=0;i<nexec;i++){
     CallListIterator_t child = ad[0].addExec(0, "child", starts[i], runtimes[i]);
-    ad[0].bindParentChild(main, child);
+    //ad[0].bindParentChild(main, child);
   }
 
   //Run the simulation

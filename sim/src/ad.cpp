@@ -11,6 +11,7 @@
 #include<sim/id_map.hpp>
 #include<sim/pserver.hpp>
 #include<sim/ad_params.hpp>
+#include<iomanip>
 
 using namespace chimbuko;
 using namespace chimbuko_sim;
@@ -194,6 +195,14 @@ void ADsim::step(const unsigned long step){
   int nanom = anom.nEvents(Anomalies::EventType::Outlier);
   int nnorm = anom.nEvents(Anomalies::EventType::Normal);
   std::cout << "Step " << step << " rank " << m_rid << " Anomalies object contains : " << nanom << " anomalies and " << nnorm << " normal events (max 1)" << std::endl;
+  
+  std::cout << "Anomalous Events:" << std::endl;
+  std::vector<CallListIterator_t> anomEvents = anom.allEvents(Anomalies::EventType::Outlier);
+  nlohmann::json j;
+  for (const auto &it : anomEvents) {
+  	j += it->get_json();  //(anomEvents);
+  }
+  std::cout << std::setw(4) << j.dump() << std::endl;
 
   //Extract provenance data and send to the provDB
   if(nanom > 0){
@@ -235,3 +244,4 @@ size_t ADsim::nStepExecs(unsigned long step) const{
   }else return mse->second.size();
 }
   
+

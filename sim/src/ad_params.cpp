@@ -1,8 +1,6 @@
-#include <pybind11/pybind11.h>
 #include<chimbuko/util/error.hpp>
 #include <sim/ad_params.hpp>
 #include<random>
-
 
 using namespace chimbuko;
 using namespace chimbuko_sim;
@@ -24,11 +22,3 @@ void chimbuko_sim::registerFunc(const std::string &func_name, unsigned long mean
 }
 
 
-namespace py = pybind11;
-
-PYBIND11_MODULE(ad_param, m) {
-  m.doc() = "PYBIND11 module for ad_params in Chimbuko Simulator"
-
-  py::class_<ADalgParams>(m, "ADalgParams")
-    .def(py::init<const std::string &, double, bool, double, ADOutlier::OutlierStatistic)
-}
