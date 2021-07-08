@@ -123,7 +123,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl;
+    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << " and provider idx " << provider << std::endl;
     
     {
       //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB

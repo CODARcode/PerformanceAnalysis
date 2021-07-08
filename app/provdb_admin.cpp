@@ -394,11 +394,14 @@ int main(int argc, char** argv) {
 	  }
 	}//client scope
 
+#if 0 
+	//*****This causes hangs on Summit and is not strictly necessary****
 	//If the pserver didn't connect (it is optional), delete the empty database
 	if(!pserver_has_connected){
 	  progressStream << "ProvDB Admin: destroying pserver database as it didn't connect (connection is optional)" << std::endl;
 	  admin.destroyDatabase(addr, glob_provider_idx, glob_db_name);
 	}
+#endif
 
 	progressStream << "ProvDB Admin: ending admin scope" << std::endl;
 #ifdef ENABLE_MARGO_STATE_DUMP

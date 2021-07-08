@@ -194,9 +194,10 @@ int main(int argc, char **argv){
       stats_prd.write();
       stats.write();
 
+#ifdef ENABLE_MARGO_STATE_DUMP
       if(args.do_state_dump && rank == 0)
 	provdb_client.serverDumpState();
-
+#endif
       n_steps_accum_prd = 0;
 
       if(args.max_outstanding_sends > 0 && noutstanding >= args.max_outstanding_sends){
@@ -209,6 +210,23 @@ int main(int argc, char **argv){
       }
     }      
   }//cycle loop
+
+  if(provdb_client.getNoutstandingAsyncReqs() > 0){
+    //Continue to write out #outstanding until queue is drained at same freq
+    int sleep_time_ms = args.perf_write_freq * args.cycle_time_ms;
+    while(1){
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+      int noutstanding = provdb_client.getNoutstandingAsyncReqs();
+      stats_prd.add("provdb_incomplete_async_sends", noutstanding);
+      stats_prd.add("io_steps", 0);
+      stats_prd.add("provdb_total_async_send_calls", async_send_calls); //running total stays fixed
+      
+      stats_prd.write();
+      
+      if(noutstanding == 0)
+	break;
+    }
+  }
 
   std::cout << "Rank " << rank << " disconnecting from server" << std::endl;
   provdb_client.disconnect(); //ensure data is written to stats

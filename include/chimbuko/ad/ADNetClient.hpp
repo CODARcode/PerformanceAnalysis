@@ -345,8 +345,11 @@ namespace chimbuko{
 	  }else{
 #ifdef _USE_MPINET
 	    client = new ADMPINetClient;
-#else
+#elif defined(_USE_ZMQNET)
 	    client = new ADZMQNetClient;
+#else
+#warning "Threaded net client is using local net client for non-local comms!"
+	    client = new ADLocalNetClient;
 #endif
 	  }
           bool shutdown = false;
