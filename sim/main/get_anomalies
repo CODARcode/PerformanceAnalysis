@@ -1,0 +1,15 @@
+#!/bin/bash
+
+while getopts l:o: flag
+do
+   case "${flag}" in
+      l) logfile=${OPTARG};;
+      o) outfile=${OPTARG};;
+   esac
+done
+echo "Log File Used: " ${logfile}
+echo "Anomalies output file: " ${outfile}
+
+`awk '/^"entry"|]$/' ${logfile} > ${outfile}`
+
+echo "DONE"
