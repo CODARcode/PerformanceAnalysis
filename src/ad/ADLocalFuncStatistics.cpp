@@ -95,15 +95,11 @@ ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
 }
 
 
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client) const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  //nlohmann::json g_info = get_json_state();
-  State g_info = get_state();
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client) const{
   PerfTimer timer;
   timer.start();
-  //auto msgsz = updateGlobalStatistics(net_client, g_info.dump(), m_step);
-  auto msgsz = updateGlobalStatistics(net_client, g_info.serialize_cerealpb(), m_step);
-
+  auto msgsz = updateGlobalStatistics(net_client, net_serialize(), m_anom_data.get_step());
+  
   if(m_perf != nullptr){
     m_perf->add("func_stats_stream_update_ms", timer.elapsed_ms());
     m_perf->add("func_stats_stream_sent_MB", (double)msgsz.first / 1000000.0); // MB
@@ -113,7 +109,7 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetCli
   return msgsz;
 }
 
-std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step){
+std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
 
@@ -122,8 +118,8 @@ std::pair<size_t, size_t> ADLocalFuncStatistics::updateGlobalStatistics(ADNetCli
   msg.set_msg(l_stats);
 
   size_t sent_sz = msg.size();
-  std::string strmsg = net_client.send_and_receive(msg);
-  size_t recv_sz = strmsg.size();
-
+  net_client.async_send(msg);
+  size_t recv_sz =0;
+  
   return std::make_pair(sent_sz, recv_sz);
 }

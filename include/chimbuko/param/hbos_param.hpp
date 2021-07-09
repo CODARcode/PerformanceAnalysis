@@ -15,18 +15,43 @@ namespace chimbuko {
   class Histogram {
 
   public:
+
+    /**
+     * @brief Construct a Histogram object
+     */
     Histogram();
+
+    /**
+     * @brief Destroy Histogram object
+     */
     ~Histogram();
 
+    /**
+     * @brief Data structure that stores Histogram data ( bin counts, bin edges)
+     */
     struct Data {
 
       double glob_threshold; /**< global threshold used to filter anomalies*/
       std::vector<int> counts; /**< Bin counts in Histogram*/
       std::vector<double> bin_edges; /**< Bin edges in Histogram*/
 
+      /**
+       * @brief Initialize histogram data
+       */
       Data(){
+
+        /**
+         * @brief Resets histogram data during initialization
+         */
         clear();
       }
+
+      /**
+       * @brief Initialize histogram data with existing histogram data
+       * @param g_threshold: Global Threshold
+       * @param h_counts: a vector<int> of histogram bin counts
+       * @param h_bin_edges: a vector<double> of histogram bin edges
+       */
       Data(const double& g_threshold, const std::vector<int>& h_counts, const std::vector<double>& h_bin_edges ) {
         glob_threshold = g_threshold;
         counts = h_counts;
@@ -56,83 +81,111 @@ namespace chimbuko {
 
     void push (double x);
 
+    /**
+     * @brief returns reference to current histogram Data
+     * @return Data: Histogram data (bin counts, bin edges)
+     */
     const Data &get_histogram() const{ return m_histogram; }
 
     /**
      * @brief Set the internal variables from an instance of Histogram Data
+     * @param d: Histogram Data (bin counts, bin edges)
      */
     void set_hist_data(const Data& d);
 
     /**
      * @brief Create an instance of this class from a Histogram Data instance
+     * @param d: Histogram Data (bin counts, bin edges)
+     * @return Instance of Histogram
      */
     static Histogram from_hist_data(const Data& d) {
       Histogram histdata;
       histdata.set_hist_data(d);
       return histdata;
     }
+
     /**
      * @brief Create new histogram locally for AD module's batch data instances
+     * @param r_times: a vector<double> of function run times
+     * @return returns 0 if success, else -1
      */
     int create_histogram(const std::vector<double>& r_times);
 
-
+    /**
+     * @brief merges a Histogram with function runtimes
+     * @param g: Histogram to merge
+     * @param runtimes: Function runtimes
+     * @return 0 if successful, -1 if failed
+     */
     int merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
 
     /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
+     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
+     * @param g: Histogram to merge into
+     * @param l: Histogram to merge
+     * @return result: Merged Histogram
      */
-    //Histogram combine_two_histograms(const Histogram& g, const Histogram& l);
     friend Histogram operator+(const Histogram& g, const Histogram& l);
 
     /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two
+     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
+     * @param h: Histogram to merge
+     * @return result: Merged Histogram
      */
     Histogram & operator+=(const Histogram& h);
 
 
     /**
-     * @brief setd global threshold for anomaly filtering
+     * @brief set global threshold for anomaly filtering
      */
     void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
 
     /*
      * @brief set bin counts in Histogram
+     * @param c: vector of bin counts
      */
     void set_counts(const std::vector<int> & c) { m_histogram.counts = c; }
 
     /*
      * @brief set bin edges in Histogram
+     * @param be: vector of bin edges
      */
     void set_bin_edges(const std::vector<double>& be) {m_histogram.bin_edges = be;}
 
     /*
-     * @brief Update counts in Histogram
+     * @brief New bin counts in Histogram
+     * @param count: bin count value
      */
     void add2counts(const int& count) {m_histogram.counts.push_back(count);}
 
     /*
      * @brief Update counts for a given index of bin in histogram
+     * @param id: index of bin in Histogram
+     * @param count: bin count value to update
      */
     void add2counts(const int& id, const int& count) {m_histogram.counts[id] += count;}
 
     /*
-     * @brief Update bin edges in histogram
+     * @brief New bin edges in histogram
+     * @param bin_edge: vector of bin edges of histogram
      */
     void add2binedges(const double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
     /*
-     * @brief get global threshold from global histogram
+     * @brief get current value of global threshold from global histogram
+     * @return global threshold
      */
     const double& get_threshold() const {return m_histogram.glob_threshold;}
 
     /*
-     * @brief Get bin counts of Histogram
+     * @brief Get current vector of bin counts of Histogram
+     * @return vector of bin counts
      */
     const std::vector<int>& counts() const {return m_histogram.counts;}
 
     /*
-     * @brief Get bin edges of histogram
+     * @brief Get current vector of bin edges of histogram
+     * @return vector of bin edges
      */
     const std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
 
@@ -142,11 +195,12 @@ namespace chimbuko {
     nlohmann::json get_json() const;
 
   private:
-    Data m_histogram; /**< Histogram Data*/
+    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
     /*
      * @brief Compute bin width based on Scott's rule
      * @param vals: vector of runtimes
+     * @return computed bin width
      */
     static double _scott_binWidth(const std::vector<double> & vals);
 
@@ -156,10 +210,13 @@ namespace chimbuko {
      * @param global_edges: bin edges in global histogram on pserver
      * @param local_counts: bin counts in local histogram in AD module
      * @param local_edges: bin edges in local histogram in AD module
+     * @return computed bin width
      */
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
   };
+
+
   Histogram operator+(const Histogram& g, const Histogram& l);
 
   /**
@@ -173,6 +230,7 @@ namespace chimbuko {
      * @brief Clear all statistics
      */
     void clear() override;
+
 
     const int find(const unsigned long& func_id);
 
@@ -264,7 +322,7 @@ namespace chimbuko {
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
   private:
-    std::unordered_map<unsigned long, Histogram> m_hbosstats;
+    std::unordered_map<unsigned long, Histogram> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
   };
 
 

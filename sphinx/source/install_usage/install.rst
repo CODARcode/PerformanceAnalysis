@@ -2,10 +2,7 @@
 Installation
 ************
 
-For x86 systems we provide pre-built docker images users can quickly start
-with thier own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_) .
-
-Otherwise, first, download (or clone) **Chimbuko** AD module.
+For x86 systems we provide pre-built docker images users can quickly start with their own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_). Otherwise, first, download (or clone) **Chimbuko** AD module.
 
 .. code:: bash
 
@@ -42,20 +39,12 @@ If libfabric is pre-installed on the user's system it should be indicated to Spa
 
    spack load mochi-sonata
 
-To build test cases, users need to install gtest.
-
-.. code:: bash
-
-   apt-get install libgtest-dev
-   cd /usr/src/gtest
-   cmake CMakelists.txt
-   make
-   cp *.a /usr/lib
+To build test cases, users need to install gtest. See Instructions to installs gtest `here <../appendix/appendix_install.html>`_.
 
 Finally, to build the AD module
 
 .. code:: bash
-	  
+
    cd ${AD_SOURCE_DIR}
    ./autogen.sh
    cd ${AD_BUILD_DIR}
@@ -64,10 +53,10 @@ Finally, to build the AD module
 
 Here **--with-perf-metric** is an optional flag that enables generation of performance information of Chimbuko. The ZMQ network is the only one presently supported; an MPI network is maintained for legacy purposes and is not recommended for use. Assuming Sonata is installed and the mochi-sonata spack module loaded, the configure script will automatically detect the installation and will build the provenance database.
 
-Once installed the unit and integration tests can be run as:  
+Once installed the unit and integration tests can be run as:
 
 .. code:: bash
-	  
+
    cd ${AD_INSTALL_DIR}/test
    ./run_all.sh
 
@@ -79,18 +68,14 @@ Summit
 Prior to building anything the user should ensure to load the required modules:
 
 .. code:: bash
-	  
+
    source ${AD_SOURCE_DIR}/env.summit.sh
 
 ..
-   We provide :download:`an installation script<files/install_adios2.sh>` for ADIOS2_, 
-   if the latest version is not availale on Summit. 
+   We provide :download:`an installation script<files/install_adios2.sh>` for ADIOS2_,
+   if the latest version is not availale on Summit.
 
-A build of ADIOS2 that has been tested as compatible with Chimbuko can be found here
-
-.. code:: bash
-	  
-   ADIOS2_INSTALL_DIR=/gpfs/alpine/world-shared/csc143/jyc/summit/sw/adios2/devel/gcc
+A build of ADIOS2 that has been tested as compatible with Chimbuko can be found `here <../appendix/appendix_install.html#ADIOS2-build>`_.
 
 The process for building Sonata_ is somewhat more complicated on Summit. The Mochi developers recommend using a Spack environment that can be setup as follows:
 
@@ -109,7 +94,7 @@ Then:
    spack env create mochi summit_spack.yaml
    spack env activate mochi
    spack install
-  
+
 The user must henceforth ensure to activate the **mochi** environment prior to building and using Chimbuko as follows:
 
 .. code:: bash
@@ -117,21 +102,12 @@ The user must henceforth ensure to activate the **mochi** environment prior to b
    spack env activate mochi
    spack load mochi-sonata
 
-GoogleTest_ is not installed by default on Summit, hence we must install it as follows:
-
-.. code:: bash
-
-   cd ${GTEST_SOURCE_DIR}
-   wget https://github.com/google/googletest/archive/release-1.10.0.tar.gz
-   tar -xvzf release-1.10.0.tar.gz
-   cd ${GTEST_BUILD_DIR}
-   CC=gcc CXX=g++ cmake -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR} ${GTEST_SOURCE_DIR}/googletest-release-1.10.0
-   make install
+GoogleTest_ is not installed by default on Summit, hence we must install it as described `here <../appendix/appendix_install.html#googletest-on-summit>`_.
 
 To build the AD:
 
 .. code:: bash
-	  
+
    cd ${AD_SOURCE_DIR}
    ./autogen.sh
    cd ${AD_BUILD_DIR}
@@ -140,10 +116,10 @@ To build the AD:
    LDFLAGS_IN="-L${GTEST_INSTALL_DIR}/lib64"
 
    CC=mpicc CXX=mpicxx LDFLAGS=${LDFLAGS_IN} CXXFLAGS=${CXXFLAGS_IN} \
-   /path/to/ad/source/configure --with-adios2=${ADIOS2_INSTALL_DIR} --with-network=ZMQ --with-perf-metric --prefix=${AD_INSTALL_DIR} 
+   /path/to/ad/source/configure --with-adios2=${ADIOS2_INSTALL_DIR} --with-network=ZMQ --with-perf-metric --prefix=${AD_INSTALL_DIR}
    make install
 
-   
+
 .. _ADIOS2: https://github.com/ornladios/ADIOS2
 .. _ZeroMQ: https://zeromq.org/
 .. _CURL: https://curl.haxx.se/

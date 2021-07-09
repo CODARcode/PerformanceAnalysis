@@ -1,8 +1,9 @@
 spack:
   specs:
+  - adios2@2.7.1 build_type=Debug
   - chimbuko-visualization2
-  - chimbuko-performance-analysis
-  - mochi-sonata^mercury~checksum^libfabric@1.9.0^argobots@main
+  - chimbuko-performance-analysis@ckelly_develop ^libzmq@4.3.3
+  - mochi-sonata ^mercury@master~checksum ^libfabric@1.9.0 ^mochi-margo@develop  ^argobots@main+stackunwind+tool
   - py-mochi-sonata ^python@3.7.0
   - tau@master %gcc@9.1.0 +cuda +mpi +pthreads +fortran +adios2 +python +papi
   concretization: together
@@ -197,17 +198,6 @@ spack:
       - modules:
         - libffi/3.2.1
         spec: libffi@3.2.1
-      compiler: []
-
-    libzmq:
-      version: []
-      target: []
-      buildable: false
-      providers: {}
-      externals:
-      - modules:
-        - zeromq/4.2.5
-        spec: libzmq@4.2.5
       compiler: []
 
     m4:

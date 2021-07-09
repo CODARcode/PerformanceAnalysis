@@ -75,7 +75,7 @@ The schema for the **'anomaly_stats'** object is as follows:
 |                   ...
 |                ],
 |           **'key'**: *A string label of the form "$PROGRAM ID:$RANK" (eg "0:12")*,
-|           **'stats'**:   *Statistics on anomalies on this process/rank over the steps broken down above (object)*
+|           **'stats'**:   *Statistics on anomalies on this process/rank over all steps to date
 |                {
 |	           **'accumulate'**: *Total anomalies*,
 |                  **'count'**: *Number of io steps included in statistics*,

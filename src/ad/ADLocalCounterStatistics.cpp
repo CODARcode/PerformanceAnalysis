@@ -83,14 +83,12 @@ void ADLocalCounterStatistics::net_deserialize(const std::string &s){
 }
 
 
-//std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const{
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, int rank, std::string pserver_addr) const{
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client) const{
   //nlohmann::json state = get_json_state();
   State state = get_state();
   PerfTimer timer;
   timer.start();
-  //auto msgsz = updateGlobalStatistics(net_client, state.dump(), m_step);
-  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step, rank, pserver_addr);
+  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
   
   if(m_perf != nullptr){
     m_perf->add("counter_stats_stream_update_ms", timer.elapsed_ms());
@@ -100,25 +98,18 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThr
   return msgsz;
 }
 
-//std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
-std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
+std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step){
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
 
-  //ADThreadNetClient thrnet;
-  //thrnet.connect_ps(rank, 0, pserver_addr);
-  
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::COUNTER_STATS, step);
   msg.set_msg(l_stats);
   
   size_t sent_sz = msg.size();
-  //std::string strmsg = net_client.send_and_receive(msg);
   net_client.async_send(msg);
-  //thrnet.async_send(msg);
-  size_t recv_sz = 0; //msg.size(); //strmsg.size();
+  size_t recv_sz = 0;
 
-  //thrnet.disconnect_ps();  
   return std::make_pair(sent_sz, recv_sz);
 }
 

@@ -158,8 +158,8 @@ TEST(ADLocalCounterStatisticsTest, GlobalCounterStatsWorks){
 
 
 struct ADLocalCounterStatisticsWrapper: public ADLocalCounterStatistics{
-  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADThreadNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr){
-    return ADLocalCounterStatistics::updateGlobalStatistics(net_client, l_stats, step, rank, pserver_addr);
+  static std::pair<size_t, size_t> updateGlobalStatisticsTest(ADThreadNetClient &net_client, const std::string &l_stats, int step){
+    return ADLocalCounterStatistics::updateGlobalStatistics(net_client, l_stats, step);
   }
 };
 
@@ -193,12 +193,12 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithMockPS){
   std::thread out_thr([&]{
 			barrier2.wait();
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 			  barrier2.wait();
 			  std::cout << "AD thread updating local stats" << std::endl;
-			  ADLocalCounterStatisticsWrapper::updateGlobalStatisticsTest(net_client, "test",0,0,sname);
-			  barrier2.wait();
+			  ADLocalCounterStatisticsWrapper::updateGlobalStatisticsTest(net_client, "test",0);
+			  barrier2.wait();			  
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;
@@ -255,13 +255,13 @@ TEST(ADLocalCounterStatisticsTest, UpdateGlobalStatisticsWithRealPS){
   std::cout << "Initializing AD thread" << std::endl;
   std::thread out_thr([&]{
 			try{
-			  ADZMQNetClient net_client;
+			  ADThreadNetClient net_client;
 			  net_client.connect_ps(0, 0, sname);
 
 			  cs.setStats(nm, a);
-			  cs.updateGlobalStatistics(net_client, 0, sname);
+			  cs.updateGlobalStatistics(net_client);
 			  cs.setStats(nm, b);
-			  cs.updateGlobalStatistics(net_client, 0, sname);
+			  cs.updateGlobalStatistics(net_client);
 
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();

@@ -141,7 +141,7 @@ if (( ${use_provdb} == 1 )); then
     echo "Instantiating committer"
     echo "==========================================="
     prov_add=$(cat ${provdb_dir}/provider.address)
-    provdb_commit "${prov_add}" ${provdb_nshards} 10000 2>&1 | tee ${log_dir}/committer.log &
+    provdb_commit "${prov_add}" ${provdb_nshards} ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer.log &
     sleep 3
 fi
 

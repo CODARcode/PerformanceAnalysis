@@ -107,5 +107,44 @@ TEST(TestGlobalAnomalyStats, UpdateAnomalyStat){
   //Check data was flushed
   adata = astats.get_data();
   EXPECT_EQ(adata->size(), 0);
+
+  //Check that collect_stat_data only includes data if the number of anomalies seen since last collect > 0
+  int step3= 2;
+  int min_ts3 = 2000;
+  int max_ts3 = 3000;
+  int n_anomalies3 = 0;
+
+  AnomalyData d3(app, rank, step3, min_ts3, max_ts3, n_anomalies3);
+  
+  stats.update_anomaly_stat(d3);
+  
+  astats_j = stats.collect_stat_data();
+  EXPECT_EQ(astats_j.is_array(), true );
+  EXPECT_EQ(astats_j.size(), 0 );
+  
+  //Check that if there are multiple steps, some of which have anomalies, that the data array only contains the data with nanom > 0
+
+  int step4= 3;
+  int min_ts4 = 3000;
+  int max_ts4 = 4000;
+  int n_anomalies4 = 0;
+
+  AnomalyData d4(app, rank, step4, min_ts4, max_ts4, n_anomalies4);
+
+  int step5= 4;
+  int min_ts5 = 4000;
+  int max_ts5 = 5000;
+  int n_anomalies5 = 10; 
+
+  AnomalyData d5(app, rank, step5, min_ts5, max_ts5, n_anomalies5);
+
+  stats.update_anomaly_stat(d4);
+  stats.update_anomaly_stat(d5);
+
+  astats_j = stats.collect_stat_data();
+  EXPECT_EQ(astats_j.is_array(), true );
+  EXPECT_EQ(astats_j.size(), 1 ); //1 rank
+  EXPECT_EQ(astats_j[0]["data"].size(), 1); //only d5
+  EXPECT_EQ(astats_j[0]["data"][0]["step"], step5);
 }
 

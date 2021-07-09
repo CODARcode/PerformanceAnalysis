@@ -540,7 +540,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
     });
 
 
-  ADZMQNetClient net_client;
+  ADThreadNetClient net_client;
   net_client.connect_ps(0, 0, sname);
   std::cout << "TEST: Net client has connected to pserver" << std::endl;
 

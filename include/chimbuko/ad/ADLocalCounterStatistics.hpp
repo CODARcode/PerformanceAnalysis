@@ -5,7 +5,6 @@
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/ad/ADCounter.hpp>
 #include "chimbuko/util/PerfStats.hpp"
-//#include "chimbuko/chimbuko.hpp"
 
 namespace chimbuko{
 
@@ -84,8 +83,7 @@ namespace chimbuko{
      *
      * The message string is the output of net_serialize()
      */
-    //std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, int rank, std::string pserver_addr) const;
-    std::pair<size_t, size_t> updateGlobalStatistics(ADThreadNetClient &net_client, int rank, std::string pserver_addr) const;
+    std::pair<size_t, size_t> updateGlobalStatistics(ADThreadNetClient &net_client) const;
 
     /**
      * @brief Attach a PerfStats object into which performance metrics are accumulated
@@ -151,8 +149,7 @@ namespace chimbuko{
      * @param step step (or frame) number
      * @return std::pair<size_t, size_t> [sent, recv] message size
      */
-    //static std::pair<size_t, size_t> updateGlobalStatistics(ADNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr);
-    static std::pair<size_t, size_t> updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step, int rank, std::string pserver_addr);
+    static std::pair<size_t, size_t> updateGlobalStatistics(ADThreadNetClient &net_client, const std::string &l_stats, int step);
 
     unsigned long m_program_idx; /**< Program idx*/
     int m_step; /**< io step */

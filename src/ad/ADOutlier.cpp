@@ -228,19 +228,14 @@ std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
         return std::make_pair(0, 0);
     }
     else {
-        //ADThreadNetClient thrnet;
-        //thrnet.connect_ps(m_net_client->get_client_rank(), 0, m_net_client->get_server_rank());
         Message msg;
         msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
         msg.set_msg(l.serialize(), false);
         size_t sent_sz = msg.size();
-
-	//thrnet.send_and_receive(msg, msg);
+   
         m_net_client->send_and_receive(msg, msg);
-        //thrnet.disconnect_ps();
         size_t recv_sz = msg.size();
         g.assign(msg.buf());
-
         return std::make_pair(sent_sz, recv_sz);
     }
 }
@@ -458,6 +453,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
 
       itt->set_outlier_score(ad_score);
+      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {

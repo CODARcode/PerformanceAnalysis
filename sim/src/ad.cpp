@@ -29,9 +29,11 @@ ADsim::ADsim(ADsim &&r):
   m_normal_events(std::move(r.m_normal_events)),
   m_metadata(std::move(r.m_metadata)),
   m_pdb_client(std::move(r.m_pdb_client)),
-  m_outlier(r.m_outlier)
+  m_outlier(r.m_outlier),
+  m_net_client(r.m_net_client)
 {
   r.m_outlier = nullptr;
+  r.m_net_client = nullptr;
 }
 
 
@@ -50,8 +52,9 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   if(p.algorithm != "none"){    
     m_outlier = ADOutlier::set_algorithm(p.stat, p.algorithm, p.hbos_thres, p.glob_thres, p.sstd_sigma);
     getPserver(); //force construction of pserver
-    m_net_client.connect_ps(m_rid);
-    m_outlier->linkNetworkClient(&m_net_client);
+    m_net_client = new ADThreadNetClient(true); //use local comms
+    m_net_client->connect_ps(m_rid);
+    m_outlier->linkNetworkClient(m_net_client);
   }
 }
 

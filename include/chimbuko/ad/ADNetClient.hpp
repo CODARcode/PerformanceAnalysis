@@ -78,6 +78,11 @@ namespace chimbuko{
      */
     void linkPerf(PerfStats* perf){ m_perf = perf; }
 
+    /**
+     * @brief Set the timeout for receiving messages (implementation dependent)
+     */
+    virtual void setRecvTimeout(const int timeout_ms){ }
+
   protected:
     bool m_use_ps;                           /**< true if the parameter server is in use */
     int m_rank;                              /**< MPI rank of current process */
@@ -125,7 +130,7 @@ namespace chimbuko{
     /**
      * @brief Set the timeout on blocking receives. Must be called prior to connecting
      */
-    void setRecvTimeout(const int timeout_ms){ m_recv_timeout_ms = timeout_ms; }
+    void setRecvTimeout(const int timeout_ms) override{ m_recv_timeout_ms = timeout_ms; }
 
     /**
      * @brief Get the zeroMQ socket
@@ -256,7 +261,6 @@ namespace chimbuko{
     ClientActionWait(size_t wait_ms): wait_ms(wait_ms){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Worker is waiting for "<< wait_ms << "ms" << std::endl;
       std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
     }
     bool do_delete() const{ return true; }
@@ -270,12 +274,9 @@ namespace chimbuko{
     bool complete;
 
     ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
-//    ClientActionBlockingSendReceive(Message *recv, const Message &send): send(send), recv(recv), complete(false){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Performing blocking send and receive" << std::endl;
       client.send_and_receive(*recv, *send);
-//      client.send_and_receive(*recv, send);
 
       {
         std::unique_lock<std::mutex> lk(m);
@@ -298,10 +299,8 @@ namespace chimbuko{
     ClientActionAsyncSend(const Message &send): send(send){}
 
     void perform(ADNetClient &client){
-      //std::cout << "Performing non-blocking send and receive" << std::endl;
       Message recv;
       client.send_and_receive(recv, send);
-      //std::cout << "Non-blocking send returned " << recv.buf() << std::endl;
     }
     bool do_delete() const{ return true; }
   };
@@ -334,17 +333,29 @@ namespace chimbuko{
       return work_item;
     }
     
-    void run(){
-      //std::cout << "Starting worker thread" << std::endl;
+    /**
+     * @brief Create the worker thread
+     * @param local Use a local (in process) communicator if true, otherwise use the default network communicator
+     */
+    void run(bool local = false){
       worker = std::thread([&](){
-          ADNetClient client;
+	  ADNetClient *client = nullptr;
+	  if(local){
+	    client = new ADLocalNetClient;
+	  }else{
+#ifdef _USE_MPINET
+	    client = new ADMPINetClient;
+#else
+	    client = new ADZMQNetClient;
+#endif
+	  }
           bool shutdown = false;
 
           while(!shutdown){
             size_t nwork = getNwork();
             while(nwork > 0){
               ClientAction* work_item = getWorkItem();
-              work_item->perform(client);
+              work_item->perform(*client);
               shutdown = shutdown || work_item->shutdown_worker();
 
               if(work_item->do_delete()) delete work_item;
@@ -352,17 +363,21 @@ namespace chimbuko{
             }
             if(shutdown){
               if(nwork > 0) fatal_error("Worker was shut down before emptying its queue!");
-              //std::cout << "Worker received shutdown request" << std::endl;
             }else{
               std::this_thread::sleep_for(std::chrono::milliseconds(80));
             }  
           }
+	  delete client;
         });
     }
 
   public:
-    ADThreadNetClient(){
-      run();
+    /**
+     * @brief Constructor
+     * @param local Use a local (in process) communicator if true, otherwise use the default network communicator
+     */
+    ADThreadNetClient(bool local = false){
+      run(local);
     }
     
     //Use only if you know what you are doing!
@@ -382,7 +397,6 @@ namespace chimbuko{
     }
     void send_and_receive(Message &recv, const Message &send){
       ClientActionBlockingSendReceive action(&recv, &send);
-//      ClientActionBlockingSendReceive action(&recv, send);
       enqueue_action(&action);
       action.wait_for();
     }
@@ -403,7 +417,7 @@ namespace chimbuko{
     }    
 
     ~ADThreadNetClient(){
-      //std::cout << "Joining worker thread" << std::endl;
+      disconnect_ps();
       worker.join();
     }
    

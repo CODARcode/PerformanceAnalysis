@@ -58,7 +58,6 @@ namespace chimbuko {
     /**
      * @brief Link the interface for communicating with the parameter server
      */
-    //void linkNetworkClient(ADNetClient *client);
     void linkNetworkClient(ADThreadNetClient *client);
 
     /**
@@ -114,9 +113,8 @@ namespace chimbuko {
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
-    //ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
     ADThreadNetClient* m_net_client;                 /**< interface for communicating to parameter server */
-    
+
     std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
 
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
@@ -194,11 +192,13 @@ namespace chimbuko {
    */
   class ADOutlierHBOS : public ADOutlier {
   public:
+
     /**
      * @brief Construct a new ADOutlierHBOS object
      *
      */
     ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
+
     /**
      * @brief Destroy the ADOutlierHBOS object
      *
@@ -240,16 +240,19 @@ namespace chimbuko {
     std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
 
     /**
-     * scott's rule for bin_width estimation
+     * @brief Scott's rule for bin_width estimation during histogram formation
      */
     double _scott_binWidth(std::vector<double>& vals);
 
+    /**
+     * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
+     */
     int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
 
   private:
-    double m_alpha; /**< alpha */
+    double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
-    bool m_use_global_threshold; /**< Flas to use global threshold*/
+    bool m_use_global_threshold; /**< Flag to use global threshold*/
     //double m_threshold; /** sync with global threshold */
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
 
