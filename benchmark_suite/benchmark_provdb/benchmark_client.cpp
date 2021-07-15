@@ -18,7 +18,7 @@
 using namespace chimbuko;
 
 struct Args{
-  std::string provdb_addr;
+  std::string provdb_addr_dir;
   int cycles;
   int callstack_size;
   int ncounters;
@@ -28,6 +28,7 @@ struct Args{
   int normal_events_per_cycle;
   size_t cycle_time_ms;
   int nshards;
+  int ninstances;
   int perf_write_freq;
   std::string perf_dir;
   bool do_state_dump; //have the provdb record its state every time the perf stats are written (by rank 0)
@@ -42,7 +43,9 @@ struct Args{
     anomalies_per_cycle = 10;
     normal_events_per_cycle = 10; //capture max 1 normal event per anomaly
     cycle_time_ms = 1000;
+    provdb_addr_dir=".";
     nshards=1;
+    ninstances=1;
     perf_write_freq = 10;
     perf_dir=".";
     do_state_dump = false;
@@ -62,7 +65,7 @@ int main(int argc, char **argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   commandLineParser<Args> cmdline;
-  addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr);
+  addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycles);
   addOptionalCommandLineArgDefaultHelpString(cmdline, callstack_size);
   addOptionalCommandLineArgDefaultHelpString(cmdline, ncounters);
@@ -72,6 +75,7 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, normal_events_per_cycle);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
   addOptionalCommandLineArgDefaultHelpString(cmdline, nshards);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, ninstances);
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, do_state_dump);
@@ -93,7 +97,7 @@ int main(int argc, char **argv){
   PerfPeriodic stats_prd(args.perf_dir, fn_perf_prd);
 
   ADProvenanceDBclient provdb_client(rank);
-  provdb_client.connect(args.provdb_addr,args.nshards);
+  provdb_client.connectMultiServer(args.provdb_addr_dir,args.nshards,args.ninstances);
   provdb_client.linkPerf(&stats);
 
   //Here we assume the sstd algorithm for now
