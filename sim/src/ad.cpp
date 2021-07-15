@@ -43,7 +43,7 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   m_rid = rid;
   m_pdb_client.reset(new ADProvenanceDBclient(rid));
   m_pdb_client->setEnableHandshake(false);
-  m_pdb_client->connect(getProvDB().getAddr(), getProvDB().getNshards());
+  m_pdb_client->connectSingleServer(getProvDB().getAddr(), getProvDB().getNshards());
   m_program_start = program_start;
   m_step_freq = step_freq;
   m_largest_step = 0;

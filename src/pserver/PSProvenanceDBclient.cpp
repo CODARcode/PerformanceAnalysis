@@ -1,6 +1,7 @@
 #include<chimbuko/pserver/PSProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
+#include<chimbuko/provdb/setup.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -49,7 +50,7 @@ void PSProvenanceDBclient::disconnect(){
   }
 }
 
-void PSProvenanceDBclient::connect(const std::string &addr){
+void PSProvenanceDBclient::connect(const std::string &addr, const int provider_idx){
   try{    
     //Reset the protocol if necessary
     std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);   
@@ -60,15 +61,12 @@ void PSProvenanceDBclient::connect(const std::string &addr){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
-    std::string db_name = "provdb.global";
-
-    static const int glob_provider_idx = 0;
-
+    std::string db_name = ProvDBsetup::getGlobalDBname();
 
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
     verboseStream << "PSProvenanceDBclient connecting to database " << db_name << " on address " << addr << std::endl;
-    m_database = m_client.open(addr, glob_provider_idx, db_name);
+    m_database = m_client.open(addr, provider_idx, db_name);
     verboseStream << "PSProvenanceDBclient opening function stats collection" << std::endl;
     m_coll_funcstats = m_database.open("func_stats");
     verboseStream << "PSProvenanceDBclient opening counter stats collection" << std::endl;
@@ -89,6 +87,13 @@ void PSProvenanceDBclient::connect(const std::string &addr){
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("PSProvenanceDBclient could not connect due to exception: ") + ex.what());
   }
+}
+
+void PSProvenanceDBclient::connectMultiServer(const std::string &addr_file_dir){
+  int instance = ProvDBsetup::getGlobalDBinstance();
+  int provider = ProvDBsetup::getGlobalDBproviderIndex();
+  std::string addr = ProvDBsetup::getInstanceAddress(instance, addr_file_dir);
+  connect(addr, provider);
 }
 
 uint64_t PSProvenanceDBclient::sendData(const nlohmann::json &entry, const GlobalProvenanceDataType type) const{

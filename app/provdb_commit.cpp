@@ -6,14 +6,20 @@
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
 #include <thallium/serialization/stl/string.hpp>
+#include<chimbuko/provdb/setup.hpp>
 
 using namespace chimbuko;
 
 bool stop_wait_loop = false; //trigger breakout of main thread spin loop
 
+int instance;
+#define CprogressStream  progressStream << "ProvDB Commit instance " << instance << ": "
+#define CverboseStream  verboseStream << "ProvDB Commit instance " << instance << ": "
+
+
 void termSignalHandler( int signum ) {
   stop_wait_loop = true;
-  progressStream << "ProvDB Commit caught SIGTERM, exiting " << std::endl;
+  CprogressStream << "caught SIGTERM, exiting " << std::endl;
 }
 
 bool exit_check(thallium::endpoint &server, 
@@ -27,7 +33,7 @@ bool exit_check(thallium::endpoint &server,
   of >> connected >> a_client_has_connected >> pserver_connected >> pserver_has_connected;
   assert(!of.fail());
 
-  progressStream << "ProvDB Commit determined status: clients connected=" << connected << " (a client has connected ? " << a_client_has_connected << ") "
+  CprogressStream << "determined status: clients connected=" << connected << " (a client has connected ? " << a_client_has_connected << ") "
 		 << "pserver connected=" << pserver_connected << " (pserver has connected ? " << pserver_has_connected << ")" << std::endl;
   return 
     ( a_client_has_connected && connected == 0 ) &&
@@ -37,23 +43,33 @@ bool exit_check(thallium::endpoint &server,
 
 int main(int argc, char** argv){  
 #ifdef ENABLE_PROVDB
-  if(argc != 4){
-    std::cout << "Usage: provdb_commit <server address e.g. ofi+tcp;ofi_rxm://172.17.0.4:5000> <nshards> <freq (ms)>" << std::endl;
+  if(argc != 6){
+    std::cout << "Usage: provdb_commit <server address file directory> <instance to connect to> <ninstances> <nshards> <freq (ms)>" << std::endl;
     return 1;
   }
-  std::string addr = argv[1];
-  int nshards = std::stoi(argv[2]);
-  int freq_ms = std::stoi(argv[3]);
+  std::string addr_file_dir = argv[1];
+  instance = std::stoi(argv[2]);
+  int ninstances = std::stoi(argv[3]);
+
+  int nshards = std::stoi(argv[4]);
+
+  int freq_ms = std::stoi(argv[5]);
 
   if(freq_ms == 0){
-    progressStream << "ProvDB Commit freq==0, I am not needed. Done" << std::endl;
+    CprogressStream << "freq==0, I am not needed. Done" << std::endl;
     return 0;
   } 
+
+  ProvDBsetup setup(nshards, ninstances);
+  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
+  int instance_shard_offset = setup.getShardOffsetInstance(instance);
+  int nshard_instance = setup.getNshardsInstance(instance);
+  bool do_global_db = instance == setup.getGlobalDBinstance();
 
   std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
   if(ADProvenanceDBengine::getProtocol().first != protocol){
     int mode = ADProvenanceDBengine::getProtocol().second;
-    verboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
+    CverboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
     ADProvenanceDBengine::finalize();
     ADProvenanceDBengine::setProtocol(protocol,mode);      
   }      
@@ -67,24 +83,22 @@ int main(int argc, char** argv){
   thallium::remote_procedure connection_status(eng.define("connection_status"));
   client_hello.on(server)();
 
-  static const int glob_provider_idx = 0;
-  static const int shard_provider_offset = 1;
-
   {
     sonata::Client client = sonata::Client(eng);
     {    
-      std::vector<sonata::Database> databases(nshards);
-      for(int i=0;i<nshards;i++){
-	std::string db_name = stringize("provdb.%d", i);
-	databases[i] = client.open(addr, i+shard_provider_offset, db_name);
+      std::vector<sonata::Database> databases(nshard_instance);
+      for(int i=0;i<nshard_instance;i++){
+	int shard = instance_shard_offset + i;
+	databases[i] = client.open(addr, setup.getShardProviderIndex(shard), setup.getShardDBname(shard) );
       }
-      sonata::Database glob_db  = client.open(addr, glob_provider_idx, "provdb.global");
+      std::unique_ptr<sonata::Database> glob_db;
+      if(do_global_db) glob_db.reset(new sonata::Database(client.open(addr, setup.getGlobalDBproviderIndex(), setup.getGlobalDBname() )));
     
       typedef std::chrono::high_resolution_clock Clock;
       Clock::time_point commit_timer_start = Clock::now();
 
       signal(SIGTERM, termSignalHandler);  
-      progressStream << "ProvDB Commit:  starting commit loop" << std::endl;    
+      CprogressStream << "starting commit loop" << std::endl;    
 
       int iter = 0;
       while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
@@ -93,19 +107,21 @@ int main(int argc, char** argv){
 	//Check every 10 seconds for connection status
 	if(iter % 10 == 0 &&
 	   exit_check(server, connection_status ) ){
-	  progressStream << "ProvDB Commit: no clients connected, exiting" << std::endl;
+	  CprogressStream << "no clients connected, exiting" << std::endl;
 	  break;
 	}
 
 	unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
 	if(commit_timer_ms >= freq_ms){
-	  verboseStream << "ProvDB Commit: committing database to disk" << std::endl;
-	  for(int s=0;s<nshards;s++){		
-	    progressStream << "ProvDB Commit: committing shard " << s << std::endl;
+	  CverboseStream << "committing database to disk" << std::endl;
+	  for(int s=0;s<nshard_instance;s++){		
+	    CprogressStream << "committing shard " << instance_shard_offset + s << std::endl;
 	    databases[s].commit();
 	  }
-	  progressStream << "ProvDB Commit: committing global db" << std::endl;
-	  glob_db.commit();
+	  if(do_global_db){
+	    CprogressStream << "committing global db" << std::endl;
+	    glob_db->commit();
+	  }
 	  commit_timer_start = Clock::now();
 	}
 	++iter;
@@ -113,13 +129,13 @@ int main(int argc, char** argv){
     } //db scope
   }//client scope
 
-  progressStream << "ProvDB Commit sending goodbye handshake" << std::endl;
+  CprogressStream << "sending goodbye handshake" << std::endl;
   client_goodbye.on(server)();
   client_hello.deregister();
   client_goodbye.deregister();
   connection_status.deregister();
 #endif
 
-  progressStream << "ProvDB Commit done" << std::endl;
+  CprogressStream << "done" << std::endl;
   return 0;
 }

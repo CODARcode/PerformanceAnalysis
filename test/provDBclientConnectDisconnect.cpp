@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 
   ADProvenanceDBclient client(rank);
   std::cout << "Client with rank " << rank << " attempting connection" << std::endl;
-  client.connect(addr, shards);
+  client.connectSingleServer(addr, shards);
 
   std::this_thread::sleep_for( std::chrono::seconds(5));
 

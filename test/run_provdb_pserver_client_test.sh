@@ -4,7 +4,7 @@ set -e
 set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
-    rm -f provdb.*.unqlite*  provider.address
+    rm -f provdb.*.unqlite*  provider.address*
 
     #Find a protocol supported by libfabric
     protocol=
@@ -26,12 +26,12 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port}  -autoshutdown true -nshards 1 -engine "${protocol}" &
     admin=$!
-    while [ ! -f provider.address ]; do
+    while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
     done
 
-    mpirun -n 2 --allow-run-as-root --oversubscribe ./mainProvDBpserverClient $(cat provider.address)
+    mpirun -n 2 --allow-run-as-root --oversubscribe ./mainProvDBpserverClient $(cat provider.address.0)
 
     wait $admin
 else 

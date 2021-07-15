@@ -9,7 +9,7 @@ int main(int argc, char** argv){
     return 1;
   }
   ADProvenanceDBclient ad(0);
-  ad.connect(argv[1], 1);
+  ad.connectSingleServer(argv[1], 1);
   ad.stopServer();
   ad.disconnect();
 

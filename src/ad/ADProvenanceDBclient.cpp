@@ -4,7 +4,7 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
-
+#include<chimbuko/provdb/setup.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -104,7 +104,7 @@ void ADProvenanceDBclient::disconnect(){
   }
 }
 
-void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
+void ADProvenanceDBclient::connect(const std::string &addr, const std::string &db_name, const int provider_idx){
   try{
     //Reset the protocol if necessary
     std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
@@ -115,15 +115,9 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
-    static const int shard_provider_offset = 1;
-      
-    int shard = m_rank % nshards;
-    std::string db_name = stringize("provdb.%d", shard);
-    int provider = shard + shard_provider_offset;
-
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << " and provider idx " << provider << std::endl;
+    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << " and provider idx " << provider_idx << std::endl;
     
     {
       //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB
@@ -142,7 +136,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 	  }
 	});	    
 
-      m_database = m_client.open(addr, provider, db_name);
+      m_database = m_client.open(addr, provider_idx, db_name);
       ready.store(true, std::memory_order_relaxed);
       heartbeat.join();
     }
@@ -174,6 +168,36 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());
   }
 }
+
+
+
+void ADProvenanceDBclient::connectSingleServer(const std::string &addr, const int nshards){
+  ProvDBsetup setup(nshards, 1);
+
+  //Assign shards round-robin
+  int shard = m_rank % nshards;      
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
+}
+
+void ADProvenanceDBclient::connectMultiServer(const std::string &addr_file_dir, const int nshards, const int ninstances){
+  ProvDBsetup setup(nshards, ninstances);
+
+  //Assign shards round-robin
+  int shard = m_rank % nshards;
+  int instance = setup.getShardInstance(shard); //which server instance
+  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
+}
+
+
+
+
 
 uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{
   if(!entry.is_object()) throw std::runtime_error("JSON entry must be an object");

@@ -197,7 +197,7 @@ int main(int argc, char** argv){
 
 	clients[s].reset(new ADProvenanceDBclient(s));
 	clients[s]->setEnableHandshake(false);	      
-	clients[s]->connect(addr, nshards);
+	clients[s]->connectSingleServer(addr, nshards);
 	if(!clients[s]->isConnected()){
 	  engine.finalize();
 	  throw std::runtime_error(stringize("Could not connect to database shard %d!", s));

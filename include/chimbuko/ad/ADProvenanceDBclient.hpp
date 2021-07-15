@@ -123,9 +123,28 @@ namespace chimbuko{
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
-     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
+     * @param db_name The name of the database
+     * @param provider_idx The Sonata provider index     
      */
-    void connect(const std::string &addr, const int nshards);
+    void connect(const std::string &addr, const std::string &db_name, const int provider_idx);
+
+    /**
+     * @brief Connect the client to the provenance database server
+     * @param addr The server address
+     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
+     *
+     * This version assumes a single database server instance on the provided address     
+     */
+    void connectSingleServer(const std::string &addr, const int nshards);
+
+    /**
+     * @brief Connect the client to the provenance database server instance in a multi-instance setup
+     * @param addr_file_dir The directory in which the server addresses are output by the provDB
+     * @param nshards The number of database shards. Connection to shard will be round-robin by rank
+     * @param ninstance The number of server instances
+     */
+    void connectMultiServer(const std::string &addr_file_dir, const int nshards, const int ninstances);
+
 
     /**
      * @brief Check if connnection has been established to provider

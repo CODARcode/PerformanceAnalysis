@@ -51,7 +51,7 @@ struct pserverArgs{
 #endif
 
 #ifdef ENABLE_PROVDB
-  std::string provdb_addr;
+  std::string provdb_addr_dir;
 #endif
 
   std::string prov_outputpath;
@@ -61,7 +61,7 @@ struct pserverArgs{
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr("")
+	       , provdb_addr_dir(".")
 #endif
   {}
 
@@ -85,7 +85,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
+      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server (default \".\"). An empty string will disable the connection to the global DB.");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 
@@ -159,9 +159,9 @@ int main (int argc, char ** argv){
   try {
 #ifdef ENABLE_PROVDB
     //Connect to the provenance database
-    if(args.provdb_addr.size()){
+    if(args.provdb_addr_dir.size()){
       progressStream << "Pserver: connecting to provenance database" << std::endl;
-      provdb_client.connect(args.provdb_addr);
+      provdb_client.connectMultiServer(args.provdb_addr_dir);
     }
 #endif
 

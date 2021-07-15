@@ -3,7 +3,7 @@ FROM chimbuko/base:ubuntu18.04 AS mochi-install
 SHELL ["/bin/bash", "-c"]
 
 ENV SPACK_ROOT=/spack/spack
-RUN echo FORCE_REDOWNLOAD_5_18_21_14_11 >> /dev/null && \
+RUN echo FORCE_REDOWNLOAD_7_2_21_12_11 >> /dev/null && \
     mkdir /spack && cd /spack && \
     git clone https://github.com/spack/spack.git
 
@@ -15,7 +15,7 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
 COPY modules.yaml packages.yaml /root/.spack/
 
 RUN pip3 install cython pkgconfig
-RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 ^py-numpy@1.19.5 ^argobots@main+stackunwind+tool ^mochi-margo@main ^mercury@2.0.1   && \
+RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 ^py-numpy@1.19.5 ^argobots@main+stackunwind+tool ^mochi-margo@main ^mercury@2.0.1 ^mochi-sonata@main  && \
     spack gc -y && spack clean -a
 
 COPY fixup_spack_python.sh /root/.spack/

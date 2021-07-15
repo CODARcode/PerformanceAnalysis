@@ -102,31 +102,36 @@ if (( ${use_provdb} == 1 )); then
     cd ${provdb_dir}
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address
 
-    provdb_addr="${service_node_iface}:${provdb_port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
-    if [[ ${provdb_engine} == "verbs" ]]; then
-	provdb_addr="${provdb_domain}/${provdb_addr}"
-    fi
-
     #Enable better error reporting from Mercury
     export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
 
-    provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} -db_commit_freq 0 2>&1 | tee ${log_dir}/provdb.log &
-    provdb_pid=$!
-
-    start_time=$SECONDS
-    while [ ! -f provider.address ]; do
-	now=$SECONDS
-	elapsed=$(( now - start_time ))
-	if [[ ${elapsed} -gt 30 ]]; then
-	    echo "Chimbuko Services: ERROR: Provider address file not created after ${elapsed} seconds"
-	    exit 1
+    for((i=0;i<provdb_ninstances;i++)); do
+	port=$((provdb_port+i))
+	provdb_addr="${service_node_iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
+	if [[ ${provdb_engine} == "verbs" ]]; then
+	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
-	sleep 1;
+	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
+	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -nthreads ${provdb_nthreads} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
+	sleep 1
     done
 
-    prov_add=$(cat provider.address)
-    extra_args+=" -provdb_addr \"${prov_add}\" -nprovdb_shards ${provdb_nshards}"
-    ps_extra_args+=" -provdb_addr \"${prov_add}\""
+    #Wait for provdb to be ready
+    for((i=0;i<provdb_ninstances;i++)); do
+	start_time=$SECONDS
+	while [ ! -f provider.address.${i} ]; do
+	    now=$SECONDS
+	    elapsed=$(( now - start_time ))
+	    if [[ ${elapsed} -gt 30 ]]; then
+		echo "Chimbuko Services: ERROR: Provider address file not created after ${elapsed} seconds for instance ${i}"
+		exit 1
+	    fi
+	    sleep 1;
+	done
+    done
+
+    extra_args+=" -provdb_addr_dir ${provdb_writedir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
+    ps_extra_args+=" -provdb_addr_dir ${provdb_writedir}"
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
 else
@@ -140,8 +145,11 @@ if (( ${use_provdb} == 1 )); then
     echo "==========================================="
     echo "Instantiating committer"
     echo "==========================================="
-    prov_add=$(cat ${provdb_dir}/provider.address)
-    provdb_commit "${prov_add}" ${provdb_nshards} ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer.log &
+    for((i=0;i<provdb_ninstances;i++)); do
+	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
+	provdb_commit "${provdb_writedir}" ${i} ${provdb_ninstances} ${provdb_nshards} ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer_${i}.log &
+	sleep 1
+    done
     sleep 3
 fi
 
@@ -149,6 +157,10 @@ fi
 if (( ${use_viz} == 1 )); then
     if (( ${use_pserver} != 1 )); then
 	echo "Chimbuko Services: Error - cannot use viz without the pserver"
+	exit 1
+    fi
+    if ((provdb_ninstances > 1)); then
+	echo "Chimbuko Services: Error - viz currently does not support multiple provDB instances"
 	exit 1
     fi
 
@@ -283,8 +295,8 @@ if (( ${use_viz} == 1 )); then
 fi
 
 if (( ${use_provdb} == 1 )); then
-    echo "Chimbuko Services: waiting for provdb (pid ${provdb_pid}) to terminate"
-    wait ${provdb_pid}
+    echo "Chimbuko Services: waiting for provdb to terminate"
+    wait
 fi
 
 
