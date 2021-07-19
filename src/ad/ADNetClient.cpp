@@ -262,3 +262,177 @@ std::string ADLocalNetClient::send_and_receive(const Message &msg) const{
 
   return recv_msg;
 }
+
+
+ 
+struct ClientActionConnect: public ADThreadNetClient::ClientAction{
+  int rank;
+  int srank;
+  std::string sname;
+
+  ClientActionConnect(int rank, int srank, const std::string &sname): rank(rank), srank(srank), sname(sname){}
+
+  void perform(ADNetClient &client){
+    std::cout << "Connecting to client" << std::endl;
+    client.connect_ps(rank, srank, sname);
+  }
+  bool do_delete() const{ return true; }
+};
+
+struct ClientActionDisconnect: public ADThreadNetClient::ClientAction{
+  void perform(ADNetClient &client){
+    std::cout << "Disconnecting from client" << std::endl;
+    client.disconnect_ps();
+  }
+  bool do_delete() const{ return true; }
+  bool shutdown_worker() const{ return true; }
+};
+
+//Make the worker wait for some time, for testing
+struct ClientActionWait: public ADThreadNetClient::ClientAction{
+  size_t wait_ms;
+  ClientActionWait(size_t wait_ms): wait_ms(wait_ms){}
+
+  void perform(ADNetClient &client){
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+  }
+  bool do_delete() const{ return true; }
+};
+
+struct ClientActionBlockingSendReceive: public ADThreadNetClient::ClientAction{
+  std::mutex m;
+  std::condition_variable cv;
+  Message *recv;
+  Message const *send;  //it's blocking so we know that the object will live long enough
+  bool complete;
+
+  ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
+
+  void perform(ADNetClient &client){
+    client.send_and_receive(*recv, *send);
+
+    {
+      std::unique_lock<std::mutex> lk(m);
+      complete = true;
+      cv.notify_one();
+    }
+  }
+  bool do_delete() const{ return false; }
+
+  void wait_for(){
+    std::unique_lock<std::mutex> l(m);
+    cv.wait(l, [&]{ return complete; });
+  }
+};
+
+//Return message is just dumped
+struct ClientActionAsyncSend: public ADThreadNetClient::ClientAction{
+  Message send;  //copy of send message because we don't know how long it will be before it sends
+
+  ClientActionAsyncSend(const Message &send): send(send){}
+
+  void perform(ADNetClient &client){
+    Message recv;
+    client.send_and_receive(recv, send);
+  }
+  bool do_delete() const{ return true; }
+};
+
+struct ClientActionSetRecvTimeout: public ADThreadNetClient::ClientAction{
+  int timeout;
+  ClientActionSetRecvTimeout(const int timeout): timeout(timeout){}
+
+  void perform(ADNetClient &client){
+    client.setRecvTimeout(timeout);
+  }
+
+  bool do_delete() const{return true;}
+};
+
+
+
+size_t ADThreadNetClient::getNwork() const{
+  std::lock_guard<std::mutex> l(m);
+  return queue.size();
+}
+ADThreadNetClient::ClientAction* ADThreadNetClient::getWorkItem(){
+  std::lock_guard<std::mutex> l(m);
+  ClientAction *work_item = queue.front();
+  queue.pop();
+  return work_item;
+}
+    
+/**
+ * @brief Create the worker thread
+ * @param local Use a local (in process) communicator if true, otherwise use the default network communicator
+ */
+void ADThreadNetClient::run(bool local){
+  worker = std::thread([&,local](){
+      ADNetClient *client = nullptr;
+      if(local){
+	client = new ADLocalNetClient;
+      }else{
+#ifdef _USE_MPINET
+	client = new ADMPINetClient;
+#else
+	client = new ADZMQNetClient;
+#endif
+      }
+      bool shutdown = false;
+
+      while(!shutdown){
+	size_t nwork = getNwork();
+	while(nwork > 0){
+	  ClientAction* work_item = getWorkItem();
+	  work_item->perform(*client);
+	  shutdown = shutdown || work_item->shutdown_worker();
+
+	  if(work_item->do_delete()) delete work_item;
+	  nwork = getNwork();
+	}
+	if(shutdown){
+	  if(nwork > 0) fatal_error("Worker was shut down before emptying its queue!");
+	}else{
+	  std::this_thread::sleep_for(std::chrono::milliseconds(80));
+	}  
+      }
+      delete client;
+    });
+}
+
+ADThreadNetClient::ADThreadNetClient(bool local){
+  run(local);
+}
+    
+void ADThreadNetClient::enqueue_action(ClientAction *action){
+  std::lock_guard<std::mutex> l(m);
+  queue.push(action);
+}
+
+void ADThreadNetClient::connect_ps(int rank, int srank, std::string sname){
+  m_rank = rank;
+  m_srank = srank;
+  enqueue_action(new ClientActionConnect(rank, srank,sname));
+  m_use_ps = true;
+}
+void ADThreadNetClient::disconnect_ps(){
+  enqueue_action(new ClientActionDisconnect());
+}
+void ADThreadNetClient::send_and_receive(Message &recv, const Message &send){
+  ClientActionBlockingSendReceive action(&recv, &send);
+  enqueue_action(&action);
+  action.wait_for();
+}
+void ADThreadNetClient::async_send(const Message &send){
+  enqueue_action(new ClientActionAsyncSend(send));
+}
+
+void ADThreadNetClient::setRecvTimeout(const int timeout_ms) {
+  enqueue_action(new ClientActionSetRecvTimeout(timeout_ms));
+}    
+
+ADThreadNetClient::~ADThreadNetClient(){
+  disconnect_ps();
+  worker.join();
+}
+
