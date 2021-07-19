@@ -92,12 +92,12 @@ namespace chimbuko {
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
-     * @brief abstract method to update local parameters and get global ones
+     * @brief synchronize local parameters with global parameters
      *
      * @param[in] param local parameters
      * @return std::pair<size_t, size_t> [sent, recv] message size
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
 
 
     /**
@@ -170,13 +170,6 @@ namespace chimbuko {
     unsigned long compute_outliers(Anomalies &outliers,
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
-
-    /**
-     * @brief Send the local statistics to the parameter server and update the stored global parameters with the resulting updated statistics
-     * @param param The local statistics
-     */
-    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
-
     /**
      * @brief Compute the anomaly score (probability) for an event assuming a Gaussian distribution
      */
@@ -231,13 +224,6 @@ namespace chimbuko {
      */
     unsigned long compute_outliers(Anomalies &outliers,
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
-
-
-    /**
-     * @brief Send the local statistics to the parameter server and update the stored global parameters with the resulting updated statistics
-     * @param param The local statistics
-     */
-    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
 
     /**
      * @brief Scott's rule for bin_width estimation during histogram formation

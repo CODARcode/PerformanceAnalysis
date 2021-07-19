@@ -94,11 +94,14 @@ using namespace chimbuko;
  std::string HbosParam::update(const std::string& parameters, bool return_update)
  {
      std::unordered_map<unsigned long, Histogram> hbosstats;
-
      deserialize_cerealpb(parameters, hbosstats);
-     update_and_return(hbosstats); //update hbosstats to reflect changes
-
-     return (return_update) ? serialize_cerealpb(hbosstats): "";
+     if(return_update){
+       update_and_return(hbosstats); //update hbosstats to reflect changes
+       return serialize_cerealpb(hbosstats);
+     }else{
+       update(hbosstats);
+       return "";
+     }
  }
 
  void HbosParam::update(const std::unordered_map<unsigned long, Histogram>& hbosstats)
@@ -113,7 +116,7 @@ using namespace chimbuko;
  {
     std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
-         hbosstats[pair.first] += pair.second;
+         m_hbosstats[pair.first] += pair.second;
          pair.second = hbosstats[pair.first];
      }
 
