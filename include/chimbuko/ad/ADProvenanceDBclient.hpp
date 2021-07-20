@@ -147,6 +147,15 @@ namespace chimbuko{
 
 
     /**
+     * @brief Connect the client to the provenance database server instance in a multi-instance setup using a specific assignment of rank to shard given in an input file
+     * @param addr_file_dir The directory in which the server addresses are output by the provDB
+     * @param nshards The number of database shards. Connection to shard will be round-robin by rank
+     * @param ninstance The number of server instances
+     * @param shard_assign_file A file containing the shard used by each rank. The file format should have 1 line per rank, in ascending order, containing just the shard index
+     */
+    void connectMultiServerShardAssign(const std::string &addr_file_dir, const int nshards, const int ninstances, const std::string &shard_assign_file);
+
+    /**
      * @brief Check if connnection has been established to provider
      */
     bool isConnected() const{ return m_is_connected; }

@@ -99,21 +99,52 @@ class shardBinnedData:
 
 
 
+
+def readShardMap(filename, ranks, shards):
+    if os.path.exists(filename) == False:
+        print("File %s does not exist!" % filename)
+        sys.exit(1)
+
+    fh = open(filename, 'r')
+    out = []
+    for i in range(ranks):
+        line = fh.readline()
+        shard = int(line)
+        if shard < 0 or shard >= shards:
+            print("Invalid shard index %d" % shard)
+            sys.exit(1)
+        out.append(shard)
+    fh.close()
+    return out
+        
+
+
+
 argc = len(sys.argv)
-if argc != 4:
-    print("Expect <script.py> <ranks> <shards> <directory>")
+if argc < 4:
+    print("Expect <script.py> <ranks> <shards> <directory> <options>")
     sys.exit(1)
 
 ranks=int(sys.argv[1])
 shards=int(sys.argv[2])
 stub=sys.argv[3]
 
+shard_map=None
+for i in range(4,argc):
+    if sys.argv[i] == "-load_shard_map":        
+        shard_map = readShardMap(sys.argv[i+1], ranks, shards)
+        
 print("Ranks %d, shards %d" % (ranks,shards))
+
 
 shard_data = [ [] for s in range(shards) ]   #[shard][rank within shard]
 for r in range(ranks):
-    shard = r % shards
-    #print("Rank %d shard %d" % (r,shard))
+    if shard_map == None:
+        shard = r % shards
+    else:
+        shard = shard_map[r]
+        
+    print("Rank %d shard %d" % (r,shard))
     d = rankData()
     d.parse(r, stub)
     shard_data[shard].append(d)
@@ -291,7 +322,16 @@ f.close()
 
 
 ######################## rank 0 analysis #############################
-rank0 = shard_data[0][0]
+rank0_shard=-1
+rank0_elem=-1
+for s in range(shards):
+    for r in range(len(shard_data[s])):
+        if(shard_data[s][r].rank == 0):
+            rank0_shard=s
+            rank0_elem=r
+            
+rank0 = shard_data[rank0_shard][rank0_elem]
+
 if rank0.rank != 0:
     print("Error: expect rank 0, got %d" % rank0.rank)
     sys.exit(1)
@@ -306,7 +346,7 @@ for d in range(len(rank0.times)):
 f.close()
 
 
-print("Aggregate Defecit/surplus number of requests serviced as a function of time (sum of defecits to now)")
+print("Aggregate Defecit/surplus number of requests serviced as a function of time for rank 0 (sum of defecits to now)")
 f = open("defecits_aggregate_total_rank0.dat", 'w')
 defecit_sum=0
 for d in range(len(rank0.times)):

@@ -195,9 +195,26 @@ void ADProvenanceDBclient::connectMultiServer(const std::string &addr_file_dir, 
   connect(addr, db_name, provider);
 }
 
+void ADProvenanceDBclient::connectMultiServerShardAssign(const std::string &addr_file_dir, const int nshards, const int ninstances, const std::string &shard_assign_file){
+  ProvDBsetup setup(nshards, ninstances);
 
+  std::ifstream f(shard_assign_file);
+  if(f.fail()) throw std::runtime_error("Could not open shard assignment file " + shard_assign_file + "\n");
+  int shard = -1;
+  for(int i=0;i<=m_rank;i++){
+    f >> shard;
+    if(f.fail()) throw std::runtime_error("Failed to reach assignment for rank " + std::to_string(m_rank) + "\n");
+  }
+  f.close();
 
-
+  int instance = setup.getShardInstance(shard); //which server instance
+  verboseStream << "DB client rank " << m_rank << " assigned shard " << shard << " on instance "<< instance << std::endl;
+  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
+}
 
 uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{
   if(!entry.is_object()) throw std::runtime_error("JSON entry must be an object");

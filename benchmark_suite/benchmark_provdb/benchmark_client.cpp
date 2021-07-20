@@ -33,6 +33,7 @@ struct Args{
   std::string perf_dir;
   bool do_state_dump; //have the provdb record its state every time the perf stats are written (by rank 0)
   int max_outstanding_sends; //if set >0 the benchmark will pause when the number of outstanding asynchronous sends reaches this number until it reaches 0 again
+  std::string load_shard_map; //read an explicit map of rank -> shard if ! ""
   
   Args(){
     cycles = 10;
@@ -50,6 +51,7 @@ struct Args{
     perf_dir=".";
     do_state_dump = false;
     max_outstanding_sends = 0;
+    load_shard_map = "";
   }
 };
 
@@ -80,6 +82,7 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, do_state_dump);
   addOptionalCommandLineArgDefaultHelpString(cmdline, max_outstanding_sends);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, load_shard_map);
 
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -97,7 +100,11 @@ int main(int argc, char **argv){
   PerfPeriodic stats_prd(args.perf_dir, fn_perf_prd);
 
   ADProvenanceDBclient provdb_client(rank);
-  provdb_client.connectMultiServer(args.provdb_addr_dir,args.nshards,args.ninstances);
+  if(args.load_shard_map.size() > 0)
+    provdb_client.connectMultiServerShardAssign(args.provdb_addr_dir,args.nshards,args.ninstances,args.load_shard_map);
+  else
+    provdb_client.connectMultiServer(args.provdb_addr_dir,args.nshards,args.ninstances);
+
   provdb_client.linkPerf(&stats);
 
   //Here we assume the sstd algorithm for now
