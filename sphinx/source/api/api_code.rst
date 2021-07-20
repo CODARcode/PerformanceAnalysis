@@ -92,7 +92,7 @@ ADNormalEventProvenance
 .. doxygenfile:: ADNormalEventProvenance.hpp
 	:project: api
 	:path: ../../include/chimbuko/ad//ADNormalEventProvenance.hp
-	       
+
 ADOutlier
 ---------
 
@@ -128,7 +128,7 @@ AnomalyData
 	:project: api
 	:path: ../../include/chimbuko/ad//AnomalyData.hpp
 
-	       
+
 ExecData
 --------
 
@@ -155,6 +155,13 @@ ParamInterface
 .. doxygenfile:: param.hpp
    :project: api
    :path: ../../../include/chimbuko/param.hpp
+
+HbosParam
+---------
+
+.. doxygenfile:: hbos_param.hpp
+   :project: api
+   :path: ../../../include/chimbuko/param/hbos_param.hpp
 
 SstdParam
 ---------
@@ -204,7 +211,7 @@ PSProvenanceDBclient
 .. doxygenfile:: PSProvenanceDBclient.hpp
 	:project: api
 	:path: ../../include/chimbuko/pserver/PSProvenanceDBclient.hpp
-	       
+
 PSstatSender
 ------------
 
@@ -212,7 +219,7 @@ PSstatSender
 	:project: api
 	:path: ../../include/chimbuko/pserver/PSstatSender.hpp
 
-	  
+
 Network
 ~~~~~~~
 
@@ -246,7 +253,7 @@ ZMQMENet
 	:project: api
 	:path: ../../include/chimbuko/net/zmqme_net.hpp
 
-	  
+
 Message
 ~~~~~~~
 
@@ -300,7 +307,7 @@ error
 .. doxygenfile:: error.hpp
 	:project: api
 	:path: ../../include/chimbuko/util//error.hpp
-	       
+
 hash
 ----
 
@@ -321,7 +328,7 @@ memutils
 .. doxygenfile:: memutils.hpp
 	:project: api
 	:path: ../../include/chimbuko/util//memutils.hpp
-	       
+
 mtQueue
 -------
 
@@ -370,7 +377,7 @@ time
 .. doxygenfile:: time.hpp
 	:project: api
 	:path: ../../include/chimbuko/util//time.hpp
-	       
+
 verbose
 -------
 
