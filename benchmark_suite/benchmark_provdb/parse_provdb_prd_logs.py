@@ -290,3 +290,31 @@ for b in range(bins):
 f.close()
 
 
+######################## rank 0 analysis #############################
+rank0 = shard_data[0][0]
+if rank0.rank != 0:
+    print("Error: expect rank 0, got %d" % rank0.rank)
+    sys.exit(1)
+
+print("Defecit/surplus number of requests serviced since last report for rank 0 (serviced - new) total")
+f = open("defecits_total_rank0.dat", 'w')
+for d in range(len(rank0.times)):
+    defecit= rank0.serviced[d]- rank0.new_req[d]
+    rr="%d %d" % (rank0.times[d] - rank0.times[0], defecit)
+    print(rr)
+    f.write(rr + "\n")
+f.close()
+
+
+print("Aggregate Defecit/surplus number of requests serviced as a function of time (sum of defecits to now)")
+f = open("defecits_aggregate_total_rank0.dat", 'w')
+defecit_sum=0
+for d in range(len(rank0.times)):
+    defecit= rank0.serviced[d]- rank0.new_req[d]
+    defecit_sum += defecit
+    rr="%d %d" % (rank0.times[d] - rank0.times[0], defecit_sum)
+    print(rr)
+    f.write(rr + "\n")
+f.close()
+
+
