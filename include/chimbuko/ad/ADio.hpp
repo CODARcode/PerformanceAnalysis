@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ADCounter.hpp"

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/ad/ADMetadataParser.hpp>
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>

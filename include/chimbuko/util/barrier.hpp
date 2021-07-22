@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<thread>
 #include <condition_variable>
 #include <mutex>

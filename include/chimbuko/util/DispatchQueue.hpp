@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <thread>
 #include <functional>
 #include <string>

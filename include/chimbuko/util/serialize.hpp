@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>

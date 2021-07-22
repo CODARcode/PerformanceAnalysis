@@ -1,5 +1,4 @@
 #pragma once
-
 #include <chimbuko_config.h>
 #ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"

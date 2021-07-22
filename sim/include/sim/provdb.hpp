@@ -1,3 +1,4 @@
+#include <chimbuko_config.h>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>

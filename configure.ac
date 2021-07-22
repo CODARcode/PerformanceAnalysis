@@ -101,11 +101,9 @@ fi
 PS_FLAGS=
 AC_ARG_WITH([network], AS_HELP_STRING([--with-network], [Specify network layer: MPI or ZMQ]),[],[with_network=no])
 if test "x$with_network" = "xMPI"; then
-   #AC_DEFINE([_USE_MPINET],[1],[Use MPI network layer])
-   PS_FLAGS+=" -D_USE_MPINET"
+   AC_DEFINE([_USE_MPINET],[1],[Use MPI network layer])
 elif test "x$with_network" = "xZMQ"; then
-   #AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
-   PS_FLAGS+=" -D_USE_ZMQNET"
+   AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
    AC_CHECK_LIB([zmq], [zmq_close], [],
            [AC_MSG_FAILURE([Could not link to 0MQ])])
 else
@@ -139,8 +137,7 @@ fi
 
 
 #Enable performance metrics dump
-#AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
-AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[PS_FLAGS+=" -D_PERF_METRIC"],[])
+AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 
 #Enable ProvdDB margo state dump (currently requires master branch of margo)
 AC_ARG_ENABLE([margo-state-dump],

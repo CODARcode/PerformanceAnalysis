@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <string>
 #include <iostream>
 #include <nlohmann/json.hpp>

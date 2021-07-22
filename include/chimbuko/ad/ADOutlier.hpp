@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include<array>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
