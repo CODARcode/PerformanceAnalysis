@@ -24,6 +24,7 @@ set -o pipefail
 ./util/PerfStats
 ./util/error
 ./util/memutils
+./util/environment -hostname $(hostname)
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
 ./pserver/global_anomaly_stats

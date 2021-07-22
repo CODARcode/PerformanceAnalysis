@@ -54,6 +54,7 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |    **"pid"**: *process index*,
 |    **"rid"**: *process rank*,
 |    **"tid"**: *thread index*
+|    **"hostname"**: *The hostname of the node on which the application was executing*
 |    **"runtime_exclusive"**: *Function execution time exclusive of children*,
 |    **"runtime_total"**: *Function total execution time*,
 |    **"io_step"**: *IO step index*,

@@ -1,6 +1,7 @@
 #include <chimbuko/ad/ADAnomalyProvenance.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/error.hpp>
+#include <chimbuko/util/environment.hpp>
 
 using namespace chimbuko;
 
@@ -177,9 +178,8 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 					{"io_step", m_io_step},
 					  {"io_step_tstart", m_io_step_tstart},
 					    {"io_step_tend", m_io_step_tend},
-					      {"outlier_score", m_call.get_outlier_score() }
-
-
+					      {"outlier_score", m_call.get_outlier_score() },
+						{"hostname", getHostname() }
   };
 }
 
