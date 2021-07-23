@@ -62,7 +62,7 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    virtual std::string send_and_receive(const Message &msg) const = 0;
+    virtual std::string send_and_receive(const Message &msg) = 0;
 
     /**
      * @brief Send a message to the parameter server and receive the response both as Message objects
@@ -72,6 +72,18 @@ namespace chimbuko{
      * Note recv and send can be the same object
      */       
     void send_and_receive(Message &recv, const Message &send);
+
+    /**
+     * @brief Perform a non-blocking send operation
+     *
+     * Not all net clients support non-blocking sends, in which case it will default to a blocking send
+     */
+    virtual void async_send(const Message &send);
+
+    /**
+     * @brief Check if a net client supports non-blocking sends
+     */
+    virtual bool async_send_supported() const{ return false; }
 
     /**
      * @brief If linked timing and packet size information will be gathered
@@ -124,7 +136,7 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    std::string send_and_receive(const Message &msg) const override;
+    std::string send_and_receive(const Message &msg) override;
 
 
     /**
@@ -145,7 +157,7 @@ namespace chimbuko{
     /**
      * @brief Issue a stop command to the server. The server will then stop once all clients have disconnected and all messages processed
      */
-    void stopServer() const;
+    void stopServer();
 
   private:
     void* m_context;                         /**< ZeroMQ context */
@@ -184,7 +196,7 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    std::string send_and_receive(const Message &msg) const override;
+    std::string send_and_receive(const Message &msg) override;
 
   
   private:
@@ -222,14 +234,14 @@ namespace chimbuko{
      * @param msg The message
      * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */       
-    std::string send_and_receive(const Message &msg) const override;
+    std::string send_and_receive(const Message &msg) override;
   };
 
 
   /**
    * @brief ADNetClient inside a worker thread with blocking send/receive and non-blocking send
    */
-  class ADThreadNetClient{
+  class ADThreadNetClient: public ADNetClient{
   public:
     /**
      * @brief Virtual class representing actions performed by the worker thread
@@ -257,12 +269,7 @@ namespace chimbuko{
     std::thread worker;
     mutable std::mutex m;
     std::queue<ClientAction*> queue; /**< The queue of net operations*/
-
-    int m_rank;
-    int m_srank;
-    bool m_use_ps;
-    PerfStats * m_perf;
-    
+   
     /**
      * @brief Get the number of outstanding net operations
      */
@@ -302,35 +309,24 @@ namespace chimbuko{
      */
     void disconnect_ps();
 
+    using ADNetClient::send_and_receive;
+
     /**
      * @brief Perform a blocking send and receive operation
+     * @param msg The message
+     * @return The response message in serialized format. Use Message::set_msg( <serialized_msg>,  true )  to unpack
      */
-    void send_and_receive(Message &recv, const Message &send);
+    std::string send_and_receive(const Message &send) override;
 
     /**
      * @brief Perform a non-blocking send operation
      */
-    void async_send(const Message &send);
+    void async_send(const Message &send) override;
 
     /**
-     * @brief Is the parameter server in use / connected?
+     * @brief Check if a net client supports non-blocking sends
      */
-    bool use_ps() const { return m_use_ps; }
-
-    /**
-     * @brief Link a performance monitoring instance
-     */
-    void linkPerf(PerfStats* perf){ m_perf = perf; }
-
-    /**
-     * @brief Get the MPI rank of the server (MPINet)
-     */
-    int get_server_rank() const{ return m_srank; }
-    
-    /**
-     * @brief Get the MPI rank of the client
-     */
-    int get_client_rank() const{ return m_rank; }
+    bool async_send_supported() const override{ return true; }
 
     /**
      * @brief Set a timeout (in ms) on receiving a response message

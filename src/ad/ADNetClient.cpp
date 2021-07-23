@@ -13,6 +13,10 @@ void ADNetClient::send_and_receive(Message &recv,  const Message &send){
   recv.set_msg( send_and_receive(send), true );
 }
 
+void ADNetClient::async_send(const Message &send){
+  send_and_receive(send);
+}
+
 
 #ifdef _USE_ZMQNET
 
@@ -89,7 +93,7 @@ void ADZMQNetClient::disconnect_ps() {
 }
 
 
-std::string ADZMQNetClient::send_and_receive(const Message &msg) const{  
+std::string ADZMQNetClient::send_and_receive(const Message &msg){
   PerfTimer timer;
   std::string send_msg = msg.data(), recv_msg;
   //Send local parameters to PS
@@ -109,7 +113,7 @@ std::string ADZMQNetClient::send_and_receive(const Message &msg) const{
   return recv_msg;
 }
 
-void ADZMQNetClient::stopServer() const{
+void ADZMQNetClient::stopServer(){
   verboseStream << "Client is sending stop request to server" << std::endl;
   Message msg;
   msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::CMD);
@@ -190,7 +194,7 @@ void ADMPINetClient::disconnect_ps() {
   m_use_ps = false;
 }
 
-std::string ADMPINetClient::send_and_receive(const Message &msg) const{  
+std::string ADMPINetClient::send_and_receive(const Message &msg){  
   PerfTimer timer;
   std::string send_msg = msg.data(), recv_msg;
   MessageType req_type = MessageType(msg.type());
@@ -245,7 +249,7 @@ void ADLocalNetClient::disconnect_ps(){
 }
 
 
-std::string ADLocalNetClient::send_and_receive(const Message &msg) const{  
+std::string ADLocalNetClient::send_and_receive(const Message &msg){
   if(!m_use_ps) fatal_error("User should call connect_ps prior to sending/receiving messages");
 
   PerfTimer timer;    
@@ -302,14 +306,14 @@ struct ClientActionWait: public ADThreadNetClient::ClientAction{
 struct ClientActionBlockingSendReceive: public ADThreadNetClient::ClientAction{
   std::mutex m;
   std::condition_variable cv;
-  Message *recv;
+  std::string *recv;
   Message const *send;  //it's blocking so we know that the object will live long enough
   bool complete;
 
-  ClientActionBlockingSendReceive(Message *recv, Message const *send): send(send), recv(recv), complete(false){}
+  ClientActionBlockingSendReceive(std::string *recv, Message const *send): send(send), recv(recv), complete(false){}
 
   void perform(ADNetClient &client){
-    client.send_and_receive(*recv, *send);
+    *recv = client.send_and_receive(*send);
 
     {
       std::unique_lock<std::mutex> lk(m);
@@ -418,10 +422,12 @@ void ADThreadNetClient::connect_ps(int rank, int srank, std::string sname){
 void ADThreadNetClient::disconnect_ps(){
   enqueue_action(new ClientActionDisconnect());
 }
-void ADThreadNetClient::send_and_receive(Message &recv, const Message &send){
+std::string ADThreadNetClient::send_and_receive(const Message &send){
+  std::string recv;
   ClientActionBlockingSendReceive action(&recv, &send);
   enqueue_action(&action);
   action.wait_for();
+  return recv;
 }
 void ADThreadNetClient::async_send(const Message &send){
   enqueue_action(new ClientActionAsyncSend(send));
