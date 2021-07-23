@@ -101,11 +101,9 @@ fi
 PS_FLAGS=
 AC_ARG_WITH([network], AS_HELP_STRING([--with-network], [Specify network layer: MPI or ZMQ]),[],[with_network=no])
 if test "x$with_network" = "xMPI"; then
-   #AC_DEFINE([_USE_MPINET],[1],[Use MPI network layer])
-   PS_FLAGS+=" -D_USE_MPINET"
+   AC_DEFINE([_USE_MPINET],[1],[Use MPI network layer])
 elif test "x$with_network" = "xZMQ"; then
-   #AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
-   PS_FLAGS+=" -D_USE_ZMQNET"
+   AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
    AC_CHECK_LIB([zmq], [zmq_close], [],
            [AC_MSG_FAILURE([Could not link to 0MQ])])
 else
@@ -139,9 +137,14 @@ fi
 
 
 #Enable performance metrics dump
-#AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
-AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[PS_FLAGS+=" -D_PERF_METRIC"],[])
+AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 
+#Enable ProvdDB margo state dump (currently requires master branch of margo)
+AC_ARG_ENABLE([margo-state-dump],
+  [AS_HELP_STRING([--enable-margo-state-dump], [Enable ProvdDB margo state dump (currently requires master branch of margo)] )],
+  [AC_DEFINE([ENABLE_MARGO_STATE_DUMP],[1],[Use margo state dump])],
+  [:]
+)
 
 #Check for boost
 AC_ARG_WITH([boost], AS_HELP_STRING([--with-boost], [Specify Boost install directory]),[],[])
@@ -156,7 +159,7 @@ AC_CONFIG_HEADERS([chimbuko_config.h])
 AC_SUBST([PS_FLAGS])
 
 AC_CONFIG_SRCDIR([src/chimbuko.cpp])
-AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py app/sst_view_parse.pl:app/sst_view_parse.pl])
 AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/run_provdb_autoshutdown_test.sh:test/run_provdb_autoshutdown_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh test/run_ad_with_provdb.sh:test/run_ad_with_provdb.sh test/run_stat_sender.sh:test/run_stat_sender.sh scripts/launch/run_services.sh:scripts/launch/run_services.sh], [chmod u+x $(echo $ac_tag | sed s/.*\://)])

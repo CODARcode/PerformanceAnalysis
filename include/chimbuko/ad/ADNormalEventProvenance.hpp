@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include<array>
 #include<unordered_set>
 #include<unordered_map>

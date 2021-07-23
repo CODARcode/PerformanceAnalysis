@@ -28,7 +28,11 @@ ADsim::ADsim(ADsim &&r):
   m_rid(r.m_rid),
   m_normal_events(std::move(r.m_normal_events)),
   m_metadata(std::move(r.m_metadata)),
+#ifdef ENABLE_PROVDB
   m_pdb_client(std::move(r.m_pdb_client)),
+#else
+  m_prov_io(std::move(r.m_prov_io)),
+#endif
   m_outlier(r.m_outlier),
   m_net_client(r.m_net_client)
 {
@@ -41,9 +45,16 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   m_window_size = window_size;
   m_pid = pid;
   m_rid = rid;
+#ifdef ENABLE_PROVDB
   m_pdb_client.reset(new ADProvenanceDBclient(rid));
   m_pdb_client->setEnableHandshake(false);
   m_pdb_client->connect(getProvDB().getAddr(), getProvDB().getNshards());
+#else
+  m_prov_io.reset(new ADio(m_pid, m_rid));
+  m_prov_io->setDispatcher();
+  m_prov_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
+  m_prov_io->setOutputPath(".");
+#endif
   m_program_start = program_start;
   m_step_freq = step_freq;
   m_largest_step = 0;
@@ -206,11 +217,18 @@ void ADsim::step(const unsigned long step){
     ADAnomalyProvenance::getProvenanceEntries(anomalous_events, normal_events, m_normal_events,
 					      anom, step, step_start_time, step_end_time, m_window_size,
 					      params, evmap, counters, m_metadata);
+#ifdef ENABLE_PROVDB
     //Send to provdb
     if(anomalous_events.size() > 0)
       m_pdb_client->sendMultipleData(anomalous_events, ProvenanceDataType::AnomalyData); 
     if(normal_events.size() > 0)
       m_pdb_client->sendMultipleData(normal_events, ProvenanceDataType::NormalExecData);   
+#else
+    if(anomalous_events.size() > 0)
+      m_prov_io->writeJSON(anomalous_events, step, "anomalies");
+    if(normal_events.size() > 0)
+      m_prov_io->writeJSON(normal_events, step, "normalexecs");   
+#endif
   }
     
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "chimbuko/util/RunStats.hpp"

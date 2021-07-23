@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include <chimbuko/net.hpp>
 #include <chimbuko/util/PerfStats.hpp>
 

@@ -1,3 +1,4 @@
+#include <chimbuko_config.h>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/ad/ADOutlier.hpp>
 #include "id_map.hpp"

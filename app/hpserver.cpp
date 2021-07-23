@@ -1,4 +1,5 @@
 //The hierarchical parameter server main program. This program collects statistics from the node-instances of the anomaly detector
+#include <chimbuko_config.h>
 #ifndef _USE_ZMQNET
 #include<iostream>
 #warning "Hierarchical parameter server requires ZMQNet"

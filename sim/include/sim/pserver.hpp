@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<chimbuko/param.hpp>
 #include<chimbuko/pserver/global_anomaly_stats.hpp>
 #include<chimbuko/pserver/global_counter_stats.hpp>

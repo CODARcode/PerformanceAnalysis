@@ -1,6 +1,6 @@
+#include "chimbuko/net/zmqme_net.hpp"
 #ifdef _USE_ZMQNET
 #include "chimbuko/net/zmq_net.hpp"
-#include "chimbuko/net/zmqme_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/verbose.hpp"

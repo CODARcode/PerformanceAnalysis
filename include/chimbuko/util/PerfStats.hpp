@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #ifdef _PERF_METRIC
 #include <chrono>
 #include <sstream>

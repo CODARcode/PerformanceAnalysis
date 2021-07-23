@@ -8,7 +8,8 @@ COPY --from=chimbuko/viz:ubuntu18.04 /opt /opt
 
 ENV PATH=/opt/chimbuko/ad/bin/:${PATH}
 
-COPY run_mocu_chimbuko.sh /Downloads/MOCU_Kuramoto/
+COPY chimbuko_config.sh run_mocu_chimbuko.sh /Downloads/MOCU_Kuramoto/
+
 RUN chmod a+x run_mocu_chimbuko.sh
 
 ENTRYPOINT [ "./run_mocu_chimbuko.sh" ]

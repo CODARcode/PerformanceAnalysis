@@ -54,6 +54,29 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
   }
 }
 
+std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
+{
+  if (!m_use_ps) {
+    verboseStream << "m_use_ps not USED!" << std::endl;
+    m_param->update(param->serialize());
+    return std::make_pair(0, 0);
+  }
+  else {
+    Message msg;
+    msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
+    msg.set_msg(param->serialize(), false);
+    size_t sent_sz = msg.size();
+
+    m_net_client->send_and_receive(msg, msg);
+    size_t recv_sz = msg.size();
+    m_param->assign(msg.buf());
+    return std::make_pair(sent_sz, recv_sz);
+  }
+}
+
+
+
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
@@ -62,28 +85,6 @@ ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat, double sigma) : ADOutlier(st
 }
 
 ADOutlierSSTD::~ADOutlierSSTD() {
-}
-
-std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
-{
-  SstdParam& g = *(SstdParam*)m_param; //global parameter set
-  const SstdParam & l = *(SstdParam const*)param; //local parameter set
-
-    if (!m_use_ps) {
-        g.update(l);
-        return std::make_pair(0, 0);
-    }
-    else {
-        Message msg;
-        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
-        msg.set_msg(l.serialize(), false);
-        size_t sent_sz = msg.size();
-
-	m_net_client->send_and_receive(msg, msg);
-        size_t recv_sz = msg.size();
-        g.assign(msg.buf());
-        return std::make_pair(sent_sz, recv_sz);
-    }
 }
 
 Anomalies ADOutlierSSTD::run(int step) {
@@ -215,28 +216,6 @@ ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_g
 ADOutlierHBOS::~ADOutlierHBOS() {
   if (m_param)
     m_param->clear();
-}
-
-std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
-{
-  HbosParam& g = *(HbosParam*)m_param; //global parameter set
-  const HbosParam & l = *(HbosParam const*)param; //local parameter set
-
-    if (!m_use_ps) {
-        verboseStream << "m_use_ps not USED!" << std::endl;
-        g.update(l);
-        return std::make_pair(0, 0);
-    }
-    else {
-        Message msg;
-        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
-        msg.set_msg(l.serialize(), false);
-        size_t sent_sz = msg.size();
-        m_net_client->send_and_receive(msg, msg);
-        size_t recv_sz = msg.size();
-        g.assign(msg.buf());
-        return std::make_pair(sent_sz, recv_sz);
-    }
 }
 
 Anomalies ADOutlierHBOS::run(int step) {

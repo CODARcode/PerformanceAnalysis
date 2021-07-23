@@ -76,11 +76,14 @@ void SstdParam::deserialize_cerealpb(const std::string& parameters,  std::unorde
 std::string SstdParam::update(const std::string& parameters, bool return_update)
 {
     std::unordered_map<unsigned long, RunStats> runstats;
-
     deserialize_cerealpb(parameters, runstats);
-    update_and_return(runstats);  //update runstats to reflect changes
-
-    return (return_update) ? serialize_cerealpb(runstats): "";
+    if(return_update){
+      update_and_return(runstats);  //update runstats to reflect changes
+      return serialize_cerealpb(runstats);
+    }else{
+      update(runstats);
+      return "";
+    }
 }
 
 void SstdParam::assign(const std::unordered_map<unsigned long, RunStats>& runstats)

@@ -21,9 +21,10 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/SZ/lib
 
 WORKDIR /
 
-RUN echo "INVALIDATE_1" > /dev/null
+RUN echo "INVALIDATE_2" > /dev/null
 COPY run_nwchem_chimbuko.sh /
 COPY sos_filter.txt /
+COPY chimbuko_config.templ /
 
 EXPOSE 5000
 

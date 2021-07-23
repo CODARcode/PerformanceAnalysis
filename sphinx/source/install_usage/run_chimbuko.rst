@@ -2,6 +2,8 @@
 Running an application under Chimbuko
 *************************************
 
+.. _online_analysis:
+
 Online Analysis
 ~~~~~~~~~~~~~~~
 
@@ -9,27 +11,43 @@ In this section we detail how to run Chimbuko both offline (Chimbuko analysis pe
 
 Chimbuko is designed primarily for online analysis. In this mode an instance of the AD module is spawned for each instance of the application (e.g. for each MPI rank); a centralized parameter server aggregates global statistics and distributes information to the visualization module; and a centralized provenance database maintains detailed information regarding each anomaly.
 
-Note that the provenance database component of Chimbuko requires the Mochi/Sonata shared libraries which are typically installed using Spack. The user must ensure that the **mochi-sonata** Spack library is loaded. In addition the visualization module requires **py-mochi-sonata**, the Python interface to Sonata.
+It is expected that the user create a run script that performs three basic functions:
+
+- Launch Chimbuko services (pserver, provDB, visualization).
+- Launch the Anomaly Detection (AD) component
+- Launch the application
+
+Because launching the AD and application requires explicit invocations of :code:`mpirun` or the system equivalent (e.g. :code:`jsrun` on Summit) tailored to the specific setup desired by the user, we are unfortunately unable to automate this entire process. In this section we will walk through the creation of a typical run script.
+  
+--------------------------
+
+The first step is to load Chimbuko. If installed via Spack this can be accomplished simply by:
 
 .. code:: bash
 
-	  spack load mochi-sonata py-mochi-sonata
+	  spack load chimbuko
 
 (It may be necessary to source the **setup_env.sh** script to setup spack first, which by default installs in the **spack/share/spack/** subdirectory of Spack's install location.)
 
 ---------------------------
 
-A configuration file (like **chimbuko_config.sh**) is used to set various configuration variables that are used for launching Chimbuko services and used by the Anomaly detection algorithm in Chimbuko.
-A full list of variables along with their description is provided in the `Appendix Section <../appendix/appendix_usage.html#chimbuko-config>`_.
-Some of the important variable are
+A configuration file is used to set various configuration variables that are used for launching Chimbuko services and used by the Anomaly detection algorithm in Chimbuko. A template is provided in the Chimbuko install directory :code:`$(spack location -i chimbuko-performance-analysis)/scripts/launch/chimbuko_config.sh`, which the user should copy to their working directory and modify as necessary.
 
-- **service_node_iface** : It is the network interface upon which communication to the service node is performed.
-- **provdb_domain** : It is used by verbs provider.
+A number of variables in **chimbuko_config.sh** are marked :code:`<------------ ***SET ME***` and must be set appropriately:
+
+- **viz_root** : The root path of the Chimbuko visualization installation. For spack users this can be set to :code:`$(spack location -i chimbuko-visualization2)` (default)
+- **export C_FORCE_ROOT=1** : This variable is necessary when using Chimbuko in a Docker image, otherwise set to 0. 
+- **service_node_iface** : The network interface upon which communication between the AD and the parameter server is performed. There are `multiple ways <https://www.cyberciti.biz/faq/linux-list-network-interfaces-names-command/>`_ to list the available interfaces, for example using :code:`ip link show`. On Summit this command must be executed on a job node and not the login node. The interface :code:`ib0` should remain applicable for this machine.
+- **provdb_engine** : The libfabric provider used for the provenance database. Available fabrics can be found using :code:`fi_info` (on Summit this must be executed on a job node, not the login node). For more details, cf. :ref:`here <a_note_on_libfabric_providers>`.
+- **provdb_domain** : The network domain, used by verbs provider. It can be found using :code:`fi_info` and looking for a :code:`verbs;ofi_rxm` provider that has the :code:`FI_EP_RDM` type. On Summit this must be performed on a compute node, but the default, :code:`mlx5_0` should remain applicable for this machine.
 - **TAU_EXEC** : This specifies how to execute tau_exec.
 - **TAU_PYTHON** : This specifies how to execute tau_python.
+- **TAU_MAKEFILE** : The Tau Makefile. For spack users this variable is set by Spack when loading Tau and this line can be commented out.
 - **export EXE_NAME=<name>** : This specifies the name of the executable (without full path). Replace **<name>** with an actual name of the application executable.
 
-Next, export the config script as follows:
+A full list of variables along with their description is provided in the `Appendix Section <../appendix/appendix_usage.html#chimbuko-config>`_, and more guidance is also provided in the template script.
+  
+Next, in the run script, export the config script as follows:
 
 .. code:: bash
 
@@ -37,42 +55,45 @@ Next, export the config script as follows:
 
 ---------------------------
 
-The first step is to generate **explicit resource files** (ERF) for the head node, AD, and main programs in Chimbuko. It generates three ERF files (main.erf, ad.erf, services.erf) which are later used as input ERF files to instantiate Chimbuko services using **jsrun** command.
+In order to avoid having the Chimbuko services interfere with the running of the application, we typically run the services on a dedicated node. It is also necessary to place the ranks of the AD module on the same node as the corresponding rank of the application to avoid having to pipe the traces over the network. Unfortunately the means of setting this up will vary from system to system depending on the job scheduler (e.g. using a **hostfile** with :code:`mpirun`).
+
+In this section we will concentrate on the Summit supercomputer, where the process is made more difficult by the restrictions on sharing resources between resource sets which forces us to dedicate cores to the AD instances. To achieve the job placement the first step is to generate **explicit resource files** (ERF) for the head node, AD, and main programs. For convenience we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/summit/gen_erf_summit.sh>`_ to generate the ERF files. It generates three ERF files (main.erf, ad.erf, services.erf) which are later used as input ERF files to instantiate Chimbuko services using **jsrun** command.
 This can be achieved by running the following script
 
 .. code:: bash
 
-    ./gen_erf.pl ${n_nodes_total} ${n_mpi_ranks_per_node} 1 0 ${ncores_per_host_ad}
+	  ./gen_erf.pl ${n_nodes_total} ${n_mpi_ranks_per_node} ${n_cores_per_rank_main} ${n_gpus_per_rank_main} ${ncores_per_host_ad}
+    
+where
 
-where **${n_nodes_total}** is the Total number of nodes used. This number includes the one node that is dedicated to run the services. **${n_mpi_ranks_per_node}** is the number of MPI ranks that will run on each node. **${ncores_per_host_ad}** is the Number of cores used on each node.
+- **${n_nodes_total}** is the total number of nodes used, including the one node that is dedicated to run the services.
+- **${n_mpi_ranks_per_node}** is the number of MPI ranks of the application (and AD) that will run on each node (must be a multiple of 2).
+- **${n_cores_per_rank_main}** and **${n_gpus_per_rank_main}** specify the number of cores and GPUs, respectively, given to each rank of the application.
+- **${ncores_per_host_ad}** is the number of cores dedicated to the Chimbuko AD modules (must be a multiple of 2), with the application running on the remaining cores. Note that the total number of cores allocated per node must not exceed 42. 
 
 More details on ERF can be found `here <https://www.ibm.com/docs/en/spectrum-lsf/10.1.0?topic=SSWRJV_10.1.0/jsm/jsrun.html>`_.
 
-For convenience we provide a script for generating the ERF files that should suffice for most normal MPI jobs:
-
-.. code:: bash
-
-    ${AD_SOURCE_DIR}/scripts/summit/gen_erf_summit.sh
-
 ----------------------------
 
-In the next step, provenance database, visualization module and parameter server are launched as Chimbuko Services. This is achieved by running the **run_services.sh** script using **jsrun** command as following:
+In the next step the Chimbuko services are launched by running the **run_services.sh** script using **jsrun** command as following:
 
 .. code:: bash
 
-    jsrun --erf_input=services.erf ${SERVICES} &
+    jsrun --erf_input=services.erf ${chimbuko_services} &
     while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
 
-**--erf_input** specifies the ERF file to use. In this case **services.erf** file is used. This files was generated in the previous step. **${SERVICES}** is the path to a script which specifies commands to launch the provenance database, the visualization module, and the parameter server. Description of commands used in script in ${SERVICES} is provided in `Appendix <../appendix/appendix_usage.html#launch-services>`_.
+Here **--erf_input=services.erf** launches the services using the the services ERF generated in the previous step. **${chimbuko_services}** is the path to a script which specifies commands to launch the provenance database, the visualization module, and the parameter server. This variable is set by the configuration script. A description of commands used in the services script is provided in `Appendix <../appendix/appendix_usage.html#launch-services>`_.
 
-The while loop after the **jsrun** command is used to wait until it generates a command file (**chimbuko/vars/chimbuko_ad_cmdline.var**) to launch the Chimbuko's anomaly detection driver program as a next step, as following:
+The while loop after the **jsrun** command is used to wait until the services have progressed to a stage at which connection is possible. At this point the script generates a command file (**chimbuko/vars/chimbuko_ad_cmdline.var**) which provides the to launch the Chimbuko's anomaly detection driver program, assuming a basic (single component) workflow. This can be invoked as follows:
 
 .. code:: bash
 
     ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
     eval "jsrun --erf_input=ad.erf -e prepended ${ad_cmd} &"
 
-Here the **ad.erf** file is used as **--erf_input** for the **jsrun** command. The generated command in previous step is used here to launch the AD driver.
+Here the **ad.erf** file is used as **--erf_input** for the **jsrun** command.
+
+For more complicated workflows the AD will need to be invoked differently. To aid the user we write a second file, **chimbuko/vars/chimbuko_ad_opts.var**, which contains just the initial command line options for the AD. Examples of various setups can be found among the :ref:`benchmark applications <benchmark_suite>`.
 
 -----------------------------
 
@@ -89,6 +110,8 @@ Here we use the third ERF (**main.erf**) which was generated in the previous ste
 Chimbuko can be run to perform offline analysis of the application by changing configuration for Tau's ADIOS plugin as `described here <../appendix/appendix_usage.html#offline-analysis>`_.
 
 ------------------------------
+
+.. _benchmark_suite:
 
 Examples
 ~~~~~~~~

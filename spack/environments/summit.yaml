@@ -1,5 +1,6 @@
 spack:
   specs:
+  - py-setuptools-scm+toml
   - adios2@2.7.1 build_type=Debug
   - chimbuko-visualization2
   - chimbuko-performance-analysis@ckelly_develop ^libzmq@4.3.3
@@ -23,9 +24,9 @@ spack:
       flags: {}
       spec: gcc@9.1.0
   repos:
-  #=================== THIS PATH SHOULD BE SET TO POINT TO THE sds-repo DOWNLOADED FROM https://xgitlab.cels.anl.gov/sds/sds-repo 
-  - /autofs/nccs-svm1_home1/ckelly/install/sds/sds-repo
-  #=================== THIS PATH SHOULD BE SET TO POINT TO THE repo/chimbuko SUBDIRECTORY OF THE CHIMBUKO AD SOURCE https://github.com/CODARcode/PerformanceAnalysis/
+  #=================== THIS PATH SHOULD BE SET TO POINT TO THE mochi-spack-packages DOWNLOADED FROM https://github.com/mochi-hpc/mochi-spack-packages.git
+  - /autofs/nccs-svm1_home1/ckelly/install/mochi-spack-packages
+  #=================== THIS PATH SHOULD BE SET TO POINT TO THE repo/chimbuko SUBDIRECTORY OF THE CHIMBUKO AD SOURCE https://github.com/CODARcode/PerformanceAnalysis/ (git clone https://github.com/CODARcode/PerformanceAnalysis.git)
   - /autofs/nccs-svm1_home1/ckelly/src/AD/PerformanceAnalysis/spack/repo/chimbuko
   packages:
     all:

@@ -1,3 +1,4 @@
+#include <chimbuko_config.h>
 #include<chimbuko/ad/ADEvent.hpp>
 
 namespace chimbuko_sim{

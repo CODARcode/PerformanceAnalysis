@@ -5,10 +5,13 @@ COPY --from=chimbuko/viz:ubuntu18.04-cuda10.1 /opt/chimbuko/viz /opt/chimbuko/vi
 ENV PATH=/opt/tau2/x86_64/bin/:/opt/chimbuko/ad/bin:${PATH}
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 
+#Fix redis path
+ENV PATH=/opt/chimbuko/viz/redis-stable/src/:${PATH}
+
 RUN apt-get update && apt-get install -y gdb emacs-nox vim psmisc
 
 #Create a setup script
-RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load py-mochi-sonata" >> /root/.bashrc
+RUN echo "source /spack/spack/share/spack/setup-env.sh && spack load boost py-mochi-sonata" >> /root/.bashrc
 
 FROM base AS build
 

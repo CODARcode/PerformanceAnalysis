@@ -1,5 +1,5 @@
-#ifdef _USE_MPINET
 #include "chimbuko/net/mpi_net.hpp"
+#ifdef _USE_MPINET
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 // todo: replace with log

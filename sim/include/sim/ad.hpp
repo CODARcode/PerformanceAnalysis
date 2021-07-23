@@ -1,11 +1,12 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/ad/ADMetadataParser.hpp>
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/ad/ADCounter.hpp>
 #include<chimbuko/ad/ADOutlier.hpp>
+#include<chimbuko/ad/ADio.hpp>
 #include<map>
 
 namespace chimbuko_sim{
@@ -29,7 +30,11 @@ namespace chimbuko_sim{
     int m_rid;
     ADNormalEventProvenance m_normal_events;
     ADMetadataParser m_metadata;
+#ifdef ENABLE_PROVDB
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
+#else
+    std::unique_ptr<ADio> m_prov_io; /**< Write to disk if provDB not in use */
+#endif
     ADThreadNetClient *m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
     ADOutlier* m_outlier; /**< The local outlier algorithm instance, if used*/
   public:
@@ -63,7 +68,9 @@ namespace chimbuko_sim{
       if(m_net_client) delete m_net_client;
     }
 
+#ifdef ENABLE_PROVDB
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
+#endif
 
     /**
      * @brief Add a function execution on a specific thread

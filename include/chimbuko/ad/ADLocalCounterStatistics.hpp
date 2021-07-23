@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<unordered_set>
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
