@@ -84,7 +84,7 @@ struct SSTrw{
   SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
 
-#if 0
+#if 1
 
 TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
   std::string filename = "commfile";
