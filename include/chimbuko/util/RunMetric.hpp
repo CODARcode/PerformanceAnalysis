@@ -47,6 +47,20 @@ namespace chimbuko {
     }
 
     /**
+     * @brief Write the data to a stream
+     */
+    void dump(std::ostream &os) const{
+      if (m_metrics.size()){
+	nlohmann::json j;
+	for (auto m: m_metrics){
+	  j[m.first] = m.second.get_json();
+	}
+	os << j.dump(2) << std::endl;
+      }
+    }
+
+
+    /**
      * @brief Combine this instance with another
      */
     RunMetric & operator+=(const RunMetric &r){

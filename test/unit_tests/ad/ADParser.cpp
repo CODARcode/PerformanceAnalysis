@@ -12,18 +12,6 @@
 
 using namespace chimbuko;
 
-TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
-  std::string filename = "commfile";
-  bool got_err= false;
-  try{
-    ADParser parser(filename, 0,0, "SST",1); //2 second timeout
-  }catch(const std::runtime_error& error){
-    std::cout << "\nADParser (by design) threw the following error:\n" << error.what() << std::endl;
-    got_err = true;
-  }
-  EXPECT_EQ( got_err, true );
-}
-
 struct SSTrw{
   //Common variables accessed by both writer and reader threads
   Barrier barrier; //a barrier for a fixed number of threads
@@ -95,6 +83,20 @@ struct SSTrw{
   
   SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
+
+#if 0
+
+TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
+  std::string filename = "commfile";
+  bool got_err= false;
+  try{
+    ADParser parser(filename, 0,0, "SST",1); //2 second timeout
+  }catch(const std::runtime_error& error){
+    std::cout << "\nADParser (by design) threw the following error:\n" << error.what() << std::endl;
+    got_err = true;
+  }
+  EXPECT_EQ( got_err, true );
+}
 
 
 TEST(ADParserTestConstructor, opensCorrectlyBPFile){
@@ -612,14 +614,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   psthr.join();
 }
 
-
-
-
-
-
-
-
-
+#endif
 
 //Events same up to id string
 bool same_up_to_id_string(const Event_t &l, const Event_t &r){
@@ -666,7 +661,11 @@ TEST(ADParserTest, eventsOrderedCorrectly){
   parser.setEventTypeMap(event_types);
   parser.setCounterMap(counter_names);
 
+  std::map<int, std::vector<Event_t*> > thread_events; //store events by thread in time order
+
   for(int i=0;i<events.size();i++){
+    thread_events[events[i].tid()].push_back( &events[i] );
+
     if(events[i].type() == EventDataType::FUNC)
       parser.addFuncData(events[i].get_ptr());
     else if(events[i].type() == EventDataType::COMM)
@@ -685,13 +684,16 @@ TEST(ADParserTest, eventsOrderedCorrectly){
   
   EXPECT_EQ(events_out.size(), events.size());
 
-  for(int i=0;i<events_out.size();i++){
-    //Note, the event id strings will differ because the step index in the parser has not been set and so will default to -1
-    std::cout << i << " " << events[i].get_json().dump() << " " << events_out[i].get_json().dump() << std::endl;
-    EXPECT_EQ(same_up_to_id_string(events[i], events_out[i]), true);
-  }
-  
-
+  //Output data are arranged by thread
+  int off = 0;
+  for(auto it = thread_events.begin(); it != thread_events.end(); it++){
+    for(int i=0;i<it->second.size();i++){
+      //Note, the event id strings will differ because the step index in the parser has not been set and so will default to -1
+      std::cout << it->first << " " << i << " expect " << it->second[i]->get_json().dump() << " " << events_out[off].get_json().dump() << std::endl;
+      EXPECT_EQ(same_up_to_id_string(*it->second[i], events_out[off]), true);
+      ++off;
+    }
+  }  
 }
 
 

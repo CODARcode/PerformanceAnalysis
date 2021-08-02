@@ -9,6 +9,7 @@
 #include <regex>
 #include <sstream>
 #include <map>
+#include <set>
 #include <cstring>
 #include <experimental/filesystem>
 
@@ -305,7 +306,7 @@ ParserError ADParser::fetchFuncData() {
   if (in_timer_event_count && in_event_timestamps)
     {
       m_reader.Get<size_t>(in_timer_event_count, &m_timer_event_count, adios2::Mode::Sync);
-
+      
       nelements = m_timer_event_count * FUNC_EVENT_DIM;
       //m_event_timestamps.resize(nelements);
       if (nelements > m_event_timestamps.size())
@@ -495,21 +496,6 @@ ParserError ADParser::fetchCounterData() {
 }
 
 
-const unsigned long* ADParser::getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets){
-  if(ts_offsets.size() != arrays.size()) throw std::runtime_error("Input parameter vectors have different sizes!");
-  unsigned long earliest_ts = std::numeric_limits<unsigned long>::max();
-  int earliest = -1;
-  for(int i=0;i<arrays.size();i++){
-    if(arrays[i] != nullptr &&
-       arrays[i][ts_offsets[i]] < earliest_ts){
-      earliest = i;
-      earliest_ts = arrays[i][ts_offsets[i]];
-    }
-  }
-  if(earliest == -1) throw std::runtime_error("Failed to determine earliest entry");
-  return arrays[earliest];
-}
-
 bool ADParser::validateEvent(const unsigned long* e) const{
   return !( e == nullptr || e[IDX_P] > 1000000 || (int)e[IDX_R] != m_rank || e[IDX_T] >= 1000000 || e[IDX_P] != m_program_idx );
 }
@@ -561,149 +547,156 @@ std::pair<Event_t,bool> ADParser::createAndValidateEvent(const unsigned long * d
   return {ev, good};
 }
 
+inline int getEarliest(Event_t* arrays[3]){
+  static const unsigned long max = std::numeric_limits<unsigned long>::max();
+
+  unsigned long ts[3] = {arrays[0] != nullptr ? arrays[0]->ts() : max, 
+			 arrays[1] != nullptr ? arrays[1]->ts() : max,
+			 arrays[2] != nullptr ? arrays[2]->ts() : max};
+  if(ts[0] <= ts[1] && ts[0] <= ts[2]) return 0; //prioritize 0
+  else if(ts[1] < ts[0] && ts[1] <= ts[2]) return 1; //prioritize 1
+  else if(ts[2] < ts[0] && ts[2] < ts[1]) return 2;
+  else throw std::runtime_error("Failed to determine earliest entry");
+  return -1;
+  // unsigned long earliest_ts = std::numeric_limits<unsigned long>::max();
+  // int earliest = -1;
+  // for(int i=0;i<3;i++){
+  //   if(arrays[i] != nullptr &&
+  //      arrays[i]->ts() < earliest_ts){
+  //     earliest = i;
+  //     earliest_ts = arrays[i]->ts();
+  //   }
+  // }
+  // if(earliest == -1) 
+  // return earliest;
+}
+
+
 std::vector<Event_t> ADParser::getEvents() const{
-  PerfTimer get_event_type_timer(false), get_earliest_timer(false), create_insert_timer(false),
-    other_timer(false), loop_timer(false), total_timer(true), gen_timer(false);
+  PerfTimer gen_timer(false), total_timer(false);
+  
+  total_timer.start();
 
   //During the timestep a number of function and perhaps also comm and counter events occurred
-  //The parser stores these events separately in order of their timestamp
+  //The parser stores these events separately in order of their timestamp (by thread)
   //We want to iterate through these events in order of their timestamp in order to correlate them
-  other_timer.unpause();
-  size_t idx_funcData=0, idx_commData = 0, idx_counterData = 0;
-  const unsigned long *funcData = nullptr;
-  const unsigned long *commData = nullptr;
-  const unsigned long *counterData = nullptr;
   int step = m_current_step;
-  other_timer.pause();
 
   //Get the pointers
+  const unsigned long *funcData = this->getFuncData(0);
+  const unsigned long *commData = this->getCommData(0);
+  const unsigned long *counterData = this->getCounterData(0);
+
+  //Data are time ordered only by thread, not globally, so break up the data by thread
   gen_timer.start();
-  funcData = this->getFuncData(idx_funcData);
-  commData = this->getCommData(idx_commData);
-  counterData = this->getCounterData(idx_counterData);
-  if(m_perf != nullptr) m_perf->add("parser_get_events_getdata_ms", gen_timer.elapsed_ms());
+  std::map<unsigned long, std::vector<Event_t> > thr_funcdata, thr_commdata, thr_counterdata;
+  std::map<unsigned long, std::vector<Event_t> >* maps[3] = { &thr_funcdata, &thr_commdata, &thr_counterdata };
+  const unsigned long * data[3] = { funcData, commData, counterData };
+  const size_t nevents[3] = { getNumFuncData(), getNumCommData(), getNumCounterData() };
+  const int strides[3] = { FUNC_EVENT_DIM, COMM_EVENT_DIM, COUNTER_EVENT_DIM };
+  EventDataType types[3] = { EventDataType::FUNC, EventDataType::COMM, EventDataType::COUNT };
+  size_t nvalid_event=0; //total number of valid events of all types 
+  std::set<unsigned long> tids; //the set of all threads
 
-  //Reserve memory for output
-  other_timer.unpause();
-  std::vector<Event_t> out;
-  out.reserve( getNumFuncData() + getNumCommData() + getNumCounterData() );
-
-  //Maintain latest timestamps to check ordering is correct
-  //Validation ensures all entries have the same pid and rid as those of this AD process
-  std::vector<long> latest_func_ts, latest_comm_ts, latest_count_ts, latest_ts; //vector over threads
-  other_timer.pause();
-
-
-  loop_timer.unpause();
-  while (funcData != nullptr || commData != nullptr || counterData != nullptr){
-    // Determine event to handle
-    //If multiple events have the same timestamp and one is a function entry/exit, we want the entry to be inserted first and the exit last
-    //such that the comm/counter events are correctly associated with the function
-
-    //Determine what kind of func event it is (if !nullptr)
-    get_event_type_timer.unpause();
-    static const int ENTRY(0), EXIT(1), NA(2);
-    int func_event_type = NA;
-    if(funcData != nullptr){
-      auto it = m_eventType.find(funcData[IDX_E]);
-      if(it != m_eventType.end()){
-	if(it->second == "ENTRY") func_event_type = ENTRY;
-	else if(it->second == "EXIT") func_event_type = EXIT;
-      }
-    }
-    get_event_type_timer.pause();
-
-    get_earliest_timer.unpause();
-    const unsigned long *data;
-    //When timestamps are equal we need to decide on a priority for the ordering
-    //For entry event, funcData takes highest priority so comm and counter events are included in the function execution
-    if(func_event_type == ENTRY){
-      data = getEarliest( {funcData, commData, counterData}, {FUNC_IDX_TS, COMM_IDX_TS, COUNTER_IDX_TS} );
-    }else{
-      //Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
-      data = getEarliest( {commData, counterData, funcData}, {COMM_IDX_TS, COUNTER_IDX_TS, FUNC_IDX_TS} );
-    }
-    get_earliest_timer.pause();
-
-    //Create and insert the event
-    create_insert_timer.unpause();
-    if(data == funcData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::FUNC, idx_funcData,
-							   eventID(m_rank, step, idx_funcData));
+  for(int type=0;type<3;type++){
+    const unsigned long* p = data[type];
+    for(size_t i=0;i<nevents[type];i++){
+      std::pair<Event_t,bool> evp = createAndValidateEvent(p, types[type], i, eventID(m_rank, step, i));
       if(evp.second){
-	unsigned long rid = evp.first.rid();
-	unsigned long ts = evp.first.ts();
-	if(latest_func_ts.size() < rid+1) latest_func_ts.resize(rid+1, -1);
-	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
+	unsigned long tid = evp.first.tid();
 
-	if(latest_func_ts[rid] != -1 && ts < latest_func_ts[rid]){
+	//Get the appropriate array for this thread, create if necessary
+	auto mit = maps[type]->find(tid);
+	if(mit == maps[type]->end()){	  
+	  mit = maps[type]->emplace(tid, std::vector<Event_t>()).first;
+	  mit->second.reserve(nevents[type]); //avoid reallocs
+	  tids.insert(tid);
+	}
+	//Check event ordering in thread
+	if(mit->second.size() && mit->second.back().ts() > evp.first.ts()){
 	  std::stringstream ss;
-	  ss << "ADParser::getEvents parsed function data is not in time order: Event " << evp.first.get_json().dump()
-	     << " for function \"" << m_funcMap.find(evp.first.fid())->second
-	     << "\" has timestamp " << evp.first.ts() << " < " << latest_func_ts[rid] << " of previous func insertion\n";
+	  ss << "ADParser::getEvents parsed event data is not in time order: Event " << evp.first.get_json().dump();
+	  if(types[type] == EventDataType::FUNC)
+	    ss << " for function \"" << m_funcMap.find(evp.first.fid())->second << "\"";
 
-	  auto rit = out.rbegin();
-	  while(rit != out.rend()){
-	    if(rit->type() == EventDataType::FUNC){
-	      ss << "Previous insertion: " << rit->get_json().dump() << " for function \"" << m_funcMap.find(rit->fid())->second << "\"";
-	      break;
-	    }
-	  }
+	  ss << " has timestamp " << evp.first.ts() << " < " << mit->second.back().ts() << " of previous insertion of this type\n";
+
+	  ss << "Previous insertion: " << mit->second.back().get_json().dump();
+	  if(types[type] == EventDataType::FUNC)		    
+	    ss << " for function \"" << m_funcMap.find(mit->second.back().fid())->second << "\"";
 	  fatal_error(ss.str());
 	}
-	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [func]");
-
-	out.push_back(evp.first);
-	latest_ts[rid] = latest_func_ts[rid] = ts;
-      }
-      funcData = this->getFuncData(++idx_funcData);
-    }else if(data == commData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COMM, idx_commData,
-							   eventID(m_rank, step, idx_commData));
-
-      if(evp.second){
-	unsigned long rid = evp.first.rid();
-	unsigned long ts = evp.first.ts();
-	if(latest_comm_ts.size() < rid+1) latest_comm_ts.resize(rid+1, -1);
-	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
-
-	if(latest_comm_ts[rid] != -1 && ts < latest_comm_ts[rid]) fatal_error("parsed comm data is not in time order");
-	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [comm]");
-	out.push_back(evp.first);
-	latest_ts[rid] = latest_comm_ts[rid] = ts;
-      }
-      commData = this->getCommData(++idx_commData);
-    }else if(data == counterData){
-      std::pair<Event_t,bool> evp = createAndValidateEvent(data, EventDataType::COUNT, idx_counterData,
-							   eventID(m_rank, step, idx_counterData));
-      if(evp.second){
-	unsigned long rid = evp.first.rid();
-	unsigned long ts = evp.first.ts();
-	if(latest_count_ts.size() < rid+1) latest_count_ts.resize(rid+1, -1);
-	if(latest_ts.size() < rid+1) latest_ts.resize(rid+1, -1);
-
-	if(latest_count_ts[rid] != -1 && ts < latest_count_ts[rid]) fatal_error("parsed counter data is not in time order");
-	if(latest_ts[rid] != -1 && ts < latest_ts[rid]) fatal_error("event ordering error! [counter]");
-	out.push_back(evp.first);
-	latest_ts[rid] = latest_count_ts[rid] = ts;
-      }
-      counterData = this->getCounterData(++idx_counterData);
-    }else{
-      fatal_error("Unexpected pointer");
+	//Push event onto array
+	mit->second.push_back(evp.first);
+	++nvalid_event;
+      } //if valid event
+      p += strides[type];
     }
-    create_insert_timer.pause();
-
-  }//while loop over func and comm data
-  loop_timer.pause();
-
-  if(m_perf != nullptr){
-    m_perf->add("parser_get_events_get_event_type_ms", get_event_type_timer.elapsed_ms());
-    m_perf->add("parser_get_events_get_earliest_time_ms", get_earliest_timer.elapsed_ms());
-    m_perf->add("parser_get_events_create_insert_time_ms", create_insert_timer.elapsed_ms());
-    m_perf->add("parser_get_events_other_time_ms", other_timer.elapsed_ms());
-    m_perf->add("parser_get_events_loop_time_ms", loop_timer.elapsed_ms());
-    m_perf->add("parser_get_events_total_ms", total_timer.elapsed_ms());
   }
+  if(m_perf != nullptr) m_perf->add("parser_get_events_separate_events_by_thread_ms", gen_timer.elapsed_ms());
+	     
+  //Reserve memory for output
+  std::vector<Event_t> out;
+  out.reserve(nvalid_event);
+  
+  //Get a fast map between func event type index and a label to avoid lots of string comparisons
+  static const int ENTRY(0), EXIT(1), NA(2);
+  std::vector<int> func_event_type_map_v;
+  for (auto&& [eid, estr] : m_eventType) {
+    if(estr == "ENTRY"){
+      if(eid >= func_event_type_map_v.size()) func_event_type_map_v.resize(eid+1,NA);
+      func_event_type_map_v[eid] = ENTRY;
+    }else if(estr == "EXIT"){
+      if(eid >= func_event_type_map_v.size()) func_event_type_map_v.resize(eid+1,NA);
+      func_event_type_map_v[eid] = EXIT;
+    }
+  }
+
+  //Loop over threads and interweave the func, comm and counter events into time order (by thread)
+  gen_timer.start();
+
+  for(unsigned long tid : tids){
+    Event_t* data_t[3] = {nullptr, nullptr, nullptr};
+    size_t ndata_t[3] = {0,0,0};
+
+    for(int type=0;type<3;type++){
+      auto it = maps[type]->find(tid);
+      if(it != maps[type]->end()){
+	data_t[type] = it->second.data();
+	ndata_t[type] = it->second.size();
+      }
+    }
+    
+    size_t off_t[3] = {0,0,0};
+
+    while(data_t[0] != nullptr || data_t[1] != nullptr || data_t[2] != nullptr){
+      //Determine what kind of func event it is (if !nullptr)
+      int func_event_type = NA;
+      if(data_t[0] != nullptr) func_event_type = func_event_type_map_v[data_t[0]->eid()];
+
+      //When timestamps are equal we need to decide on a priority for the ordering
+      //For entry event, funcData takes highest priority so comm and counter events are included in the function execution  
+      int earliest;
+      if(func_event_type == ENTRY){
+	earliest = getEarliest(data_t);
+      }else{
+	//Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
+	Event_t* arrays[3] = { data_t[1], data_t[2], data_t[0]};
+	earliest = getEarliest(arrays);
+	earliest = (earliest + 1) % 3; //remap to order of data_t
+      }
+      out.push_back(*data_t[earliest]);
+      ++data_t[earliest];
+      ++off_t[earliest];
+      //Set to nullptr once reached the end of the array
+      if(off_t[earliest] == ndata_t[earliest])
+	data_t[earliest] = nullptr;
+    }
+  }
+  if(out.size() != nvalid_event) fatal_error("Event insertion missed some events??");
+  if(m_perf != nullptr) m_perf->add("parser_get_events_interweave_events_ms", gen_timer.elapsed_ms());
+  
+  if(m_perf != nullptr) m_perf->add("parser_get_events_total_ms", total_timer.elapsed_ms());
 
   return out;
 }

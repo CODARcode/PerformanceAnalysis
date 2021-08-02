@@ -13,30 +13,43 @@
 
 namespace chimbuko{
   /**
-   * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+   * @brief Create an Event_t object from the inputs provided writing to 'to'. Index will be internally assigned, as will name. to must have size at least FUNC_EVENT_DIM
    */
   Event_t createFuncEvent_t(unsigned long pid,
-				      unsigned long rid,
-				      unsigned long tid,
-				      unsigned long eid,
-				      unsigned long func_id,
-				      unsigned long ts){
+			    unsigned long rid,
+			    unsigned long tid,
+			    unsigned long eid,
+			    unsigned long func_id,
+			    unsigned long ts,
+			    unsigned long *to){
     static long event_idx_s = 0;
     long event_idx = event_idx_s++;
     
     eventID id(rid, 0, event_idx);
 
-    static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
-    std::array<unsigned long, FUNC_EVENT_DIM> ev;
-    ev[IDX_P] = pid;
-    ev[IDX_R] = rid;
-    ev[IDX_T] = tid;
-    ev[IDX_E] = eid;
-    ev[FUNC_IDX_F] = func_id;
-    ev[FUNC_IDX_TS] = ts;
-    todelete.push_back(ev);
+    to[IDX_P] = pid;
+    to[IDX_R] = rid;
+    to[IDX_T] = tid;
+    to[IDX_E] = eid;
+    to[FUNC_IDX_F] = func_id;
+    to[FUNC_IDX_TS] = ts;
+    return Event_t(to, EventDataType::FUNC, event_idx, id);
+  }
 
-    return Event_t(todelete.back().data(), EventDataType::FUNC, event_idx, id);
+  /**
+   * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+   */
+  Event_t createFuncEvent_t(unsigned long pid,
+			    unsigned long rid,
+			    unsigned long tid,
+			    unsigned long eid,
+			    unsigned long func_id,
+			    unsigned long ts){
+    static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
+    todelete.push_back(std::array<unsigned long, FUNC_EVENT_DIM>());
+
+    std::array<unsigned long, FUNC_EVENT_DIM> &ev = todelete.back();
+    return createFuncEvent_t(pid,rid,tid,eid,func_id,ts,ev.data());
   }
 
   /**
@@ -73,30 +86,44 @@ namespace chimbuko{
 
 
   /**
-   * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+   * @brief Create an Event_t object from the inputs provided writing to array 'to' which must have a size at least COUNTER_EVENT_DIM. Index will be internally assigned, as will name
    */
   Event_t createCounterEvent_t(unsigned long pid,
-					 unsigned long rid,
-					 unsigned long tid,
-					 unsigned long counter_id,
-					 unsigned long value,
-					 unsigned long ts){
+			       unsigned long rid,
+			       unsigned long tid,
+			       unsigned long counter_id,
+			       unsigned long value,
+			       unsigned long ts,
+			       unsigned long* to){
     static long event_idx_s = 0;
     long event_idx = event_idx_s++;
     
     eventID id(rid, 0, event_idx);
 
-    static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
-    std::array<unsigned long, COUNTER_EVENT_DIM> ev;
-    ev[IDX_P] = pid;
-    ev[IDX_R] = rid;
-    ev[IDX_T] = tid;
-    ev[COUNTER_IDX_ID] = counter_id;
-    ev[COUNTER_IDX_VALUE] = value;
-    ev[COUNTER_IDX_TS] = ts;
-    todelete.push_back(ev);
+    to[IDX_P] = pid;
+    to[IDX_R] = rid;
+    to[IDX_T] = tid;
+    to[COUNTER_IDX_ID] = counter_id;
+    to[COUNTER_IDX_VALUE] = value;
+    to[COUNTER_IDX_TS] = ts;
 
-    return Event_t(todelete.back().data(), EventDataType::COUNT, event_idx, id);
+    return Event_t(to, EventDataType::COUNT, event_idx, id);
+  }
+
+
+
+  /**
+   * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
+   */
+  Event_t createCounterEvent_t(unsigned long pid,
+			       unsigned long rid,
+			       unsigned long tid,
+			       unsigned long counter_id,
+			       unsigned long value,
+			       unsigned long ts){
+    static std::list< std::array<unsigned long, COUNTER_EVENT_DIM> > todelete; //make sure they get deleted eventually
+    todelete.push_back(std::array<unsigned long, COUNTER_EVENT_DIM>());
+    return createCounterEvent_t(pid,rid,tid,counter_id,value,ts,todelete.back().data());
   }
 
 
@@ -133,6 +160,37 @@ namespace chimbuko{
 
 
   /**
+   * @brief Create an Event_t object from the inputs provided writing to array 'to' which must have a size at least COMM_EVENT_DIM. Index will be internally assigned, as will name
+   */
+  Event_t createCommEvent_t(unsigned long pid,
+			    unsigned long rid,
+			    unsigned long tid,
+			    unsigned long eid,
+			    unsigned long comm_tag,
+			    unsigned long comm_partner,
+			    unsigned long comm_bytes,
+			    unsigned long ts,
+			    unsigned long *to){
+    static long event_idx_s = 0;
+    long event_idx = event_idx_s++;
+
+    eventID id(rid, 0, event_idx);
+
+    to[IDX_P] = pid;
+    to[IDX_R] = rid;
+    to[IDX_T] = tid;
+    to[IDX_E] = eid;
+    to[COMM_IDX_TAG] = comm_tag;
+    to[COMM_IDX_PARTNER] = comm_partner;
+    to[COMM_IDX_BYTES] = comm_bytes;
+    to[COMM_IDX_TS] = ts;
+
+    return Event_t(to, EventDataType::COMM, event_idx, id);
+  }
+
+
+
+  /**
    * @brief Create an Event_t object from the inputs provided. Index will be internally assigned, as will name
    */
   Event_t createCommEvent_t(unsigned long pid,
@@ -143,24 +201,9 @@ namespace chimbuko{
 			    unsigned long comm_partner,
 			    unsigned long comm_bytes,
 			    unsigned long ts){
-    static long event_idx_s = 0;
-    long event_idx = event_idx_s++;
-
-    eventID id(rid, 0, event_idx);
-
     static std::list< std::array<unsigned long, COMM_EVENT_DIM> > todelete; //make sure they get deleted eventually
-    std::array<unsigned long, COMM_EVENT_DIM> ev;
-    ev[IDX_P] = pid;
-    ev[IDX_R] = rid;
-    ev[IDX_T] = tid;
-    ev[IDX_E] = eid;
-    ev[COMM_IDX_TAG] = comm_tag;
-    ev[COMM_IDX_PARTNER] = comm_partner;
-    ev[COMM_IDX_BYTES] = comm_bytes;
-    ev[COMM_IDX_TS] = ts;
-    todelete.push_back(ev);
-
-    return Event_t(todelete.back().data(), EventDataType::COMM, event_idx, id);
+    todelete.push_back( std::array<unsigned long, COMM_EVENT_DIM>());
+    return createCommEvent_t(pid,rid,tid,eid,comm_tag,comm_partner,comm_bytes,ts,todelete.back().data());
   }
 
   /**

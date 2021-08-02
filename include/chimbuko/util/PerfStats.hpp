@@ -88,6 +88,12 @@ namespace chimbuko{
     void write() const;
 
     /**
+     * @brief Write the running statistics to a stream
+     */
+    void write(std::ostream &os) const;
+
+
+    /**
      * @brief Combine the statistics with another
      */
     PerfStats & operator+=(const PerfStats &r);
