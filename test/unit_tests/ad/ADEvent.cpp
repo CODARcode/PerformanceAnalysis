@@ -300,9 +300,11 @@ TEST(ADEventTest, purgeCallList){
 
 
 TEST(ADEvent, associatesCommsAndCountersWithFunc){
+  Error().setStream(&std::cerr);
+
   ADEvent event_man;
   std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
-  std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"} };
+  std::unordered_map<int, std::string> func_names = { {0,"MYFUNC"}, {1,"MYFUNCPARENT"} };
   std::unordered_map<int, std::string> counter_names = { {0,"MYCOUNTER"} };
   event_man.linkEventType(&event_types);
   event_man.linkFuncMap(&func_names);
@@ -313,51 +315,39 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   int RECV = 3;
   int MYCOUNTER = 0;
   int MYFUNC = 0;
+  int MYFUNCPARENT = 1;
 
   //Generate some ordered events. Put a counter and comm event before and after the function execution also to ensure that it doesn't pick those up
-
-  // Event_t createCounterEvent_t(unsigned long pid,
-  // 					 unsigned long rid,
-  // 					 unsigned long tid,
-  // 					 unsigned long counter_id,
-  // 					 unsigned long value,
-  // 					 unsigned long ts){
-
-  // Event_t createFuncEvent_t(unsigned long pid,
-  // 				      unsigned long rid,
-  // 				      unsigned long tid,
-  // 				      unsigned long eid,
-  // 				      unsigned long func_id,
-  // 				      unsigned long ts){
-
-  // Event_t createCommEvent_t(unsigned long pid,
-  // 			    unsigned long rid,
-  // 			    unsigned long tid,
-  // 			    unsigned long eid,
-  // 			    unsigned long comm_tag,
-  // 			    unsigned long comm_partner,
-  // 			    unsigned long comm_bytes,
-  // 			    unsigned long ts){
   int pid=0, tid=0, rid=0;
 
   std::vector<Event_t> events = {
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNCPARENT, 99),
+
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1234, 100),
     createCommEvent_t(pid, rid, tid, SEND, 0, 99, 1024, 110),
-    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 18783, 120), //same time as function entry, should get picked up
+    createCounterEvent_t(pid, rid, tid, MYCOUNTER, 18783, 120), //same time as function entry, should get picked up by child
+
     createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1256, 130),
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1267, 140),
     createCommEvent_t(pid, rid, tid, SEND, 1, 99, 1024, 150),
     createCommEvent_t(pid, rid, tid, RECV, 2, 99, 1024, 160),
     createCounterEvent_t(pid, rid, tid+1, MYCOUNTER, 1267, 170),  //not on same thread
     createCounterEvent_t(pid, rid, tid, MYCOUNTER, 1777, 180), //same time as function exit, should get picked up
+
     createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 180),
-    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190)
+
+    createCommEvent_t(pid, rid, tid, SEND, 3, 99, 1024, 190),
+
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNCPARENT, 191)    
   };
   for(int i=0;i<events.size();i++)
     event_man.addEvent(events[i]);
 
   const ExecDataMap_t &func_calls_by_idx = *event_man.getExecDataMap();
+    
+  //Check for child function
   EXPECT_NE(func_calls_by_idx.find(MYFUNC), func_calls_by_idx.end());
 
   const std::vector<CallListIterator_t> &myfunc_calls = func_calls_by_idx.find(MYFUNC)->second;
@@ -380,6 +370,30 @@ TEST(ADEvent, associatesCommsAndCountersWithFunc){
   EXPECT_EQ(myfunc_exec.get_n_counter(), 4);
   EXPECT_EQ(myfunc_exec.get_counters()[0].get_ts(), 120);
   EXPECT_EQ(myfunc_exec.get_counters()[0].get_exec_key(), exec_id);
+
+  //Check for parent function
+  EXPECT_NE(func_calls_by_idx.find(MYFUNCPARENT), func_calls_by_idx.end());
+
+  const std::vector<CallListIterator_t> &myfuncparent_calls = func_calls_by_idx.find(MYFUNCPARENT)->second;
+  EXPECT_EQ(myfuncparent_calls.size(), 1);
+
+  const ExecData_t &myfuncparent_exec = *myfuncparent_calls[0];
+  eventID exec_id2 = myfuncparent_exec.get_id();
+
+  EXPECT_EQ(myfuncparent_exec.get_funcname(), "MYFUNCPARENT");
+  EXPECT_EQ(myfuncparent_exec.get_n_message(), 2);
+  EXPECT_EQ(myfuncparent_exec.get_messages()[0].ts(), 110);
+  EXPECT_EQ(myfuncparent_exec.get_messages()[0].get_exec_key(), exec_id2);
+
+
+  std::cout << "Found " << myfuncparent_exec.get_n_counter() << " counters:" << std::endl;
+  for(int i=0;i<myfuncparent_exec.get_n_counter();i++)
+    std::cout << i << ": " << myfuncparent_exec.get_counters()[i].get_json().dump() << std::endl;
+
+
+  EXPECT_EQ(myfuncparent_exec.get_n_counter(), 1);
+  EXPECT_EQ(myfuncparent_exec.get_counters()[0].get_ts(), 100);
+  EXPECT_EQ(myfuncparent_exec.get_counters()[0].get_exec_key(), exec_id2);
 }
 
 
