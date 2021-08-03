@@ -5,7 +5,7 @@
 
 #include <sonata/Client.hpp>
 #include <nlohmann/json.hpp>
-#include <queue>
+#include <list>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
 #include <chimbuko/util/PerfStats.hpp>
 
@@ -44,7 +44,7 @@ namespace chimbuko{
    * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
    */
   class AnomalousSendManager{
-    std::queue<sonata::AsyncRequest> outstanding;
+    std::list<sonata::AsyncRequest> outstanding;
 
     /**
      * @brief Remove completed requests if size > MAX_OUTSTANDING

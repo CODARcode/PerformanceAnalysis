@@ -5,6 +5,7 @@
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
 #include<chimbuko/provdb/setup.hpp>
+#include<chimbuko/util/error.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -12,22 +13,33 @@ using namespace chimbuko;
 
 
 void AnomalousSendManager::purge(){
-  while(!outstanding.empty() && outstanding.front().completed()){ //requests completing in-order so we can stop when we encounter the first non-complete
-    outstanding.front().wait(); //simply cleans up resources, non-blocking because already complete
-    outstanding.pop();
+  auto it = outstanding.begin();
+  while(it != outstanding.end()){
+    if(it->completed()) 
+      it = outstanding.erase(it);
+    else 
+      ++it;
   }
+
+  int nremaining = outstanding.size();
+  int ncomplete_remaining = 0;
+  for(auto const &e: outstanding)
+    if(e.completed()) ++ncomplete_remaining;
+  
+  if(ncomplete_remaining > 0)
+    recoverable_error("After purging complete sends from the front of the queue, the queue still contains " + std::to_string(ncomplete_remaining) + "/" + std::to_string(nremaining) + " completed but unremoved ids");
 }
 
 sonata::AsyncRequest & AnomalousSendManager::getNewRequest(){
   purge();
-  outstanding.emplace();
+  outstanding.emplace_back();
   return outstanding.back();
 }
 
 void AnomalousSendManager::waitAll(){
   while(!outstanding.empty()){ //flush the queue
     outstanding.front().wait();
-    outstanding.pop();
+    outstanding.pop_front();
   }
 }  
 
