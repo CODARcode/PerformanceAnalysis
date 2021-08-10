@@ -87,10 +87,10 @@ namespace chimbuko{
     static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
 
     int m_rank; /**< MPI rank of current process */
+    std::string m_server_addr; /**< Address of the server */
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
-    thallium::remote_procedure *m_stop_server; /** RPC to shutdown server*/
 #ifdef ENABLE_MARGO_STATE_DUMP
     thallium::remote_procedure *m_margo_dump; /** RPC to request the server dump its state*/
 #endif    

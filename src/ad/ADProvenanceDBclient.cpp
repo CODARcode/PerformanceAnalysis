@@ -84,7 +84,7 @@ static void delete_rpc(thallium::remote_procedure* &rpc){
   delete rpc; rpc = nullptr;
 }
 
-ADProvenanceDBclient::ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_stop_server(nullptr), m_perform_handshake(true)
+ADProvenanceDBclient::ADProvenanceDBclient(int rank): m_is_connected(false), m_rank(rank), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true)
 #ifdef ENABLE_MARGO_STATE_DUMP
     , m_margo_dump(nullptr)
 #endif
@@ -107,7 +107,6 @@ void ADProvenanceDBclient::disconnect(){
       delete_rpc(m_client_hello);
       delete_rpc(m_client_goodbye);
     }
-    delete_rpc(m_stop_server);
 #ifdef ENABLE_MARGO_STATE_DUMP
     delete_rpc(m_margo_dump);
 #endif
@@ -168,10 +167,11 @@ void ADProvenanceDBclient::connect(const std::string &addr, const std::string &d
       m_client_hello->on(m_server)(m_rank);
     }      
 
-    m_stop_server = new thallium::remote_procedure(eng.define("stop_server").disable_response());
 #ifdef ENABLE_MARGO_STATE_DUMP
     m_margo_dump = new thallium::remote_procedure(eng.define("margo_dump").disable_response());
 #endif
+
+    m_server_addr = addr;
 
     m_is_connected = true;
     verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
@@ -417,7 +417,8 @@ std::unordered_map<std::string,std::string> ADProvenanceDBclient::execute(const 
 
 void ADProvenanceDBclient::stopServer() const{
   verboseStream << "ADProvenanceDBclient stopping server" << std::endl;
-  m_stop_server->on(m_server)();
+  auto &eng = ADProvenanceDBengine::getEngine();
+  eng.shutdown_remote_engine(eng.lookup(m_server_addr));
 }
 
 #ifdef ENABLE_MARGO_STATE_DUMP

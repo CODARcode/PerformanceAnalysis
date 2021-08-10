@@ -21,14 +21,18 @@ if [ -f "../bin/provdb_admin" ]; then
     port=1234
     shards=2
 
-    ../bin/provdb_admin ${ip}:${port} -autoshutdown true -nshards ${shards} -engine "${protocol}" &
+    ../bin/provdb_admin ${ip}:${port} -nshards ${shards} -engine "${protocol}" &
     admin=$!
     while [ ! -f provider.address.0 ]; do
-	echo "Waiting for provider address"
-	sleep 1;
+        echo "Waiting for provider address"
+        sleep 1;
     done
+    ../bin/provdb_commit . -freq_ms 0 -shutdown_server true &
+    commit=$!
 
     mpirun -n 3 --oversubscribe --allow-run-as-root ./provDBclientConnectDisconnect $(cat provider.address.0) ${shards}
+
+    wait $commit
 
     sleep 5
     if [[ $(ps | grep $admin) != "" ]]; then

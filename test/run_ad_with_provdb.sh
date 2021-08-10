@@ -25,6 +25,7 @@ if [ -f "../bin/provdb_admin" ]; then
 	echo "Waiting for provider address"
 	sleep 1;
     done
+    ../bin/provdb_commit . -freq_ms 0 -shutdown_server true &
 
     mpirun --oversubscribe --allow-run-as-root -n 4 ./mainADwithProvDB "." 1 1
 
@@ -38,6 +39,7 @@ if [ -f "../bin/provdb_admin" ]; then
 	echo "Waiting for provider address"
 	sleep 1;
     done
+    ../bin/provdb_commit . -freq_ms 0 -shutdown_server true &
 
     mpirun --oversubscribe --allow-run-as-root -n 4 ./mainADwithProvDB "." 2 1
 
@@ -59,6 +61,8 @@ if [ -f "../bin/provdb_admin" ]; then
 	echo "Waiting for provider address 1"
 	sleep 1;
     done
+    ../bin/provdb_commit . -freq_ms 0 -shutdown_server true -instance 0 -ninstances 2 &
+    ../bin/provdb_commit . -freq_ms 0 -shutdown_server true -instance 1 -ninstances 2 &
 
     mpirun --oversubscribe --allow-run-as-root -n 4 ./mainADwithProvDB "." 2 2
  

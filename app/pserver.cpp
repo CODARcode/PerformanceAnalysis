@@ -61,7 +61,7 @@ struct pserverArgs{
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr_dir(".")
+	       , provdb_addr_dir("")
 #endif
   {}
 
@@ -85,7 +85,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server (default \".\"). An empty string will disable the connection to the global DB.");
+      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 

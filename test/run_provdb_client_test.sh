@@ -23,7 +23,7 @@ if [ -f "../bin/provdb_admin" ]; then
     port=1234
     shards=1
 
-    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards} &
+    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -nshards ${shards} &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -32,7 +32,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address.0) ${shards}
 
-    kill $admin
+    ../bin/provdb_shutdown $(cat provider.address.0)
     while [[ $(ps $admin | wc -l) == 2 ]]; do
 	echo "Waiting for shutdown"
 	sleep 1
@@ -44,7 +44,7 @@ if [ -f "../bin/provdb_admin" ]; then
     rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=2
 
-    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards}  &
+    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -nshards ${shards}  &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -53,7 +53,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address.0) ${shards}
 
-    kill $admin
+    ../bin/provdb_shutdown $(cat provider.address.0)
     while [[ $(ps $admin | wc -l) == 2 ]]; do
 	echo "Waiting for shutdown"
 	sleep 1
@@ -64,7 +64,7 @@ if [ -f "../bin/provdb_admin" ]; then
     rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=1
 
-    ../bin/provdb_admin "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
+    ../bin/provdb_admin "" -engine "na+sm" -nshards ${shards} &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -73,7 +73,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ./mainProvDBclient $(cat provider.address.0) ${shards}
 
-    kill $admin
+    ../bin/provdb_shutdown $(cat provider.address.0)
 
 else 
     echo "Provenance DB was not built"

@@ -24,7 +24,7 @@ if [ -f "../bin/provdb_admin" ]; then
     port=1234
     shards=1
 
-    ../bin/provdb_admin ${ip}:${port}  -autoshutdown true -nshards 1 -engine "${protocol}" &
+    ../bin/provdb_admin ${ip}:${port}  -nshards 1 -engine "${protocol}" &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -33,6 +33,7 @@ if [ -f "../bin/provdb_admin" ]; then
 
     mpirun -n 2 --allow-run-as-root --oversubscribe ./mainProvDBpserverClient $(cat provider.address.0)
 
+    ../bin/provdb_shutdown $(cat provider.address.0)
     wait $admin
 else 
     echo "Provenance DB was not built"

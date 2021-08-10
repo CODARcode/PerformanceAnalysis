@@ -40,6 +40,12 @@ void termSignalHandler( int signum ) {
 }
 
 tl::mutex *mtx;
+
+//Cleanup the mutex
+static void cleanup(){
+  delete mtx;
+}
+
 std::set<int> connected; //which AD ranks are currently connected
 bool a_client_has_connected = false; //has an AD rank previously connected?
 
@@ -102,16 +108,6 @@ void connection_status(const tl::request& req) {
   req.respond(ss.str());
 }
 
-
-
-bool cmd_shutdown = false; //true if a client has requested that the server shut down
-
-void client_stop_rpc(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  cmd_shutdown = true;
-  PSprogressStream << "Received shutdown request from client" << std::endl;
-}
-
 margo_instance_id margo_id;
 
 #ifdef ENABLE_MARGO_STATE_DUMP
@@ -131,19 +127,16 @@ void margo_dump_rpc(const tl::request& req) {
 struct ProvdbArgs{
   std::string ip;
   std::string engine;
-  bool autoshutdown;
   int server_instance;
   int ninstances;
   int nshards;
-  int nthreads;
   std::string db_type;
-  unsigned long db_commit_freq;
   std::string db_write_dir;
   bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
   std::string db_margo_config;
   
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
+  ProvdbArgs(): engine("ofi+tcp"), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
 };
 
 
@@ -163,11 +156,8 @@ int main(int argc, char** argv) {
     commandLineParser<ProvdbArgs> parser;
     addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
     addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
-    addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
     addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-    addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
@@ -302,7 +292,6 @@ int main(int argc, char** argv) {
     engine.define("pserver_goodbye",pserver_goodbye).disable_response();
     engine.define("committer_hello",committer_hello).disable_response();
     engine.define("committer_goodbye",committer_goodbye).disable_response();
-    engine.define("stop_server",client_stop_rpc).disable_response();
     engine.define("connection_status", connection_status);
 #ifdef ENABLE_MARGO_STATE_DUMP
     engine.define("margo_dump", margo_dump_rpc).disable_response();
@@ -377,80 +366,26 @@ int main(int argc, char** argv) {
 	    glob_db->create("counter_stats");
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
-
-	  //Write address to file; do this after initializing collections so that the existence of the file can be used to signal readiness
-	  {	    
-	    std::ofstream f(setup.getInstanceAddressFilename(instance));
-	    f << addr;
-	  }
-
-	  //Setup a timer to periodically force a database commit
-	  typedef std::chrono::high_resolution_clock Clock;
-	  Clock::time_point commit_timer_start = Clock::now();
-
-	  //Spin quietly until SIGTERM sent
-	  signal(SIGTERM, termSignalHandler);
-	  PSprogressStream << "main thread waiting for completion" << std::endl;
-	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
-	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
-
-	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
-	    if(args.db_commit_freq > 0 && commit_timer_ms >= args.db_commit_freq){
-	      PSverboseStream << "committing database to disk" << std::endl;
-	      for(int s=0;s<nshard_instance;s++){		
-		PSverboseStream << "committing shard " << s + instance_shard_offset << std::endl;
-		db[s].commit();
-	      }
-	      if(instance_do_global_db){
-		PSverboseStream << "committing global db" << std::endl;
-		glob_db->commit();
-	      }
-	      commit_timer_start = Clock::now();
-	    }
-
-	    //If at least one client has previously connected but none are now connected, shutdown the server
-	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
-
-	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
-	    if(
-	       (args.autoshutdown || cmd_shutdown)  &&
-	       ( a_client_has_connected && connected.size() == 0 ) &&
-	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
-	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
-	       ){
-	      PSprogressStream << "detected all clients disconnected, shutting down" << std::endl;
-#ifdef ENABLE_MARGO_STATE_DUMP
-	      margo_dump("margo_dump_all_client_disconnected." + std::to_string(instance));
-#endif
-	      break;
-	    }
-	  }
 	}//client scope
 
-#if 0 
-	//*****This causes hangs on Summit and is not strictly necessary****
-	//If the pserver didn't connect (it is optional), delete the empty database
-	if(!pserver_has_connected){
-	  PSprogressStream << "destroying pserver database as it didn't connect (connection is optional)" << std::endl;
-	  admin.destroyDatabase(addr, glob_provider_idx, glob_db_name);
-	}
-#endif
-
 	PSprogressStream << "ending admin scope" << std::endl;
-#ifdef ENABLE_MARGO_STATE_DUMP
-	margo_dump("margo_dump_end_admin_scope." + std::to_string(instance));
-#endif
       }//admin scope
 
-      PSprogressStream << "ending provider scope" << std::endl;           
-#ifdef ENABLE_MARGO_STATE_DUMP
-      margo_dump("margo_dump_end_provide_scope." + std::to_string(instance));
-#endif
-    }//provider scope
+      //Write address to file; do this after initializing collections so that the existence of the file can be used to signal readiness
+      {	    
+	std::ofstream f(setup.getInstanceAddressFilename(instance));
+	f << addr;
+      }	
+      
+      //Put the main thread to sleep until it is finalized remotely, after which we are free to end the Provider instances
+      engine.enable_remote_shutdown();
+      engine.push_finalize_callback(cleanup); //deletes the mutex
 
-    PSprogressStream << "shutting down server engine" << std::endl;
-    delete mtx; //delete mutex prior to engine finalize
-    engine.finalize();
+      PSprogressStream << "main thread sleeping until shutdown" << std::endl;
+      engine.wait_for_finalize();
+      PSprogressStream << "main thread woke up, commencing shutdown" << std::endl;
+      PSprogressStream << "finished, exiting provider scope" << std::endl;           
+    }//provider scope
     PSprogressStream << "finished, exiting engine scope" << std::endl;
   }
   PSprogressStream << "finished, exiting main scope" << std::endl;
