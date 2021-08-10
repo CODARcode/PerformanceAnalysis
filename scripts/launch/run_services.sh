@@ -147,7 +147,7 @@ if (( ${use_provdb} == 1 )); then
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
 	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_writedir}" ${i} ${provdb_ninstances} ${provdb_nshards} ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer_${i}.log &
+	provdb_commit "${provdb_dir}" ${i} ${provdb_ninstances} ${provdb_nshards} ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer_${i}.log &
 	sleep 1
     done
     sleep 3

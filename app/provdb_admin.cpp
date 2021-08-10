@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
     //Get the new config
     std::string new_config = config_j.dump(4);
 
-    PSverboseStream << "New config\n" << new_config << std::endl;
+    PSprogressStream << "Margo config:\n" << new_config << std::endl;
 
     margo_init_info margo_args; memset(&margo_args, 0, sizeof(margo_init_info));
     margo_args.json_config   = new_config.c_str();
