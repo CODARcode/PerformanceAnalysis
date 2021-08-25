@@ -334,9 +334,10 @@ EventError ADEvent::addCounter(const Event_t& event){
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
 
-  if(enableVerboseLogging() && counterName == "Correlation ID")
+  if(enableVerboseLogging() && counterName == "Correlation ID"){
     verboseStream << "Found correlation ID " << event.counter_value() << std::endl;
-
+  }
+  
   return EventError::OK;
 }
 

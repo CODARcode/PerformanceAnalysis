@@ -201,9 +201,9 @@ int main(int argc, char ** argv){
   ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
   if(params.rank == progressHeadRank()) params.print();
 
-  if(enableVerboseLogging())
+  if(enableVerboseLogging()){
     headProgressStream(params.rank) << "Driver rank " << params.rank << ": Enabling verbose debug output" << std::endl;
-
+  }
 
   verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);

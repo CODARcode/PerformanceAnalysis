@@ -265,6 +265,8 @@ bool ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) cons
     data = m_counter_timestamps.data();
     count = m_counter_count;
     break;
+  case EventDataType::Unknown:
+    throw std::runtime_error("Unknown EventDataType");
   }
 
   std::unordered_map<unsigned long, unsigned long> thr_last_ts;

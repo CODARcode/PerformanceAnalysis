@@ -111,6 +111,8 @@ namespace chimbuko {
 	os << "COMM, "; break;
       case EventDataType::COUNT:
 	os << "COUNT, "; break;
+      case EventDataType::Unknown:
+	throw std::runtime_error("Unknown EventDataType");
       }
       os << id.toString() << ", " << ts << "}";
       return os.str();

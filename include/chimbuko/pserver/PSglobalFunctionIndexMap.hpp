@@ -52,8 +52,8 @@ namespace chimbuko{
     PSglobalFunctionIndexMap* m_idxmap;
   public:
     NetPayloadGlobalFunctionIndexMap(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
-    MessageKind kind() const{ return MessageKind::FUNCTION_INDEX; }
-    MessageType type() const{ return MessageType::REQ_GET; }
+    MessageKind kind() const override{ return MessageKind::FUNCTION_INDEX; }
+    MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override;
   };
 
@@ -64,8 +64,8 @@ namespace chimbuko{
     PSglobalFunctionIndexMap* m_idxmap;
   public:
     NetPayloadGlobalFunctionIndexMapBatched(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
-    MessageKind kind() const{ return MessageKind::FUNCTION_INDEX; }
-    MessageType type() const{ return MessageType::REQ_GET; }
+    MessageKind kind() const override{ return MessageKind::FUNCTION_INDEX; }
+    MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override;
   };
 

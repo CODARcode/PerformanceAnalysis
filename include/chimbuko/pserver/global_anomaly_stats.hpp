@@ -122,8 +122,8 @@ namespace chimbuko{
     GlobalAnomalyStats * m_global_anom_stats;
   public:
     NetPayloadUpdateAnomalyStats(GlobalAnomalyStats * global_anom_stats): m_global_anom_stats(global_anom_stats){}
-    MessageKind kind() const{ return MessageKind::ANOMALY_STATS; }
-    MessageType type() const{ return MessageType::REQ_ADD; }
+    MessageKind kind() const override{ return MessageKind::ANOMALY_STATS; }
+    MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
       if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");

@@ -63,7 +63,7 @@ namespace chimbuko {
     static std::string send_and_receive(const std::string &send_str);
     
   protected:
-    void init_thread_pool(int nt){}
+    void init_thread_pool(int nt) override{}
 
   };
 

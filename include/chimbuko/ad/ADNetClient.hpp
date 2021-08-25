@@ -302,12 +302,12 @@ namespace chimbuko{
     /**
      * @brief Connect to the parameter server
      */
-    void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
 
     /**
      * @brief Disconnect from the parameter server
      */
-    void disconnect_ps();
+    void disconnect_ps() override;
 
     using ADNetClient::send_and_receive;
 
@@ -331,7 +331,7 @@ namespace chimbuko{
     /**
      * @brief Set a timeout (in ms) on receiving a response message
      */
-    void setRecvTimeout(const int timeout_ms);
+    void setRecvTimeout(const int timeout_ms)  override;
 
     ~ADThreadNetClient();
   };

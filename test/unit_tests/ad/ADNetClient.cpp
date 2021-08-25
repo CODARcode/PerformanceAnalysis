@@ -125,8 +125,8 @@ TEST(ADNetClientTestConnectPS, ConnectsZMQnet){
 
 class NetPayloadBounceback: public NetPayloadBase{
 public:
-  MessageKind kind() const{ return MessageKind::CMD; }
-  MessageType type() const{ return MessageType::REQ_ECHO; }
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
     std::cout << "Bounce received: '" << message.buf() << "'" << std::endl;
@@ -207,8 +207,8 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
 
 class NetPayloadBouncebackDelayed: public NetPayloadBase{
 public:
-  MessageKind kind() const{ return MessageKind::CMD; }
-  MessageType type() const{ return MessageType::REQ_ECHO; }
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
