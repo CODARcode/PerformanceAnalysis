@@ -6,6 +6,7 @@
 #include <map>
 #include "chimbuko/util/RunMetric.hpp"
 #endif
+#include<string>
 
 namespace chimbuko{
 
