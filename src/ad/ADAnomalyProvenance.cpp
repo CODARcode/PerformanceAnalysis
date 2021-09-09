@@ -179,7 +179,8 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 					  {"io_step_tstart", m_io_step_tstart},
 					    {"io_step_tend", m_io_step_tend},
 					      {"outlier_score", m_call.get_outlier_score() },
-						{"hostname", getHostname() }
+						{"outlier_severity", m_call.get_runtime() },
+						  {"hostname", getHostname() }
   };
 }
 

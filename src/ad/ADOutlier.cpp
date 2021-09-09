@@ -148,9 +148,15 @@ double ADOutlierSSTD::computeScore(CallListIterator_t ev, const SstdParam &stats
   double mean = it->second.mean();
   double std_dev = it->second.stddev();
   if(std_dev == 0.) std_dev = 1e-10; //distribution throws an error if std.dev = 0
-  boost::math::normal_distribution<double> dist(mean, std_dev);
-  double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
-  double score = std::min(cdf_val, 1-cdf_val); //two-tailed
+
+  //boost::math::normal_distribution<double> dist(mean, std_dev);
+  //double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
+  //double score = std::min(cdf_val, 1-cdf_val); //two-tailed
+
+  //Using the CDF gives scores ~0 for basically any global outlier
+  //Instead we will use the difference in runtime compared to the avg in units of the standard deviation
+  double score = fabs( runtime - mean ) / std_dev;
+
   verboseStream << "ADOutlierSSTD::computeScore " << ev->get_funcname() << " runtime " << runtime << " mean " << mean << " std.dev " << std_dev << " -> score " << score << std::endl;
   return score;
 }

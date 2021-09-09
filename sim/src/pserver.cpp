@@ -14,7 +14,9 @@ void pserverSim::writeStreamingOutput() const{
   std::ostringstream fname; fname << "pserver_output_stats_" << iter << ".json";
   ++iter;
 
-  std::ofstream out(fname.str()); out << json_packet.dump();
+  if(json_packet.size() != 0){ //only write if there is anything to write! (it writes "null" to the file otherwise)
+    std::ofstream out(fname.str()); out << json_packet.dump(4);
+  }
 }
 
 pserverSim::pserverSim(): anomaly_stats_payload(&global_func_stats), counter_stats_payload(&global_counter_stats), m_ad_params(nullptr){

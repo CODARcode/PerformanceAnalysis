@@ -91,6 +91,15 @@ namespace chimbuko_sim{
 			       double outlier_score = 0.);
 
     /**
+     * @brief Modify the runtime of an existing execution
+     * @param exec_it The iterator to the execution (output of previous addExec)
+     * @param new_runtime The new function runtime
+     */
+    void updateRuntime(CallListIterator_t exec_it,
+		       unsigned long new_runtime);
+
+
+    /**
      * @brief Attach a counter to an execution t_delta us after the start of the execution
      * @param counter_name The counter name
      * @param value The counter value
