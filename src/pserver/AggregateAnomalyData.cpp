@@ -1,15 +1,15 @@
-#include "chimbuko/pserver/AnomalyStat.hpp"
+#include "chimbuko/pserver/AggregateAnomalyData.hpp"
 #include <sstream>
 
 using namespace chimbuko;
 
-AnomalyStat::AnomalyStat(bool do_accumulate)
+AggregateAnomalyData::AggregateAnomalyData(bool do_accumulate)
 {
     m_stats.set_do_accumulate(do_accumulate);
     m_data = new std::list<AnomalyData>();
 }
 
-AnomalyStat::~AnomalyStat()
+AggregateAnomalyData::~AggregateAnomalyData()
 {
     if (m_data) delete m_data;
 }
@@ -17,16 +17,16 @@ AnomalyStat::~AnomalyStat()
 
 
 
-AnomalyStat::AnomalyStat(const AnomalyStat &r): m_stats(r.m_stats), m_data(nullptr){
+AggregateAnomalyData::AggregateAnomalyData(const AggregateAnomalyData &r): m_stats(r.m_stats), m_data(nullptr){
   if(r.m_data)
     m_data = new std::list<AnomalyData>(*r.m_data); 
 }
 
-AnomalyStat::AnomalyStat(AnomalyStat &&r): m_stats(std::move(r.m_stats)), m_data(r.m_data){
+AggregateAnomalyData::AggregateAnomalyData(AggregateAnomalyData &&r): m_stats(std::move(r.m_stats)), m_data(r.m_data){
   r.m_data = nullptr;
 }
 
-AnomalyStat & AnomalyStat::operator=(const AnomalyStat &r){
+AggregateAnomalyData & AggregateAnomalyData::operator=(const AggregateAnomalyData &r){
   m_stats = r.m_stats;
   if(m_data){ delete m_data; m_data = nullptr; }
   if(r.m_data)
@@ -34,7 +34,7 @@ AnomalyStat & AnomalyStat::operator=(const AnomalyStat &r){
   return *this;
 }
 
-AnomalyStat & AnomalyStat::operator=(AnomalyStat &&r){
+AggregateAnomalyData & AggregateAnomalyData::operator=(AggregateAnomalyData &&r){
   m_stats = std::move(r.m_stats);
   m_data = r.m_data;
   r.m_data = nullptr;
@@ -42,7 +42,7 @@ AnomalyStat & AnomalyStat::operator=(AnomalyStat &&r){
 }
 
 
-void AnomalyStat::add(const AnomalyData& d, bool bStore)
+void AggregateAnomalyData::add(const AnomalyData& d, bool bStore)
 {
     std::lock_guard<std::mutex> _(m_mutex);
     m_stats.push(d.get_n_anomalies());
@@ -52,24 +52,24 @@ void AnomalyStat::add(const AnomalyData& d, bool bStore)
     }
 }
 
-RunStats AnomalyStat::get_stats() const{
+RunStats AggregateAnomalyData::get_stats() const{
     std::lock_guard<std::mutex> _(m_mutex);
     return m_stats;
 }
 
-std::list<AnomalyData>* AnomalyStat::get_data() const{
+std::list<AnomalyData>* AggregateAnomalyData::get_data() const{
     std::lock_guard<std::mutex> _(m_mutex);
     return m_data;
 }
 
-size_t AnomalyStat::get_n_data() const{
+size_t AggregateAnomalyData::get_n_data() const{
     std::lock_guard<std::mutex> _(m_mutex);
     if (m_data == nullptr) 
         return 0;
     return m_data->size();
 }
 
-std::pair<RunStats, std::list<AnomalyData>*> AnomalyStat::get()
+std::pair<RunStats, std::list<AnomalyData>*> AggregateAnomalyData::get()
 {
     std::lock_guard<std::mutex> _(m_mutex);
     std::list<AnomalyData>* data = nullptr;

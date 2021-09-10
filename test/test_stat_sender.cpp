@@ -1,5 +1,5 @@
-#include "chimbuko/pserver/global_anomaly_stats.hpp"
-#include "chimbuko/pserver/global_counter_stats.hpp"
+#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/pserver/GlobalCounterStats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include "chimbuko/ad/ADLocalCounterStatistics.hpp"

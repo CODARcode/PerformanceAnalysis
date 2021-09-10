@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/global_anomaly_stats.hpp>
+#include <chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/util/error.hpp>
@@ -10,12 +10,12 @@ void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
   auto pit = m_anomaly_stats.find(anom.get_app());
   if(pit == m_anomaly_stats.end()){
-    typename std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> >::value_type v(anom.get_app(), std::unordered_map<unsigned long, AnomalyStat>());
+    typename std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> >::value_type v(anom.get_app(), std::unordered_map<unsigned long, AggregateAnomalyData>());
     pit = m_anomaly_stats.insert(std::move(v)).first;
   }
   auto rit = pit->second.find(anom.get_rank());
   if(rit == pit->second.end()){
-    typename std::unordered_map<unsigned long, AnomalyStat>::value_type v(anom.get_rank(), AnomalyStat(true)); //enable accumulate
+    typename std::unordered_map<unsigned long, AggregateAnomalyData>::value_type v(anom.get_rank(), AggregateAnomalyData(true)); //enable accumulate
     rit = pit->second.insert(std::move(v)).first;
   }
   rit->second.add(anom);
@@ -25,7 +25,7 @@ void GlobalAnomalyStats::add_anomaly_data(const ADLocalFuncStatistics& data){
   update_anomaly_stat(data.getAnomalyData());
 
   for (auto const &fp: data.getFuncStats()) {
-    const ADLocalFuncStatistics::FuncStats &f = fp.second;
+    const FuncStats &f = fp.second;
     update_func_stat(f.pid, f.id, f.name, f.n_anomaly, f.inclusive, f.exclusive);
   }
 }  
@@ -33,7 +33,7 @@ void GlobalAnomalyStats::add_anomaly_data(const ADLocalFuncStatistics& data){
 
 
 
-const AnomalyStat & GlobalAnomalyStats::get_anomaly_stat_container(const int pid, const unsigned long rid) const{
+const AggregateAnomalyData & GlobalAnomalyStats::get_anomaly_stat_container(const int pid, const unsigned long rid) const{
   auto pit = m_anomaly_stats.find(pid);
   if(pit == m_anomaly_stats.end()) fatal_error("Could not find pid " + std::to_string(pid));
   auto rit = pit->second.find(rid);
@@ -56,7 +56,7 @@ std::string GlobalAnomalyStats::get_anomaly_stat(const int pid, const unsigned l
 }
 
 size_t GlobalAnomalyStats::get_n_anomaly_data(const int pid, const unsigned long rid) const{
-  AnomalyStat const* s;
+  AggregateAnomalyData const* s;
   try{
     s = &get_anomaly_stat_container(pid,rid);
   }catch(const std::exception &e){
@@ -68,8 +68,8 @@ size_t GlobalAnomalyStats::get_n_anomaly_data(const int pid, const unsigned long
 nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
 
-  //m_anomaly_stats is a map of app_idx/rank to AnomalyStat instances
-  //AnomalyStat contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
+  //m_anomaly_stats is a map of app_idx/rank to AggregateAnomalyData instances
+  //AggregateAnomalyData contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
   //that have been collected from that rank since the last flush
   for(auto & pp : m_anomaly_stats){
     int pid = pp.first; //pid
@@ -118,17 +118,7 @@ nlohmann::json GlobalAnomalyStats::collect_func_data() const{
     for(const auto &p : m_funcstats){
       unsigned long pid = p.first;
       for(const auto &f : p.second){
-	unsigned long fid = f.first;
-	const FuncStats &fstat = f.second;
-
-	nlohmann::json object;
-	object["app"] = pid;
-	object["fid"] = fid;
-	object["name"] = fstat.func;
-	object["stats"] = fstat.func_anomaly.get_json();
-	object["inclusive"] = fstat.inclusive.get_json();
-	object["exclusive"] = fstat.exclusive.get_json();
-	jsonObjects.push_back(object);
+	jsonObjects.push_back(f.second.get_json());
       }
     }
   }
@@ -150,30 +140,41 @@ nlohmann::json GlobalAnomalyStats::collect(){
 void GlobalAnomalyStats::update_func_stat(int pid, unsigned long fid, const std::string& name, 
 					  unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
   std::lock_guard<std::mutex> _(m_mutex_func);
-  //Determine if previously seen
-  bool first_encounter = false;
-  auto pit = m_funcstats.find(pid);
-  if(pit == m_funcstats.end() || pit->second.count(fid) == 0) 
-    first_encounter = true;
 
   //Get stats struct (will create entries if needed)
-  FuncStats &fstats = m_funcstats[pid][fid];   
+  auto pit = m_funcstats.find(pid);
+  if(pit == m_funcstats.end())
+    pit = m_funcstats.emplace(pid, std::unordered_map<unsigned long, AggregateFuncStats>()).first;
+  auto fit = pit->second.find(fid);
+  if(fit == pit->second.end())
+    fit = pit->second.emplace(fid, AggregateFuncStats(pid, fid, name)).first;
 
-  if(first_encounter){
-    fstats.func = name;
-    fstats.func_anomaly.set_do_accumulate(true);
-  }
-
-  fstats.func_anomaly.push(n_anomaly);
-  fstats.inclusive += inclusive;
-  fstats.exclusive += exclusive;
+  fit->second.add(n_anomaly,inclusive,exclusive);  
 }
 
-const GlobalAnomalyStats::FuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned long fid) const{
+const AggregateFuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned long fid) const{
   std::lock_guard<std::mutex> _(m_mutex_func);
   auto pit = m_funcstats.find(pid);
   if(pit == m_funcstats.end()) fatal_error("Could not find program index");
   auto fit = pit->second.find(fid);
   if(fit == pit->second.end()) fatal_error("Could not find function index");
   return fit->second;
+}
+
+
+void NetPayloadUpdateAnomalyStats::action(Message &response, const Message &message){
+  check(message);
+  if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
+  
+  ADLocalFuncStatistics loc;
+  loc.net_deserialize(message.buf());
+  
+  m_global_anom_stats->add_anomaly_data(loc);
+  response.set_msg("", false);
+}
+
+void PSstatSenderGlobalAnomalyStatsPayload::add_json(nlohmann::json &into) const{ 
+  nlohmann::json stats = m_stats->collect();
+  if(stats.size() > 0)
+    into["anomaly_stats"] = std::move(stats);
 }

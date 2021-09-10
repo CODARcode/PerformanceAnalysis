@@ -6,7 +6,8 @@
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include "chimbuko/pserver/AnomalyStat.hpp"
+#include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/pserver/AggregateFuncStats.hpp"
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
@@ -18,14 +19,6 @@ namespace chimbuko{
    */
   class GlobalAnomalyStats{
   public:
-    /**< A struct holding statistics information on a function*/
-    struct FuncStats{
-      std::string func; /**< Func name */
-      RunStats func_anomaly; /**< Statistics on number of anomalies*/
-      RunStats inclusive; /**< Statistics on number of function timings inclusive of children*/
-      RunStats exclusive; /**< Statistics on number of function timings exclusive of children*/
-    };
-
     GlobalAnomalyStats(){}
 
     /**
@@ -50,11 +43,11 @@ namespace chimbuko{
 
 
     /**
-     * @brief Const accessor to the AnomalyStat instance corresponding to a particular stat_id (throw error if not present)
+     * @brief Const accessor to the AggregateAnomalyData instance corresponding to a particular stat_id (throw error if not present)
      * @param pid program index
      * @param rid rank
      */    
-    const AnomalyStat & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
+    const AggregateAnomalyData & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
@@ -90,7 +83,7 @@ namespace chimbuko{
      * @param pid Program index
      * @param fid Function index
      */
-    const FuncStats & get_func_stats(int pid, unsigned long fid) const;
+    const AggregateFuncStats & get_func_stats(int pid, unsigned long fid) const;
 
     /**
      * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
@@ -109,8 +102,8 @@ namespace chimbuko{
     nlohmann::json collect();
 
   protected:    
-    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
-    std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
+    std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
+    std::unordered_map<unsigned long, std::unordered_map<unsigned long, AggregateFuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
     mutable std::mutex m_mutex_anom; /**< Mutex for global anomaly statistics */
     mutable std::mutex m_mutex_func; /**< Mutex for global function statistics */
   };
@@ -124,16 +117,7 @@ namespace chimbuko{
     NetPayloadUpdateAnomalyStats(GlobalAnomalyStats * global_anom_stats): m_global_anom_stats(global_anom_stats){}
     MessageKind kind() const override{ return MessageKind::ANOMALY_STATS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
-    void action(Message &response, const Message &message) override{
-      check(message);
-      if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-
-      ADLocalFuncStatistics loc;
-      loc.net_deserialize(message.buf());
-
-      m_global_anom_stats->add_anomaly_data(loc);
-      response.set_msg("", false);
-    }
+    void action(Message &response, const Message &message) override;
   };
 
 
@@ -145,11 +129,7 @@ namespace chimbuko{
     GlobalAnomalyStats *m_stats;
   public:
     PSstatSenderGlobalAnomalyStatsPayload(GlobalAnomalyStats *stats): m_stats(stats){}
-    void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->collect();
-      if(stats.size() > 0)
-	into["anomaly_stats"] = std::move(stats);
-    }
+    void add_json(nlohmann::json &into) const override;
   };
 
 

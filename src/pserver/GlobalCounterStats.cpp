@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/global_counter_stats.hpp>
+#include <chimbuko/pserver/GlobalCounterStats.hpp>
 
 using namespace chimbuko;
 

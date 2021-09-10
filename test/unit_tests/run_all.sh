@@ -27,7 +27,8 @@ set -o pipefail
 ./util/environment -hostname $(hostname)
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
-./pserver/global_anomaly_stats
+./pserver/AggregateFuncStats
+./pserver/GlobalAnomalyStats
 ./net/ZMQMENet
 ./net/ZMQNet
 ./net/LocalNet

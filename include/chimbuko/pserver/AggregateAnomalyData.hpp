@@ -6,17 +6,19 @@ namespace chimbuko {
 
   /**
    * @brief A class that contains statistics on the number of anomalies detected
+   *
+   * It contains the AnomalyData collected over IO steps for a given app/rank 
    */
-  class AnomalyStat {
+  class AggregateAnomalyData {
   public:
-    AnomalyStat(bool do_accumulate=false);
-    ~AnomalyStat();
+    AggregateAnomalyData(bool do_accumulate=false);
+    ~AggregateAnomalyData();
 
-    AnomalyStat(const AnomalyStat &r);
-    AnomalyStat(AnomalyStat &&r);
+    AggregateAnomalyData(const AggregateAnomalyData &r);
+    AggregateAnomalyData(AggregateAnomalyData &&r);
 
-    AnomalyStat & operator=(const AnomalyStat &r);
-    AnomalyStat & operator=(AnomalyStat &&r);
+    AggregateAnomalyData & operator=(const AggregateAnomalyData &r);
+    AggregateAnomalyData & operator=(AggregateAnomalyData &&r);
 
     /**
      * @brief Set the stats object to accumulate the sum total
