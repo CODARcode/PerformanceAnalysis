@@ -100,6 +100,16 @@ namespace chimbuko{
      * @return JSON object containing anomaly and function data
      */
     nlohmann::json collect();
+    
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const GlobalAnomalyStats &r) const{ return m_anomaly_stats == r.m_anomaly_stats && m_funcstats == r.m_funcstats; }
+
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const GlobalAnomalyStats &r) const{ return !( *this == r ); }
 
   protected:    
     std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */

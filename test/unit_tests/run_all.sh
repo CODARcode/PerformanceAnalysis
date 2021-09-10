@@ -18,6 +18,7 @@ set -o pipefail
 ./ad/ADAnomalyProvenance
 ./ad/utils
 ./ad/AnomalyData
+./ad/ADcombinedPSdata
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

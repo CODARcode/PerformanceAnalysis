@@ -237,7 +237,7 @@ EventError ADEvent::addFunc(const Event_t& event) {
       CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
       while (!(comm.empty() || comm.top().ts() < it->get_entry()) ) { //stop if we encounter a comms with a ts before this function's entry as these comms will belong to the parent
 	if(comm.top().ts() > event.ts()) reinsert.push_back(comm.top());
-	it->add_message(comm.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	else it->add_message(comm.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
 	comm.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
@@ -254,11 +254,13 @@ EventError ADEvent::addFunc(const Event_t& event) {
       CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
       while (!(count.empty() || count.top().get_ts() < it->get_entry()) ) { //stop if we encounter a counter with a ts before this function's entry as these counters will belong to the parent
 	if(count.top().get_ts() > event.ts()) reinsert.push_back(count.top());
-	bool accept = it->add_counter(count.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
-	if(!accept){
-	  std::stringstream ss;
-	  ss << "ExecData " << it->get_json().dump(4) << " rejected counter " << count.top().get_json().dump(4);
-	  recoverable_error(ss.str());
+	else{
+	  bool accept = it->add_counter(count.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	  if(!accept){
+	    std::stringstream ss;
+	    ss << "ExecData " << it->get_json().dump(4) << " rejected counter " << count.top().get_json().dump(4);
+	    recoverable_error(ss.str());
+	  }
 	}
 	count.pop();
       }

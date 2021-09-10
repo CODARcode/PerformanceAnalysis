@@ -460,6 +460,33 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
   }
 }
 
+void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
+				   const int step) const{
+  if(m_net_client && m_net_client->use_ps()){
+    PerfTimer timer;
+  
+    //Gather function profile and anomaly statistics
+    timer.start();
+    ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
+    prof_stats.gatherStatistics(m_event->getExecDataMap());
+    prof_stats.gatherAnomalies(anomalies);
+    m_perf.add("ad_gather_send_ps_data_gather_profile_stats_time_ms", timer.elapsed_ms());
+      
+    //Gather counter statistics
+    timer.start();
+    ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
+    count_stats.gatherStatistics(m_counter->getCountersByIndex());
+    m_perf.add("ad_gather_send_ps_data_gather_counter_stats_time_ms", timer.elapsed_ms());
+
+    //Send the data in a single communication
+    timer.start();
+    ADcombinedPSdata comb_stats(prof_stats, count_stats);
+    comb_stats.send(*m_net_client);
+    m_perf.add("ad_gather_send_ps_data_gather_send_all_stats_to_ps_time_ms", timer.elapsed_ms());
+  }
+}
+
+
 void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
@@ -504,7 +531,8 @@ void Chimbuko::run(unsigned long long& n_func_events,
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
     if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step
-							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step << " counter=" << n_counter_events_step << std::endl; }
+							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step 
+							  << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
 
     //Extract counters and put into counter manager
@@ -539,22 +567,10 @@ void Chimbuko::run(unsigned long long& n_func_events,
     sendNewMetadataToProvDB(step);
     m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
 
-    if(m_net_client && m_net_client->use_ps()){
-      //Gather function profile and anomaly statistics and send to the pserver
-      timer.start();
-      ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
-      prof_stats.gatherStatistics(m_event->getExecDataMap());
-      prof_stats.gatherAnomalies(anomalies);
-      prof_stats.updateGlobalStatistics(*m_net_client);
-      m_perf.add("ad_run_gather_update_profile_stats_time_ms", timer.elapsed_ms());
-
-      //Gather counter statistics and send to pserver
-      timer.start();
-      ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
-      count_stats.gatherStatistics(m_counter->getCountersByIndex());
-      count_stats.updateGlobalStatistics(*m_net_client);
-      m_perf.add("ad_run_gather_update_counter_stats_time_ms", timer.elapsed_ms());
-    }
+    //Gather and send statistics and data to the pserver
+    timer.start();
+    gatherAndSendPSdata(anomalies, step);
+    m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
 
     //Trim the call list
     timer.start();

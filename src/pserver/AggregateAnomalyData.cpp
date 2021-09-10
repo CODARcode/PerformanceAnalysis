@@ -80,3 +80,12 @@ std::pair<RunStats, std::list<AnomalyData>*> AggregateAnomalyData::get()
     }
     return std::make_pair(m_stats, data);
 }
+
+bool AggregateAnomalyData::operator==(const AggregateAnomalyData &r) const{ 
+  if(m_stats != r.m_stats) return false;
+  if( (m_data != nullptr && r.m_data == nullptr) ||
+      (m_data == nullptr && r.m_data != nullptr) )
+    return false;
+  if(*m_data != *r.m_data) return false;
+  return true;
+}

@@ -10,6 +10,7 @@
 #include "chimbuko/ad/ADNetClient.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include "chimbuko/ad/ADLocalCounterStatistics.hpp"
+#include "chimbuko/ad/ADcombinedPSdata.hpp"
 #include "chimbuko/ad/ADProvenanceDBclient.hpp"
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADglobalFunctionIndexMap.hpp"

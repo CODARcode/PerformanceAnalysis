@@ -31,7 +31,8 @@ enum MessageKind {
     PARAMETERS    = 2,
     ANOMALY_STATS = 3,
     COUNTER_STATS = 4,
-    FUNCTION_INDEX = 5
+    FUNCTION_INDEX = 5,
+    AD_PS_COMBINED_STATS = 6
 };
 
 enum MessageCmd {
@@ -204,6 +205,7 @@ public:
 	case 3: return "ANOMALY_STATS";
 	case 4: return "COUNTER_STATS";
 	case 5: return "FUNCTION_INDEX";
+	case 6: return "AD_PS_COMBINED_STATS";
 	default: return "UNKNOWN";
         }
     }

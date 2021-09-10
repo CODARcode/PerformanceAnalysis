@@ -69,6 +69,16 @@ namespace chimbuko {
      */
     size_t get_n_data() const;
 
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const AggregateAnomalyData &r) const;
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const AggregateAnomalyData &r) const{ return !( *this == r ); }
+
+
   private:
     mutable std::mutex               m_mutex;
     RunStats                 m_stats; /** Statistics on the number of anomalies collected per io step since start of run as well as count of total anomalies*/

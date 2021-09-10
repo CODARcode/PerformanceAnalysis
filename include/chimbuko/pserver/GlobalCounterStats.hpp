@@ -33,6 +33,17 @@ namespace chimbuko{
      */
     nlohmann::json get_json_state() const;
 
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const GlobalCounterStats &r) const{ return m_counter_stats == r.m_counter_stats; }
+
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const GlobalCounterStats &r) const{ return !( *this == r ); }
+
+
   protected:
     mutable std::mutex m_mutex;
     std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > m_counter_stats; /**< Map of program index and counter name to global statistics*/
@@ -47,15 +58,7 @@ namespace chimbuko{
     NetPayloadUpdateCounterStats(GlobalCounterStats * global_counter_stats): m_global_counter_stats(global_counter_stats){}
     MessageKind kind() const override{ return MessageKind::COUNTER_STATS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
-    void action(Message &response, const Message &message) override{
-      check(message);
-      if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
-
-      ADLocalCounterStatistics loc(0,0,nullptr);
-      loc.net_deserialize(message.buf());
-      m_global_counter_stats->add_counter_data(loc); //note, this uses a mutex lock internally
-      response.set_msg("", false);
-    }
+    void action(Message &response, const Message &message) override;
   };
 
   /**
@@ -66,11 +69,7 @@ namespace chimbuko{
     GlobalCounterStats *m_stats;
   public:
     PSstatSenderGlobalCounterStatsPayload(GlobalCounterStats *stats): m_stats(stats){}
-    void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->get_json_state(); //a JSON array
-      if(stats.size())
-	into["counter_stats"] = std::move(stats);
-    }
+    void add_json(nlohmann::json &into) const override;
   };
 
 

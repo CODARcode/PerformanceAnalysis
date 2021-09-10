@@ -140,6 +140,16 @@ namespace chimbuko{
      */
     int getIOstep() const{ return m_step; }
 
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const ADLocalCounterStatistics &r) const{ return m_program_idx == r.m_program_idx && m_step == r.m_step && m_stats == r.m_stats; }
+
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const ADLocalCounterStatistics &r) const{ return !( *this == r ); }
+
   protected:
     /**
      * @brief update (send) counter statistics gathered during this io step to the connected parameter server

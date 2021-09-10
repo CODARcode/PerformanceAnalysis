@@ -53,6 +53,19 @@ namespace chimbuko {
      */
     const RunStats & get_exclusive() const{ return m_exclusive; }
 
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const AggregateFuncStats &r) const{ return m_pid == r.m_pid && m_fid == r.m_fid && m_func == r.m_func &&
+	                                                       m_func_anomaly == r.m_func_anomaly && m_inclusive == r.m_inclusive && 
+	                                                       m_exclusive == r.m_exclusive; 
+    }
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const AggregateFuncStats &r) const{ return !( *this == r ); }
+
+
   private:
     int m_pid; /**< Program idx */
     int m_fid; /**< Function idx */
