@@ -23,6 +23,8 @@ namespace chimbuko{
 
     /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
+     *
+     * Thread safe
      */
     void add_anomaly_data(const ADLocalFuncStatistics& data);
 
@@ -31,6 +33,8 @@ namespace chimbuko{
      * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
      * @param pid program index
      * @param rid rank
+     *
+     * Thread safe
      */
     std::string get_anomaly_stat(const int pid, const unsigned long rid) const;
 
@@ -38,6 +42,8 @@ namespace chimbuko{
      * @brief Get the RunStats object corresponding to the anomaly statistics for a given program/rank (throw error if not present)
      * @param pid program index
      * @param rid rank
+     * 
+     * Thread safe
      */
     RunStats get_anomaly_stat_obj(const int pid, const unsigned long rid) const;
 
@@ -46,6 +52,8 @@ namespace chimbuko{
      * @brief Const accessor to the AggregateAnomalyData instance corresponding to a particular stat_id (throw error if not present)
      * @param pid program index
      * @param rid rank
+     *
+     * NOT thread safe
      */    
     const AggregateAnomalyData & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
 
@@ -53,12 +61,16 @@ namespace chimbuko{
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
      * @param pid program index
      * @param rid rank
+     *
+     * Thread safe
      */
     size_t get_n_anomaly_data(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Update internal data to include additional information
-     * @parag anom The anomaly data
+     * @param anom The anomaly data
+     *
+     * Thread safe
      */
     void update_anomaly_stat(const AnomalyData &anom);
 
@@ -70,6 +82,8 @@ namespace chimbuko{
      * @param n_anomaly The number of anomalies detected
      * @param inclusive Statistics on inclusive timings
      * @param exclusive Statistics on exclusive timings
+     *
+     * Thread safe
      */
     void update_func_stat(int pid,
 			  unsigned long fid, 
@@ -82,32 +96,44 @@ namespace chimbuko{
      * @brief Get the FuncStats object containing the profile information for the specified function
      * @param pid Program index
      * @param fid Function index
+     *
+     * NOT thread safe
      */
     const AggregateFuncStats & get_func_stats(int pid, unsigned long fid) const;
 
     /**
      * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
+     *
+     * Thread safe
      */
     nlohmann::json collect_stat_data();
 
     /**
      * @brief Collect aggregated function profile statistics into JSON object
+     *
+     * Thread safe
      */
     nlohmann::json collect_func_data() const;
     
     /**
      * @brief Collect anomaly statistics and function statistics. Flushes the m_anomaly_stats statistics
      * @return JSON object containing anomaly and function data
+     *
+     * Thread safe
      */
     nlohmann::json collect();
     
     /**
      * @brief Comparison operator
+     *
+     * NOT thread safe
      */
     bool operator==(const GlobalAnomalyStats &r) const{ return m_anomaly_stats == r.m_anomaly_stats && m_funcstats == r.m_funcstats; }
 
     /**
      * @brief Inequality operator
+     *
+     * NOT thread safe
      */
     bool operator!=(const GlobalAnomalyStats &r) const{ return !( *this == r ); }
 

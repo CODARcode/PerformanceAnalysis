@@ -482,9 +482,14 @@ public:
     unsigned long get_n_counter() const { return m_counters.size(); }
 
     /**
-     * @brief Return the outlier score assigned to the data point
+     * @brief Return the outlier score assigned to the data point, representing how unlikely an event is
      */
     double get_outlier_score() const{ return m_score; }
+
+    /**
+     * @brief Return the outlier severity, representing how important the outlier is
+     */  
+    double get_outlier_severity() const{ return (double)get_runtime(); }   
 
     /**
      * @brief Set the label

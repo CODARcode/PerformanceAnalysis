@@ -10,6 +10,7 @@
 #include <chimbuko/message.hpp>
 #include <zmq.h>
 #include <chimbuko/util/barrier.hpp>
+#include <chimbuko/util/RunStats.hpp>
 
 namespace chimbuko{
   /**
@@ -402,6 +403,23 @@ namespace chimbuko{
 
 
   };
+
+
+  bool compare(const RunStats &a, const RunStats &b, const double tol = 1e-12){
+    RunStats::RunStatsValues sa = a.get_stat_values(), sb = b.get_stat_values();
+    bool ret = true;
+#define COM(A) if(fabs( sa. A - sb. A ) > tol){ std::cout << #A << " " << sa. A << " " << sb. A << std::endl; ret = false; }
+    COM(count);
+    COM(minimum);
+    COM(maximum);
+    COM(accumulate);
+    COM(mean);
+    COM(stddev);
+    COM(skewness);
+    COM(kurtosis);
+    return ret;
+#undef COM
+  }
 
 
 }

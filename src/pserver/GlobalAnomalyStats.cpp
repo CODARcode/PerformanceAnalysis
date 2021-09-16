@@ -42,68 +42,44 @@ const AggregateAnomalyData & GlobalAnomalyStats::get_anomaly_stat_container(cons
 }
 
 RunStats GlobalAnomalyStats::get_anomaly_stat_obj(const int pid, const unsigned long rid) const{
+  std::lock_guard<std::mutex> _(m_mutex_anom);
   return get_anomaly_stat_container(pid, rid).get_stats();  
 }
 
 std::string GlobalAnomalyStats::get_anomaly_stat(const int pid, const unsigned long rid) const{
-  RunStats stat;
-  try{
-    stat = get_anomaly_stat_obj(pid,rid);
-  }catch(const std::exception &e){
-    return "";
-  }
-  return stat.get_json().dump();
+  std::lock_guard<std::mutex> _(m_mutex_anom);
+  auto pit = m_anomaly_stats.find(pid);
+  if(pit == m_anomaly_stats.end()) return "";
+  auto rit = pit->second.find(rid);
+  if(rit == pit->second.end()) return "";
+  return rit->second.get_stats().get_json().dump();
 }
 
 size_t GlobalAnomalyStats::get_n_anomaly_data(const int pid, const unsigned long rid) const{
-  AggregateAnomalyData const* s;
-  try{
-    s = &get_anomaly_stat_container(pid,rid);
-  }catch(const std::exception &e){
-    return 0;
-  }  
-  return s->get_n_data();
+  std::lock_guard<std::mutex> _(m_mutex_anom);
+  auto pit = m_anomaly_stats.find(pid);
+  if(pit == m_anomaly_stats.end()) return 0;
+  auto rit = pit->second.find(rid);
+  if(rit == pit->second.end()) return 0;
+  return rit->second.get_n_data();
 }
 
 nlohmann::json GlobalAnomalyStats::collect_stat_data(){
   nlohmann::json jsonObjects = nlohmann::json::array();
+  {
+    std::lock_guard<std::mutex> _(m_mutex_anom);
 
-  //m_anomaly_stats is a map of app_idx/rank to AggregateAnomalyData instances
-  //AggregateAnomalyData contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
-  //that have been collected from that rank since the last flush
-  for(auto & pp : m_anomaly_stats){
-    int pid = pp.first; //pid
-    for(auto & rp: pp.second){
-      unsigned long rid = rp.first; //rank
-      
-      auto stats = rp.second.get(); //returns a std::pair<RunStats, std::list<AnomalyData>*>,  and flushes the state of pair.second. 
-      //We now own the std::list<AnomalyData>* pointer and have to delete it
-      
-      if(stats.second){
-	//Decide whether to include the data for this pid/rid
-	//Do this only if any anomalies were seen since the last call
-	bool include = false;
-	for(const AnomalyData &adata: *stats.second){
-	  if(adata.get_n_anomalies() > 0){
-	    include = true;
-	    break;
-	  }
-	}
-
-	if(include){
-	  nlohmann::json object;
-	  object["key"] = stringize("%d:%d", pid,rid);
-	  object["stats"] = stats.first.get_json(); //statistics on anomalies to date for this pid/rid
-	  
-	  object["data"] = nlohmann::json::array();
-	  for (const AnomalyData &adata: *stats.second){
-	    //Don't include data for which there are no anomalies
-	    if(adata.get_n_anomalies()>0)
-	      object["data"].push_back(adata.get_json());
-	  }
-	  jsonObjects.push_back(object);
-	}
-	delete stats.second;
+    //m_anomaly_stats is a map of app_idx/rank to AggregateAnomalyData instances
+    //AggregateAnomalyData contains statistics on the number of anomalies found per io step and also a set of AnomalyData objects
+    //that have been collected from that rank since the last flush
+    for(auto & pp : m_anomaly_stats){
+      int pid = pp.first; //pid
+      for(auto & rp: pp.second){
+	unsigned long rid = rp.first; //rank
+	
+	nlohmann::json object = rp.second.get_json_and_flush(pid,rid);
+	if(!object.empty())
+	  jsonObjects.push_back(std::move(object));
       }
     }
   }
@@ -153,7 +129,6 @@ void GlobalAnomalyStats::update_func_stat(int pid, unsigned long fid, const std:
 }
 
 const AggregateFuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned long fid) const{
-  std::lock_guard<std::mutex> _(m_mutex_func);
   auto pit = m_funcstats.find(pid);
   if(pit == m_funcstats.end()) fatal_error("Could not find program index");
   auto fit = pit->second.find(fid);

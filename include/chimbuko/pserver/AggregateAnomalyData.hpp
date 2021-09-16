@@ -65,6 +65,13 @@ namespace chimbuko {
     std::list<AnomalyData>* get_data() const;
 
     /**
+     * @brief Get the current statistics in JSON format and flush the list of AnomalyData collected since previous call to get()
+     * @param pid The program index
+     * @param rid The rank index
+     */
+    nlohmann::json get_json_and_flush(int pid, int rid);
+
+    /**
      * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
      */
     size_t get_n_data() const;

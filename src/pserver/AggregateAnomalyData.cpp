@@ -1,4 +1,5 @@
 #include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/util/string.hpp"
 #include <sstream>
 
 using namespace chimbuko;
@@ -88,4 +89,37 @@ bool AggregateAnomalyData::operator==(const AggregateAnomalyData &r) const{
     return false;
   if(*m_data != *r.m_data) return false;
   return true;
+}
+
+nlohmann::json AggregateAnomalyData::get_json_and_flush(int pid, int rid){
+  auto stats = this->get(); //returns a std::pair<RunStats, std::list<AnomalyData>*>,  and flushes the state of pair.second. 
+  //We now own the std::list<AnomalyData>* pointer and have to delete it
+      
+  nlohmann::json object;
+
+  if(stats.second){
+    //Decide whether to include the data for this pid/rid
+    //Do this only if any anomalies were seen since the last call
+    bool include = false;
+    for(const AnomalyData &adata: *stats.second){
+      if(adata.get_n_anomalies() > 0){
+	include = true;
+	break;
+      }
+    }
+
+    if(include){
+      object["key"] = stringize("%d:%d", pid,rid);
+      object["stats"] = stats.first.get_json(); //statistics on anomalies to date for this pid/rid
+      
+      object["data"] = nlohmann::json::array();
+      for (const AnomalyData &adata: *stats.second){
+	//Don't include data for which there are no anomalies
+	if(adata.get_n_anomalies()>0)
+	  object["data"].push_back(adata.get_json());
+      }
+    }
+    delete stats.second;
+  }
+  return object;
 }
