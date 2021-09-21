@@ -32,7 +32,8 @@ enum MessageKind {
     ANOMALY_STATS = 3,
     COUNTER_STATS = 4,
     FUNCTION_INDEX = 5,
-    AD_PS_COMBINED_STATS = 6
+    ANOMALY_METRICS = 6,
+    AD_PS_COMBINED_STATS = 7
 };
 
 enum MessageCmd {
@@ -196,19 +197,7 @@ public:
     /**
      * @brief Get the message kind in string form
      */
-    std::string kind_str() const {
-        switch(m_head.kind())
-        {
-	case 0: return "DEFAULT";
-	case 1: return "CMD";
-	case 2: return "PARAMETERS";
-	case 3: return "ANOMALY_STATS";
-	case 4: return "COUNTER_STATS";
-	case 5: return "FUNCTION_INDEX";
-	case 6: return "AD_PS_COMBINED_STATS";
-	default: return "UNKNOWN";
-        }
-    }
+    std::string kind_str() const;
 
    /**
     * @brief Get the message size in bytes

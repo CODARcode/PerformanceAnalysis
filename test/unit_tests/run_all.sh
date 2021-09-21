@@ -19,6 +19,8 @@ set -o pipefail
 ./ad/utils
 ./ad/AnomalyData
 ./ad/ADcombinedPSdata
+./ad/FuncAnomalyMetrics
+./ad/ADLocalAnomalyMetrics
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats
@@ -30,6 +32,8 @@ set -o pipefail
 ./pserver/PSglobalFunctionIndexMap
 ./pserver/AggregateFuncStats
 ./pserver/GlobalAnomalyStats
+./pserver/AggregateFuncAnomalyMetrics
+./pserver/GlobalAnomalyMetrics
 ./net/ZMQMENet
 ./net/ZMQNet
 ./net/LocalNet
