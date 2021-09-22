@@ -2,6 +2,7 @@
 #include <chimbuko_config.h>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/ad/ADLocalCounterStatistics.hpp>
+#include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
 
 namespace chimbuko{
   /** 
@@ -9,8 +10,11 @@ namespace chimbuko{
    */
   class ADcombinedPSdata{
   public:
-    ADcombinedPSdata(ADLocalFuncStatistics &func_stats, ADLocalCounterStatistics &counter_stats, PerfStats* perf=nullptr): 
-      m_func_stats(func_stats), m_counter_stats(counter_stats), m_perf(perf){}
+    ADcombinedPSdata(ADLocalFuncStatistics &func_stats, 
+		     ADLocalCounterStatistics &counter_stats, 
+		     ADLocalAnomalyMetrics &anom_metrics,
+		     PerfStats* perf=nullptr): 
+      m_func_stats(func_stats), m_counter_stats(counter_stats), m_anom_metrics(anom_metrics), m_perf(perf){}
     
     ADLocalCounterStatistics &get_counter_stats(){ return m_counter_stats; }
     const ADLocalCounterStatistics &get_counter_stats() const{ return m_counter_stats; }
@@ -18,19 +22,24 @@ namespace chimbuko{
     ADLocalFuncStatistics &get_func_stats(){ return m_func_stats; }
     const ADLocalFuncStatistics &get_func_stats() const{ return m_func_stats; }
 
+    ADLocalAnomalyMetrics &get_anom_metrics(){ return m_anom_metrics; }
+    const ADLocalAnomalyMetrics &get_anom_metrics() const{ return m_anom_metrics; }
+
+
     /**
      * @brief The State object is what is serialized for the communication
      */
     struct State{
       ADLocalFuncStatistics::State func_stats_state;
       ADLocalCounterStatistics::State counter_stats_state;
+      ADLocalAnomalyMetrics::State anom_metrics_state;
 
       /**
        * @brief Serialize using cereal
        */
       template<class Archive>
       void serialize(Archive & archive){
-	archive(func_stats_state , counter_stats_state);
+	archive(func_stats_state , counter_stats_state, anom_metrics_state);
       }
 
       /**
@@ -80,6 +89,7 @@ namespace chimbuko{
   private:
     ADLocalFuncStatistics &m_func_stats;
     ADLocalCounterStatistics &m_counter_stats;
+    ADLocalAnomalyMetrics &m_anom_metrics;
     PerfStats* m_perf;
   };
 

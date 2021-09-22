@@ -12,12 +12,13 @@ struct TestSetup{
 
   ADLocalFuncStatistics lclfstats;
   ADLocalCounterStatistics lclcstats;
+  ADLocalAnomalyMetrics lclmetrics;
   ADcombinedPSdata comb_send;
 
   TestSetup(): pid(0),rid(1),step(100),
 	       lclfstats(pid,rid,step),
 	       lclcstats(pid,step,nullptr),
-	       comb_send(lclfstats, lclcstats){
+	       comb_send(lclfstats, lclcstats, lclmetrics){
 
     AnomalyData adata(pid,rid,step,0,100,55);
     FuncStats fstats(pid, 22, "myfunc");
@@ -39,6 +40,23 @@ struct TestSetup{
     cstate.counters[0].stats = cstats.get_state();
   
     lclcstats.set_state(cstate);
+
+    ADLocalAnomalyMetrics::State mstate;
+    mstate.app = pid;
+    mstate.rank = rid;
+    mstate.step = step;
+    mstate.first_event_ts = 1000;
+    mstate.last_event_ts = 2000;
+    
+    FuncAnomalyMetrics::State mfstate;
+    mfstate.score = cstats.get_state();
+    mfstate.severity = cstats.get_state();
+    mfstate.count = 100;
+    mfstate.fid = 22;
+    mfstate.func = "myfunc";
+    mstate.func_anom_metrics[22] = std::move(mfstate);
+    
+    lclmetrics.set_state(mstate);
   }
 
 };
@@ -53,12 +71,14 @@ TEST(ADcombinedPSdataTest, Serialization){
   //Unserialize into target objects
   ADLocalFuncStatistics rcvfstats(0,0,0);
   ADLocalCounterStatistics rcvcstats(0,0,nullptr);
-  
-  ADcombinedPSdata comb_recv(rcvfstats, rcvcstats);
+  ADLocalAnomalyMetrics rcvmetrics;
+
+  ADcombinedPSdata comb_recv(rcvfstats, rcvcstats, rcvmetrics);
   comb_recv.net_deserialize(msg);
 
   EXPECT_EQ(rcvfstats, setup.lclfstats);
   EXPECT_EQ(rcvcstats, setup.lclcstats);
+  EXPECT_EQ(rcvmetrics, setup.lclmetrics);
 }
 
 TEST(ADcombinedPSdataTest, NetSendRecv){
@@ -68,8 +88,9 @@ TEST(ADcombinedPSdataTest, NetSendRecv){
 
   GlobalAnomalyStats astats;
   GlobalCounterStats cstats;
+  GlobalAnomalyMetrics mstats;
 
-  net.add_payload(new NetPayloadRecvCombinedADdata(&astats, &cstats));
+  net.add_payload(new NetPayloadRecvCombinedADdata(&astats, &cstats, &mstats));
 
   ADLocalNetClient net_client;
   net_client.connect_ps(0,0,"");
@@ -85,7 +106,11 @@ TEST(ADcombinedPSdataTest, NetSendRecv){
   GlobalCounterStats cstats_expect;
   cstats_expect.add_counter_data(setup.lclcstats);
   
+  GlobalAnomalyMetrics mstats_expect;
+  mstats_expect.add(setup.lclmetrics);
+
   EXPECT_EQ(astats, astats_expect);
   EXPECT_EQ(cstats, cstats_expect);
+  EXPECT_EQ(mstats, mstats_expect);
 }
   

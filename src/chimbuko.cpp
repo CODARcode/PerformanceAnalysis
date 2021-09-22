@@ -461,7 +461,9 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
 }
 
 void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
-				   const int step) const{
+				   const int step,
+				   const unsigned long first_event_ts,
+				   const unsigned long last_event_ts) const{
   if(m_net_client && m_net_client->use_ps()){
     PerfTimer timer;
   
@@ -477,10 +479,15 @@ void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
     ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
     count_stats.gatherStatistics(m_counter->getCountersByIndex());
     m_perf.add("ad_gather_send_ps_data_gather_counter_stats_time_ms", timer.elapsed_ms());
+    
+    //Gather anomaly metrics
+    timer.start();
+    ADLocalAnomalyMetrics metrics(m_params.program_idx, m_params.rank, step, first_event_ts, last_event_ts, anomalies);
+    m_perf.add("ad_gather_send_ps_data_gather_metrics_time_ms", timer.elapsed_ms());
 
     //Send the data in a single communication
     timer.start();
-    ADcombinedPSdata comb_stats(prof_stats, count_stats);
+    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics);
     comb_stats.send(*m_net_client);
     m_perf.add("ad_gather_send_ps_data_gather_send_all_stats_to_ps_time_ms", timer.elapsed_ms());
   }
@@ -569,7 +576,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     //Gather and send statistics and data to the pserver
     timer.start();
-    gatherAndSendPSdata(anomalies, step);
+    gatherAndSendPSdata(anomalies, step, first_event_ts, last_event_ts);
     m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
 
     //Trim the call list

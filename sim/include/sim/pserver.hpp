@@ -3,16 +3,21 @@
 #include<chimbuko/param.hpp>
 #include<chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include<chimbuko/pserver/GlobalCounterStats.hpp>
+#include<chimbuko/pserver/GlobalAnomalyMetrics.hpp>
 
 namespace chimbuko_sim{
   using namespace chimbuko;
-
-  //An object that represents the pserver for the purposes of aggregating data over AD instances and writing streaming output to disk
+  
+  /**
+   * @brief An object that represents the pserver for the purposes of aggregating data over AD instances and writing streaming output to disk
+   */
   class pserverSim{
-    GlobalAnomalyStats global_func_stats; //global anomaly statistics
-    GlobalCounterStats global_counter_stats; //global counter statistics
+    GlobalAnomalyStats global_func_stats; /**< global anomaly statistics */
+    GlobalCounterStats global_counter_stats; /**< global counter statistics */
+    GlobalAnomalyMetrics global_anomaly_metrics; /**< global anomaly metrics */
     PSstatSenderGlobalAnomalyStatsPayload anomaly_stats_payload;
     PSstatSenderGlobalCounterStatsPayload counter_stats_payload;
+    PSstatSenderGlobalAnomalyMetricsPayload anomaly_metrics_payload;
     LocalNet m_net; /**< The net server */
     ParamInterface* m_ad_params; /**< If using an AD algorithm to analyze the trace, these are the global parameters*/
   public:
@@ -36,6 +41,13 @@ namespace chimbuko_sim{
      */
     void addCounterData(const ADLocalCounterStatistics &loc){
       global_counter_stats.add_counter_data(loc);
+    }
+
+    /**
+     * @brief Stand-in for the anomaly metrics comms from AD -> pserver
+     */
+    void addAnomalyMetrics(const ADLocalAnomalyMetrics &loc){
+      global_anomaly_metrics.add(loc);
     }
     
     /**

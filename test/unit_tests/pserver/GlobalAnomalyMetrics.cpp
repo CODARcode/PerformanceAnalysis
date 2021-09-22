@@ -64,7 +64,6 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
   EXPECT_EQ( rec_fit->second.get_first_io_step(), step1 );
   EXPECT_EQ( rec_fit->second.get_last_io_step(), step1 );
 
-
   auto run_pit = glb.getToDateMetrics().find(pid);
   ASSERT_NE(run_pit, glb.getToDateMetrics().end());
   
@@ -78,18 +77,23 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
   EXPECT_EQ( run_fit->second.get_first_io_step(), step1 );
   EXPECT_EQ( run_fit->second.get_last_io_step(), step1 );
 
+
   //Test the net-sent version agrees
   EXPECT_EQ(glb, glb_net);
 
   //Get json and flush
   nlohmann::json json1 = glb.get_json();
   nlohmann::json json1_net = glb_net.get_json();
-  EXPECT_EQ(json1, json1_net);
 
+  EXPECT_EQ(json1.size(), json1_net.size());
+  for(int i=0;i<json1.size();i++){
+    EXPECT_EQ(json1[i]["all_data"].dump(4), json1_net[i]["all_data"].dump(4));
+    EXPECT_EQ(json1[i]["new_data"].dump(4), json1_net[i]["new_data"].dump(4));
+  }
+    
   //Check flush
   EXPECT_EQ( glb.getRecentMetrics().size(), 0);
   EXPECT_NE( glb.getToDateMetrics().size(), 0);
-
 
   //Add second step
   {

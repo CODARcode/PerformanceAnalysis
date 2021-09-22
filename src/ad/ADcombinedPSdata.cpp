@@ -16,12 +16,14 @@ ADcombinedPSdata::State ADcombinedPSdata::get_state() const{
   State state;
   state.func_stats_state = m_func_stats.get_state();
   state.counter_stats_state = m_counter_stats.get_state();
+  state.anom_metrics_state = m_anom_metrics.get_state();
   return state;
 }
 
 void ADcombinedPSdata::set_state(const ADcombinedPSdata::State &s){
   m_func_stats.set_state(s.func_stats_state);
   m_counter_stats.set_state(s.counter_stats_state);
+  m_anom_metrics.set_state(s.anom_metrics_state);
 }
 
 
@@ -43,7 +45,8 @@ std::pair<size_t, size_t> ADcombinedPSdata::send(ADNetClient &net_client) const{
     return std::make_pair(0, 0);
 
   int step = m_func_stats.getAnomalyData().get_step();
-  if(m_counter_stats.getIOstep() != step) fatal_error("Step value mismatch between members");
+  if(m_counter_stats.getIOstep() != step) fatal_error("Step value mismatch between counter stats and func anomaly stats");
+  if(m_anom_metrics.get_step() != step) fatal_error("Step value mismatch between anomaly metrics and func anomaly stats");
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, step);

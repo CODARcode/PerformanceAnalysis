@@ -292,6 +292,9 @@ void ADsim::step(const unsigned long step){
     prof_stats.gatherStatistics(&this_step_func_execs); //takes map of fid -> vector of ExecData iterators
     prof_stats.gatherAnomalies(anom);
     getPserver().addAnomalyData(prof_stats);
+
+    ADLocalAnomalyMetrics metrics(m_pid, m_rid, step, step_start_time, step_end_time, anom);
+    getPserver().addAnomalyMetrics(metrics);
   }
 }
 

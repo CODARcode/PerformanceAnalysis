@@ -45,6 +45,8 @@ nlohmann::json GlobalAnomalyMetrics::get_json(){
   
   nlohmann::json out = nlohmann::json::array();
 
+  static size_t _id = 0;
+
   for(auto const &pelem : m_anomaly_metrics_recent){
     for(auto const &relem : pelem.second){
       for(auto const &felem : relem.second){
@@ -66,6 +68,7 @@ nlohmann::json GlobalAnomalyMetrics::get_json(){
 	elem["fname"] = felem.second.get_func();
 	elem["new_data"] = felem.second.get_json();
 	elem["all_data"] = full_fit->second.get_json();
+	elem["_id"] = _id++;
 
 	out.push_back(std::move(elem));
       }
