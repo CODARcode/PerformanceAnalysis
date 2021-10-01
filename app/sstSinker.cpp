@@ -3,6 +3,7 @@
 #include <chrono>
 #include "chimbuko/util/commandLineParser.hpp"
 #include "chimbuko/util/string.hpp"
+#include "chimbuko/util/error.hpp"
 
 using namespace chimbuko;
 using namespace std::chrono;
@@ -10,9 +11,30 @@ using namespace std::chrono;
 struct SinkerArgs{
   int timeout;
   int beginstep_timeout;
-
-  SinkerArgs(): timeout(60), beginstep_timeout(30){}
+  bool dump_events;
+  
+  SinkerArgs(): timeout(60), beginstep_timeout(30), dump_events(false){}
 };
+
+void dumpEvents(std::ostream &os, const std::vector<Event_t> &events, ADParser* parser){
+  const std::unordered_map<int, std::string> &func_map = *parser->getFuncMap();
+  const std::unordered_map<int, std::string> &counter_map = *parser->getCounterMap();
+  const std::unordered_map<int, std::string> &event_type_map = *parser->getEventType();
+  
+  for(const Event_t &e: events){
+    if(e.type() == EventDataType::FUNC){
+      auto eit = event_type_map.find(e.eid()); if(eit == event_type_map.end()) fatal_error("Could not find event type in map!");
+      const std::string &etype = eit->second;
+      auto fit = func_map.find(e.fid());  if(fit == func_map.end()) fatal_error("Could not find fid in map!");
+      os << e.tid() << " " << e.ts() << " FUNC " << etype << " " << fit->second << std::endl;
+    }else if(e.type() == EventDataType::COUNT){
+      auto cit = counter_map.find(e.counter_id());  if(cit == counter_map.end()) fatal_error("Could not find counter id in map!");
+      os << e.tid() << " " << e.ts() << " COUNT " << cit->second << " " << e.counter_value() << std::endl;
+    }else if(e.type() == EventDataType::COMM){
+      os << e.tid() << " " << e.ts() << " COMM " << e.partner() << " " << e.bytes() << std::endl;
+    }
+  }
+}
 
 
 int main(int argc, char ** argv){
@@ -28,9 +50,10 @@ int main(int argc, char ** argv){
       commandLineParser<SinkerArgs> cmdline;
       addOptionalCommandLineArg(cmdline, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
       addOptionalCommandLineArg(cmdline, beginstep_timeout, "Specify the SST beginStep timeout in seconds (Default 30s)");
-
+      addOptionalCommandLineArg(cmdline, dump_events, "Request that the parsed events be dumped to a file \"${BPFILENAME}.dump\". Requires \"fetch\" to be true. (Default false)");
+      
       if(argc < 5 || (argc == 2 && std::string(argv[1]) == "-help")){
-	std::cout << "Usage: <exe> <engine type (BPFile, SST)> <bp directory> <bpfile prefix (eg tau-metrics-nwchem)> <fetch>\n"
+	std::cout << "Usage: <exe> <engine type (BPFile, SST)> <bp directory> <bpfile prefix (eg tau-metrics-nwchem)> <fetch> <options>\n"
 		  << "Where \"fetch\" indicates whether the data is actually transferred or we just iterate over the IO steps\n"
 		  << "Options:" << std::endl;
 	cmdline.help(std::cout);
@@ -46,6 +69,8 @@ int main(int argc, char ** argv){
       SinkerArgs args;
       cmdline.parse(args, argc-5, (const char**)(argv+5) );
 
+      if(args.dump_events && !fetch_data) fatal_error("dump_events option requires fetch=1");
+      
       if (world_rank == 0) {
 	std::cout << "\n"
 		  << "rank       : " << world_rank << "\n"
@@ -79,6 +104,10 @@ int main(int argc, char ** argv){
 
       parser->setBeginStepTimeout(args.beginstep_timeout);
 
+      //Initialize dump output
+      std::ofstream *dump = nullptr;
+      if(args.dump_events) dump = new std::ofstream(inputFile + ".dump");
+      
       // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
@@ -102,6 +131,9 @@ int main(int argc, char ** argv){
 	    parser->fetchFuncData();
 	    parser->fetchCommData();
 	    parser->fetchCounterData();
+
+	    if(args.dump_events)
+	      dumpEvents(*dump, parser->getEvents(),parser);
 	  }
 
 	  frames++;
@@ -140,6 +172,7 @@ int main(int argc, char ** argv){
       // Finalize
       // -----------------------------------------------------------------------
       delete parser;
+      if(dump) delete dump;
     }
   catch (std::invalid_argument &e)
     {
