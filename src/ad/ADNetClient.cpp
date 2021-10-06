@@ -277,16 +277,18 @@ struct ClientActionConnect: public ADThreadNetClient::ClientAction{
   ClientActionConnect(int rank, int srank, const std::string &sname): rank(rank), srank(srank), sname(sname){}
 
   void perform(ADNetClient &client){
-    std::cout << "Connecting to client" << std::endl;
+    verboseStream << "ADThreadNetClient rank " << rank << " connecting to PS" << std::endl;
     client.connect_ps(rank, srank, sname);
+    verboseStream << "ADThreadNetClient rank " << rank << " successfully connected to PS" << std::endl;
   }
   bool do_delete() const{ return true; }
 };
 
 struct ClientActionDisconnect: public ADThreadNetClient::ClientAction{
   void perform(ADNetClient &client){
-    std::cout << "Disconnecting from client" << std::endl;
+    verboseStream << "ADThreadNetClient disconnecting from PS" << std::endl;
     client.disconnect_ps();
+    verboseStream << "ADThreadNetClient successfully disconnected from PS" << std::endl;
   }
   bool do_delete() const{ return true; }
   bool shutdown_worker() const{ return true; }

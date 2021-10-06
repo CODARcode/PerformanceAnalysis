@@ -300,9 +300,12 @@ int main(int argc, char** argv) {
 	  //Spin quietly until SIGTERM sent
 	  signal(SIGTERM, termSignalHandler);
 	  progressStream << "ProvDB Admin: main thread waiting for completion" << std::endl;
+
+	  size_t iter = 0;
 	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
 	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
-
+	    if(iter % 20 == 0){ verboseStream << "ProvDB Admin heartbeat" << std::endl; }
+	    
 	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
 	    if(args.db_commit_freq > 0 && commit_timer_ms >= args.db_commit_freq){
 	      verboseStream << "ProvDB Admin: committing database to disk" << std::endl;
@@ -331,7 +334,9 @@ int main(int argc, char** argv) {
 #endif
 	      break;
 	    }
-	  }
+
+	    ++iter;
+	  }//wait loop
 	}//client scope
 
 	//If the pserver didn't connect (it is optional), delete the empty database
