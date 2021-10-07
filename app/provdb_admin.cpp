@@ -135,7 +135,6 @@ struct ProvdbArgs{
   int server_instance;
   int ninstances;
   int nshards;
-  int nthreads;
   std::string db_type;
   unsigned long db_commit_freq;
   std::string db_write_dir;
@@ -143,7 +142,7 @@ struct ProvdbArgs{
   std::string db_base_config;
   std::string db_margo_config;
   
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), nthreads(1), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
 };
 
 
@@ -165,7 +164,6 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
     addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
     addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-    addOptionalCommandLineArg(parser, nthreads, "Specify the number of RPC handler threads (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
     addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");

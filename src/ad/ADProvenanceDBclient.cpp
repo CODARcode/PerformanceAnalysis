@@ -172,7 +172,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const std::string &d
 #ifdef ENABLE_MARGO_STATE_DUMP
     m_margo_dump = new thallium::remote_procedure(eng.define("margo_dump").disable_response());
 #endif
-
+    m_server_addr = addr;
     m_is_connected = true;
     verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
 

@@ -5,6 +5,7 @@
 #include<chimbuko/ad/ADProvenanceDBengine.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
+#include<chimbuko/util/commandLineParser.hpp>
 #include <thallium/serialization/stl/string.hpp>
 #include<chimbuko/provdb/setup.hpp>
 
@@ -34,37 +35,53 @@ bool exit_check(thallium::endpoint &server,
   assert(!of.fail());
 
   CprogressStream << "determined status: clients connected=" << connected << " (a client has connected ? " << a_client_has_connected << ") "
-		 << "pserver connected=" << pserver_connected << " (pserver has connected ? " << pserver_has_connected << ")" << std::endl;
+		  << "pserver connected=" << pserver_connected << " (pserver has connected ? " << pserver_has_connected << ")" << std::endl;
   return 
     ( a_client_has_connected && connected == 0 ) &&
     ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) );
 }
 
 
+struct Args{
+  std::string addr_file_dir;
+  int instance;
+  int ninstances;
+  int nshards;
+  int freq_ms;
+
+  Args(): addr_file_dir("."), instance(0), ninstances(1), nshards(1), freq_ms(30000){}
+};
+
+
 int main(int argc, char** argv){  
 #ifdef ENABLE_PROVDB
-  if(argc != 6){
-    std::cout << "Usage: provdb_commit <server address file directory> <instance to connect to> <ninstances> <nshards> <freq (ms)>" << std::endl;
-    return 1;
+
+  commandLineParser<Args> parser;
+  addMandatoryCommandLineArg(parser, addr_file_dir, "Specify the directory containing the address file");
+  addOptionalCommandLineArg(parser, instance, "Specify the server instance (default 0)");
+  addOptionalCommandLineArg(parser, ninstances, "Specify the number of server instances (default 1)");
+  addOptionalCommandLineArg(parser, nshards, "Specify the total number of database shards (default 1)");
+  addOptionalCommandLineArg(parser, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
+
+  if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+    parser.help(std::cout);
+    return 0;    
   }
-  std::string addr_file_dir = argv[1];
-  instance = std::stoi(argv[2]);
-  int ninstances = std::stoi(argv[3]);
+  Args args;
+  parser.parseCmdLineArgs(args, argc, argv);
 
-  int nshards = std::stoi(argv[4]);
+  instance = args.instance;
 
-  int freq_ms = std::stoi(argv[5]);
-
-  if(freq_ms == 0){
+  if(args.freq_ms == 0){
     CprogressStream << "freq==0, I am not needed. Done" << std::endl;
     return 0;
   } 
 
-  ProvDBsetup setup(nshards, ninstances);
-  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
-  int instance_shard_offset = setup.getShardOffsetInstance(instance);
-  int nshard_instance = setup.getNshardsInstance(instance);
-  bool do_global_db = instance == setup.getGlobalDBinstance();
+  ProvDBsetup setup(args.nshards, args.ninstances);
+  std::string addr = setup.getInstanceAddress(args.instance, args.addr_file_dir);
+  int instance_shard_offset = setup.getShardOffsetInstance(args.instance);
+  int nshard_instance = setup.getNshardsInstance(args.instance);
+  bool do_global_db = args.instance == setup.getGlobalDBinstance();
 
   std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
   if(ADProvenanceDBengine::getProtocol().first != protocol){
@@ -93,7 +110,7 @@ int main(int argc, char** argv){
       }
       std::unique_ptr<sonata::Database> glob_db;
       if(do_global_db) glob_db.reset(new sonata::Database(client.open(addr, setup.getGlobalDBproviderIndex(), setup.getGlobalDBname() )));
-    
+
       typedef std::chrono::high_resolution_clock Clock;
       Clock::time_point commit_timer_start = Clock::now();
 
@@ -111,8 +128,9 @@ int main(int argc, char** argv){
 	  break;
 	}
 
+	//Call commit
 	unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
-	if(commit_timer_ms >= freq_ms){
+	if(commit_timer_ms >= args.freq_ms){
 	  CverboseStream << "committing database to disk" << std::endl;
 	  for(int s=0;s<nshard_instance;s++){		
 	    CprogressStream << "committing shard " << instance_shard_offset + s << std::endl;
@@ -124,6 +142,7 @@ int main(int argc, char** argv){
 	  }
 	  commit_timer_start = Clock::now();
 	}
+
 	++iter;
       }//while(!stop_wait_loop)
     } //db scope
