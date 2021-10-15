@@ -4,7 +4,6 @@
 #include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
-#include <mpi.h>
 #include <chimbuko/net/mpi_net.hpp>
 #else
 #include <chimbuko/net/zmq_net.hpp>

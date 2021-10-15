@@ -30,7 +30,7 @@ struct SSTrw{
     barrier.wait(); 
     std::cout << "Writer thread initializing" << std::endl;
   
-    ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+    ad = adios2::ADIOS(adios2::DebugON);
     io = ad.DeclareIO("tau-metrics");
     io.SetEngine("SST");
     io.SetParameters({
@@ -104,7 +104,7 @@ TEST(ADParserTestConstructor, opensCorrectlyBPFile){
   try{
     std::string filename = "commFile";   
     {
-      adios2::ADIOS ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+      adios2::ADIOS ad = adios2::ADIOS(adios2::DebugON);
       adios2::IO io = ad.DeclareIO("tau-metrics");
       io.SetEngine("BPFile");
       io.SetParameters({
@@ -539,6 +539,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
       ps_barrier.wait(); //main thread should disconnect before ps is finalized
       std::cout << "PS thread terminating connection" << std::endl;
       ps.finalize();
+      std::cout << "PS thread finished" << std::endl;
     });
 
 
@@ -574,7 +575,9 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
       std::cout << "TEST: Writer thread waiting at barrier for completion" << std::endl;
       rw.barrier.wait();
 		       
+      std::cout << "Writer thread closing writer" << std::endl;
       rw.closeWriter();
+      std::cout << "Writer thread finished" << std::endl;
     });
   
 
@@ -605,13 +608,18 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
 
   std::cout << "TEST: Main thread waiting at barrier for writer thread completion" << std::endl;
   rw.barrier.wait();  
+  std::cout << "Main thread closing reader" << std::endl;
   rw.closeReader();
+  std::cout << "Main thread joining writer thread" << std::endl;
   wthr.join();
+  std::cout << "Main thread disconnecting from PS" << std::endl;
 
   net_client.disconnect_ps();
-  std::cout << "TEST syncing with pserver thread for ps finalize" << std::endl;
+  std::cout << "TEST Main thread waiting at barrier for PS thread completion" << std::endl;
   ps_barrier.wait();
+  std::cout << "Main thread joining PS thread" << std::endl;
   psthr.join();
+  std::cout << "Main thread finished" << std::endl;
 }
 
 #endif

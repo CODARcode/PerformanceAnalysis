@@ -23,7 +23,7 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
   m_inputFile = inputFile;
   if(inputFile == "") return;
 
-  m_ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+  m_ad = adios2::ADIOS(adios2::DebugON);
 
   // set io and engine
   m_io = m_ad.DeclareIO("tau-metrics");
@@ -55,11 +55,9 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
   // open file
   // for sst engine, is the adios2 internally blocked here until *.sst file is found?
   verboseStream << "ADParser attempting to connect to file " << inputFile << " with mode " << engineType << std::endl;
-  m_reader = m_io.Open(m_inputFile, adios2::Mode::Read, MPI_COMM_SELF);
+  m_reader = m_io.Open(m_inputFile, adios2::Mode::Read);
 
-  verboseStream << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl;
-  MPI_Barrier(MPI_COMM_WORLD);
-
+  //verboseStream << "ADParser waiting at barrier for other instances to contact their inputs" << std::endl;
 
   m_opened = true;
   m_status = true;

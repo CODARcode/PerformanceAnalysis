@@ -37,8 +37,16 @@ AC_COMPILE_IFELSE( [AC_LANG_PROGRAM([[]],
                   )
 
 
-#Check we can compile with MPI
-AC_CHECK_HEADER(mpi.h, [], [AC_MSG_FAILURE([["Cannot find MPI header"]])] )
+AC_ARG_ENABLE([mpi],
+    AS_HELP_STRING([--disable-mpi], [Disable MPI. User will need to manually assign the rank index to the AD instances.]), [], [enable_mpi=yes])
+
+AS_IF([test "x$enable_mpi" != "xno"], [
+    #Check we can compile with MPI
+    AC_MSG_NOTICE([MPI use is enabled, checking compilation with MPI is possible])
+    AC_CHECK_HEADER(mpi.h, [], [AC_MSG_FAILURE([["Cannot find MPI header"]])] )
+    AC_DEFINE([USE_MPI],[1],[Use MPI])
+])
+
 
 #Check for curl config and library
 AC_CHECK_PROG(HAVE_CURLCONFIG, curl-config, [yes],[no])
@@ -56,19 +64,19 @@ if test "x$with_adios2" != "x"; then
       AC_MSG_FAILURE(["Cannot find adios2-config"])
    fi
 
-   CPPFLAGS+=" -I$with_adios2/include `$with_adios2/bin/adios2-config --cxx-flags`"
+   CPPFLAGS+=" -I$with_adios2/include `$with_adios2/bin/adios2-config --cxx-flags -s`"
    #Between 2.5 and 2.6 they split the library into components. Unfortunately the adios2-config output doesn't play nicely with autotools (the link order gets broken)
    #so we have to manually figure out which situation applies
 
    LIBS_BAK=${LIBS}
 
    #2.6.0
-   LIBS+=" -L$with_adios2/lib -L$with_adios2/lib64 -ladios2_cxx11_mpi -ladios2_cxx11 -Wl,-rpath-link,${with_adios2}/lib:${with_adios2}/lib64 -Wl,-rpath,${with_adios2}/lib:${with_adios2}/lib64"
+   LIBS+=" -L$with_adios2/lib -L$with_adios2/lib64 -ladios2_cxx11 -Wl,-rpath-link,${with_adios2}/lib:${with_adios2}/lib64 -Wl,-rpath,${with_adios2}/lib:${with_adios2}/lib64"
    AC_LINK_IFELSE(
  	[
 		AC_LANG_PROGRAM(
 			[[ #include<adios2.h>
- #include<mpi.h> ]], [[ adios2::ADIOS ad(MPI_COMM_SELF,adios2::DebugON);  ]]
+                            ]], [[ adios2::ADIOS ad(adios2::DebugON);  ]]
 			)
 	], [adios2_links26=yes], [adios2_links26=no]
 	)
@@ -80,7 +88,7 @@ if test "x$with_adios2" != "x"; then
 	   [
 		AC_LANG_PROGRAM(
 			[[ #include<adios2.h>
- #include<mpi.h> ]], [[ adios2::ADIOS ad(MPI_COMM_SELF,adios2::DebugON);  ]]
+                            ]], [[ adios2::ADIOS ad(adios2::DebugON);  ]]
 			)
 	   ], [adios2_links25=yes], [adios2_links25=no]
 	   )
@@ -102,6 +110,9 @@ PS_FLAGS=
 AC_ARG_WITH([network], AS_HELP_STRING([--with-network], [Specify network layer: MPI or ZMQ]),[],[with_network=no])
 if test "x$with_network" = "xMPI"; then
    AC_DEFINE([_USE_MPINET],[1],[Use MPI network layer])
+   AS_IF([test "x$enable_mpi" != "xyes"], [
+      AC_MSG_FAILURE([Cannot use MPINet with MPI disabled!])
+   ]) 
 elif test "x$with_network" = "xZMQ"; then
    AC_DEFINE([_USE_ZMQNET],[1],[Use ZMQ network layer])
    AC_CHECK_LIB([zmq], [zmq_close], [],

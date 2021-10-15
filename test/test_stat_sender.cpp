@@ -1,10 +1,13 @@
+#include <chimbuko_config.h>
 #include "chimbuko/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/pserver/GlobalCounterStats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include "chimbuko/ad/ADLocalCounterStatistics.hpp"
 #include <gtest/gtest.h>
+#ifdef USE_MPI
 #include <mpi.h>
+#endif
 #include <thread>
 #include <chrono>
 #include "unit_tests/unit_test_common.hpp"
@@ -242,8 +245,12 @@ int main(int argc, char** argv)
 
     chimbuko::enableVerboseLogging() = true;
 
+#ifdef USE_MPI
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+#endif
     result = RUN_ALL_TESTS();
+#ifdef USE_MPI
     MPI_Finalize();
+#endif
     return result;
 }

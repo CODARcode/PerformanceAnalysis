@@ -1,6 +1,5 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <mpi.h>
 #include <adios2.h>
 #include <unordered_map>
 #include <unordered_set>

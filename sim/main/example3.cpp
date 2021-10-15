@@ -1,13 +1,18 @@
 //This example demonstrates the simulator using the ADSim API directly with multiple ranks and multiple threads per rank
 //Anomalies are explicitly tagged
+#include<chimbuko_config.h>
+#ifdef USE_MPI
 #include<mpi.h>
+#endif
 #include<sim.hpp>
 #include<random>
 
 using namespace chimbuko_sim;
 
 int main(int argc, char **argv){
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
 
   int window_size = 5; //number of events to record around an anomaly in the provenance data
   int pid = 0; //program index
@@ -82,7 +87,9 @@ int main(int argc, char **argv){
     getPserver().writeStreamingOutput();
   }
 
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   std::cout << "Done" << std::endl;
   return 0;
 }

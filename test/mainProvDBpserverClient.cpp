@@ -1,13 +1,16 @@
 //Test the pserver client connection to the provdb
 //Requires AD clients to be connected simulaneously. Do this by running the test with multiple ranks
 //and have rank 0 do the tests and the other ranks just spawn AD clients
+#include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/pserver/PSProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/string.hpp>
+#ifdef USE_MPI
 #include <mpi.h>
+#endif
 
 using namespace chimbuko;
 
@@ -123,13 +126,20 @@ TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
 
 int main(int argc, char** argv) 
 {
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
   chimbuko::enableVerboseLogging() = true;
 
   assert(argc >= 2);
   addr = argv[1];
 
+#ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#else
+  rank = 0;
+#endif
+
   rank_str = anyToStr(rank);
 
   int ret;
@@ -137,16 +147,22 @@ int main(int argc, char** argv)
     std::cout << "Rank 0 acting as pserver and connecting to database on " << addr << std::endl;
     ::testing::InitGoogleTest(&argc, argv);
     ret = RUN_ALL_TESTS();
+#ifdef USE_MPI
     std::cout << "Rank 0 complete, waiting at barrier" << std::endl;
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
   }else{
     std::cout << "Rank " << rank << " acting as AD client and connecting to database on " << addr << std::endl;
     ADProvenanceDBclient client(rank); 
     client.connect(addr,1);
     std::cout << "Rank " << rank << " waiting at barrier" << std::endl;
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD); //wait for rank 0 to do its business
+#endif
     ret = 0;
   }
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   return ret;
 }

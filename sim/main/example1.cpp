@@ -1,11 +1,16 @@
 //This example demonstrates the simulator using the "thread execution API"
+#include<chimbuko_config.h>
+#ifdef USE_MPI
 #include<mpi.h>
+#endif
 #include<sim.hpp>
 
 using namespace chimbuko_sim;
 
 int main(int argc, char **argv){
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
 
   int window_size = 5; //number of events to record around an anomaly in the provenance data
   int pid = 0; //program index
@@ -57,6 +62,8 @@ int main(int argc, char **argv){
     ad[0].step(i);
   }
 
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   return 0;
 }
