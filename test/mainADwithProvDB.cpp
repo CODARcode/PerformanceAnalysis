@@ -1,6 +1,10 @@
+#include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/chimbuko.hpp>
+#ifdef USE_MPI
+#include<mpi.h>
+#endif
 
 using namespace chimbuko;
 
@@ -55,9 +59,10 @@ TEST(ADTestWithProvDB, BpfileTest)
     //Wait for all outstanding sends to reach the database
     driver.getProvenanceDBclient().waitForSendComplete();
 
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
-
     assert( MPI_Allreduce(MPI_IN_PLACE, &n_outliers, 1, MPI_UNSIGNED_LONG , MPI_SUM, MPI_COMM_WORLD) == MPI_SUCCESS);
+#endif
 
     if(world_rank == 0){
       std::cout << "MPI rank 0: total outliers over all ranks: " << n_outliers << std::endl;
@@ -67,7 +72,9 @@ TEST(ADTestWithProvDB, BpfileTest)
       EXPECT_EQ(recs.size(), n_outliers);
     }
 
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
 }
 
 
@@ -79,15 +86,21 @@ int main(int argc, char** argv)
   addr = argv[1];
   std::cout << "Provenance DB admin is on address: " << addr << std::endl;
 
+#ifdef USE_MPI
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+#else
+  world_rank = 0; world_size = 1;
+#endif
 
   ::testing::InitGoogleTest(&argc, argv);
   int ret = RUN_ALL_TESTS();
 
+#ifdef USE_MPI
   assert(MPI_Finalize() == MPI_SUCCESS );
-  
+#endif  
+
   return ret;
 }

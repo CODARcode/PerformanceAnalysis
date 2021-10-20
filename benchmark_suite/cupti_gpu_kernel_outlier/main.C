@@ -5,6 +5,8 @@
 #include <cassert>
 #include <mpi.h>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 using clock_value_t = long long;
 
@@ -58,6 +60,9 @@ int main(int argc, char **argv)
       exit(-1);
     }
   }
+
+  //Have an initial wait to give the AD time to connect, such that it doesn't miss data at the start of the loop
+  std::this_thread::sleep_for( std::chrono::milliseconds(5000) );
   
   int ndevice = 1;
   assert( cudaGetDeviceCount(&ndevice) == cudaSuccess );

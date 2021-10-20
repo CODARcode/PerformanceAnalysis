@@ -4,7 +4,6 @@
 #include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
-#include <mpi.h>
 #include <chimbuko/net/mpi_net.hpp>
 #else
 #include <chimbuko/net/zmq_net.hpp>
@@ -125,6 +124,7 @@ int main (int argc, char ** argv){
   }
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
+  GlobalAnomalyMetrics global_anom_metrics; //global anomaly metrics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
 
   //Optionally load previously-computed AD algorithm statistics
@@ -187,14 +187,14 @@ int main (int argc, char ** argv){
 
     net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params));
     net.add_payload(new NetPayloadGetParams(param));
-    net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
-    net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
+    net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats));
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsPayload(&global_anom_metrics));
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully

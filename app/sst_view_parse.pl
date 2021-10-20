@@ -2,12 +2,25 @@
 no warnings qw(experimental);
 use feature qw(refaliasing);
 
-if(scalar @ARGV != 1){
-    print "Usage: <script> <log file>\n";
+$ARGC=scalar @ARGV;
+
+if($ARGC < 1){
+    print "Usage: <script> <log file> <options>\n";
+    print "Options:\n";
+    print "        -analyze_coridx Analyze unmatch correlation IDs\n";
     exit;
 }
 
 $logfile = $ARGV[0];
+
+$ana_corid=0;
+for($i=1;$i<$ARGC;$i++){
+    if($ARGV[$i] == "-analyze_coridx"){
+	$ana_corid=1;
+	print "Analyzing correlation IDs\n";
+    }
+}
+
 
 print "Using log $logfile\n";
 
@@ -15,9 +28,15 @@ open(IN, $logfile);
 @lines = <IN>;
 close(IN);
 
-$active = 0;
-$n = 0;
-$nrows = 0;
+$event_active = 0;
+$event_n = 0;
+$event_nrows = 0;
+
+$count_active = 0;
+$count_n = 0;
+$count_nrows = 0;
+
+$corid_cidx=-1;  #index of correlation ID counter
 
 %funcid_name_map = ();
 %gputhread_info = ();
@@ -26,6 +45,8 @@ $nrows = 0;
 #Where data array has the format  [ (state (0 inactive, 1 active)), (timestamp),  [(elapsed times)] ]
 %funcs = ();
 
+%corids = ();
+$ncorid_matched=0;
 
 for($i=0;$i<scalar @lines;$i++){
     $line = $lines[$i];
@@ -37,6 +58,12 @@ for($i=0;$i<scalar @lines;$i++){
 	$funcid_name_map{$1} = $2;
 	#print "Found fid map: $1 : $2\n";
 
+    #Parse correlation ID counter index
+    #FOUND NEW ATTRIBUTE: counter 0 {Elements:1 Type:string Value:"Correlation ID" }    
+    }elsif($line=~m/counter\s(\d+)\s.*Value:\"Correlation ID\"/){
+	$corid_cidx=$1;
+
+	
     #Parse GPU device/context
     #FOUND NEW ATTRIBUTE: MetaData:0:7:CUDA Context {Elements:1 Type:string Value:"1" }
     #FOUND NEW ATTRIBUTE: MetaData:0:7:CUDA Device {Elements:1 Type:string Value:"0" }
@@ -52,13 +79,13 @@ for($i=0;$i<scalar @lines;$i++){
 
     #Parse open of event timestamps list for this timestep
     }elsif($line=~m/event_timestamps.*Parsed\ssize\s(\d+)/){
-	$nrows = $1;
-	#print "Rows $nrows\n";
-	$active = 1;
-	$n = 0;
+	$event_nrows = $1;
+	#print "Rows $event_nrows\n";
+	$event_active = 1;
+	$event_n = 0;
 
     #Parse an entry in the event_timestamps array
-    }elsif($active == 1){
+    }elsif($event_active == 1){
 	#print "Active: $line\n";
 	#Example line format
 	#(45 0 ):0 (45 1 ):0 (45 2 ):5 (45 3 ):1 (45 4 ):21 (45 5 ):1585852643242747
@@ -106,10 +133,47 @@ for($i=0;$i<scalar @lines;$i++){
 	    #print "Found exit from func $func thread $thread: elapsed $elapsed\n";
 	}	
 	
-	$n++;
-	if($n == $nrows){
-	    $active = 0;
+	$event_n++;
+	if($event_n == $event_nrows){
+	    $event_active = 0;
 	}
+
+    #Counter timestamps
+    }elsif($line=~m/counter_values.*Parsed\ssize\s(\d+)/){
+	$counter_nrows = $1;
+	$counter_active = 1;
+	$counter_n = 0;
+
+    #Parse an entry in the counter_values array
+    }elsif($counter_active == 1){
+	#print "Active: $line\n";
+	#Example line format
+	#(1 0 ):0 (1 1 ):0 (1 2 ):0 (1 3 ):0 (1 4 ):2 (1 5 ):1629924204499736
+	#pid rid tid cidx cval ts
+	
+	if(!($line=~m/2\s\)\:(\d+)\s\(\d+\s3\s\)\:(\d+)\s\(\d+\s4\s\)\:(\d+)\s\(\d+\s5\s\)\:(\d+)/)){
+	    print "ERR\n";
+	    exit;
+	}
+	$thread = $1;
+	$cid = $2;
+	$cval = $3;
+	$ts = $4;
+
+	if(exists($corids{$cval})){
+	    print "Found matching corid $cval\n";
+	    delete $corids{$cval};
+	    $ncorid_matched++;
+	}else{
+	    print "Found new corid $cval\n";
+	    $corids{$cval} = [$thread, $cid, $cval, $ts];
+	}
+
+	$counter_n++;
+	if($counter_n == $counter_nrows){
+	    $counter_active = 0;
+	}
+
     }
 	   
 }
@@ -156,4 +220,23 @@ foreach $func (keys %funcs){
 	    print "Mean $mean std.dev $stddev\n";
 	}
     }
+}
+
+if($ana_corid == 1){
+    if($corid_cidx==-1){
+	print "Could not find correlation ID counter index!\n";
+	exit 1;
+    }
+    print "Correlation ID counter index is $corid_cidx\n";
+    $nunmatched = keys %corids;
+    print "Found $ncorid_matched matched and $nunmatched unmatched correlation IDs\n";
+    
+    foreach $c (keys %corids){
+	\@data = $corids{$c};
+	$thread = $data[0];
+	$ts = $data[3];
+	print "$c with timestamp $ts on thread $thread\n";
+    }
+
+    
 }

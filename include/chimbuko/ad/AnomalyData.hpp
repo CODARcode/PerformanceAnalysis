@@ -12,6 +12,8 @@ namespace chimbuko {
   /**
    * @brief A class that contains data on the number of anomalies collected during the present timestep. 
    *        It contains the number of anomalies and the timestamp window in which the anomalies occurred
+   *
+   * These data are aggregated over rank to form the anomaly_stats.anomaly field of the pserver streaming output
    * 
    */
   class AnomalyData {

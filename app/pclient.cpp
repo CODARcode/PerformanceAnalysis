@@ -1,4 +1,5 @@
 //A test application that mocks part of the anomaly detection modules, acting as a client for the parameter server and sending it anomaly information
+#include <chimbuko_config.h>
 
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
@@ -7,6 +8,9 @@
 #include "chimbuko/net/mpi_net.hpp"
 #else
 #include "chimbuko/net/zmq_net.hpp"
+#endif
+
+#ifdef USE_MPI
 #include <mpi.h>
 #endif
 
@@ -18,11 +22,13 @@ using namespace chimbuko;
 
 int main (int argc, char** argv)
 {
-    int size, rank;
+    int size=1, rank=0;
 
+#ifdef USE_MPI
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
 
 #ifdef _USE_MPINET
     int count;
@@ -114,7 +120,9 @@ s     */
         //g_param.assign(msg.data_buffer());
     }
 
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
 #ifdef _USE_MPINET
     if (rank == 0) {
@@ -159,6 +167,8 @@ s     */
     zmq_ctx_term(context);
 #endif
 
+#ifdef USE_MPI
     MPI_Finalize();
+#endif
     return EXIT_SUCCESS;
 }

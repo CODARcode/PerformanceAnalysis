@@ -34,8 +34,8 @@ public:
 
   NetPayloadHandShakeWithCountME(int thr_idx, int &clients, int &client_has_connected): clients(clients), thr_idx(thr_idx), client_has_connected(client_has_connected){}
   
-  MessageKind kind() const{ return MessageKind::DEFAULT; }
-  MessageType type() const{ return MessageType::REQ_ECHO; }
+  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
     response.set_msg(std::string("Hello!I am NET!"), false);
@@ -51,8 +51,8 @@ public:
   int thr_idx;
   NetPayloadClientDisconnectWithCountME(int thr_idx, int &clients): clients(clients), thr_idx(thr_idx){}
   
-  MessageKind kind() const{ return MessageKind::DEFAULT; }
-  MessageType type() const{ return MessageType::REQ_QUIT; }
+  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
     response.set_msg("", false);

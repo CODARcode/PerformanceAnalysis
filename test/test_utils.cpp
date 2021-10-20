@@ -1,6 +1,6 @@
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/util/RunStats.hpp"
-#include "chimbuko/pserver/AnomalyStat.hpp"
+#include "chimbuko/pserver/AggregateAnomalyData.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <random>
@@ -157,7 +157,7 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
     EXPECT_TRUE(d!=d2);
 }
 
-TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
+TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
 {
     using namespace chimbuko;
 
@@ -167,7 +167,7 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
     std::default_random_engine generator;
 
     std::vector<std::string> anomaly_data;
-    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat*> > anomaly_stats, c_anomaly_stats;
+    std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData*> > anomaly_stats, c_anomaly_stats;
     std::unordered_map<int, std::unordered_map<unsigned long, int> > n_anomaly_data;
 
     // generate pseudo data
@@ -191,8 +191,8 @@ TEST_F(UtilTest, AnomalyStatMultiThreadsTest)
 
                 if (step == 0)
                 {
-                    anomaly_stats[app_id][rank_id] = new AnomalyStat();
-                    c_anomaly_stats[app_id][rank_id] = new AnomalyStat();
+                    anomaly_stats[app_id][rank_id] = new AggregateAnomalyData();
+                    c_anomaly_stats[app_id][rank_id] = new AggregateAnomalyData();
                     n_anomaly_data[app_id][rank_id] = max_steps;
                 }
 

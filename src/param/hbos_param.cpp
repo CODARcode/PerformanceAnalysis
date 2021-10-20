@@ -304,8 +304,9 @@ using namespace chimbuko;
      int count = global_counts[i];
      if (count < 0)
       count = -1 * count;
-     if (count != 0)
+     if (count != 0){
       verboseStream << std::to_string(count) << ", ";
+     }
      size += count;
      sum += (count * global_edges.at(i));
    }
@@ -317,8 +318,9 @@ using namespace chimbuko;
      int count = local_counts[i];
      if (count < 0)
       count = -1 * count;
-     if (count != 0)
+     if (count != 0){
       verboseStream << std::to_string(count) << ", ";
+     }
      size += count;
      sum += (count * local_edges.at(i));
    }

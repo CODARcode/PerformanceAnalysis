@@ -11,6 +11,9 @@
 #include "chimbuko/util/string.hpp"
 #include "chimbuko/util/error.hpp"
 #include "chimbuko/util/time.hpp"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
  
 namespace chimbuko{
 
@@ -266,10 +269,12 @@ namespace chimbuko{
     };
 
   private:
-    std::thread worker;
-    mutable std::mutex m;
+    std::thread worker; /**< The worker thread */
+    mutable std::mutex m; /**< Internal mutex */
+    std::condition_variable cv; /**< Condition variable for signaling */
     std::queue<ClientAction*> queue; /**< The queue of net operations*/
-   
+    bool m_is_running; /**< Is the worker thread running? */
+    
     /**
      * @brief Get the number of outstanding net operations
      */
@@ -302,12 +307,12 @@ namespace chimbuko{
     /**
      * @brief Connect to the parameter server
      */
-    void connect_ps(int rank, int srank = 0, std::string sname="MPINET");
+    void connect_ps(int rank, int srank = 0, std::string sname="MPINET") override;
 
     /**
      * @brief Disconnect from the parameter server
      */
-    void disconnect_ps();
+    void disconnect_ps() override;
 
     using ADNetClient::send_and_receive;
 
@@ -331,7 +336,12 @@ namespace chimbuko{
     /**
      * @brief Set a timeout (in ms) on receiving a response message
      */
-    void setRecvTimeout(const int timeout_ms);
+    void setRecvTimeout(const int timeout_ms)  override;
+
+    /**
+     * @brief Stop the worker thread. Called automatically by destructor
+     */
+    void stopWorkerThread();
 
     ~ADThreadNetClient();
   };

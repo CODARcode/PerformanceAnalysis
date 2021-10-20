@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-#include <chimbuko/pserver/global_anomaly_stats.hpp>
+#include <chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/util/string.hpp>
 #include<random>
 
@@ -41,16 +41,16 @@ TEST(TestGlobalAnomalyStats, UpdateFuncStat){
   stats.update_func_stat(pid, fid, fname, nanom1, incl1, excl1);
   stats.update_func_stat(pid, fid, fname, nanom2, incl2, excl2);
 
-  const GlobalAnomalyStats::FuncStats & fstats = stats.get_func_stats(pid, fid);
+  const AggregateFuncStats & fstats = stats.get_func_stats(pid, fid);
 
-  EXPECT_EQ(fstats.func, fname);
-  EXPECT_EQ(fstats.func_anomaly.count(), 2);
-  EXPECT_EQ(fstats.func_anomaly.accumulate(), nanom1 + nanom2);
+  EXPECT_EQ(fstats.get_func(), fname);
+  EXPECT_EQ(fstats.get_func_anomaly().count(), 2);
+  EXPECT_EQ(fstats.get_func_anomaly().accumulate(), nanom1 + nanom2);
   
   RunStats incl_sum = incl1 + incl2;
   RunStats excl_sum = excl1 + excl2;
-  EXPECT_EQ(fstats.inclusive.get_stat_values(), incl_sum.get_stat_values());
-  EXPECT_EQ(fstats.exclusive.get_stat_values(), excl_sum.get_stat_values());
+  EXPECT_EQ(fstats.get_inclusive().get_stat_values(), incl_sum.get_stat_values());
+  EXPECT_EQ(fstats.get_exclusive().get_stat_values(), excl_sum.get_stat_values());
 
   nlohmann::json fstats_json = stats.collect_func_data();
 
@@ -86,7 +86,7 @@ TEST(TestGlobalAnomalyStats, UpdateAnomalyStat){
   stats.update_anomaly_stat(d1);
   stats.update_anomaly_stat(d2);
 
-  const AnomalyStat & astats = stats.get_anomaly_stat_container(app, rank);
+  const AggregateAnomalyData & astats = stats.get_anomaly_stat_container(app, rank);
   RunStats astatsr = astats.get_stats();
   
   EXPECT_EQ(astatsr.count(), 2);

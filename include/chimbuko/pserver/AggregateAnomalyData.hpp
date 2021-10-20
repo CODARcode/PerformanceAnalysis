@@ -6,17 +6,19 @@ namespace chimbuko {
 
   /**
    * @brief A class that contains statistics on the number of anomalies detected
+   *
+   * It contains the AnomalyData collected over IO steps for a given app/rank 
    */
-  class AnomalyStat {
+  class AggregateAnomalyData {
   public:
-    AnomalyStat(bool do_accumulate=false);
-    ~AnomalyStat();
+    AggregateAnomalyData(bool do_accumulate=false);
+    ~AggregateAnomalyData();
 
-    AnomalyStat(const AnomalyStat &r);
-    AnomalyStat(AnomalyStat &&r);
+    AggregateAnomalyData(const AggregateAnomalyData &r);
+    AggregateAnomalyData(AggregateAnomalyData &&r);
 
-    AnomalyStat & operator=(const AnomalyStat &r);
-    AnomalyStat & operator=(AnomalyStat &&r);
+    AggregateAnomalyData & operator=(const AggregateAnomalyData &r);
+    AggregateAnomalyData & operator=(AggregateAnomalyData &&r);
 
     /**
      * @brief Set the stats object to accumulate the sum total
@@ -63,9 +65,26 @@ namespace chimbuko {
     std::list<AnomalyData>* get_data() const;
 
     /**
+     * @brief Get the current statistics in JSON format and flush the list of AnomalyData collected since previous call to get()
+     * @param pid The program index
+     * @param rid The rank index
+     */
+    nlohmann::json get_json_and_flush(int pid, int rid);
+
+    /**
      * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
      */
     size_t get_n_data() const;
+
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const AggregateAnomalyData &r) const;
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const AggregateAnomalyData &r) const{ return !( *this == r ); }
+
 
   private:
     mutable std::mutex               m_mutex;

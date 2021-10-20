@@ -88,6 +88,13 @@ namespace chimbuko{
 #endif
   }
 
+  void PerfStats::write(std::ostream &os) const{
+#ifdef _PERF_METRIC
+    m_perf.dump(os);
+#endif
+  }
+
+
   PerfStats & PerfStats::operator+=(const PerfStats &r){
 #ifdef _PERF_METRIC
     m_perf += r.m_perf;

@@ -221,7 +221,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
 
       const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
       verboseStream << "Starting OUtlier Detection" << std::endl;
-      if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
+      if (m_execDataMap == nullptr){ verboseStream << "Empty ExecDataMap_t" << std::endl; }
 
       tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over functions (key is function index)

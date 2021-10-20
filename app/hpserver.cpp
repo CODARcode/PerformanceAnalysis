@@ -13,7 +13,9 @@ int main(void){
 
 #include <chimbuko/pserver.hpp>
 #include <chimbuko/net/zmqme_net.hpp>
+#ifdef USE_MPI
 #include <mpi.h>
+#endif
 #include <chimbuko/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
 #include <chimbuko/verbose.hpp>
@@ -104,7 +106,10 @@ int main (int argc, char ** argv){
   }
   
   ZMQMENet net;
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
+
   PSstatSender stat_sender(args.stat_send_freq);
 
   try {
@@ -170,7 +175,7 @@ int main (int argc, char ** argv){
 
   std::cout << "HPserver finalizing the network" << std::endl;
   net.finalize();
-#ifdef _USE_ZMQNET
+#if defined(_USE_ZMQNET) && defined(USE_MPI)
   MPI_Finalize();
 #endif
 

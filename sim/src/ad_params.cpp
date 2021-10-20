@@ -7,6 +7,7 @@ using namespace chimbuko_sim;
 
 void chimbuko_sim::registerFunc(const std::string &func_name, unsigned long mean_runtime, unsigned long std_dev_runtime, int seen_count){ 
   if(adAlgorithmParams().algorithm != "none") fatal_error("This function should only be used if ad_algorithm()==\"none\"");
+  if(seen_count == 0) fatal_error("seen_count must be >0 to generate the fake function statistics");
   unsigned long fidx = registerFunc(func_name);
 
   //Generate fake statistics

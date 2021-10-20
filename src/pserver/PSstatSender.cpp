@@ -91,7 +91,7 @@ static void send_stat(std::string url, std::string stat_save_dir,
 
       //Send if object has content
       if(json_packet.size() != 0){
-	std::string packet = json_packet.dump();
+	std::string packet = json_packet.dump(4);
             
 	if(write_disk){ //Send data to disk
 	  std::stringstream fname; fname << stat_save_dir << "/pserver_output_stats_" << iter << ".json";

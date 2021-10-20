@@ -6,7 +6,8 @@
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include "chimbuko/pserver/AnomalyStat.hpp"
+#include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/pserver/AggregateFuncStats.hpp"
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
@@ -18,18 +19,12 @@ namespace chimbuko{
    */
   class GlobalAnomalyStats{
   public:
-    /**< A struct holding statistics information on a function*/
-    struct FuncStats{
-      std::string func; /**< Func name */
-      RunStats func_anomaly; /**< Statistics on number of anomalies*/
-      RunStats inclusive; /**< Statistics on number of function timings inclusive of children*/
-      RunStats exclusive; /**< Statistics on number of function timings exclusive of children*/
-    };
-
     GlobalAnomalyStats(){}
 
     /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
+     *
+     * Thread safe
      */
     void add_anomaly_data(const ADLocalFuncStatistics& data);
 
@@ -38,6 +33,8 @@ namespace chimbuko{
      * @brief Get the JSON-formatted string corresponding to the anomaly statistics (RunStats instance) for a given program/rank
      * @param pid program index
      * @param rid rank
+     *
+     * Thread safe
      */
     std::string get_anomaly_stat(const int pid, const unsigned long rid) const;
 
@@ -45,27 +42,35 @@ namespace chimbuko{
      * @brief Get the RunStats object corresponding to the anomaly statistics for a given program/rank (throw error if not present)
      * @param pid program index
      * @param rid rank
+     * 
+     * Thread safe
      */
     RunStats get_anomaly_stat_obj(const int pid, const unsigned long rid) const;
 
 
     /**
-     * @brief Const accessor to the AnomalyStat instance corresponding to a particular stat_id (throw error if not present)
+     * @brief Const accessor to the AggregateAnomalyData instance corresponding to a particular stat_id (throw error if not present)
      * @param pid program index
      * @param rid rank
+     *
+     * NOT thread safe
      */    
-    const AnomalyStat & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
+    const AggregateAnomalyData & get_anomaly_stat_container(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Get the number of anomaly data objects collected since the last flush for a given program/rank
      * @param pid program index
      * @param rid rank
+     *
+     * Thread safe
      */
     size_t get_n_anomaly_data(const int pid, const unsigned long rid) const;
 
     /**
      * @brief Update internal data to include additional information
-     * @parag anom The anomaly data
+     * @param anom The anomaly data
+     *
+     * Thread safe
      */
     void update_anomaly_stat(const AnomalyData &anom);
 
@@ -77,6 +82,8 @@ namespace chimbuko{
      * @param n_anomaly The number of anomalies detected
      * @param inclusive Statistics on inclusive timings
      * @param exclusive Statistics on exclusive timings
+     *
+     * Thread safe
      */
     void update_func_stat(int pid,
 			  unsigned long fid, 
@@ -89,28 +96,50 @@ namespace chimbuko{
      * @brief Get the FuncStats object containing the profile information for the specified function
      * @param pid Program index
      * @param fid Function index
+     *
+     * NOT thread safe
      */
-    const FuncStats & get_func_stats(int pid, unsigned long fid) const;
+    const AggregateFuncStats & get_func_stats(int pid, unsigned long fid) const;
 
     /**
      * @brief Collect anomaly statistics into JSON object and flush the m_anomaly_stats statistics
+     *
+     * Thread safe
      */
     nlohmann::json collect_stat_data();
 
     /**
      * @brief Collect aggregated function profile statistics into JSON object
+     *
+     * Thread safe
      */
     nlohmann::json collect_func_data() const;
     
     /**
      * @brief Collect anomaly statistics and function statistics. Flushes the m_anomaly_stats statistics
      * @return JSON object containing anomaly and function data
+     *
+     * Thread safe
      */
     nlohmann::json collect();
+    
+    /**
+     * @brief Comparison operator
+     *
+     * NOT thread safe
+     */
+    bool operator==(const GlobalAnomalyStats &r) const{ return m_anomaly_stats == r.m_anomaly_stats && m_funcstats == r.m_funcstats; }
+
+    /**
+     * @brief Inequality operator
+     *
+     * NOT thread safe
+     */
+    bool operator!=(const GlobalAnomalyStats &r) const{ return !( *this == r ); }
 
   protected:    
-    std::unordered_map<int, std::unordered_map<unsigned long, AnomalyStat> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
-    std::unordered_map<unsigned long, std::unordered_map<unsigned long, FuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
+    std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
+    std::unordered_map<unsigned long, std::unordered_map<unsigned long, AggregateFuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
     mutable std::mutex m_mutex_anom; /**< Mutex for global anomaly statistics */
     mutable std::mutex m_mutex_func; /**< Mutex for global function statistics */
   };
@@ -122,18 +151,9 @@ namespace chimbuko{
     GlobalAnomalyStats * m_global_anom_stats;
   public:
     NetPayloadUpdateAnomalyStats(GlobalAnomalyStats * global_anom_stats): m_global_anom_stats(global_anom_stats){}
-    MessageKind kind() const{ return MessageKind::ANOMALY_STATS; }
-    MessageType type() const{ return MessageType::REQ_ADD; }
-    void action(Message &response, const Message &message) override{
-      check(message);
-      if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");
-
-      ADLocalFuncStatistics loc;
-      loc.net_deserialize(message.buf());
-
-      m_global_anom_stats->add_anomaly_data(loc);
-      response.set_msg("", false);
-    }
+    MessageKind kind() const override{ return MessageKind::ANOMALY_STATS; }
+    MessageType type() const override{ return MessageType::REQ_ADD; }
+    void action(Message &response, const Message &message) override;
   };
 
 
@@ -145,11 +165,7 @@ namespace chimbuko{
     GlobalAnomalyStats *m_stats;
   public:
     PSstatSenderGlobalAnomalyStatsPayload(GlobalAnomalyStats *stats): m_stats(stats){}
-    void add_json(nlohmann::json &into) const override{ 
-      nlohmann::json stats = m_stats->collect();
-      if(stats.size() > 0)
-	into["anomaly_stats"] = std::move(stats);
-    }
+    void add_json(nlohmann::json &into) const override;
   };
 
 

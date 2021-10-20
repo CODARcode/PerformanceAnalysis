@@ -195,6 +195,14 @@ namespace chimbuko {
 
 
     /**
+     * @brief Gather and send the required data to the pserver
+     */
+    void gatherAndSendPSdata(const Anomalies &anomalies,
+			     const int step,
+			     const unsigned long first_event_ts,
+			     const unsigned long last_event_ts) const;
+
+    /**
      * @brief Send new metadata entries collected during current fram to provenance DB
      */
     void sendNewMetadataToProvDB(int step) const;
