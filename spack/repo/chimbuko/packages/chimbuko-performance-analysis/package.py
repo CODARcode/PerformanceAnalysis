@@ -17,8 +17,9 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     version('master', branch='master')
 
     variant('perf-metric', default=True, description='Build with performance monitoring')
-
-    depends_on('mpi')
+    variant('mpi', default=True, description='Enable building Chimbuko with MPI. If disabled the user must manually provide the rank index to the OAD.')
+    
+    depends_on('mpi', when="+mpi")
     depends_on('cereal')
     depends_on('adios2')
     depends_on('googletest')
@@ -34,12 +35,15 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
 
 
     def setup_environment(self, spack_env, run_env):
-        spack_env.set('CXX', self.spec['mpi'].mpicxx)
+        if '+mpi' in self.spec:
+            spack_env.set('CXX', self.spec['mpi'].mpicxx)
 
     def configure_args(self):
         args = ["--with-network=ZMQ", "--with-adios2=%s" % self.spec['adios2'].prefix ]
 
         if '+perf-metric' in self.spec:
                args.append('--with-perf-metric')
-
+        if '+mpi' not in self.spec:
+               args.append('--disable-mpi')
+               
         return args
