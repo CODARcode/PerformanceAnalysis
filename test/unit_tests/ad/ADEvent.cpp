@@ -454,7 +454,10 @@ TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
 
   //Add 2 events but mark 1 to be undeletable
   event_man.addCall(c1);
-  c2.can_delete(false);
+  c2.register_reference();
+  EXPECT_EQ(c2.can_delete(), false);
+  EXPECT_EQ(c2.reference_count(), 1);
+
   event_man.addCall(c2);
 
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
@@ -509,10 +512,30 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   ExecData_t c_cpu_p2 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_grandparent", 0, 300); //0-300
   bindParentChild(c_cpu_p2, c_cpu_p1);
 
+  std::cout << "c_cpu_p2 : " << c_cpu_p2.get_id().toString() << std::endl;
+  std::cout << "c_cpu_p1 : " << c_cpu_p1.get_id().toString() << std::endl;
+  std::cout << "c_cpu : " << c_cpu.get_id().toString() << std::endl;
 
-  event_man.addCall(c_cpu_p2);
-  event_man.addCall(c_cpu_p1);
-  event_man.addCall(c_cpu);
+
+  auto c_cpu_p2_it = event_man.addCall(c_cpu_p2);
+
+  //c_cpu should not be locked yet
+  ASSERT_EQ(c_cpu_p2_it->reference_count(), 0);
+
+  auto c_cpu_p1_it = event_man.addCall(c_cpu_p1);
+  
+  //This should lock both c_cpu_p2 and c_cpu_p1
+  ASSERT_EQ(c_cpu_p2_it->reference_count(), 1);
+  ASSERT_EQ(c_cpu_p1_it->reference_count(), 1);
+
+  auto c_cpu_it = event_man.addCall(c_cpu);
+
+  //c_cpu should be doubly locked
+  ASSERT_EQ(c_cpu_it->reference_count(), 2);
+  //c_cpu_p1 should be triply locked
+  ASSERT_EQ(c_cpu_p1_it->reference_count(), 3);
+  //c_cpu_p2 should be triply locked
+  ASSERT_EQ(c_cpu_p2_it->reference_count(), 3);
 
   //Ensure the correlation IDs got picked up
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 3 );
@@ -584,6 +607,66 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   delete event_man.trimCallList();
   EXPECT_EQ( calls_p_r_t_cpu.size(), 0);
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
+}
+
+
+
+
+TEST(ADEvent, testCoridMatchChainUnlock){
+  //Ensure that for a tree with multiple GPU events and common parents, when unlocking the tree for the first event
+  //that we don't allow the common parents to get unlocked before the second event is matched
+
+  ADEvent event_man;
+  int pid = 1;
+  int rid = 2;
+  int tid_cpu = 3;
+  int tid_gpu = 4;
+  int counter_id = 13; //index of "Correlation ID" counter
+
+  //First CPU event
+  ExecData_t c_cpu_1 = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel_1", 100, 200); //100-300
+  c_cpu_1.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1995, 100, "Correlation ID"));
+
+  ExecData_t c_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 6, "gpu_kernel1", 400, 100); //400-500
+  c_gpu1.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1995, 500, "Correlation ID"));
+
+  //Second CPU event
+  ExecData_t c_cpu_2 = createFuncExecData_t(pid, rid, tid_cpu, 5, "cpu_launch_kernel_2", 150, 250); //150-250
+  c_cpu_2.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 2020, 150, "Correlation ID"));
+
+  ExecData_t c_gpu2 = createFuncExecData_t(pid, rid, tid_gpu, 7, "gpu_kernel2", 500, 100); //500-600
+  c_gpu2.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 2020, 600, "Correlation ID"));
+
+  //Common parent event
+  ExecData_t c_cpu_p1 = createFuncExecData_t(pid, rid, tid_cpu, 8, "cpu_launch_kernel_parent", 50, 500); //50-550
+  bindParentChild(c_cpu_p1, c_cpu_1);
+  bindParentChild(c_cpu_p1, c_cpu_2);
+
+  auto c_cpu_p1_it =  event_man.addCall(c_cpu_p1);
+  auto c_cpu_1_it = event_man.addCall(c_cpu_1);
+  auto c_cpu_2_it = event_man.addCall(c_cpu_2);
+
+  //Ensure the correlation IDs got picked up
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 2 );
+
+  //Both the CPU and parent event should be locked
+  EXPECT_EQ( c_cpu_p1_it->can_delete(), false );
+  EXPECT_EQ( c_cpu_1_it->can_delete(), false );
+  EXPECT_EQ( c_cpu_2_it->can_delete(), false );
+
+
+  //Add the first GPU event
+  auto c_gpu1_it = event_man.addCall(c_gpu1);
+
+  //Check correlation ID was matched
+  EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+
+  //Check both gpu1 and cpu1 are unlocked
+  EXPECT_EQ( c_cpu_1_it->can_delete(), true );
+  EXPECT_EQ( c_gpu1_it->can_delete(), true );
+
+  //Check parent is *not* unlocked
+  EXPECT_EQ( c_cpu_p1_it->can_delete(), false ); 
 }
 
 
