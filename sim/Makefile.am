@@ -1,1 +1,1 @@
-SUBDIRS = src wrapper main
+SUBDIRS = src main #serverA serverJ
