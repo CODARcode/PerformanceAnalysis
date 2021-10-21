@@ -587,43 +587,52 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   unsigned long n_outliers = 0;
 
   //probability of runtime counts
-  std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
+  //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
 
-  std::vector<double> recon_runtimes = std::vector<double>(tot_runtimes, 0.0);
+  std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
+  std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
   int recon_idx = 0;
   for(int i=0; i < param[func_id].counts().size(); i++){
     int count = param[func_id].counts().at(i);
     for(int j=0; j<count; j++){
-      recon_runtimes.at(recon_idx++) = param[func_id].bin_edges.at(i);
+      recon_p_runtimes.at(recon_idx++) = param[func_id].bin_edges().at(i);
+      recon_n_runtimes.at(recon_idx++) = -1 * param[func_id].bin_edges().at(i);
     }
   }
 
-  auto func_ecdf = empiricalCDF(recon_runtimes, true);
+  std::vector<double> func_p_ecdf = empiricalCDF(recon_p_runtimes, true);
+  std::vector<double> func_n_ecdf = empiricalCDF(recon_n_runtimes, true);
 
-  for(int i=0; i < param[func_id].counts().size(); i++){
-    int count = param[func_id].counts().at(i);
-    double p = count / tot_runtimes;
-    prob_counts.at(i) += p;
+  std::vector<double> mean_pn_ecdf = std::vector<double>(func_p_ecdf.size(), 0.0);
+  for(int i=0; i < mean_pn_ecdf.size(); i++){
+    mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2;
   }
+
+
+  //for(int i=0; i < param[func_id].counts().size(); i++){
+  //  int count = param[func_id].counts().at(i);
+  //  double p = count / tot_runtimes;
+  //  prob_counts.at(i) += p;
+  //}
 
   //Create COPOD score vector
   std::vector<double> out_scores_i;
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
   verboseStream << "out_scores_i: " << std::endl;
-  for(int i=0; i < prob_counts.size(); i++){
-    double l = -1 * log2(prob_counts.at(i) + m_alpha);
+  for(int i=0; i < mean_pn_ecdf.size(); i++){
+    double l = -1 * log2(mean_pn_ecdf.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
-    if(prob_counts.at(i) > 0) {
+    //verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    //if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
       }
       if(l > max_score){
         max_score = l;
       }
-    }
+    //}
   }
   verboseStream << std::endl;
   verboseStream << "out_score_i size: " << out_scores_i.size() << std::endl;
@@ -645,88 +654,22 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   }
 
   //Compute COPOD based score for each datapoint
-  const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
-  const int num_bins = param[func_id].counts().size();
-  verboseStream << "Bin width: " << bin_width << std::endl;
+  //const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
+  //const int num_bins = param[func_id].counts().size();
+  //verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
+  int running_idx = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
-
-      const int bin_ind = ADOutlierCOPOD::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << param[func_id].bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
-      /**
-       * If the sample does not belong to any bins
-       * bin_ind == 0 (fall outside since it is too small)
-       */
-      if( bin_ind == 0){
-        const double first_bin_edge = param[func_id].bin_edges().at(0);
-        const double dist = first_bin_edge - runtime_i;
-	verboseStream << "First_bin_edge: " << first_bin_edge << std::endl;
-        if( dist <= (bin_width * 0.05) ){
-          verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
-	  if(param[func_id].counts().size() < 1) {return 0;}
-          if(param[func_id].counts().at(0) == 0) { /**< Ignore zero counts */
-
-            ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
-          }
-          else {
-            ad_score = out_scores_i.at(0);
-	    verboseStream << "ad_score: " << ad_score << std::endl;
-          }
-        }
-        else{
-          verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
-          ad_score = max_score;
-	  verboseStream << "ad_score(max_score): " << ad_score << std::endl;
-        }
-
-      }
-      /**
-       *  If the sample does not belong to any bins
-       */
-      else if(bin_ind == num_bins + 1){
-        const int last_idx = param[func_id].bin_edges().size() - 1;
-        const double last_bin_edge = param[func_id].bin_edges().at(last_idx);
-        const double dist = runtime_i - last_bin_edge;
-	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
-        if (dist <= (bin_width * 0.05)) {
-          if(param[func_id].counts().at(num_bins - 1) == 0) {   //bin_ind) == 0) {  /**< Ignore zero counts */
-
-            ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
-          }
-          else {
-            verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
-            ad_score = out_scores_i.at(num_bins - 1);
-	    verboseStream << "ad_score: " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-          }
-        }
-        else{
-          verboseStream << runtime_i << " is on right of histogram and an outlier" << std::endl;
-          ad_score = max_score;
-	  verboseStream << "ad_score(max_score): " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-        }
-
-      }
-      else {
-
-        if(param[func_id].counts().at(bin_ind) == 0) { /**< Ignore zero counts */
-
-          ad_score = l_threshold - 1;
-          verboseStream << "corrected ad_score: " << ad_score << std::endl;
-        }
-        else {
-          verboseStream << runtime_i << " maybe be an outlier" << std::endl;
-          ad_score = out_scores_i.at( bin_ind - 1);
-	  verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-        }
-
-      }
+      
+      if (mean_pn_ecdf.at(running_idx++) > 0)
+	      ad_score = l_threshold + 1;
+      else
+	      ad_score = l_threshold - 1;
 
       itt->set_outlier_score(ad_score);
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
@@ -740,7 +683,6 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
           n_outliers += 1;
 
       }
-    //}
       else {
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
@@ -779,8 +721,15 @@ int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<
   return  ret_val;
 }
 
-auto ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {
+std::vector<double> ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {
+  
+  std::vector<double> tmp_runtimes = runtimes;	
+  auto ecdf = boost::math::empirical_cumulative_distribution_function(std::move(tmp_runtimes));	
+  std::vector<double> result_ecdf = std::vector<double>(runtimes.size(), 0.0);
+  for(int i=0; i < runtimes.size(); i++) {
+    result_ecdf.at(i) = ecdf(runtimes.at(i));
+  }
 
-  return boost::math::empirical_cumulative_distribution_function(std::move(runtimes), sorted);
+  return result_ecdf;
 
 }

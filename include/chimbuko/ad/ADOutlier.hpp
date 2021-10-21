@@ -304,7 +304,7 @@ namespace chimbuko {
     /**
      * @brief Computes Empirical CDF of input vector of function runtimes
      */
-    auto empiricalCDF(const std::vector<double>& runtimes, const bool sorted=true);
+    std::vector<double> empiricalCDF(const std::vector<double>& runtimes, const bool sorted=true);
 
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
