@@ -1,4 +1,5 @@
 #include "chimbuko/param/copod_param.hpp"
+#include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
