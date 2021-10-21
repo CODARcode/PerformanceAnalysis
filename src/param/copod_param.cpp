@@ -44,20 +44,20 @@ using namespace chimbuko;
      os << std::endl;
  }
 
- void CopodParam::assign(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void CopodParam::assign(const std::unordered_map<unsigned long, Histogram>& copodstats)
  {
      std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
+     for (auto& pair: copodstats) {
          m_copodstats[pair.first] = pair.second;
      }
  }
 
  void CopodParam::assign(const std::string& parameters)
  {
-     std::unordered_map<unsigned long, Histogram> hbosstats;
+     std::unordered_map<unsigned long, Histogram> copodstats;
 
-     deserialize_cerealpb(parameters, hbosstats);
-     assign(hbosstats);
+     deserialize_cerealpb(parameters, copodstats);
+     assign(copodstats);
  }
 
  std::string CopodParam::serialize() const
@@ -67,10 +67,10 @@ using namespace chimbuko;
      return serialize_cerealpb(m_copodstats);
  }
 
- std::string CopodParam::serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ std::string CopodParam::serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& copodstats)
  {
    std::unordered_map<unsigned long, Histogram::Data> histdata;
-   for(auto const& e : hbosstats)
+   for(auto const& e : copodstats)
      histdata[e.first] = e.second.get_histogram();
    std::stringstream ss;
    {
@@ -80,7 +80,7 @@ using namespace chimbuko;
    return ss.str();
  }
 
- void CopodParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void CopodParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, Histogram>& copodstats)
  {
    std::stringstream ss; ss << parameters;
    std::unordered_map<unsigned long, Histogram::Data> histdata;
@@ -89,36 +89,36 @@ using namespace chimbuko;
      rd(histdata);
    }
    for(auto const& e : histdata)
-     hbosstats[e.first] = Histogram::from_hist_data(e.second);
+     copodstats[e.first] = Histogram::from_hist_data(e.second);
  }
 
  std::string CopodParam::update(const std::string& parameters, bool return_update)
  {
-     std::unordered_map<unsigned long, Histogram> hbosstats;
-     deserialize_cerealpb(parameters, hbosstats);
+     std::unordered_map<unsigned long, Histogram> copodstats;
+     deserialize_cerealpb(parameters, copodstats);
      if(return_update){
-       update_and_return(hbosstats); //update hbosstats to reflect changes
-       return serialize_cerealpb(hbosstats);
+       update_and_return(copodstats); //update copodstats to reflect changes
+       return serialize_cerealpb(copodstats);
      }else{
-       update(hbosstats);
+       update(copodstats);
        return "";
      }
  }
 
- void CopodParam::update(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void CopodParam::update(const std::unordered_map<unsigned long, Histogram>& copodstats)
  {
      std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
+     for (auto& pair: copodstats) {
          m_copodstats[pair.first] += pair.second;
      }
  }
 
- void CopodParam::update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void CopodParam::update_and_return(std::unordered_map<unsigned long, Histogram>& copodstats)
  {
     std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
+     for (auto& pair: copodstats) {
          m_copodstats[pair.first] += pair.second;
-         pair.second = hbosstats[pair.first];
+         pair.second = copodstats[pair.first];
      }
 
  }
@@ -135,5 +135,3 @@ using namespace chimbuko;
    }
    return 1;
  }
-
-

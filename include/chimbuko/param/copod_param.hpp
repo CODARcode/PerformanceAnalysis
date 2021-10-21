@@ -10,7 +10,7 @@
 
 namespace chimbuko {
 
-  
+
   /**
    * @@brief Implementation of ParamInterface for COPOD based anomaly detection
    */
@@ -60,16 +60,16 @@ namespace chimbuko {
 
     /**
      * @brief Set the internal Histogram to match those included in the input map. Overwrite performed only for those keys in input.
-     * @param hbosstats The input map between global function index and Histogram
+     * @param copodstats The input map between global function index and Histogram
      */
-    void assign(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void assign(const std::unordered_map<unsigned long, Histogram>& copodstats);
 
     /**
      * @brief Convert a Histogram mapping into a Cereal portable binary representration
-     * @param hbosstats The Histogram mapping
+     * @param copodstats The Histogram mapping
      * @return Histogram in string format
      */
-    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& copodstats);
 
     /**
      * @brief Get an element of the internal map
@@ -80,17 +80,17 @@ namespace chimbuko {
     /**
      * @brief Convert a Histogram Cereal portable binary representation string into a map
      * @param[in] parameters The parameter string
-     * @param[out] hbosstats The map between global function index and histogram statistics
+     * @param[out] copodstats The map between global function index and histogram statistics
      */
     static void deserialize_cerealpb(const std::string& parameters,
-			    std::unordered_map<unsigned long, Histogram>& hbosstats);
+			    std::unordered_map<unsigned long, Histogram>& copodstats);
 
 
     /**
      * @brief Update the internal histogram with those included in the input map
-     * @param[in] hbosstats The map between global function index and histogram
+     * @param[in] copodstats The map between global function index and histogram
      */
-    void update(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void update(const std::unordered_map<unsigned long, Histogram>& copodstats);
 
     /**
      * @brief Update the internal Histogram with those included in another CopodParam instance.
@@ -100,9 +100,9 @@ namespace chimbuko {
 
     /**
      * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.
-     * @param[in,out] hbosstats The map between global function index and statistics
+     * @param[in,out] copodstats The map between global function index and statistics
      */
-    void update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void update_and_return(std::unordered_map<unsigned long, Histogram>& copodstats);
 
     /**
      * @brief Update the internal histogram with those included in another CopodParam instance. Other CopodParam is then updated to reflect new state.

@@ -10,6 +10,12 @@ HBOSOutlier_LDADD = $(LDADD)
 HBOSOutlierADs_SOURCES = HBOSOutlierADs.cpp ../unit_test_main_mpi.cpp
 HBOSOutlierADs_LDADD = $(LDADD)
 
+COPODOutlier_SOURCES = COPODOutlier.cpp ../unit_test_main_mpi.cpp
+COPODOutlier_LDADD = $(LDADD)
+
+COPODOutlierADs_SOURCES = COPODOutlierADs.cpp ../unit_test_main_mpi.cpp
+COPODOutlierADs_LDADD = $(LDADD)
+
 HBOSOutlierDistributions_SOURCES = HBOSOutlierDistributions.cpp ../unit_test_main_mpi.cpp
 HBOSOutlierDistributions_LDADD = $(LDADD)
 
@@ -65,7 +71,7 @@ ADcombinedPSdata_SOURCES = ADcombinedPSdata.cpp ../unit_test_main.cpp
 ADcombinedPSdata_LDADD = $(LDADD)
 
 FuncAnomalyMetrics_SOURCES = FuncAnomalyMetrics.cpp ../unit_test_main.cpp
-FuncAnomalyMetrics_LDADD = $(LDADD) 
+FuncAnomalyMetrics_LDADD = $(LDADD)
 
 ADLocalAnomalyMetrics_SOURCES = ADLocalAnomalyMetrics.cpp ../unit_test_main.cpp
-ADLocalAnomalyMetrics_LDADD = $(LDADD) 
+ADLocalAnomalyMetrics_LDADD = $(LDADD)
