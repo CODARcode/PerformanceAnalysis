@@ -42,7 +42,7 @@ void ChimbukoParams::print() const{
 	    << "\nPS Addr    : " << pserver_addr
 #endif
 	    << "\nSigma      : " << outlier_sigma
-			<< "\nHBOS Threshold: " << hbos_threshold
+			<< "\nHBOS/COPOD Threshold: " << hbos_threshold
 			<< "\nUsing Global threshold: " << hbos_use_global_threshold
 	    << "\nWindow size: " << anom_win_size
 
@@ -176,7 +176,7 @@ void Chimbuko::init_net_client(){
     m_net_client = new ADThreadNetClient;
     m_net_client->linkPerf(&m_perf);
     m_net_client->setRecvTimeout(m_params.net_recv_timeout);
-    m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);	
+    m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
 
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
@@ -466,20 +466,20 @@ void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
 				   const unsigned long last_event_ts) const{
   if(m_net_client && m_net_client->use_ps()){
     PerfTimer timer;
-  
+
     //Gather function profile and anomaly statistics
     timer.start();
     ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
     prof_stats.gatherStatistics(m_event->getExecDataMap());
     prof_stats.gatherAnomalies(anomalies);
     m_perf.add("ad_gather_send_ps_data_gather_profile_stats_time_ms", timer.elapsed_ms());
-      
+
     //Gather counter statistics
     timer.start();
     ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
     count_stats.gatherStatistics(m_counter->getCountersByIndex());
     m_perf.add("ad_gather_send_ps_data_gather_counter_stats_time_ms", timer.elapsed_ms());
-    
+
     //Gather anomaly metrics
     timer.start();
     ADLocalAnomalyMetrics metrics(m_params.program_idx, m_params.rank, step, first_event_ts, last_event_ts, anomalies);
@@ -538,7 +538,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
     if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step
-							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step 
+							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
 							  << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
 

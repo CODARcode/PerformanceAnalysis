@@ -1,6 +1,7 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/param/copod_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/error.hpp"
@@ -32,6 +33,9 @@ ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & a
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
     return new ADOutlierHBOS(stat, hbos_thres, glob_thres);
+  }
+  else if (algorithm == "copod" || algorithm == "COPOD") {
+    return new ADOutlierCOPOD(stat, hbos_thres); 
   }
   else {
     return nullptr;
@@ -365,6 +369,283 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       double ad_score;
 
       const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << param[func_id].bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
+      /**
+       * If the sample does not belong to any bins
+       * bin_ind == 0 (fall outside since it is too small)
+       */
+      if( bin_ind == 0){
+        const double first_bin_edge = param[func_id].bin_edges().at(0);
+        const double dist = first_bin_edge - runtime_i;
+	verboseStream << "First_bin_edge: " << first_bin_edge << std::endl;
+        if( dist <= (bin_width * 0.05) ){
+          verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
+	  if(param[func_id].counts().size() < 1) {return 0;}
+          if(param[func_id].counts().at(0) == 0) { /**< Ignore zero counts */
+
+            ad_score = l_threshold - 1;
+            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+          }
+          else {
+            ad_score = out_scores_i.at(0);
+	    verboseStream << "ad_score: " << ad_score << std::endl;
+          }
+        }
+        else{
+          verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
+          ad_score = max_score;
+	  verboseStream << "ad_score(max_score): " << ad_score << std::endl;
+        }
+
+      }
+      /**
+       *  If the sample does not belong to any bins
+       */
+      else if(bin_ind == num_bins + 1){
+        const int last_idx = param[func_id].bin_edges().size() - 1;
+        const double last_bin_edge = param[func_id].bin_edges().at(last_idx);
+        const double dist = runtime_i - last_bin_edge;
+	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
+        if (dist <= (bin_width * 0.05)) {
+          if(param[func_id].counts().at(num_bins - 1) == 0) {   //bin_ind) == 0) {  /**< Ignore zero counts */
+
+            ad_score = l_threshold - 1;
+            verboseStream << "corrected ad_score: " << ad_score << std::endl;
+          }
+          else {
+            verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
+            ad_score = out_scores_i.at(num_bins - 1);
+	    verboseStream << "ad_score: " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
+          }
+        }
+        else{
+          verboseStream << runtime_i << " is on right of histogram and an outlier" << std::endl;
+          ad_score = max_score;
+	  verboseStream << "ad_score(max_score): " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
+        }
+
+      }
+      else {
+
+        if(param[func_id].counts().at(bin_ind) == 0) { /**< Ignore zero counts */
+
+          ad_score = l_threshold - 1;
+          verboseStream << "corrected ad_score: " << ad_score << std::endl;
+        }
+        else {
+          verboseStream << runtime_i << " maybe be an outlier" << std::endl;
+          ad_score = out_scores_i.at( bin_ind - 1);
+	  verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
+        }
+
+      }
+
+      itt->set_outlier_score(ad_score);
+      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+
+      //Compare the ad_score with the threshold
+      if (ad_score >= l_threshold) {
+
+          itt->set_label(-1);
+          std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+          n_outliers += 1;
+
+      }
+    //}
+      else {
+        //Capture maximum of one normal execution per io step
+        itt->set_label(1);
+        if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
+      	   std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+      	   outliers.insert(itt, Anomalies::EventType::Normal);
+
+        }
+
+      }
+    }
+  }
+
+  return n_outliers;
+}
+
+
+int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
+
+
+  if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
+    return 0;
+  }
+
+
+  for(int j=1; j < bin_edges.size(); j++){
+
+    if(X <= bin_edges.at(j)){
+
+      return (j-1);
+    }
+  }
+
+  const int ret_val = bin_edges.size();
+
+  return  ret_val;
+}
+
+
+
+/* ---------------------------------------------------------------------------
+ * Implementation of ADOutlierCOPOD class
+ * --------------------------------------------------------------------------- */
+ADOutlierCOPOD::ADOutlierCOPOD(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+    m_param = new CopodParam();
+}
+
+ADOutlierCOPOD::~ADOutlierCOPOD() {
+  if (m_param)
+    m_param->clear();
+}
+
+Anomalies ADOutlierCOPOD::run(int step) {
+  Anomalies outliers;
+  if (m_execDataMap == nullptr) return outliers;
+
+  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
+  //Python scripts also appear to take longer executing a function the first time
+  //This is worked around by ignoring the first time a function is encountered (per device)
+  //Set this environment variable to disable the workaround
+  bool cuda_jit_workaround = true;
+  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
+    cuda_jit_workaround = false;
+  }
+
+  //Generate the statistics based on this IO step
+  CopodParam param;
+  CopodParam& g = *(CopodParam*)m_param;
+  for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+    unsigned long func_id = it.first;
+    std::vector<double> runtimes;
+    for (auto itt : it.second) { //loop over events for that function
+      if (itt->get_label() == 0) {
+        //Update local counts of number of times encountered
+        std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+        auto encounter_it = m_local_func_exec_count.find(fkey);
+        if(encounter_it == m_local_func_exec_count.end())
+  	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+        else
+  	encounter_it->second++;
+
+        if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
+
+           runtimes.push_back(this->getStatisticValue(*itt));
+        }
+      }
+    }
+    if (runtimes.size() > 0) {
+      if (!g.find(func_id)) { // If func_id does not exist
+        const int r = param[func_id].create_histogram(runtimes);
+        if (r < 0) {return outliers;}
+      }
+      else { //merge with exisiting func_id, not overwrite
+
+        const int r = param[func_id].merge_histograms(g[func_id], runtimes);
+	if (r < 0) {return outliers;}
+      }
+    }
+    else { return outliers;}
+  }
+
+  //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
+  PerfTimer timer;
+  timer.start();
+  std::pair<size_t, size_t> msgsz = sync_param(&param);
+
+  if(m_perf != nullptr){
+    m_perf->add("param_update_ms", timer.elapsed_ms());
+    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
+  }
+
+  //Run anomaly detection algorithm
+  for (auto it : *m_execDataMap) { //loop over function index
+    const unsigned long func_id = it.first;
+    const unsigned long n = compute_outliers(outliers,func_id, it.second);
+  }
+
+  return outliers;
+}
+
+unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
+					      const unsigned long func_id,
+					      std::vector<CallListIterator_t>& data){
+
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
+
+  CopodParam& param = *(CopodParam*)m_param;
+
+
+  unsigned long n_outliers = 0;
+
+  //probability of runtime counts
+  std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
+  double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
+
+  for(int i=0; i < param[func_id].counts().size(); i++){
+    int count = param[func_id].counts().at(i);
+    double p = count / tot_runtimes;
+    prob_counts.at(i) += p;
+
+  }
+
+  //Create COPOD score vector
+  std::vector<double> out_scores_i;
+  double min_score = -1 * log2(0.0 + m_alpha);
+  double max_score = -1 * log2(1.0 + m_alpha);
+  verboseStream << "out_scores_i: " << std::endl;
+  for(int i=0; i < prob_counts.size(); i++){
+    double l = -1 * log2(prob_counts.at(i) + m_alpha);
+    out_scores_i.push_back(l);
+    verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    if(prob_counts.at(i) > 0) {
+      if(l < min_score){
+        min_score = l;
+      }
+      if(l > max_score){
+        max_score = l;
+      }
+    }
+  }
+  verboseStream << std::endl;
+  verboseStream << "out_score_i size: " << out_scores_i.size() << std::endl;
+  verboseStream << "min_score = " << min_score << std::endl;
+  verboseStream << "max_score = " << max_score << std::endl;
+
+  if (out_scores_i.size() <= 0) {return 0;}
+
+  //compute threshold
+  verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
+  double l_threshold = min_score + (m_threshold * (max_score - min_score));
+  if(m_use_global_threshold) {
+    if(l_threshold < param[func_id].get_threshold()) {
+      l_threshold = param[func_id].get_threshold();
+    } else {
+      param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
+      //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+    }
+  }
+
+  //Compute COPOD based score for each datapoint
+  const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
+  const int num_bins = param[func_id].counts().size();
+  verboseStream << "Bin width: " << bin_width << std::endl;
+
+  int top_out = 0;
+  for (auto itt : data) {
+    if (itt->get_label() == 0) {
+
+      const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
+      double ad_score;
+
+      const int bin_ind = ADOutlierCOPOD::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
       verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << param[func_id].bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
       /**
        * If the sample does not belong to any bins

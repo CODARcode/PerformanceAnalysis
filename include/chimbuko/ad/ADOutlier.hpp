@@ -245,5 +245,70 @@ namespace chimbuko {
 
   };
 
+  /**
+   * @brief COPOD anomaly detection algorithm
+   *
+   */
+  class ADOutlierCOPOD : public ADOutlier {
+  public:
+
+    /**
+     * @brief Construct a new ADOutlierHBOS object
+     *
+     */
+    ADOutlierCOPOD(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
+
+    /**
+     * @brief Destroy the ADOutlierHBOS object
+     *
+     */
+    ~ADOutlierCOPOD();
+
+    /**
+     * @brief Set the alpha value
+     *
+     * @param regularizer alpha value
+     */
+    void set_alpha(double alpha) { m_alpha = alpha; }
+
+    /**
+     * @brief run HBOS anomaly detection algorithm
+     *
+     * @param step step (or frame) number
+     * @return data structure containing captured anomalies
+     */
+    Anomalies run(int step=0) override;
+
+  protected:
+    /**
+     * @brief compute outliers (or anomalies) of the list of function calls
+     *
+     * @param[out] outliers Array of function calls that were tagged as outliers
+     * @param func_id function id
+     * @param data[in,out] a list of function calls to inspect
+     * @return unsigned long the number of outliers (or anomalies)
+     */
+    unsigned long compute_outliers(Anomalies &outliers,
+				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
+
+    /**
+     * @brief Scott's rule for bin_width estimation during histogram formation
+     */
+    double _scott_binWidth(std::vector<double>& vals);
+
+    /**
+     * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
+     */
+    int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
+
+  private:
+    double m_alpha; /**< Used to prevent log2 overflow */
+    double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
+    bool m_use_global_threshold; /**< Flag to use global threshold*/
+    //double m_threshold; /** sync with global threshold */
+    OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
+
+  };
+
 
 } // end of AD namespace
