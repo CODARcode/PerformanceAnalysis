@@ -747,7 +747,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 }
 
 
-int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
+int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
 
 
   if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
