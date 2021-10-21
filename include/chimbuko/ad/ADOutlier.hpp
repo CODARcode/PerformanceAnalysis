@@ -301,6 +301,11 @@ namespace chimbuko {
      */
     int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
 
+    /**
+     * @brief Computes Empirical CDF of input vector of function runtimes
+     */
+    auto empiricalCDF(const std::vector<double>& runtimes, const bool sorted=true);
+
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in HBOS*/

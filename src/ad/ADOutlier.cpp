@@ -8,6 +8,7 @@
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 #include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/empirical_cumulative_distribution_function.hpp>
 
 using namespace chimbuko;
 
@@ -35,7 +36,7 @@ ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & a
     return new ADOutlierHBOS(stat, hbos_thres, glob_thres);
   }
   else if (algorithm == "copod" || algorithm == "COPOD") {
-    return new ADOutlierCOPOD(stat, hbos_thres); 
+    return new ADOutlierCOPOD(stat, hbos_thres);
   }
   else {
     return nullptr;
@@ -589,11 +590,21 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
 
+  std::vector<double> recon_runtimes = std::vector<double>(tot_runtimes, 0.0);
+  int recon_idx = 0;
+  for(int i=0; i < param[func_id].counts().size(); i++){
+    int count = param[func_id].counts().at(i);
+    for(int j=0; j<count; j++){
+      recon_runtimes.at(recon_idx++) = param[func_id].bin_edges.at(i);
+    }
+  }
+
+  auto func_ecdf = empiricalCDF(recon_runtimes, true);
+
   for(int i=0; i < param[func_id].counts().size(); i++){
     int count = param[func_id].counts().at(i);
     double p = count / tot_runtimes;
     prob_counts.at(i) += p;
-
   }
 
   //Create COPOD score vector
@@ -766,4 +777,10 @@ int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<
   const int ret_val = bin_edges.size();
 
   return  ret_val;
+}
+
+auto ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {
+
+  return boost::math::empirical_cumulative_distribution_function(std::move(runtimes), sorted);
+
 }
