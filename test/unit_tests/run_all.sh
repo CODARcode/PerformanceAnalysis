@@ -21,6 +21,13 @@ set -o pipefail
 ./ad/ADcombinedPSdata
 ./ad/FuncAnomalyMetrics
 ./ad/ADLocalAnomalyMetrics
+./ad/HBOSOutlierDistributions
+./ad/HBOSOutlier
+./ad/HBOSOutlierADs
+./ad/HBOSOutlierTestBPFile ../data
+./ad/SSTDOutlierTestBPFile ../data
+./ad/COPODOutlier
+./ad/COPODOutlierADs
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats
