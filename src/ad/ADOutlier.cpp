@@ -1,12 +1,14 @@
 #include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/param/copod_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/error.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 #include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/empirical_cumulative_distribution_function.hpp>
 
 using namespace chimbuko;
 
@@ -33,6 +35,9 @@ ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & a
   else if (algorithm == "hbos" || algorithm == "HBOS") {
     return new ADOutlierHBOS(stat, hbos_thres, glob_thres);
   }
+  else if (algorithm == "copod" || algorithm == "COPOD") {
+    return new ADOutlierCOPOD(stat, hbos_thres);
+  }
   else {
     return nullptr;
   }
@@ -54,6 +59,29 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
   }
 }
 
+std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
+{
+  if (!m_use_ps) {
+    verboseStream << "m_use_ps not USED!" << std::endl;
+    m_param->update(param->serialize());
+    return std::make_pair(0, 0);
+  }
+  else {
+    Message msg;
+    msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
+    msg.set_msg(param->serialize(), false);
+    size_t sent_sz = msg.size();
+
+    m_net_client->send_and_receive(msg, msg);
+    size_t recv_sz = msg.size();
+    m_param->assign(msg.buf());
+    return std::make_pair(sent_sz, recv_sz);
+  }
+}
+
+
+
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
@@ -62,28 +90,6 @@ ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat, double sigma) : ADOutlier(st
 }
 
 ADOutlierSSTD::~ADOutlierSSTD() {
-}
-
-std::pair<size_t,size_t> ADOutlierSSTD::sync_param(ParamInterface const* param)
-{
-  SstdParam& g = *(SstdParam*)m_param; //global parameter set
-  const SstdParam & l = *(SstdParam const*)param; //local parameter set
-
-    if (!m_use_ps) {
-        g.update(l);
-        return std::make_pair(0, 0);
-    }
-    else {
-        Message msg;
-        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
-        msg.set_msg(l.serialize(), false);
-        size_t sent_sz = msg.size();
-
-	m_net_client->send_and_receive(msg, msg);
-        size_t recv_sz = msg.size();
-        g.assign(msg.buf());
-        return std::make_pair(sent_sz, recv_sz);
-    }
 }
 
 Anomalies ADOutlierSSTD::run(int step) {
@@ -147,9 +153,15 @@ double ADOutlierSSTD::computeScore(CallListIterator_t ev, const SstdParam &stats
   double mean = it->second.mean();
   double std_dev = it->second.stddev();
   if(std_dev == 0.) std_dev = 1e-10; //distribution throws an error if std.dev = 0
-  boost::math::normal_distribution<double> dist(mean, std_dev);
-  double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
-  double score = std::min(cdf_val, 1-cdf_val); //two-tailed
+
+  //boost::math::normal_distribution<double> dist(mean, std_dev);
+  //double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
+  //double score = std::min(cdf_val, 1-cdf_val); //two-tailed
+
+  //Using the CDF gives scores ~0 for basically any global outlier
+  //Instead we will use the difference in runtime compared to the avg in units of the standard deviation
+  double score = fabs( runtime - mean ) / std_dev;
+
   verboseStream << "ADOutlierSSTD::computeScore " << ev->get_funcname() << " runtime " << runtime << " mean " << mean << " std.dev " << std_dev << " -> score " << score << std::endl;
   return score;
 }
@@ -158,12 +170,12 @@ double ADOutlierSSTD::computeScore(CallListIterator_t ev, const SstdParam &stats
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
-  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
 
 
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
-    verboseStream << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
+    std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
     return 0;
   }
   unsigned long n_outliers = 0;
@@ -182,7 +194,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       itt->set_outlier_score(computeScore(itt, param));
 
       if (label == -1) {
-	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
   	std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
@@ -190,7 +202,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       }else{
 	//Capture maximum of one normal execution per io step
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	  std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 
 	  outliers.insert(itt, Anomalies::EventType::Normal);
@@ -208,36 +220,13 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(0.00001), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
     m_param = new HbosParam();
 }
 
 ADOutlierHBOS::~ADOutlierHBOS() {
   if (m_param)
     m_param->clear();
-}
-
-std::pair<size_t,size_t> ADOutlierHBOS::sync_param(ParamInterface const* param)
-{
-  HbosParam& g = *(HbosParam*)m_param; //global parameter set
-  const HbosParam & l = *(HbosParam const*)param; //local parameter set
-
-    if (!m_use_ps) {
-        verboseStream << "m_use_ps not USED!" << std::endl;
-        g.update(l);
-        return std::make_pair(0, 0);
-    }
-    else {
-        Message msg;
-        msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
-        msg.set_msg(l.serialize(), false);
-        size_t sent_sz = msg.size();
-   
-        m_net_client->send_and_receive(msg, msg);
-        size_t recv_sz = msg.size();
-        g.assign(msg.buf());
-        return std::make_pair(sent_sz, recv_sz);
-    }
 }
 
 Anomalies ADOutlierHBOS::run(int step) {
@@ -313,7 +302,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
 
-  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
 
@@ -394,7 +383,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
 	  if(param[func_id].counts().size() < 1) {return 0;}
           if(param[func_id].counts().at(0) == 0) { /**< Ignore zero counts */
-	    
+
             ad_score = l_threshold - 1;
             verboseStream << "corrected ad_score: " << ad_score << std::endl;
           }
@@ -459,16 +448,17 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       if (ad_score >= l_threshold) {
 
           itt->set_label(-1);
-          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
           outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
 
       }
+    //}
       else {
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-      	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+      	   std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       	   outliers.insert(itt, Anomalies::EventType::Normal);
 
         }
@@ -500,4 +490,246 @@ int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<d
   const int ret_val = bin_edges.size();
 
   return  ret_val;
+}
+
+
+
+/* ---------------------------------------------------------------------------
+ * Implementation of ADOutlierCOPOD class
+ * --------------------------------------------------------------------------- */
+ADOutlierCOPOD::ADOutlierCOPOD(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+    m_param = new CopodParam();
+}
+
+ADOutlierCOPOD::~ADOutlierCOPOD() {
+  if (m_param)
+    m_param->clear();
+}
+
+Anomalies ADOutlierCOPOD::run(int step) {
+  Anomalies outliers;
+  if (m_execDataMap == nullptr) return outliers;
+
+  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
+  //Python scripts also appear to take longer executing a function the first time
+  //This is worked around by ignoring the first time a function is encountered (per device)
+  //Set this environment variable to disable the workaround
+  bool cuda_jit_workaround = true;
+  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
+    cuda_jit_workaround = false;
+  }
+
+  //Generate the statistics based on this IO step
+  CopodParam param;
+  CopodParam& g = *(CopodParam*)m_param;
+  for (auto it : *m_execDataMap) { //loop over functions (key is function index)
+    unsigned long func_id = it.first;
+    std::vector<double> runtimes;
+    for (auto itt : it.second) { //loop over events for that function
+      if (itt->get_label() == 0) {
+        //Update local counts of number of times encountered
+        std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
+        auto encounter_it = m_local_func_exec_count.find(fkey);
+        if(encounter_it == m_local_func_exec_count.end())
+  	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
+        else
+  	encounter_it->second++;
+
+        if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
+
+           runtimes.push_back(this->getStatisticValue(*itt));
+        }
+      }
+    }
+    if (runtimes.size() > 0) {
+      if (!g.find(func_id)) { // If func_id does not exist
+        const int r = param[func_id].create_histogram(runtimes);
+        if (r < 0) {return outliers;}
+      }
+      else { //merge with exisiting func_id, not overwrite
+
+        const int r = param[func_id].merge_histograms(g[func_id], runtimes);
+	if (r < 0) {return outliers;}
+      }
+    }
+    else { return outliers;}
+  }
+
+  //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
+  PerfTimer timer;
+  timer.start();
+  std::pair<size_t, size_t> msgsz = sync_param(&param);
+
+  if(m_perf != nullptr){
+    m_perf->add("param_update_ms", timer.elapsed_ms());
+    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
+  }
+
+  //Run anomaly detection algorithm
+  for (auto it : *m_execDataMap) { //loop over function index
+    const unsigned long func_id = it.first;
+    const unsigned long n = compute_outliers(outliers,func_id, it.second);
+  }
+
+  return outliers;
+}
+
+unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
+					      const unsigned long func_id,
+					      std::vector<CallListIterator_t>& data){
+
+  std::cout << "Finding outliers in events for func " << func_id << std::endl;
+
+  CopodParam& param = *(CopodParam*)m_param;
+
+
+  unsigned long n_outliers = 0;
+
+  //probability of runtime counts
+  //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
+  double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
+
+  std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
+  std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
+  int recon_idx = 0;
+  for(int i=0; i < param[func_id].counts().size(); i++){
+    int count = param[func_id].counts().at(i);
+    for(int j=0; j<count; j++){
+      recon_p_runtimes.at(recon_idx++) = param[func_id].bin_edges().at(i);
+      recon_n_runtimes.at(recon_idx++) = -1 * param[func_id].bin_edges().at(i);
+    }
+  }
+
+  std::vector<double> func_p_ecdf = empiricalCDF(recon_p_runtimes, true);
+  std::vector<double> func_n_ecdf = empiricalCDF(recon_n_runtimes, true);
+
+  std::vector<double> mean_pn_ecdf = std::vector<double>(func_p_ecdf.size(), 0.0);
+  for(int i=0; i < mean_pn_ecdf.size(); i++){
+    mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2;
+  }
+
+
+  //for(int i=0; i < param[func_id].counts().size(); i++){
+  //  int count = param[func_id].counts().at(i);
+  //  double p = count / tot_runtimes;
+  //  prob_counts.at(i) += p;
+  //}
+
+  //Create COPOD score vector
+  std::vector<double> out_scores_i;
+  double min_score = -1 * log2(0.0 + m_alpha);
+  double max_score = -1 * log2(1.0 + m_alpha);
+  verboseStream << "out_scores_i: " << std::endl;
+  for(int i=0; i < mean_pn_ecdf.size(); i++){
+    double l = -1 * log2(mean_pn_ecdf.at(i) + m_alpha);
+    out_scores_i.push_back(l);
+    //verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    //if(prob_counts.at(i) > 0) {
+      if(l < min_score){
+        min_score = l;
+      }
+      if(l > max_score){
+        max_score = l;
+      }
+    //}
+  }
+  verboseStream << std::endl;
+  verboseStream << "out_score_i size: " << out_scores_i.size() << std::endl;
+  verboseStream << "min_score = " << min_score << std::endl;
+  verboseStream << "max_score = " << max_score << std::endl;
+
+  if (out_scores_i.size() <= 0) {return 0;}
+
+  //compute threshold
+  verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
+  double l_threshold = min_score + (m_threshold * (max_score - min_score));
+  if(m_use_global_threshold) {
+    if(l_threshold < param[func_id].get_threshold()) {
+      l_threshold = param[func_id].get_threshold();
+    } else {
+      param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
+      //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+    }
+  }
+
+  //Compute COPOD based score for each datapoint
+  //const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
+  //const int num_bins = param[func_id].counts().size();
+  //verboseStream << "Bin width: " << bin_width << std::endl;
+
+  int top_out = 0;
+  int running_idx = 0;
+  for (auto itt : data) {
+    if (itt->get_label() == 0) {
+
+      const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
+      double ad_score;
+      
+      if (mean_pn_ecdf.at(running_idx++) > 0)
+	      ad_score = l_threshold + 1;
+      else
+	      ad_score = l_threshold - 1;
+
+      itt->set_outlier_score(ad_score);
+      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+
+      //Compare the ad_score with the threshold
+      if (ad_score >= l_threshold) {
+
+          itt->set_label(-1);
+          std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+          n_outliers += 1;
+
+      }
+      else {
+        //Capture maximum of one normal execution per io step
+        itt->set_label(1);
+        if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
+      	   std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+      	   outliers.insert(itt, Anomalies::EventType::Normal);
+
+        }
+
+      }
+    }
+  }
+
+  return n_outliers;
+}
+
+
+int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
+
+
+  if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
+    return 0;
+  }
+
+
+  for(int j=1; j < bin_edges.size(); j++){
+
+    if(X <= bin_edges.at(j)){
+
+      return (j-1);
+    }
+  }
+
+  const int ret_val = bin_edges.size();
+
+  return  ret_val;
+}
+
+std::vector<double> ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {
+  
+  std::vector<double> tmp_runtimes = runtimes;	
+  auto ecdf = boost::math::empirical_cumulative_distribution_function(std::move(tmp_runtimes));	
+  std::vector<double> result_ecdf = std::vector<double>(runtimes.size(), 0.0);
+  for(int i=0; i < runtimes.size(); i++) {
+    result_ecdf.at(i) = ecdf(runtimes.at(i));
+  }
+
+  return result_ecdf;
+
 }

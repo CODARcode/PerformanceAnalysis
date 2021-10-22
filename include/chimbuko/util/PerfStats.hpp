@@ -1,11 +1,12 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #ifdef _PERF_METRIC
 #include <chrono>
 #include <sstream>
 #include <map>
 #include "chimbuko/util/RunMetric.hpp"
 #endif
+#include<string>
 
 namespace chimbuko{
 
@@ -86,6 +87,12 @@ namespace chimbuko{
      * @brief Write the running statistics to the file. Only writes out if a path and filename have been provided.
      */
     void write() const;
+
+    /**
+     * @brief Write the running statistics to a stream
+     */
+    void write(std::ostream &os) const;
+
 
     /**
      * @brief Combine the statistics with another

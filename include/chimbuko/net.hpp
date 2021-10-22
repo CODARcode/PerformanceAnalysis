@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include "chimbuko/util/threadPool.hpp"
 #include "chimbuko/message.hpp"
 #include <string>
@@ -47,8 +48,8 @@ namespace chimbuko {
    */
   class NetPayloadHandShake: public NetPayloadBase{
   public:
-    MessageKind kind() const{ return MessageKind::DEFAULT; }
-    MessageType type() const{ return MessageType::REQ_ECHO; }
+    MessageKind kind() const override{ return MessageKind::DEFAULT; }
+    MessageType type() const override{ return MessageType::REQ_ECHO; }
     void action(Message &response, const Message &message) override{
       check(message);
       response.set_msg(std::string("Hello!I am NET!"), false);

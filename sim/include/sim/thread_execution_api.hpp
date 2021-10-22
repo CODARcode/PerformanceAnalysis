@@ -1,3 +1,4 @@
+#include <chimbuko_config.h>
 #include "ad.hpp"
 
 namespace chimbuko_sim{

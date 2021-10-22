@@ -155,13 +155,13 @@ double RunStats::kurtosis() const {
     return m_state.count * m_state.phi / (m_state.rho * m_state.rho) - 3.0;
 }
 
-RunStats chimbuko::operator+(const RunStats a, const RunStats b)
+RunStats chimbuko::operator+(const RunStats &a, const RunStats &b)
 {
     double sum_count = a.m_state.count + b.m_state.count;
     if (sum_count == 0.0)
         return RunStats();
 
-    double delta  = a.m_state.eta - b.m_state.eta;
+    double delta  = b.m_state.eta - a.m_state.eta;
     double delta2 = delta * delta;
     double delta3 = delta * delta2;
     double delta4 = delta2 * delta2;

@@ -94,11 +94,14 @@ using namespace chimbuko;
  std::string HbosParam::update(const std::string& parameters, bool return_update)
  {
      std::unordered_map<unsigned long, Histogram> hbosstats;
-
      deserialize_cerealpb(parameters, hbosstats);
-     update_and_return(hbosstats); //update hbosstats to reflect changes
-
-     return (return_update) ? serialize_cerealpb(hbosstats): "";
+     if(return_update){
+       update_and_return(hbosstats); //update hbosstats to reflect changes
+       return serialize_cerealpb(hbosstats);
+     }else{
+       update(hbosstats);
+       return "";
+     }
  }
 
  void HbosParam::update(const std::unordered_map<unsigned long, Histogram>& hbosstats)
@@ -113,7 +116,7 @@ using namespace chimbuko;
  {
     std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
-         hbosstats[pair.first] += pair.second;
+         m_hbosstats[pair.first] += pair.second;
          pair.second = hbosstats[pair.first];
      }
 
@@ -287,7 +290,7 @@ using namespace chimbuko;
 
 
     *this = combined;
-    this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
+    //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
     return *this;
  }
 
@@ -301,8 +304,9 @@ using namespace chimbuko;
      int count = global_counts[i];
      if (count < 0)
       count = -1 * count;
-     if (count != 0)
+     if (count != 0){
       verboseStream << std::to_string(count) << ", ";
+     }
      size += count;
      sum += (count * global_edges.at(i));
    }
@@ -314,8 +318,9 @@ using namespace chimbuko;
      int count = local_counts[i];
      if (count < 0)
       count = -1 * count;
-     if (count != 0)
+     if (count != 0){
       verboseStream << std::to_string(count) << ", ";
+     }
      size += count;
      sum += (count * local_edges.at(i));
    }
@@ -392,7 +397,7 @@ using namespace chimbuko;
      m_histogram.bin_edges.push_back(prev + bin_width);
      prev += bin_width;
    }
-   //verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
+   //std::cout << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
 
    if (m_histogram.counts.size() > 0) m_histogram.counts.clear();
    m_histogram.counts = std::vector<int>(m_histogram.bin_edges.size()-1, 0);
@@ -404,7 +409,7 @@ using namespace chimbuko;
        }
      }
    }
-   //verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
+   //std::cout << "Size of counts: " << m_histogram.counts.size() << std::endl;
 
    //m_histogram.runtimes.clear();
    const double min_threshold = -1 * log2(1.00001);
@@ -430,7 +435,7 @@ using namespace chimbuko;
    //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
    return this->create_histogram(r_times);
    //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-   
+
  }
 
  nlohmann::json Histogram::get_json() const {

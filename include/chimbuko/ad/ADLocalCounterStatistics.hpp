@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<unordered_set>
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
@@ -139,6 +139,16 @@ namespace chimbuko{
      * @brief Get the IO step
      */
     int getIOstep() const{ return m_step; }
+
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const ADLocalCounterStatistics &r) const{ return m_program_idx == r.m_program_idx && m_step == r.m_step && m_stats == r.m_stats; }
+
+    /**
+     * @brief Inequality operator
+     */
+    bool operator!=(const ADLocalCounterStatistics &r) const{ return !( *this == r ); }
 
   protected:
     /**

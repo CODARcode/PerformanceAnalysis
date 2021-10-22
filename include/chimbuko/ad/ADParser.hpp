@@ -1,5 +1,5 @@
 #pragma once
-#include <mpi.h>
+#include <chimbuko_config.h>
 #include <adios2.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -194,7 +194,9 @@ namespace chimbuko {
 
 
     /**
-     * @brief Get all the events (func, comm and counter) occuring in the IO step ordered by their timestamp
+     * @brief Get all the events (func, comm and counter) occuring in the IO step
+     *
+     * Events are guaranteed ordered by their timestamp on a per-thread basis. Global ordering of events is not guaranteed
      */
     std::vector<Event_t> getEvents() const;
 
@@ -276,18 +278,6 @@ namespace chimbuko {
      * @return true if the events are in order, false otherwise
      */
     bool checkEventOrder(const EventDataType type, bool exit_on_fail) const;
-
-
-    /**
-     * @brief Return the pointer to the array whose timestamp (given by the value in the array at the provided offset) is earliest
-     * @param arrays A vector of array pointers
-     * @param ts_offsets The elements of the arrays that correspond to the timestamp
-     *
-     * Some (but not all) arrays can be nullptr
-     * If there is a tie between two entries, the array that enters first (lowest index) in the input vectors is chosen
-     */
-    static const unsigned long* getEarliest(const std::vector<const unsigned long*> &arrays, const std::vector<int> &ts_offsets);
-
 
     /**
      * @brief Validate an event to bypass corrupted input data (any event type)

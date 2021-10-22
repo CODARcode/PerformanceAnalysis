@@ -18,15 +18,22 @@ set -o pipefail
 ./ad/ADAnomalyProvenance
 ./ad/utils
 ./ad/AnomalyData
+./ad/ADcombinedPSdata
+./ad/FuncAnomalyMetrics
+./ad/ADLocalAnomalyMetrics
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats
 ./util/PerfStats
 ./util/error
 ./util/memutils
+./util/environment -hostname $(hostname)
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
-./pserver/global_anomaly_stats
+./pserver/AggregateFuncStats
+./pserver/GlobalAnomalyStats
+./pserver/AggregateFuncAnomalyMetrics
+./pserver/GlobalAnomalyMetrics
 ./net/ZMQMENet
 ./net/ZMQNet
 ./net/LocalNet

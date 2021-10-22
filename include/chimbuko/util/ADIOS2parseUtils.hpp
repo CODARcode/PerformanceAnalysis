@@ -1,6 +1,5 @@
 #pragma once
-
-#include <mpi.h>
+#include <chimbuko_config.h>
 #include <adios2.h>
 #include <string>
 #include <cassert>

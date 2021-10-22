@@ -43,15 +43,12 @@ int main(int argc, char** argv){
     }
   }
 
-  //Begin main
-  assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
-
   //Setup ADIOS2 capture
   adios2::ADIOS ad;
   adios2::IO io;
   adios2::Engine eng;
 
-  ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+  ad = adios2::ADIOS(adios2::DebugON);
   io = ad.DeclareIO("tau-metrics");
   if(!offline) io.SetEngine("SST");
   io.SetParameters({
@@ -138,6 +135,5 @@ int main(int argc, char** argv){
   std::cout << "Shutting down" << std::endl;
   eng.Close();
   
-  assert(MPI_Finalize() == MPI_SUCCESS );
   return 0;
 }

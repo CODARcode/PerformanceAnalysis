@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/ad/ADMetadataParser.hpp"
@@ -110,6 +111,8 @@ namespace chimbuko {
 	os << "COMM, "; break;
       case EventDataType::COUNT:
 	os << "COUNT, "; break;
+      case EventDataType::Unknown:
+	throw std::runtime_error("Unknown EventDataType");
       }
       os << id.toString() << ", " << ts << "}";
       return os.str();
@@ -249,7 +252,7 @@ namespace chimbuko {
     std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const override;
 
     /**
-     * @brief clear
+     * @brief Clear all data members
      *
      */
     void clear();
@@ -401,11 +404,6 @@ namespace chimbuko {
      * counters that allow us to match the CPU thread that launched them to the GPU kernel event
      */
     std::unordered_map<unsigned long, CallListIterator_t> m_unmatchedCorrelationID;
-
-    /**
-     * @brief Map of event index to the number of unmatched correlation IDs
-     */
-    std::unordered_map<eventID,size_t> m_unmatchedCorrelationID_count;
 
     /**
      * @brief verbose

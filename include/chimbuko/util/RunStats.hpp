@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <iostream>
 #include <vector>
 #include <limits>
@@ -23,13 +24,14 @@ namespace chimbuko {
     /**
      * @brief Internal state of RunStats object
      *
+     * Note the variables in https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance are M2,M3,M4. The mappings are provided in the comments below.
      */
     struct State {
       double count; /**< count of instances */
       double eta; /**< mean */
-      double rho;
-      double tau;
-      double phi;
+      double rho; /**< = M2 = \sum_i (x_i - \bar x)^2 */
+      double tau; /**< = M3 = \sum_i (x_i - \bar x)^3 */
+      double phi; /**< = M4 = \sum_i (x_i - \bar x)^4 */
       double min; /**< minimum */
       double max; /**< maximum */
       double acc; /**< sum */
@@ -230,6 +232,13 @@ namespace chimbuko {
      */
     double accumulate() const;
     double mean() const;
+
+    /**
+     * @brief Return the variance of the data
+     *
+     * If ddof=1 (default) the variance will include Bessel's correction, and represents an estimate of the population variance.
+     * If ddof=0 the variance will be the variance of the sample
+     */
     double variance(double ddof=1.0) const;
     double stddev(double ddof=1.0) const;
     double skewness() const;
@@ -239,6 +248,11 @@ namespace chimbuko {
      * @brief Set whether the sum of all values is to be maintained
      */
     void set_do_accumulate(bool do_accumulate) { m_do_accumulate = do_accumulate; }
+
+    /**
+     * @brief Determine whether the sum of all values is to be maintained
+     */
+    bool get_do_accumulate() const{ return m_do_accumulate; }
 
     /**
      * @brief Get the current statistics as a JSON object
@@ -254,7 +268,7 @@ namespace chimbuko {
     /**
      * @brief Combine two RunStats instances such that the resulting statistics are the union of the two
      */
-    friend RunStats operator+(const RunStats a, const RunStats b);
+    friend RunStats operator+(const RunStats &a, const RunStats &b);
 
     /**
      * @brief Combine two RunStats instances such that the resulting statistics are the union of the two
@@ -276,7 +290,7 @@ namespace chimbuko {
     bool m_do_accumulate; /**< True if the sum of the input values are maintained */
   };
 
-  RunStats operator+(const RunStats a, const RunStats b);
+  RunStats operator+(const RunStats &a, const RunStats &b);
   bool operator==(const RunStats& a, const RunStats& b);
   bool operator!=(const RunStats& a, const RunStats& b);
 

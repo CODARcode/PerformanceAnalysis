@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/global_counter_stats.hpp>
+#include <chimbuko/pserver/GlobalCounterStats.hpp>
 
 using namespace chimbuko;
 
@@ -36,4 +36,20 @@ nlohmann::json GlobalCounterStats::get_json_state() const{
     }
   }
   return jsonObjects;
+}
+
+void NetPayloadUpdateCounterStats::action(Message &response, const Message &message){
+  check(message);
+  if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
+
+  ADLocalCounterStatistics loc(0,0,nullptr);
+  loc.net_deserialize(message.buf());
+  m_global_counter_stats->add_counter_data(loc); //note, this uses a mutex lock internally
+  response.set_msg("", false);
+}
+
+void PSstatSenderGlobalCounterStatsPayload::add_json(nlohmann::json &into) const{ 
+  nlohmann::json stats = m_stats->get_json_state(); //a JSON array
+  if(stats.size())
+    into["counter_stats"] = std::move(stats);
 }

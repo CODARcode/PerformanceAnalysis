@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include <chimbuko/net.hpp>
 #include <chimbuko/util/PerfStats.hpp>
 
@@ -63,7 +63,7 @@ namespace chimbuko {
     static std::string send_and_receive(const std::string &send_str);
     
   protected:
-    void init_thread_pool(int nt){}
+    void init_thread_pool(int nt) override{}
 
   };
 

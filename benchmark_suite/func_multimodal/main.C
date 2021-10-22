@@ -14,9 +14,19 @@ T strToAny(const std::string &s){
   return out;
 }
 
+int round_to_nearest_100(int val){
+  int nhundred = ( val + 50 ) / 100;
+  return nhundred * 100;
+}
+void sleep_100ms(){
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
 
+//In order to make this function exhibit the anomaly and not just sleep_for, call sleep in units of 100ms
 void the_function(const int sleep_ms){
-  std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+  int nhundred = sleep_ms / 100;
+  for(int i=0;i<nhundred;i++)
+    sleep_100ms();
 }
 
 int main(int argc, char **argv){
@@ -29,18 +39,21 @@ int main(int argc, char **argv){
   std::stringstream ss;
   ss << argv[2];
 
-  std::cout << "Mode times: ";
+  std::cout << "Mode times (rounded to nearest 100ms): ";
   std::vector<int> mode_times;
   while(ss.good()) {
     std::string substr;
     getline(ss, substr, ','); //get first string delimited by comma
-    mode_times.push_back(strToAny<int>(substr));
+    int val = strToAny<int>(substr);
+    mode_times.push_back(round_to_nearest_100(val));
     std::cout << mode_times.back() << " ";
   }
   std::cout << std::endl;
 
-  int anom_time = strToAny<int>(argv[3]);
+  int anom_time = round_to_nearest_100(strToAny<int>(argv[3]));
   int anom_freq = strToAny<int>(argv[4]);
+
+  std::cout << "Anomaly time (rounded to nearest 100ms): " << anom_time << std::endl;
 
   std::mt19937 gen(1234);
   std::uniform_int_distribution<> dist(0, mode_times.size()-1);

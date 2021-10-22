@@ -34,5 +34,5 @@ class Chimbuko(BundlePackage):
 
     depends_on('chimbuko-performance-analysis')
     depends_on('chimbuko-visualization2')
-    depends_on('tau)
+    depends_on('tau+adios2')
 

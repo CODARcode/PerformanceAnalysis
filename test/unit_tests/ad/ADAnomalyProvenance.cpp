@@ -359,6 +359,8 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
 
   {
     std::cout <<  "Testing failure due to missing parent event" << std::endl;
+    event_man.clear();
+    ASSERT_EQ(event_man.getCallListSize(),0);
 
     //Have a host correlation ID but not a device one
     int corridx4 = 4444;
@@ -369,13 +371,20 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     exec_cpu.add_counter(createCounterData_t(0,1, 0, corrid_cid,  corridx4, 1000, "Correlation ID"));
     
     CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
-
-    //Force the trimming out of the cpu event
-    exec_cpu_it->can_delete(true);
-    delete event_man.trimCallList();
-
     CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
+
+    //Both events should be trimmable
+    ASSERT_EQ(exec_cpu_it->reference_count(),0);
+    ASSERT_EQ(exec_gpu_it->reference_count(),0);
     
+    //Trim out the parent
+    exec_gpu_it->register_reference(); //protect GPU event
+    delete event_man.trimCallList();
+    
+    ASSERT_EQ(event_man.getCallListSize(),1);
+    std::cout << "Trimmed out event " << exec_cpu.get_id().toString() << std::endl;
+    	
+    std::cout << "Creating ADAnomalyProvenance" << std::endl;
     ADAnomalyProvenance prov_gpu(*exec_gpu_it,
 				 event_man,
 				 param,
