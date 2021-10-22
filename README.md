@@ -2,7 +2,7 @@
 | Branch | Status |
 | :--- | :--- |
 | master | [![Build Status](https://travis-ci.com/CODARcode/PerformanceAnalysis.svg?branch=master)](https://travis-ci.com/CODARcode/PerformanceAnalysis) [![codecov](https://codecov.io/gh/CODARcode/PerformanceAnalysis/branch/master/graph/badge.svg?token=B5VPVSZII4)](https://codecov.io/gh/CODARcode/PerformanceAnalysis) |
-| develop | [![Build Status](https://travis-ci.com/CODARcode/PerformanceAnalysis.svg?branch=develop)](https://travis-ci.com/CODARcode/PerformanceAnalysis) [![codecov](https://codecov.io/gh/CODARcode/PerformanceAnalysis/branch/develop/graph/badge.svg?token=B5VPVSZII4)](https://codecov.io/gh/CODARcode/PerformanceAnalysis) |
+| develop | [![Build Status](https://travis-ci.com/CODARcode/PerformanceAnalysis.svg?branch=release)](https://travis-ci.com/CODARcode/PerformanceAnalysis) [![codecov](https://codecov.io/gh/CODARcode/PerformanceAnalysis/branch/develop/graph/badge.svg?token=B5VPVSZII4)](https://codecov.io/gh/CODARcode/PerformanceAnalysis) |
 
 This library is part of the [CHIMBUKO](https://github.com/CODARcode/Chimbuko) software framework and provides the C/C++ API to process [TAU](http://tau.uoregon.edu) performance traces which can be produced by multiple workflow components, processes, and threads. Its purpose is to detect events in the trace data that reveal useful information to developers of High Performance Computing applications. 
 
