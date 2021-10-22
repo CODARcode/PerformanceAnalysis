@@ -277,5 +277,8 @@ int main (int argc, char ** argv){
   }
 
   progressStream << "Pserver: finished" << std::endl;
+
+  delete param;
+
   return 0;
 }
