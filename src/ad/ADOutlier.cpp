@@ -597,7 +597,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
     int count = param[func_id].counts().at(i);
     //verboseStream << "Count: " << count << ", Value: " << param[func_id].bin_edges().at(i) << std::endl;
     for(int j=0; j<count; j++){
-      
+
       recon_p_runtimes.at(recon_idx) = param[func_id].bin_edges().at(i);
       recon_n_runtimes.at(recon_idx) = -1 * param[func_id].bin_edges().at(i);
       //verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
@@ -670,7 +670,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
-      
+
       //verboseStream << "mean_pn_ecdf.at(running_idx++): " << mean_pn_ecdf.at(running_idx) << std::endl;
       if (mean_pn_ecdf.at(running_idx++) < 0.99)
 	      ad_score = l_threshold + 1;
@@ -693,14 +693,8 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-<<<<<<< HEAD
       	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       	   outliers.insert(itt, Anomalies::EventType::Normal);
-
-=======
-	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-	  outliers.insert(itt, Anomalies::EventType::Normal);
->>>>>>> ckelly_develop
         }
 
       }
@@ -733,9 +727,9 @@ int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<
 }
 
 std::vector<double> ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {
-  
-  std::vector<double> tmp_runtimes = runtimes;	
-  auto ecdf = boost::math::empirical_cumulative_distribution_function(std::move(tmp_runtimes));	
+
+  std::vector<double> tmp_runtimes = runtimes;
+  auto ecdf = boost::math::empirical_cumulative_distribution_function(std::move(tmp_runtimes));
   std::vector<double> result_ecdf = std::vector<double>(runtimes.size(), 0.0);
   for(int i=0; i < runtimes.size(); i++) {
     result_ecdf.at(i) = ecdf(runtimes.at(i));
