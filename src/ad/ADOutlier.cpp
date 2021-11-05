@@ -170,12 +170,12 @@ double ADOutlierSSTD::computeScore(CallListIterator_t ev, const SstdParam &stats
 unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
-  std::cout << "Finding outliers in events for func " << func_id << std::endl;
+  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
 
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
-    std::cout << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
+    verboseStream << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
     return 0;
   }
   unsigned long n_outliers = 0;
@@ -194,7 +194,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       itt->set_outlier_score(computeScore(itt, param));
 
       if (label == -1) {
-	std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
   	std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
@@ -202,7 +202,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
       }else{
 	//Capture maximum of one normal execution per io step
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	  std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 
 	  outliers.insert(itt, Anomalies::EventType::Normal);
@@ -302,7 +302,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
 
-  std::cout << "Finding outliers in events for func " << func_id << std::endl;
+  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
 
@@ -448,7 +448,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       if (ad_score >= l_threshold) {
 
           itt->set_label(-1);
-          std::cout << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
           outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
 
@@ -458,9 +458,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-      	   std::cout << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-      	   outliers.insert(itt, Anomalies::EventType::Normal);
-
+	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+	  outliers.insert(itt, Anomalies::EventType::Normal);
         }
 
       }
@@ -579,7 +578,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 					      const unsigned long func_id,
 					      std::vector<CallListIterator_t>& data){
 
-  std::cout << "Finding outliers in events for func " << func_id << std::endl;
+  verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
   CopodParam& param = *(CopodParam*)m_param;
 
@@ -694,9 +693,14 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
+<<<<<<< HEAD
       	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       	   outliers.insert(itt, Anomalies::EventType::Normal);
 
+=======
+	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+	  outliers.insert(itt, Anomalies::EventType::Normal);
+>>>>>>> ckelly_develop
         }
 
       }

@@ -40,12 +40,19 @@ AC_COMPILE_IFELSE( [AC_LANG_PROGRAM([[]],
 AC_ARG_ENABLE([mpi],
     AS_HELP_STRING([--disable-mpi], [Disable MPI. User will need to manually assign the rank index to the AD instances.]), [], [enable_mpi=yes])
 
-AS_IF([test "x$enable_mpi" != "xno"], [
+AS_IF(
+[test "x$enable_mpi" != "xno"], [
     #Check we can compile with MPI
     AC_MSG_NOTICE([MPI use is enabled, checking compilation with MPI is possible])
     AC_CHECK_HEADER(mpi.h, [], [AC_MSG_FAILURE([["Cannot find MPI header"]])] )
     AC_DEFINE([USE_MPI],[1],[Use MPI])
-])
+    LIBS+="-lpthread"
+],
+[test "x$enable_mpi" == "xno"], [
+    AC_MSG_NOTICE([MPI use is disabled])
+    LIBS+="-lpthread"    		       
+]
+)
 
 
 #Check for curl config and library
