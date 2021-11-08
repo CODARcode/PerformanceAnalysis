@@ -72,7 +72,7 @@ rm -f ${TAU_ADIOS2_PATH}/write_check
 if command -v ip &> /dev/null
 then
     ip=$(ip -4 addr show ${service_node_iface} | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-elif command -v iconfig &> /dev/null
+elif command -v ifconfig &> /dev/null
 then
     ip=$(ifconfig 2>&1 ${service_node_iface} | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
 else
