@@ -428,8 +428,9 @@ void ADThreadNetClient::run(bool local){
 	size_t nwork = getNwork();
 	while(nwork > 0){
 	  ClientAction* work_item = getWorkItem();
+	  //Ask if shutdown is to be done *before* calling perform as blocking actions unlock the parent thread in perform which destroys the ClientAction object making the pointer invalid!
+	  shutdown = shutdown || work_item->shutdown_worker(); 
 	  work_item->perform(*client);
-	  shutdown = shutdown || work_item->shutdown_worker();
 
 	  if(work_item->do_delete()) delete work_item;
 	  nwork = getNwork();
