@@ -266,16 +266,26 @@ Anomalies ADOutlierHBOS::run(int step) {
     }
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
-        const int r = param[func_id].create_histogram(runtimes);
-        if (r < 0) {continue;}
+        
+	const int r = param[func_id].create_histogram(runtimes);
+        if (r < 0) {
+		recoverable_error(std::string("AD: Func_ID does not exist"));
+		continue;
+	}
       }
       else { //merge with exisiting func_id, not overwrite
 
         const int r = param[func_id].merge_histograms(g[func_id], runtimes);
-	if (r < 0) {continue;}
+	if (r < 0) {
+		recoverable_error(std::string("AD: Merging error received "));
+		continue;
+	}
       }
     }
-    else { continue;}
+    else { 
+	    recoverable_error(std::string("AD: Zero function runtimes "));
+	    continue;
+    }
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -543,15 +553,24 @@ Anomalies ADOutlierCOPOD::run(int step) {
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
         const int r = param[func_id].create_histogram(runtimes);
-        if (r < 0) {continue;}
+        if (r < 0) {
+		recoverable_error(std::string("AD: Func_ID does not exist "));
+		continue;
+	}
       }
       else { //merge with exisiting func_id, not overwrite
 
         const int r = param[func_id].merge_histograms(g[func_id], runtimes);
-	if (r < 0) {continue;}
+	if (r < 0) {
+		recoverable_error(std::string("AD: Merging error received "));
+		continue;
+	}
       }
     }
-    else { continue;}
+    else { 
+	    recoverable_error(std::string("AD: Zero function runtimes "));
+	    continue;
+    }
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -579,6 +598,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 					      std::vector<CallListIterator_t>& data){
 
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
+  verboseStream << "data Size: " << data.size() << std::endl;
 
   CopodParam& param = *(CopodParam*)m_param;
 
@@ -589,29 +609,39 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
 
+  if (tot_runtimes <= 0 ) {
+	  return n_outliers;
+  }
   std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
   std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
   int recon_idx = 0;
-  //verboseStream << "Unwrapping Merged Histogram. Size: " << param[func_id].counts().size() << std::endl;
+  verboseStream << "Unwrapping Merged Histogram. Size: " << param[func_id].counts().size() << std::endl;
   for(int i=0; i < param[func_id].counts().size(); i++){
     int count = param[func_id].counts().at(i);
-    //verboseStream << "Count: " << count << ", Value: " << param[func_id].bin_edges().at(i) << std::endl;
+    verboseStream << "Count: " << count << ", Value: " << param[func_id].bin_edges().at(i) << std::endl;
     for(int j=0; j<count; j++){
 
       recon_p_runtimes.at(recon_idx) = param[func_id].bin_edges().at(i);
       recon_n_runtimes.at(recon_idx) = -1 * param[func_id].bin_edges().at(i);
-      //verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
-      //verboseStream << "recon_idx: " << recon_idx << std::endl;
+      verboseStream << "recon_idx: " << recon_idx << std::endl;
+      verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
       recon_idx++;
     }
   }
 
+
   std::vector<double> func_p_ecdf = empiricalCDF(recon_p_runtimes, true);
   std::vector<double> func_n_ecdf = empiricalCDF(recon_n_runtimes, true);
+  
+  verboseStream << "Size of empiricalCDF(recon_p_runtimes): " << func_p_ecdf.size() << std::endl;
+  verboseStream << "Size of empiricalCDF(recon_n_runtimes): " << func_n_ecdf.size() << std::endl;
 
   std::vector<double> mean_pn_ecdf = std::vector<double>(func_p_ecdf.size(), 0.0);
+  verboseStream << "Size of mean_pn_ecdf: " << mean_pn_ecdf.size() << std::endl;
+
   for(int i=0; i < mean_pn_ecdf.size(); i++){
-    mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2;
+    mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2.0;
+    verboseStream << "mean_pn_ecdf.at(i): " << mean_pn_ecdf.at(i) << ", func_p_ecdf.at(i): " << func_p_ecdf.at(i) << ", func_n_ecdf.at(i): " << func_n_ecdf.at(i) << std::endl;
   }
 
 
@@ -621,15 +651,20 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   //  prob_counts.at(i) += p;
   //}
 
+  for(int i=0; i<mean_pn_ecdf.size(); i++)
+	  verboseStream << "mean_pn_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << std::endl;
+
   //Create COPOD score vector
-  std::vector<double> out_scores_i;
+  std::vector<double> out_scores_i = std::vector<double>(mean_pn_ecdf.size(), 0.0);
+  verboseStream << "m_alpha: " << m_alpha << std::endl;
+
   double min_score = -1 * log2(0.0 + m_alpha);
   double max_score = -1 * log2(1.0 + m_alpha);
   verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < mean_pn_ecdf.size(); i++){
     double l = -1 * log2(mean_pn_ecdf.at(i) + m_alpha);
-    out_scores_i.push_back(l);
-    //verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    out_scores_i.at(i) = l;
+    verboseStream << "Mean_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << ", score: "<< l << std::endl;
     //if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -664,15 +699,23 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   //verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
-  int running_idx = 0;
+  //int running_idx = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
+      int running_idx = 0;
 
-      //verboseStream << "mean_pn_ecdf.at(running_idx++): " << mean_pn_ecdf.at(running_idx) << std::endl;
-      if (mean_pn_ecdf.at(running_idx++) < 0.99)
+      //find bin index of data(runtime_i) in merged histogram
+      for (int i=1; i < param[func_id].bin_edges().size(); i++) {
+	      if (runtime_i < param[func_id].bin_edges().at(i)) {
+		      running_idx = i-1;
+		      break;
+	      }
+      }
+      verboseStream << "mean_pn_ecdf.at(running_idx): " << mean_pn_ecdf.at(running_idx) << std::endl;
+      if (mean_pn_ecdf.at(running_idx) < 0.99)
 	      ad_score = l_threshold + 1;
       else
 	      ad_score = l_threshold - 1;
