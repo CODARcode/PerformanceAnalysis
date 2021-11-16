@@ -97,7 +97,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
   if(_argc < 2){
     throw std::runtime_error("Path to trace data directory must be provided as an argument!");
   }
-  std::string trace_data_dir = _argv[1];
+  std::string trace_data_dir = _argv[1]; //"/home/src/chimbuko_ad/96rank_98step_traces_11_8_21/"; //_argv[1];
 
   //int file_suffix = 1;
   int ranks = 4;
@@ -116,7 +116,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
     params.trace_data_dir = trace_data_dir; // *.bp location
-    std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
+    std::string bp_prefix = "tau-metrics-xgc-es-cpp-gpu"; //"tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
     params.program_idx = 0;

@@ -115,7 +115,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile";  // BPFile or SST
     params.trace_data_dir = trace_data_dir; // *.bp location
-    std::string bp_prefix = "tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
+    std::string bp_prefix = "tau-metrics-xgc-es-cpp-gpu"; //"tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
     params.program_idx = 0;
@@ -128,7 +128,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     params.prov_outputpath = "";
   #ifdef ENABLE_PROVDB
     params.nprovdb_shards = 1;
-    params.provdb_addr = ""; //don't use provDB by default
+    params.provdb_addr = ""; //don't use provDB 
   #endif
     params.err_outputpath = ""; //use std::cerr for errors by default
     params.trace_connect_timeout = 60;

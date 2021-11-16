@@ -267,15 +267,15 @@ Anomalies ADOutlierHBOS::run(int step) {
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
         const int r = param[func_id].create_histogram(runtimes);
-        if (r < 0) {return outliers;}
+        if (r < 0) {continue;}
       }
       else { //merge with exisiting func_id, not overwrite
 
         const int r = param[func_id].merge_histograms(g[func_id], runtimes);
-	if (r < 0) {return outliers;}
+	if (r < 0) {continue;}
       }
     }
-    else { return outliers;}
+    else { continue;}
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -543,15 +543,15 @@ Anomalies ADOutlierCOPOD::run(int step) {
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
         const int r = param[func_id].create_histogram(runtimes);
-        if (r < 0) {return outliers;}
+        if (r < 0) {continue;}
       }
       else { //merge with exisiting func_id, not overwrite
 
         const int r = param[func_id].merge_histograms(g[func_id], runtimes);
-	if (r < 0) {return outliers;}
+	if (r < 0) {continue;}
       }
     }
-    else { return outliers;}
+    else { continue;}
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
