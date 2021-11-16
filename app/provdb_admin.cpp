@@ -135,8 +135,13 @@ struct ProvdbArgs{
   bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
   std::string db_margo_config;
+
+  bool db_use_aggregator; /**< Use the aggregator backend*/
+  int db_batch_size; /**< Batch size for "aggregator" backend*/
+
+  bool db_bypass_unqlite;
   
-  ProvdbArgs(): engine("ofi+tcp"), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""){}
+  ProvdbArgs(): engine("ofi+tcp"), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""), db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true){}
 };
 
 
@@ -162,8 +167,11 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
+    addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
+    addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
     addOptionalCommandLineArgMultiValue(parser, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
-
+    
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
       return 0;
@@ -182,7 +190,7 @@ int main(int argc, char** argv) {
     if(args.ip.size() > 0){
       eng_opt += std::string("://") + args.ip;
     }
-
+   
     //Compute how the shards are divided over the instances
     ProvDBsetup setup(args.nshards, args.ninstances);
     setup.checkInstance(args.server_instance);
@@ -197,14 +205,24 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    //Get Sonata config
+    //Determine the backend
+    std::string sonata_backend = args.db_use_aggregator ? "aggregator" : args.db_type;
+    
+    //Get base Sonata backend configuration
     nlohmann::json base_config;
     if(args.db_base_config.size() > 0){
       std::ifstream in(args.db_base_config);
       if(in.fail()){ throw std::runtime_error("Failed to read db config file " + args.db_base_config); }
       base_config = nlohmann::json::parse(in);
+    }else if(args.db_use_aggregator){
+      base_config["batch_size"] = args.db_batch_size;
+      base_config["backend"] = args.db_type; //backend of aggregator backend is still configurable!
+      base_config["config"]["mutex"] = "global"; //as we have only 1 ES per DB we don't need a mutex
+    }else{
+      base_config["mutex"] = "global"; //as we have only 1 ES per DB we don't need a mutex
+      if(args.db_bypass_unqlite) base_config["bypass"] = true;
     }
-
+      
     PSprogressStream << "initializing thallium with address: " << eng_opt << std::endl;
 
     //Initialize margo once to get initial configuration
@@ -319,28 +337,35 @@ int main(int argc, char** argv) {
       { //Scope in which admin object is active
 	sonata::Admin admin(engine);
 
+	//Setup global databaase
 	std::string glob_db_name = setup.getGlobalDBname();
 	if(instance_do_global_db){
-	  nlohmann::json glob_db_config = base_config;
-	  glob_db_config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), glob_db_name.c_str());
-	  glob_db_config["mutex"] = "none"; //as we have only 1 ES per DB we don't need a mutex
+	  std::string path = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), glob_db_name.c_str());
 	  
-	  PSprogressStream << "creating global data database: " << glob_db_name << " " << glob_db_config.dump() << " " << args.db_type << std::endl;
-	  admin.createDatabase(addr, setup.getGlobalDBproviderIndex(), glob_db_name, args.db_type, glob_db_config.dump());
+	  nlohmann::json glob_db_config = base_config;
+	  if(args.db_use_aggregator) glob_db_config["config"]["path"] = path;
+	  else glob_db_config["path"] = path;
+	  
+	  PSprogressStream << "creating global data database: " << glob_db_name << " " << glob_db_config.dump() << " " << sonata_backend << std::endl;
+	  admin.createDatabase(addr, setup.getGlobalDBproviderIndex(), glob_db_name, sonata_backend, glob_db_config.dump());
 	}	
 
+	//Setup database shards
 	PSprogressStream << "creating " << nshard_instance << " database shards with index offset " << instance_shard_offset << std::endl;
 
 	std::vector<std::string> db_shard_names(nshard_instance);
 	for(int s=0;s<nshard_instance;s++){
 	  int shard = instance_shard_offset + s;
-	  db_shard_names[s] = setup.getShardDBname(shard);	    
-	  nlohmann::json config = base_config;
-	  config["path"] = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), db_shard_names[s].c_str());
-	  config["mutex"] = "none";
+	  db_shard_names[s] = setup.getShardDBname(shard);
 
-	  PSprogressStream << "shard " << shard << ": " << db_shard_names[s] << " " << config.dump() << " " << args.db_type << std::endl;
-	  admin.createDatabase(addr, shard_provider_indices[s], db_shard_names[s], args.db_type, config.dump());
+	  std::string path = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), db_shard_names[s].c_str());
+	  
+	  nlohmann::json config = base_config;
+	  if(args.db_use_aggregator) config["config"]["path"] = path;
+	  else config["path"] = path;
+
+	  PSprogressStream << "shard " << shard << ": " << db_shard_names[s] << " " << config.dump() << " " << sonata_backend << std::endl;
+	  admin.createDatabase(addr, shard_provider_indices[s], db_shard_names[s], sonata_backend, config.dump());
 	}
 
 	//Create the collections
