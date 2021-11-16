@@ -1,4 +1,3 @@
-#include <mpi.h>
 #include <adios2.h>
 #include <string>
 #include <cassert>
@@ -22,7 +21,6 @@ int main(int argc, char** argv){
     enableVerboseLogging() = true;
   }       
 
-  MPI_Init(&argc, &argv);
   if(argc < 3){
     std::cout << "Usage: bpfile_replay <input BPfile filename> <output step freq (ms)> <options>\n"
 	      << "Output will be on SST under the same filename ${input BPfile filename}. The temporary .sst file created will thus be ${input BPfile filename}.sst\n"
@@ -77,7 +75,7 @@ int main(int argc, char** argv){
   }
 
 
-  adios2::ADIOS ad = adios2::ADIOS(MPI_COMM_SELF, adios2::DebugON);
+  adios2::ADIOS ad = adios2::ADIOS(adios2::DebugON);
 
   adios2::IO io_out = ad.DeclareIO("writer");
     
@@ -217,6 +215,5 @@ int main(int argc, char** argv){
   std::cout << "Shutting down" << std::endl;
   wr.Close();
 
-  MPI_Finalize();
   return 0;
 };

@@ -15,10 +15,20 @@ ADEvent::ADEvent(bool verbose)
 }
 
 ADEvent::~ADEvent() {
-  clear();
 }
 
 void ADEvent::clear() {
+  m_eidx_func_entry = -1;
+  m_eidx_func_exit = -1;
+  m_eidx_comm_send = -1;
+  m_eidx_comm_recv = -1;
+  m_commStack.clear();
+  m_counterStack.clear();
+  m_callStack.clear();
+  m_callList.clear();
+  m_execDataMap.clear();
+  m_callIDMap.clear();
+  m_unmatchedCorrelationID.clear();
 }
 
 EventError ADEvent::addEvent(const Event_t& event) {
@@ -32,7 +42,8 @@ EventError ADEvent::addEvent(const Event_t& event) {
 }
 
 void ADEvent::stackProtectGC(CallListIterator_t it){
-  it->can_delete(false);
+  verboseStream << "ADEvent::stackProtectGC incrementing register count of " << it->get_id().toString() << " to " << it->reference_count()+1 << std::endl;
+  it->register_reference();
 
   eventID parent = it->get_parent();
   while(parent != eventID::root()){
@@ -43,18 +54,15 @@ void ADEvent::stackProtectGC(CallListIterator_t it){
       recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
-
-    pit->can_delete(false);
+    verboseStream << "ADEvent::stackProtectGC incrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()+1 << std::endl;
+    pit->register_reference();
     parent = pit->get_parent();
   }
 }
 
 void ADEvent::stackUnProtectGC(CallListIterator_t it){
-  //Check if has unmatched correlation iD
-  auto umit = m_unmatchedCorrelationID_count.find(it->get_id());
-  if(umit == m_unmatchedCorrelationID_count.end() || umit->second == 0)
-    it->can_delete(true);
-  else return; //stop here, the stack will be needed
+  verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << it->get_id().toString() << " to " << it->reference_count()-1 << std::endl;
+  it->deregister_reference();
 
   eventID parent = it->get_parent();
   while(parent != eventID::root()){
@@ -65,12 +73,8 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
       recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
-
-    umit = m_unmatchedCorrelationID_count.find(pit->get_id());
-    if(umit == m_unmatchedCorrelationID_count.end() || umit->second == 0)
-      pit->can_delete(true);
-    else break; //stop here, the stack will be needed
-
+    verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()-1 << std::endl;
+    pit->deregister_reference();
     parent = pit->get_parent();
   }
 }
@@ -85,29 +89,27 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
   for(auto const &c : it->get_counters()){
     if(c.get_countername() == "Correlation ID"){
       unsigned long cid = c.get_value();
+      eventID current_event_id = it->get_id();
 
       //Does a partner already exist?
       auto m = m_unmatchedCorrelationID.find(cid);
       if(m != m_unmatchedCorrelationID.end()){
-	eventID current_event_id = it->get_id();
 	eventID partner_event_id = m->second->get_id();
+
+	//Check partner event hasn't been accidentally deleted (thus invalidating its iterator)
+	if(m_callIDMap.find(partner_event_id) == m_callIDMap.end()) fatal_error("Correlation ID partner event is not in the call list!");
+
 	it->set_GPU_correlationID_partner(partner_event_id);
 	m->second->set_GPU_correlationID_partner(current_event_id);
 
-	size_t rem = --m_unmatchedCorrelationID_count[partner_event_id];
-	if(rem == 0){
-	  m_unmatchedCorrelationID_count.erase(partner_event_id); //no need to keep this around now
-	  stackUnProtectGC(m->second);
-	}
+	verboseStream << "Current event " << current_event_id.toString() << " is partnered with previous unmatched event " << partner_event_id.toString() << " with correlation ID " << cid << std::endl;
+	stackUnProtectGC(m->second);
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
-
-	verboseStream << "Found partner event " << current_event_id.toString() << " to previous unmatched event " << partner_event_id.toString() << " with correlation ID " << cid << std::endl;
       }else{
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
+	verboseStream << "Found as-yet unpartnered event " << current_event_id.toString() << " with correlation ID " << cid << std::endl;
 	stackProtectGC(it);
 	m_unmatchedCorrelationID[cid] = it;
-	++m_unmatchedCorrelationID_count[it->get_id()];
-	verboseStream << "Found as-yet unpartnered event with correlation ID " << cid << std::endl;
       }
       n_cid++;
     }
@@ -235,9 +237,9 @@ EventError ADEvent::addFunc(const Event_t& event) {
 
       //Flush the entire comm stack including events that occurred before the func entry (these can no longer be used)
       CommStack_t& comm = m_commStack[event.pid()][event.rid()][event.tid()];
-      while (!comm.empty()) {
+      while (!(comm.empty() || comm.top().ts() < it->get_entry()) ) { //stop if we encounter a comms with a ts before this function's entry as these comms will belong to the parent
 	if(comm.top().ts() > event.ts()) reinsert.push_back(comm.top());
-	it->add_message(comm.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	else it->add_message(comm.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
 	comm.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
@@ -252,9 +254,16 @@ EventError ADEvent::addFunc(const Event_t& event) {
       std::vector<CounterData_t> reinsert;
 
       CounterStack_t& count = m_counterStack[event.pid()][event.rid()][event.tid()];
-      while (!count.empty()) {
+      while (!(count.empty() || count.top().get_ts() < it->get_entry()) ) { //stop if we encounter a counter with a ts before this function's entry as these counters will belong to the parent
 	if(count.top().get_ts() > event.ts()) reinsert.push_back(count.top());
-	it->add_counter(count.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	else{
+	  bool accept = it->add_counter(count.top(), ListEnd::Front); //stack access is reverse time order! Only does anything if event inside time window
+	  if(!accept){
+	    std::stringstream ss;
+	    ss << "ExecData " << it->get_json().dump(4) << " rejected counter " << count.top().get_json().dump(4);
+	    recoverable_error(ss.str());
+	  }
+	}
 	count.pop();
       }
       for(auto rit = reinsert.rbegin(); rit != reinsert.rend(); rit++){
@@ -329,6 +338,10 @@ EventError ADEvent::addCounter(const Event_t& event){
   CounterStack_t &cs = m_counterStack[event.pid()][event.rid()][event.tid()];
   cs.push(CounterData_t(event, counterName));
 
+  if(enableVerboseLogging() && counterName == "Correlation ID"){
+    verboseStream << "Found correlation ID " << event.counter_value() << std::endl;
+  }
+  
   return EventError::OK;
 }
 

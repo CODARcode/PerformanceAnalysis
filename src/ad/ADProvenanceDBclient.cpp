@@ -37,10 +37,27 @@ sonata::AsyncRequest & AnomalousSendManager::getNewRequest(){
 }
 
 void AnomalousSendManager::waitAll(){
+  //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to flush
+  std::atomic<bool> ready(false); 
+  int heartbeat_freq = 20;
+  std::thread heartbeat([heartbeat_freq, &ready]{
+			  typedef std::chrono::high_resolution_clock Clock;
+			  typedef std::chrono::seconds Sec;
+			  Clock::time_point start = Clock::now();
+			  while(!ready.load(std::memory_order_relaxed)){
+			    int sec = std::chrono::duration_cast<Sec>(Clock::now() - start).count();
+			    if(sec >= heartbeat_freq && sec % heartbeat_freq == 0) //complain every heartbeat_freq seconds
+			      std::cout << "AnomalousSendManager::waitAll still waiting for queue flush after " << sec << "s" << std::endl;
+			    std::this_thread::sleep_for(std::chrono::seconds(1));
+			  }
+			});	    
+  
   while(!outstanding.empty()){ //flush the queue
     outstanding.front().wait();
     outstanding.pop_front();
   }
+  ready.store(true, std::memory_order_relaxed);
+  heartbeat.join();
 }  
 
 size_t AnomalousSendManager::getNoutstanding(){

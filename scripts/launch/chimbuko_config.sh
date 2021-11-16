@@ -101,6 +101,11 @@ TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filena
 export TAU_ADIOS2_FILENAME="${TAU_ADIOS2_PATH}/${TAU_ADIOS2_FILE_PREFIX}"
 
 if [[ ${backend_root} == "infer" ]]; then
+    if [[ $(which provdb_admin) == "" ]]; then
+	echo "When inferring the backend root directory, could not find provdb_admin in PATH. Please add your Chimbuko bin directory to PATH"
+	exit 1
+    fi
+    
     backend_root=$( readlink -f $(which provdb_admin | sed 's/provdb_admin//')/../ )
 fi
 

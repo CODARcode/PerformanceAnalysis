@@ -28,7 +28,11 @@ ADsim::ADsim(ADsim &&r):
   m_rid(r.m_rid),
   m_normal_events(std::move(r.m_normal_events)),
   m_metadata(std::move(r.m_metadata)),
+#ifdef ENABLE_PROVDB
   m_pdb_client(std::move(r.m_pdb_client)),
+#else
+  m_prov_io(std::move(r.m_prov_io)),
+#endif
   m_outlier(r.m_outlier),
   m_net_client(r.m_net_client)
 {
@@ -41,9 +45,16 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   m_window_size = window_size;
   m_pid = pid;
   m_rid = rid;
+#ifdef ENABLE_PROVDB
   m_pdb_client.reset(new ADProvenanceDBclient(rid));
   m_pdb_client->setEnableHandshake(false);
   m_pdb_client->connectSingleServer(getProvDB().getAddr(), getProvDB().getNshards());
+#else
+  m_prov_io.reset(new ADio(m_pid, m_rid));
+  m_prov_io->setDispatcher();
+  m_prov_io->setDestructorThreadWaitTime(0); //don't know why we would need a wait
+  m_prov_io->setOutputPath(".");
+#endif
   m_program_start = program_start;
   m_step_freq = step_freq;
   m_largest_step = 0;
@@ -91,6 +102,56 @@ CallListIterator_t ADsim::addExec(const int thread,
   m_step_execs[exit_step].push_back(exec_it);
   return exec_it;
 }
+
+
+void ADsim::updateRuntime(CallListIterator_t exec_it,
+			   unsigned long new_runtime){
+    
+  unsigned long old_exit = exec_it->get_exit();
+  unsigned long old_exit_step = ( old_exit - m_program_start ) / m_step_freq;
+  
+  //Remove the exec from the old step
+  bool found = false;
+  auto &old_step_list = m_step_execs[old_exit_step];
+  for(auto old_step_it = old_step_list.begin(); old_step_it != old_step_list.end(); old_step_it++){
+    if( *old_step_it == exec_it ){
+      old_step_list.erase(old_step_it);
+      found = true;
+      break;
+    }
+  }
+  if(!found) fatal_error("Could not find iterator in old step list!");
+
+  unsigned long new_exit = exec_it->get_entry() + new_runtime;  
+  unsigned long new_exit_step = ( new_exit - m_program_start ) / m_step_freq;
+
+  exec_it->update_exclusive(old_exit);  //hacky way to reset exit time
+  exec_it->update_exit(new_exit);
+
+  m_largest_step = std::max(m_largest_step, new_exit_step);
+
+  //Determine where to insert the entry
+  auto &new_step_list = m_step_execs[new_exit_step];
+  bool inserted = false;
+  
+  if(new_step_list.size() > 1){ //if >2 events the execution might be between existing events
+    unsigned long prev_exit = (*new_step_list.begin())->get_exit();  
+    for(auto new_step_it = std::next(new_step_list.begin(),1); new_step_it != new_step_list.end(); new_step_it++){
+      unsigned long cur_exit = (*new_step_it)->get_exit();
+      if(new_exit >= prev_exit && new_exit <= cur_exit){ //some ambiguity for 0 runtime functions here
+	new_step_list.insert(new_step_it, exec_it);
+	inserted = true;
+	break;
+      }
+      prev_exit = cur_exit;
+    }
+  }
+  
+  if(!inserted)
+    new_step_list.push_back(exec_it);
+}
+
+
 
 
 void ADsim::attachCounter(const std::string &counter_name,
@@ -206,11 +267,18 @@ void ADsim::step(const unsigned long step){
     ADAnomalyProvenance::getProvenanceEntries(anomalous_events, normal_events, m_normal_events,
 					      anom, step, step_start_time, step_end_time, m_window_size,
 					      params, evmap, counters, m_metadata);
+#ifdef ENABLE_PROVDB
     //Send to provdb
     if(anomalous_events.size() > 0)
       m_pdb_client->sendMultipleData(anomalous_events, ProvenanceDataType::AnomalyData); 
     if(normal_events.size() > 0)
       m_pdb_client->sendMultipleData(normal_events, ProvenanceDataType::NormalExecData);   
+#else
+    if(anomalous_events.size() > 0)
+      m_prov_io->writeJSON(anomalous_events, step, "anomalies");
+    if(normal_events.size() > 0)
+      m_prov_io->writeJSON(normal_events, step, "normalexecs");   
+#endif
   }
     
 
@@ -224,6 +292,9 @@ void ADsim::step(const unsigned long step){
     prof_stats.gatherStatistics(&this_step_func_execs); //takes map of fid -> vector of ExecData iterators
     prof_stats.gatherAnomalies(anom);
     getPserver().addAnomalyData(prof_stats);
+
+    ADLocalAnomalyMetrics metrics(m_pid, m_rid, step, step_start_time, step_end_time, anom);
+    getPserver().addAnomalyMetrics(metrics);
   }
 }
 

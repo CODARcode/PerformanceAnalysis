@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <mutex>
 #include <string>
 #include <iostream>
@@ -78,8 +79,8 @@ namespace chimbuko {
      * @param freeze If true the state will not be modified by the update command
      */
     NetPayloadUpdateParams(ParamInterface *param, bool freeze = false): m_param(param), m_freeze(freeze){}
-    MessageKind kind() const{ return MessageKind::PARAMETERS; }
-    MessageType type() const{ return MessageType::REQ_ADD; }
+    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
       //Response message is a copy of the updated statistics in JSON form
@@ -96,8 +97,8 @@ namespace chimbuko {
     ParamInterface const* m_param;
   public:
     NetPayloadGetParams(ParamInterface const* param): m_param(param){}
-    MessageKind kind() const{ return MessageKind::PARAMETERS; }
-    MessageType type() const{ return MessageType::REQ_GET; }
+    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override{
       check(message);
       response.set_msg(m_param->serialize(), false);

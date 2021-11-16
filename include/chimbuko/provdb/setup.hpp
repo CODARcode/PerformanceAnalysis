@@ -16,6 +16,12 @@ namespace chimbuko{
     int m_nshard_instance; /** Number of shards per database instance (base, may be less for final shard if #shards not divisible by #instances)*/
 
   public:
+    /**
+     * @brief Instantiate the object for a chosen number of shards and instances
+     *
+     * @param nshards The total number of shards (over all instances)
+     * @param ninstances The number of server instances
+     */
     ProvDBsetup(const int nshards, const int ninstances): m_nshards(nshards), m_ninstances(ninstances){
       if(ninstances <1) fatal_error("Number of instances must be >=1");
       if(nshards<0)  fatal_error("Number of shards must be >=1");
@@ -102,7 +108,7 @@ namespace chimbuko{
     inline int getShardProviderIndex(const int shard) const{
       int instance = getShardInstance(shard);
       int off = shard % m_nshard_instance;
-      return instance == getGlobalDBinstance() ? off + 1 : off;
+      return instance == getGlobalDBinstance() ? off + 1 : off; //only one instance hosts the global database
     }
 
     /**

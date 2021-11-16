@@ -7,6 +7,7 @@
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "../unit_test_cmdline.hpp"
 
 #include<thread>
 #include<chrono>
@@ -92,6 +93,12 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<double
 }
 
 TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
+  //Get trace data dir from command line
+  if(_argc < 2){
+    throw std::runtime_error("Path to trace data directory must be provided as an argument!");
+  }
+  std::string trace_data_dir = _argv[1];
+
   //int file_suffix = 1;
   int ranks = 4;
   std::vector<int> v_io_steps(ranks);
@@ -108,7 +115,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile"; // argv[1]; // BPFile or SST
-    params.trace_data_dir = "<PATH>/test/data"; // argv[2]; // *.bp location
+    params.trace_data_dir = trace_data_dir; // *.bp location
     std::string bp_prefix = "tau-metrics"; //argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
@@ -221,7 +228,7 @@ TEST(SSTDADOutlierBPFileWithoutPServer, Works) {
 
       const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
       verboseStream << "Starting OUtlier Detection" << std::endl;
-      if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
+      if (m_execDataMap == nullptr){ verboseStream << "Empty ExecDataMap_t" << std::endl; }
 
       tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over functions (key is function index)

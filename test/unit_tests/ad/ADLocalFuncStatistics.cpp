@@ -1,5 +1,5 @@
 #include<chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include<chimbuko/pserver/global_anomaly_stats.hpp>
+#include<chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 #include<chimbuko/util/string.hpp>

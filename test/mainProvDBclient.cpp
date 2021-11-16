@@ -1,9 +1,12 @@
+#include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/string.hpp>
+#ifdef USE_MPI
 #include <mpi.h>
+#endif
 #include <dirent.h>
 #include <regex>
 #include <thread>
@@ -366,7 +369,9 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
 
 int main(int argc, char** argv) 
 {
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
   chimbuko::enableVerboseLogging() = true;
   assert(argc >= 3);
   addr = argv[1];
@@ -374,11 +379,19 @@ int main(int argc, char** argv)
   nshards = strToAny<int>(argv[2]);
   std::cout << "Number of shards is " << nshards << std::endl;
 
+#ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#else
+  rank = 0;
+#endif
+
   rank_str = anyToStr(rank);
 
   ::testing::InitGoogleTest(&argc, argv);
   int ret = RUN_ALL_TESTS();
+
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   return ret;
 }

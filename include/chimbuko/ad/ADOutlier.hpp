@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include<array>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
@@ -92,12 +93,12 @@ namespace chimbuko {
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
-     * @brief abstract method to update local parameters and get global ones
+     * @brief synchronize local parameters with global parameters
      *
      * @param[in] param local parameters
      * @return std::pair<size_t, size_t> [sent, recv] message size
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param) = 0;
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
 
 
     /**
@@ -170,13 +171,6 @@ namespace chimbuko {
     unsigned long compute_outliers(Anomalies &outliers,
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
-
-    /**
-     * @brief Send the local statistics to the parameter server and update the stored global parameters with the resulting updated statistics
-     * @param param The local statistics
-     */
-    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
-
     /**
      * @brief Compute the anomaly score (probability) for an event assuming a Gaussian distribution
      */
@@ -232,12 +226,70 @@ namespace chimbuko {
     unsigned long compute_outliers(Anomalies &outliers,
 				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
+    /**
+     * @brief Scott's rule for bin_width estimation during histogram formation
+     */
+    double _scott_binWidth(std::vector<double>& vals);
 
     /**
-     * @brief Send the local statistics to the parameter server and update the stored global parameters with the resulting updated statistics
-     * @param param The local statistics
+     * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
      */
-    std::pair<size_t, size_t> sync_param(ParamInterface const* param) override;
+    int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
+
+  private:
+    double m_alpha; /**< Used to prevent log2 overflow */
+    double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
+    bool m_use_global_threshold; /**< Flag to use global threshold*/
+    //double m_threshold; /** sync with global threshold */
+    OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
+
+  };
+
+  /**
+   * @brief COPOD anomaly detection algorithm
+   *
+   */
+  class ADOutlierCOPOD : public ADOutlier {
+  public:
+
+    /**
+     * @brief Construct a new ADOutlierHBOS object
+     *
+     */
+    ADOutlierCOPOD(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
+
+    /**
+     * @brief Destroy the ADOutlierHBOS object
+     *
+     */
+    ~ADOutlierCOPOD();
+
+    /**
+     * @brief Set the alpha value
+     *
+     * @param regularizer alpha value
+     */
+    void set_alpha(double alpha) { m_alpha = alpha; }
+
+    /**
+     * @brief run HBOS anomaly detection algorithm
+     *
+     * @param step step (or frame) number
+     * @return data structure containing captured anomalies
+     */
+    Anomalies run(int step=0) override;
+
+  protected:
+    /**
+     * @brief compute outliers (or anomalies) of the list of function calls
+     *
+     * @param[out] outliers Array of function calls that were tagged as outliers
+     * @param func_id function id
+     * @param data[in,out] a list of function calls to inspect
+     * @return unsigned long the number of outliers (or anomalies)
+     */
+    unsigned long compute_outliers(Anomalies &outliers,
+				   const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
     /**
      * @brief Scott's rule for bin_width estimation during histogram formation
@@ -248,6 +300,11 @@ namespace chimbuko {
      * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
      */
     int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
+
+    /**
+     * @brief Computes Empirical CDF of input vector of function runtimes
+     */
+    std::vector<double> empiricalCDF(const std::vector<double>& runtimes, const bool sorted=true);
 
   private:
     double m_alpha; /**< Used to prevent log2 overflow */

@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "../unit_test_cmdline.hpp"
 
 #include<thread>
 #include<chrono>
@@ -92,7 +93,12 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<std::v
 }
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
-
+  //Get trace data dir from command line
+  if(_argc < 2){
+    throw std::runtime_error("Path to trace data directory must be provided as an argument!");
+  }
+  std::string trace_data_dir = _argv[1];
+  
   int ranks = 4;
   std::vector<int> v_io_steps(ranks);
   std::vector<int> v_functions(ranks);
@@ -108,7 +114,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile";  // BPFile or SST
-    params.trace_data_dir = "<PATH>/test/data"; //ad/test/data";  // *.bp location
+    params.trace_data_dir = trace_data_dir; // *.bp location
     std::string bp_prefix = "tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch

@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #include <chimbuko/ad/ADDefine.hpp>
 #include <chimbuko/ad/utils.hpp>
 #include <iostream>
@@ -481,9 +482,14 @@ public:
     unsigned long get_n_counter() const { return m_counters.size(); }
 
     /**
-     * @brief Return the outlier score assigned to the data point
+     * @brief Return the outlier score assigned to the data point, representing how unlikely an event is
      */
     double get_outlier_score() const{ return m_score; }
+
+    /**
+     * @brief Return the outlier severity, representing how important the outlier is
+     */  
+    double get_outlier_severity() const{ return (double)get_runtime(); }   
 
     /**
      * @brief Set the label
@@ -588,13 +594,22 @@ public:
     /**
      * @brief Determine whether the event can be deleted by the garbage collection at the end of the io step
      */
-    bool can_delete() const{ return m_can_delete;}
+    inline bool can_delete() const{ return m_references == 0;}
 
     /**
-     * @brief Set whether the event can be deleted by the garbage collection at the end of the io step (default true)
-     */
-    void can_delete(const bool v){ m_can_delete = v; }
+     * @brief Increment the external reference counter, preventing object deletion
+    */
+    inline void register_reference(){ ++m_references; }
 
+    /**
+     * @brief Decrement the external reference counter, allowing object deletion if 0
+    */
+    void deregister_reference();
+
+    /**
+     * @brief Get the number of external references registered
+     */
+    inline unsigned long reference_count() const{ return m_references; }
 
     /**
      * @brief Set the partner event linked by a GPU correlation ID
@@ -639,7 +654,7 @@ private:
     unsigned long m_n_messages;          /**< the number of messages */
     std::deque<CommData_t> m_messages;  /**< a vector of all messages */
     std::deque<CounterData_t> m_counters; /**< a vector of all counters */
-    bool m_can_delete; /**< Flag indicating that the event is deletable by the garbage collection */
+    unsigned long m_references; /**< track number of external references to object. When 0 the object can be deleted */
     std::vector<eventID> m_gpu_correlation_id_partner;  /**< The event ids partner events linked by a correlation ID, either the launching CPU event or the GPU kernel event */
 };
 

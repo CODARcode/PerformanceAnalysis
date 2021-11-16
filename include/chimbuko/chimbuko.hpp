@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include "chimbuko/AD.hpp"
 
 namespace chimbuko {
@@ -193,6 +193,14 @@ namespace chimbuko {
 				  const unsigned long first_event_ts,
 				  const unsigned long last_event_ts) const;
 
+
+    /**
+     * @brief Gather and send the required data to the pserver
+     */
+    void gatherAndSendPSdata(const Anomalies &anomalies,
+			     const int step,
+			     const unsigned long first_event_ts,
+			     const unsigned long last_event_ts) const;
 
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB

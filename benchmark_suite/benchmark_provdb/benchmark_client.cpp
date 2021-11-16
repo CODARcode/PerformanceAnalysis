@@ -164,7 +164,8 @@ int main(int argc, char **argv){
     {"io_step", 199},
     {"io_step_tstart", 0},
     {"io_step_tend", 5000},
-    {"outlier_score",0.1}
+    {"outlier_score",0.1},
+    {"hostname","myhost"}
   };
  
   std::vector<nlohmann::json> anomaly_prov(args.anomalies_per_cycle,  provenance_entry);

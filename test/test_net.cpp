@@ -5,7 +5,7 @@
 #endif
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyData.hpp"
-#include "chimbuko/pserver/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>

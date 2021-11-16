@@ -1,5 +1,6 @@
 /** @file */
 #pragma once
+#include <chimbuko_config.h>
 #include<iostream>
 #include<vector>
 #include<memory>

@@ -1,4 +1,5 @@
 #pragma once
+#include <chimbuko_config.h>
 #ifdef _USE_ZMQNET
 
 #include <chimbuko/net.hpp>
