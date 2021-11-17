@@ -1,5 +1,5 @@
 //A fake AD that sends data to the provenance DB at a regular cadence
-#define _PERF_METRIC
+#include<chimbuko_config.h>
 #include<mpi.h>
 #include<chimbuko/ad/ADNetClient.hpp>
 #include<chimbuko/ad/utils.hpp>
@@ -99,14 +99,19 @@ int main(int argc, char **argv){
   PerfStats stats(args.perf_dir, fn_perf);
   PerfPeriodic stats_prd(args.perf_dir, fn_perf_prd);
 
+  std::cout << "Rank " << rank << " connecting to provDB" << std::endl;
   ADProvenanceDBclient provdb_client(rank);
   if(args.load_shard_map.size() > 0)
     provdb_client.connectMultiServerShardAssign(args.provdb_addr_dir,args.nshards,args.ninstances,args.load_shard_map);
   else
     provdb_client.connectMultiServer(args.provdb_addr_dir,args.nshards,args.ninstances);
 
+  std::cout << "Rank " << rank << " connected successfully to provDB, waiting for barrier sync" << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cout << "Rank " << rank << " synced, proceeding" << std::endl;
+  
   provdb_client.linkPerf(&stats);
-
+  
   //Here we assume the sstd algorithm for now
   RunStats runstats; //any stats object
   for(int i=0;i<100;i++) runstats.push(i);
