@@ -571,6 +571,24 @@ Anomalies ADOutlierCOPOD::run(int step) {
 	    recoverable_error(std::string("AD: Zero function runtimes "));
 	    continue;
     }
+    verboseStream << "Size of runtimes: " << runtimes.size() << ", func_id: " << func_id << std::endl;
+    
+    //calculate skewness of runtimes for func_id
+    const double mu = std::accumulate(runtimes.begin(), runtimes.end(), 0.0) / runtimes.size();
+
+    std::vector<double> diff = std::vector<double>(runtimes.size());
+    std::transform(runtimes.begin(), runtimes.end(), diff.begin(), [mu](double x) {return x - mu;});
+    const double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+    const double stdev = std::sqrt(sq_sum / runtimes.size());
+
+    double summ = 0;
+    for (int i=0; i<runtimes.size(); i++) {
+	summ += std::pow((runtimes.at(i) - mu), 3);
+    }
+
+    const double abs_skewness = summ / ((runtimes.size() - 1) * std::pow(stdev,3));
+    m_skewness[func_id] = (abs_skewness < 0) ? -1 : (abs_skewness > 0) ? 1 : 0;
+
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -637,34 +655,44 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   verboseStream << "Size of empiricalCDF(recon_n_runtimes): " << func_n_ecdf.size() << std::endl;
 
   std::vector<double> mean_pn_ecdf = std::vector<double>(func_p_ecdf.size(), 0.0);
-  verboseStream << "Size of mean_pn_ecdf: " << mean_pn_ecdf.size() << std::endl;
+  verboseStream << "Size of mean_pn_ecdf: " << mean_pn_ecdf.size() << ", func_id: " << func_id << std::endl;
 
   for(int i=0; i < mean_pn_ecdf.size(); i++){
     mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2.0;
     verboseStream << "mean_pn_ecdf.at(i): " << mean_pn_ecdf.at(i) << ", func_p_ecdf.at(i): " << func_p_ecdf.at(i) << ", func_n_ecdf.at(i): " << func_n_ecdf.at(i) << std::endl;
   }
 
+  //use skewness
+  std::vector<double> skewness_arr = std::vector<double>(func_p_ecdf.size(), 0.0);
+  const int p_sign = (m_skewness[func_id] - 1) < 0 ? -1 : (m_skewness[func_id] - 1) > 0 ? 1 : 0;
+  const int n_sign = (m_skewness[func_id] + 1) < 0 ? -1 : (m_skewness[func_id] + 1) > 0 ? 1 : 0;
+  
+  for (int i = 0; i< func_p_ecdf.size(); i++) {
+	skewness_arr.at(i) = (func_p_ecdf.at(i) * -1 * p_sign) + (func_n_ecdf.at(i) * n_sign);
+  	verboseStream << "skewness_arr.at(" << i << "): " << skewness_arr.at(i) << std::endl;
+  }
 
-  //for(int i=0; i < param[func_id].counts().size(); i++){
-  //  int count = param[func_id].counts().at(i);
-  //  double p = count / tot_runtimes;
-  //  prob_counts.at(i) += p;
-  //}
+  std::vector<double> final_comp = std::vector<double>(skewness_arr.size(), 0.0);
+  for (int i = 0; i < skewness_arr.size(); i++) {
+	final_comp.at(i) = std::max(skewness_arr.at(i), mean_pn_ecdf.at(i));
+  }
 
-  for(int i=0; i<mean_pn_ecdf.size(); i++)
-	  verboseStream << "mean_pn_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << std::endl;
+
+  //for(int i=0; i<mean_pn_ecdf.size(); i++)
+	//  verboseStream << "mean_pn_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << std::endl;
 
   //Create COPOD score vector
-  std::vector<double> out_scores_i = std::vector<double>(mean_pn_ecdf.size(), 0.0);
+  std::vector<double> out_scores_i = std::vector<double>(final_comp.size(), 0.0);
   verboseStream << "m_alpha: " << m_alpha << std::endl;
 
   double min_score = -1 * log2(0.0 + m_alpha);
-  double max_score = -1 * log2(1.0 + m_alpha);
+  double max_score = log2(1.0 + m_alpha) - min_score;
+  verboseStream << "Initializaing min_score: " << min_score << ", max_score: " << max_score <<std::endl;
   verboseStream << "out_scores_i: " << std::endl;
-  for(int i=0; i < mean_pn_ecdf.size(); i++){
-    double l = -1 * log2(mean_pn_ecdf.at(i) + m_alpha);
+  for(int i=0; i < final_comp.size(); i++){
+    double l = -1 * log2(final_comp.at(i) + m_alpha);
     out_scores_i.at(i) = l;
-    verboseStream << "Mean_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << ", score: "<< l << std::endl;
+    verboseStream << "Final_comp at " << i << ": " << final_comp.at(i) << ", score: "<< l << std::endl;
     //if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -683,9 +711,10 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
   //compute threshold
   verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
-  double l_threshold = min_score + (m_threshold * (max_score - min_score));
+  double l_threshold = (max_score < 0) ? (-1 * m_threshold * (max_score - min_score)) : min_score + (m_threshold * (max_score - min_score));
+  verboseStream << "l_threshold computed: " << l_threshold << std::endl;
   if(m_use_global_threshold) {
-    if(l_threshold < param[func_id].get_threshold()) {
+    if(l_threshold < param[func_id].get_threshold() && param[func_id].get_threshold() > (-1 * log2(1.00001))) {
       l_threshold = param[func_id].get_threshold();
     } else {
       param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
@@ -694,31 +723,29 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   }
 
   //Compute COPOD based score for each datapoint
-  //const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
-  //const int num_bins = param[func_id].counts().size();
-  //verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
-  //int running_idx = 0;
+  int running_idx = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
-      int running_idx = 0;
-
-      //find bin index of data(runtime_i) in merged histogram
-      for (int i=1; i < param[func_id].bin_edges().size(); i++) {
-	      if (runtime_i < param[func_id].bin_edges().at(i)) {
-		      running_idx = i-1;
-		      break;
-	      }
+      
+      if (running_idx < final_comp.size()) {
+      	verboseStream << "final_comp.at(" << running_idx << "): " << final_comp.at(running_idx) << ", func_id: " << func_id << ", runtime: " << runtime_i << std::endl;
+     
+        if (out_scores_i.at(running_idx) > l_threshold) //(final_comp.at(running_idx) > 0) // < 0.9)
+	        ad_score = l_threshold + 1;
+        else
+	        ad_score = l_threshold - 1;
+        
+	running_idx++;
       }
-      verboseStream << "mean_pn_ecdf.at(running_idx): " << mean_pn_ecdf.at(running_idx) << std::endl;
-      if (mean_pn_ecdf.at(running_idx) < 0.99)
-	      ad_score = l_threshold + 1;
-      else
-	      ad_score = l_threshold - 1;
+      else {
+	recoverable_error("AD: COPOD: runtime Index");
+        continue;
+      }
 
       itt->set_outlier_score(ad_score);
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
