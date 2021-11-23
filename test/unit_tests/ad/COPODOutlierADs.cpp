@@ -28,7 +28,7 @@ public:
 };
 
 
-TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
+TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
   CopodParam global_params_ps; //parameters held in the parameter server
   CopodParam local_params_ad, local_params_ad2; //parameters collected by AD
 
@@ -49,7 +49,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> runtimes;
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 1000 : double(dist(gen));
+      double val = i==N-1 ? 10000 : double(dist(gen));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 1: " << val << std::endl;
@@ -65,7 +65,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 1000 : double(dist(gen));
+      double val = i==N-1 ? 20000 : double(dist(gen));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 2: " << val << std::endl;

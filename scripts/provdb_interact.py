@@ -12,8 +12,9 @@ from pysonata.provider import SonataProvider
 from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
-class provDBshard:
-    def __openCollection(self, coll_name, create=False):
+#Base class for a Sonata client connection to a database
+class provDBclientBase:
+    def _openCollection(self, coll_name, create=False):
         if(self.database.exists(coll_name) == False):
             if(create == True):
                 print("Shard %s creating '%s' collection" % (self.db_name, coll_name) )
@@ -23,16 +24,28 @@ class provDBshard:
                 sys.exit(1)
         return self.database.open(coll_name)
 
+    #Apply a jx9 filter to a collection
+    def filter(self, which_coll, query):
+        return self.getCollection(which_coll).filter(query)
 
+    def execute(self, code, variables):
+        return self.database.execute(code,variables)
+
+    def store(self, which_coll, record):
+        return self.getCollection(which_coll).store(record, commit=True)
+
+
+#Sonata client connection to a database shard
+class provDBshard(provDBclientBase):
     def __init__(self,client,address,db_name,create=False):
         #Open database as a client
         self.db_name = db_name
         self.database = client.open(address, 0, db_name)
 
         #Initialize collections
-        self.anomalies = self.__openCollection('anomalies',create=create)
-        self.normalexecs = self.__openCollection('normalexecs',create=create)
-        self.metadata = self.__openCollection('metadata',create=create)
+        self.anomalies = self._openCollection('anomalies',create=create)
+        self.normalexecs = self._openCollection('normalexecs',create=create)
+        self.metadata = self._openCollection('metadata',create=create)
 
     def __del__(self):
         del self.anomalies
@@ -53,16 +66,34 @@ class provDBshard:
             sys.exit(1)
         return col
         
-    #Apply a jx9 filter to a collection
-    def filter(self, which_coll, query):
-        return self.getCollection(which_coll).filter(query)
 
-    def execute(self, code, variables):
-        return self.database.execute(code,variables)
 
-    def store(self, which_coll, record):
-        return self.getCollection(which_coll).store(record, commit=True)
-    
+class provDBglobal(provDBclientBase):
+    def __init__(self,client,address,db_name,create=False):
+        #Open database as a client
+        self.db_name = db_name
+        self.database = client.open(address, 0, db_name)
+
+        #Initialize collections
+        self.func_stats = self._openCollection('func_stats',create=create)
+        self.counter_stats = self._openCollection('counter_stats',create=create)
+
+    def __del__(self):
+        del self.func_stats
+        del self.counter_stats
+
+    def getCollection(self, which_coll):
+        col = None
+        if which_coll == "func_stats":
+            col = self.func_stats
+        elif which_coll == "counter_stats":
+            col = self.counter_stats
+        else:
+            print("Invalid collection")
+            sys.exit(1)
+        return col
+        
+
         
 
 class provDBinterface:
@@ -99,6 +130,27 @@ class provDBinterface:
 
             self.db_shards.append( provDBshard(self.client, self.address, db_name, create=create) )
 
+        #Connect to global database if available
+        db_name = "provdb.global"
+        self.db_global_name = db_name
+        db_file = re.sub(r'\%d',"global",filename)
+        if os.path.exists(db_file) == False:
+            if create == True:
+                print("Creating global database as %s from file %s" % (db_name,db_file))
+                self.admin.create_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+                self.use_global_db = True                                
+            else:
+                self.use_global_db = False
+        else:
+            print("Attaching global database as %s from file %s" % (db_name,db_file))
+            self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+            self.use_global_db = True
+
+        if self.use_global_db:
+            self.db_global = provDBglobal(self.client, self.address, db_name, create=create)
+        else:
+            self.db_global = None
+            
     def getNshards(self):
         return len(self.db_shards)
 
@@ -108,11 +160,20 @@ class provDBinterface:
     def getShards(self):
         return self.db_shards
 
+    #Get the global database client. Returns None if the global database doesn't exit
+    def getGlobalDB(self):
+        return self.db_global
+    
     def __del__(self):
-        del self.db_shards
-        del self.client
+        del self.db_shards        
         for n in self.db_names:
             self.admin.detach_database(self.address, 0, n)
+            
+        if self.use_global_db:
+            del self.db_global
+            self.admin.detach_database(self.address, 0, self.db_global_name)
+
+        del self.client
         del self.admin
         del self.provider
 
