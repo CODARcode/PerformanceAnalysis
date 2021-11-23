@@ -283,7 +283,7 @@ Anomalies ADOutlierHBOS::run(int step) {
       }
     }
     else { 
-	    recoverable_error(std::string("AD: Zero function runtimes "));
+      //recoverable_error(std::string("AD: Zero function runtimes "));
 	    continue;
     }
   }
@@ -568,7 +568,7 @@ Anomalies ADOutlierCOPOD::run(int step) {
       }
     }
     else { 
-	    recoverable_error(std::string("AD: Zero function runtimes "));
+      ///recoverable_error(std::string("AD: Zero function runtimes "));
 	    continue;
     }
     verboseStream << "Size of runtimes: " << runtimes.size() << ", func_id: " << func_id << std::endl;
