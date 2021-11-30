@@ -247,6 +247,7 @@ Anomalies ADOutlierHBOS::run(int step) {
   HbosParam& g = *(HbosParam*)m_param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
+    Histogram &hist = param[func_id];
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       if (itt->get_label() == 0) {
@@ -267,7 +268,7 @@ Anomalies ADOutlierHBOS::run(int step) {
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
         
-	const int r = param[func_id].create_histogram(runtimes);
+	const int r = hist.create_histogram(runtimes);
         if (r < 0) {
 		recoverable_error(std::string("AD: Func_ID does not exist"));
 		continue;
@@ -275,9 +276,9 @@ Anomalies ADOutlierHBOS::run(int step) {
       }
       else { //merge with exisiting func_id, not overwrite
 
-        const int r = param[func_id].merge_histograms(g[func_id], runtimes);
+        const int r = hist.merge_histograms(g[func_id], runtimes);
 	if (r < 0) {
-		recoverable_error(std::string("AD: Merging error received "));
+		verboseStream << "AD: Merging reset " << std::endl;
 		continue;
 	}
       }
@@ -315,16 +316,16 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
-
+  Histogram &hist = param[func_id];
 
   unsigned long n_outliers = 0;
 
   //probability of runtime counts
-  std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
-  double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
+  std::vector<double> prob_counts = std::vector<double>(hist.counts().size(), 0.0);
+  double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
 
-  for(int i=0; i < param[func_id].counts().size(); i++){
-    int count = param[func_id].counts().at(i);
+  for(int i=0; i < hist.counts().size(); i++){
+    int count = hist.counts().at(i);
     double p = count / tot_runtimes;
     prob_counts.at(i) += p;
 
@@ -338,7 +339,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   for(int i=0; i < prob_counts.size(); i++){
     double l = -1 * log2(prob_counts.at(i) + m_alpha);
     out_scores_i.push_back(l);
-    verboseStream << "Count: " << param[func_id].counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
+    verboseStream << "Count: " << hist.counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
     if(prob_counts.at(i) > 0) {
       if(l < min_score){
         min_score = l;
@@ -356,20 +357,19 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   if (out_scores_i.size() <= 0) {return 0;}
 
   //compute threshold
-  verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
+  verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = min_score + (m_threshold * (max_score - min_score));
   if(m_use_global_threshold) {
-    if(l_threshold < param[func_id].get_threshold()) {
-      l_threshold = param[func_id].get_threshold();
+    if(l_threshold < hist.get_threshold()) {
+      l_threshold = hist.get_threshold();
     } else {
-      param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
-      //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+      hist.set_glob_threshold(l_threshold); 
     }
   }
 
   //Compute HBOS based score for each datapoint
-  const double bin_width = param[func_id].bin_edges().at(1) - param[func_id].bin_edges().at(0);
-  const int num_bins = param[func_id].counts().size();
+  const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
+  const int num_bins = hist.counts().size();
   verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
@@ -379,20 +379,20 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
 
-      const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, param[func_id].bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << param[func_id].bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
+      const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, hist.bin_edges());
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << hist.bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
       /**
-       * If the sample does not belong to any bins
+       * Sample (datapoint) can be in either first bin or does not belong to any bins
        * bin_ind == 0 (fall outside since it is too small)
        */
       if( bin_ind == 0){
-        const double first_bin_edge = param[func_id].bin_edges().at(0);
+        const double first_bin_edge = hist.bin_edges().at(0);
         const double dist = first_bin_edge - runtime_i;
 	verboseStream << "First_bin_edge: " << first_bin_edge << std::endl;
         if( dist <= (bin_width * 0.05) ){
-          verboseStream << runtime_i << " is on left of histogram but NOT outlier" << std::endl;
-	  if(param[func_id].counts().size() < 1) {return 0;}
-          if(param[func_id].counts().at(0) == 0) { /**< Ignore zero counts */
+          verboseStream << runtime_i << " is in first bin of Histogram but NOT outlier" << std::endl;
+	  if(hist.counts().size() < 1) {return 0;}
+          if(hist.counts().at(0) == 0) { /**< Ignore zero counts */
 
             ad_score = l_threshold - 1;
             verboseStream << "corrected ad_score: " << ad_score << std::endl;
@@ -403,7 +403,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           }
         }
         else{
-          verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
+          verboseStream << runtime_i << " is NOT in first bin of Histogram and it IS an outlier" << std::endl;
           ad_score = max_score;
 	  verboseStream << "ad_score(max_score): " << ad_score << std::endl;
         }
@@ -413,12 +413,12 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
        *  If the sample does not belong to any bins
        */
       else if(bin_ind == num_bins + 1){
-        const int last_idx = param[func_id].bin_edges().size() - 1;
-        const double last_bin_edge = param[func_id].bin_edges().at(last_idx);
+        const int last_idx = hist.bin_edges().size() - 1;
+        const double last_bin_edge = hist.bin_edges().at(last_idx);
         const double dist = runtime_i - last_bin_edge;
 	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
         if (dist <= (bin_width * 0.05)) {
-          if(param[func_id].counts().at(num_bins - 1) == 0) {   //bin_ind) == 0) {  /**< Ignore zero counts */
+          if(hist.counts().at(num_bins - 1) == 0) {   /**< Ignore zero counts */
 
             ad_score = l_threshold - 1;
             verboseStream << "corrected ad_score: " << ad_score << std::endl;
@@ -438,7 +438,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       }
       else {
 
-        if(param[func_id].counts().at(bin_ind) == 0) { /**< Ignore zero counts */
+        if(hist.counts().at(bin_ind) == 0) { /**< Ignore zero counts */
 
           ad_score = l_threshold - 1;
           verboseStream << "corrected ad_score: " << ad_score << std::endl;
@@ -533,6 +533,7 @@ Anomalies ADOutlierCOPOD::run(int step) {
   CopodParam& g = *(CopodParam*)m_param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
+    Histogram &hist = param[func_id];
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       if (itt->get_label() == 0) {
@@ -552,7 +553,7 @@ Anomalies ADOutlierCOPOD::run(int step) {
     }
     if (runtimes.size() > 0) {
       if (!g.find(func_id)) { // If func_id does not exist
-        const int r = param[func_id].create_histogram(runtimes);
+        const int r = hist.create_histogram(runtimes);
         if (r < 0) {
 		recoverable_error(std::string("AD: Func_ID does not exist "));
 		continue;
@@ -560,9 +561,9 @@ Anomalies ADOutlierCOPOD::run(int step) {
       }
       else { //merge with exisiting func_id, not overwrite
 
-        const int r = param[func_id].merge_histograms(g[func_id], runtimes);
+        const int r = hist.merge_histograms(g[func_id], runtimes);
 	if (r < 0) {
-		recoverable_error(std::string("AD: Merging error received "));
+		verboseStream << "AD: Merging reset " << std::endl;
 		continue;
 	}
       }
@@ -619,13 +620,13 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   verboseStream << "data Size: " << data.size() << std::endl;
 
   CopodParam& param = *(CopodParam*)m_param;
-
+  Histogram &hist = param[func_id];
 
   unsigned long n_outliers = 0;
 
   //probability of runtime counts
   //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
-  double tot_runtimes = std::accumulate(param[func_id].counts().begin(), param[func_id].counts().end(), 0.0);
+  double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
 
   if (tot_runtimes <= 0 ) {
 	  return n_outliers;
@@ -633,14 +634,14 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
   std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
   int recon_idx = 0;
-  verboseStream << "Unwrapping Merged Histogram. Size: " << param[func_id].counts().size() << std::endl;
-  for(int i=0; i < param[func_id].counts().size(); i++){
-    int count = param[func_id].counts().at(i);
-    verboseStream << "Count: " << count << ", Value: " << param[func_id].bin_edges().at(i) << std::endl;
+  verboseStream << "Unwrapping Merged Histogram. Size: " << hist.counts().size() << std::endl;
+  for(int i=0; i < hist.counts().size(); i++){
+    int count = hist.counts().at(i);
+    verboseStream << "Count: " << count << ", Value: " << hist.bin_edges().at(i) << std::endl;
     for(int j=0; j<count; j++){
 
-      recon_p_runtimes.at(recon_idx) = param[func_id].bin_edges().at(i);
-      recon_n_runtimes.at(recon_idx) = -1 * param[func_id].bin_edges().at(i);
+      recon_p_runtimes.at(recon_idx) = hist.bin_edges().at(i);
+      recon_n_runtimes.at(recon_idx) = -1 * hist.bin_edges().at(i);
       verboseStream << "recon_idx: " << recon_idx << std::endl;
       verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
       recon_idx++;
@@ -678,9 +679,6 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   }
 
 
-  //for(int i=0; i<mean_pn_ecdf.size(); i++)
-	//  verboseStream << "mean_pn_ecdf at " << i << ": " << mean_pn_ecdf.at(i) << std::endl;
-
   //Create COPOD score vector
   std::vector<double> out_scores_i = std::vector<double>(final_comp.size(), 0.0);
   verboseStream << "m_alpha: " << m_alpha << std::endl;
@@ -710,14 +708,14 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   if (out_scores_i.size() <= 0) {return 0;}
 
   //compute threshold
-  verboseStream << "Global threshold before comparison with local threshold =  " << param[func_id].get_threshold() << std::endl;
+  verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = (max_score < 0) ? (-1 * m_threshold * (max_score - min_score)) : min_score + (m_threshold * (max_score - min_score));
   verboseStream << "l_threshold computed: " << l_threshold << std::endl;
   if(m_use_global_threshold) {
-    if(l_threshold < param[func_id].get_threshold() && param[func_id].get_threshold() > (-1 * log2(1.00001))) {
-      l_threshold = param[func_id].get_threshold();
+    if(l_threshold < hist.get_threshold() && hist.get_threshold() > (-1 * log2(1.00001))) {
+      l_threshold = hist.get_threshold();
     } else {
-      param[func_id].set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
+      hist.set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
       //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
     }
   }
@@ -743,7 +741,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 	running_idx++;
       }
       else {
-	recoverable_error("AD: COPOD: runtime Index");
+	verboseStream << "AD: COPOD: runtime Index" << std::endl;
         continue;
       }
 
