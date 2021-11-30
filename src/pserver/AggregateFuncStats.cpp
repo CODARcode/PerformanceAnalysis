@@ -4,6 +4,8 @@ using namespace chimbuko;
 
 AggregateFuncStats::AggregateFuncStats(int pid, int fid, const std::string &func): m_pid(pid), m_fid(fid), m_func(func){
   m_func_anomaly.set_do_accumulate(true); //accumulate number of anomalies as 'accumulate' field
+  m_inclusive.set_do_accumulate(true); //also accumulate total runtimes over all rank, thread
+  m_exclusive.set_do_accumulate(true);
 }
 
 void AggregateFuncStats::add(unsigned long n_anomaly, const RunStats& inclusive, const RunStats& exclusive){
