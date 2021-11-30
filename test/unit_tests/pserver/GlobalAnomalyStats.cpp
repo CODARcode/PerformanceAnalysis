@@ -11,7 +11,7 @@ TEST(TestGlobalAnomalyStats, UpdateFuncStat){
   GlobalAnomalyStats stats;
 
   //Generate some stats representing the inclusive and exclusive runtimes collected over 2 different io steps
-  RunStats incl1, incl2, excl1, excl2;
+  RunStats incl1(true), incl2(true), excl1(true), excl2(true); //accumulate total time over all ranks
 
   std::mt19937 gen(1234);
   std::normal_distribution<> dexcl(100,20);
