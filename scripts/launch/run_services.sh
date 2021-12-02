@@ -99,6 +99,9 @@ if (( ${use_provdb} == 1 )); then
     #Turn it into an absolute path before entering the subdirectory
     provdb_writedir=$(readlink -f ${provdb_writedir})
 
+    #Provdb will write out address information into the directory in which it is started
+    provdb_addr_dir=$(readlink -f ${provdb_dir})
+
     cd ${provdb_dir}
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address*
 
@@ -130,8 +133,8 @@ if (( ${use_provdb} == 1 )); then
 	done
     done
 
-    extra_args+=" -provdb_addr_dir ${provdb_writedir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
-    ps_extra_args+=" -provdb_addr_dir ${provdb_writedir}"
+    extra_args+=" -provdb_addr_dir ${provdb_addr_dir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
+    ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir}"
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
 else
@@ -147,7 +150,7 @@ if (( ${use_provdb} == 1 )); then
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
 	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
+	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
 	sleep 1
     done
     sleep 3
@@ -174,7 +177,7 @@ if (( ${use_viz} == 1 )); then
 	export PROVDB_ADDR=$(cat ${provdb_dir}/provider.address.0)
 	echo "Chimbuko Services: viz is connecting to provDB provider 0 on address" $PROVDB_ADDR
     else
-	export PROVDB_ADDR_PATH=$(readlink -f ${provdb_dir})
+	export PROVDB_ADDR_PATH=${provdb_addr_dir}
 	echo "Chimbuko Services: viz is obtaining provDB addresses from path" $PROVDB_ADDR_PATH
     fi
 
