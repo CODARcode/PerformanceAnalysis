@@ -1,8 +1,9 @@
 #include <chimbuko/pserver/PSstatSender.hpp>
-#include <curl/curl.h>
+#include <chimbuko/util/curlJsonSender.hpp>
 #include <chimbuko/verbose.hpp>
 #include <sstream>
 #include <fstream>
+
 using namespace chimbuko;
 
 
@@ -17,29 +18,6 @@ PSstatSender::~PSstatSender()
     for(auto &payload : m_payloads) delete payload;
 }
 
-
-// holder for curl fetch
-struct curl_fetch_str {
-    std::string m_payload;
-    bool        m_do_fetch;
-    curl_fetch_str(bool do_fetch) : m_do_fetch(do_fetch)
-    {
-
-    }
-};
-
-static size_t _curl_writefunc(char *ptr, size_t size, size_t nmemb, void* userp)
-{
-    // std::cout << "curl_writefunc: " << std::string(ptr) << std::endl;
-    struct curl_fetch_str *p = (struct curl_fetch_str *) userp;
-
-    if (ptr && p->m_do_fetch) {
-        p->m_payload = std::string(ptr);
-    }
-    
-    return size * nmemb;
-}
-
 static void send_stat(std::string url, std::string stat_save_dir,
 		      std::atomic_bool& bStop, 
 		      const std::vector<PSstatSenderPayloadBase*> &payloads,
@@ -49,29 +27,7 @@ static void send_stat(std::string url, std::string stat_save_dir,
     bool write_curl = url.size() > 0;
     bool write_disk = stat_save_dir.size() > 0;
 
-    CURL* curl = nullptr;
-    struct curl_slist * headers = nullptr;
-    CURLcode res;
-    long httpCode(0);
-
-    //Initialize
-    if(write_curl){
-      curl_global_init(CURL_GLOBAL_ALL);
-      
-      curl = curl_easy_init();
-      if (curl == nullptr) throw std::runtime_error("Failed to initialize curl easy handler");
-      
-      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-      // Dont bother trying IPv6, which would increase DNS resolution time
-      curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-      // Don't wait forever, time out after 10 seconds 
-      //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
-      // Follow HTTP redirects if necessary
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      // header
-      headers = curl_slist_append(headers, "Content-Type: application/json");
-      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    }      
+    curlJsonSender *curl_sender = write_curl ? new curlJsonSender(url) : nullptr;
 
     size_t iter = 0;
 
@@ -100,22 +56,11 @@ static void send_stat(std::string url, std::string stat_save_dir,
 	  of << packet;
 	}
 	if(write_curl){ //Send data via curl
-	  curl_fetch_str fetch(do_fetch); //request callback if 
-	  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, packet.c_str());
-	  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, packet.size());
-	  curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_curl_writefunc);
-	  curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&fetch);
-	  
-	  res = curl_easy_perform(curl);
-	  if (res != CURLE_OK){
-	    std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-	  }
-	  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-
+	  std::string response;
+	  curl_sender->send(packet, do_fetch ? &response : nullptr);
 	  if(do_fetch){
 	    for(auto payload : payloads){
-	      if(payload->do_fetch()) payload->process_callback(packet, fetch.m_payload);
+	      if(payload->do_fetch()) payload->process_callback(packet, response);
 	    }
 	  }
 	}      
@@ -124,12 +69,7 @@ static void send_stat(std::string url, std::string stat_save_dir,
       ++iter;
     }
   
-
-    if (curl){
-      if (headers) curl_slist_free_all(headers);
-      curl_easy_cleanup(curl);
-      curl_global_cleanup();
-    }
+    if(curl_sender) delete curl_sender;
   }catch(const std::exception &exc){
     std::cerr << "PSstatSender caught exception:" << exc.what() << std::endl;
     bad = true;
