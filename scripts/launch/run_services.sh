@@ -147,7 +147,7 @@ if (( ${use_provdb} == 1 )); then
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
 	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} 2>&1 | tee ${log_dir}/committer_${i}.log &
+	provdb_commit "${provdb_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
 	sleep 1
     done
     sleep 3
@@ -159,22 +159,32 @@ if (( ${use_viz} == 1 )); then
 	echo "Chimbuko Services: Error - cannot use viz without the pserver"
 	exit 1
     fi
-    if ((provdb_ninstances > 1)); then
-	echo "Chimbuko Services: Error - viz currently does not support multiple provDB instances"
+    if (( ${use_provdb} == 0 )); then
+	echo "Chimbuko Services: Error - cannot use viz without the provDB"
 	exit 1
+    fi
+
+    #Provide parameters for provenance database
+    export PROVDB_NINSTANCE=${provdb_ninstances}
+    export SHARDED_NUM=${provdb_nshards}
+    export PROVENANCE_DB=${provdb_writedir} #already an absolute path
+
+    if (( ${provdb_ninstances} == 1 )); then
+	#Simpler instantiation if a single server
+	export PROVDB_ADDR=$(cat ${provdb_dir}/provider.address.0)
+	echo "Chimbuko Services: viz is connecting to provDB provider 0 on address" $PROVDB_ADDR
+    else
+	export PROVDB_ADDR_PATH=$(readlink -f ${provdb_dir})
+	echo "Chimbuko Services: viz is obtaining provDB addresses from path" $PROVDB_ADDR_PATH
     fi
 
     cd ${viz_dir}
     HOST=`hostname`
-    export SHARDED_NUM=${provdb_nshards}
-    export PROVDB_ADDR=${prov_add}
-
     export SERVER_CONFIG="production"
     export DATABASE_URL="sqlite:///${viz_dir}/main.sqlite"
     export ANOMALY_STATS_URL="sqlite:///${viz_dir}/anomaly_stats.sqlite"
     export ANOMALY_DATA_URL="sqlite:///${viz_dir}/anomaly_data.sqlite"
     export FUNC_STATS_URL="sqlite:///${viz_dir}/func_stats.sqlite"
-    export PROVENANCE_DB=${provdb_writedir}
     export CELERY_BROKER_URL="redis://${HOST}:${viz_worker_port}"
 
     #Setup redis
@@ -192,7 +202,7 @@ if (( ${use_viz} == 1 )); then
     cd ${viz_root}
 
     echo "Chimbuko Services: create db ..."
-    python3 manager.py createdb
+    python3 -u manager.py createdb
 
     echo "Chimbuko Services: run redis ..."
     redis-server ${viz_dir}/redis.conf

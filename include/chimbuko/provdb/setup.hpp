@@ -124,7 +124,24 @@ namespace chimbuko{
     static inline std::string getGlobalDBname(){
       return "provdb.global";
     }
-	
+
+
+    /**
+     * @brief Write a file containing a map of shard index to server instance and provider index
+     * @param dir The directory to write the file to
+     *
+     * Line format is: <shard index> <server instance> <provider index>
+     */
+    inline void writeShardInstanceMap(const std::string &dir = "."){
+      std::string filename = dir + "/provider.map";
+      std::ofstream out(filename);
+      for(int shard=0;shard<m_nshards;shard++){
+	out << shard << " " << getShardInstance(shard) << " " << getShardProviderIndex(shard) << std::endl;
+      }
+      out << "global " << getGlobalDBinstance() << " " << getGlobalDBproviderIndex() << std::endl;
+      if(!out.good()) fatal_error("Could not write shard instance map");
+    }
+
 
   };
 

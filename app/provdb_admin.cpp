@@ -402,6 +402,9 @@ int main(int argc, char** argv) {
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
 
+	  //Instance 0 writes a map of shard index to server instance and provider index for use by the viz
+	  if(instance == 0) setup.writeShardInstanceMap();
+
 	  //Write address to file; do this after initializing collections so that the existence of the file can be used to signal readiness
 	  {	    
 	    std::ofstream f(setup.getInstanceAddressFilename(instance));
