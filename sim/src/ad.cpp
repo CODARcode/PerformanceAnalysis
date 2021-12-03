@@ -4,6 +4,7 @@
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADAnomalyProvenance.hpp>
 #include<chimbuko/util/error.hpp>
+#include<chimbuko/provdb/setup.hpp>
 
 #include<sim/ad.hpp>
 #include<sim/provdb.hpp>
@@ -41,14 +42,21 @@ ADsim::ADsim(ADsim &&r):
 }
 
 
-void ADsim::init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq){
+void ADsim::init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq, const provDBsetup &pdb_setup){
   m_window_size = window_size;
   m_pid = pid;
   m_rid = rid;
 #ifdef ENABLE_PROVDB
   m_pdb_client.reset(new ADProvenanceDBclient(rid));
-  m_pdb_client->setEnableHandshake(false);
-  m_pdb_client->connectSingleServer(getProvDB().getAddr(), getProvDB().getNshards());
+
+  if(pdb_setup.use_local){ //use the in-process provDB server
+    m_pdb_client->setEnableHandshake(false);
+    int shard = rid % getProvDB().getNshards();
+    std::string db_name = ProvDBsetup::getShardDBname(shard);
+    m_pdb_client->connect(getProvDB().getAddr(), db_name, 0); //connect on provider 0 for in-proc server
+  }else{
+    m_pdb_client->connectMultiServer(pdb_setup.remote_server_addr_dir, pdb_setup.remote_server_nshards, pdb_setup.remote_server_instances);
+  }
 #else
   m_prov_io.reset(new ADio(m_pid, m_rid));
   m_prov_io->setDispatcher();

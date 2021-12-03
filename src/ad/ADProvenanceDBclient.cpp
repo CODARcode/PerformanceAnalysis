@@ -70,10 +70,6 @@ AnomalousSendManager::~AnomalousSendManager(){
   verboseStream << "AnomalousSendManager exiting" << std::endl;
 }
 
-
-AnomalousSendManager ADProvenanceDBclient::anom_send_man;
-
-
 ADProvenanceDBclient::~ADProvenanceDBclient(){ 
   disconnect();
   verboseStream << "ADProvenanceDBclient exiting" << std::endl;
@@ -97,7 +93,6 @@ const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceD
 }
 
 static void delete_rpc(thallium::remote_procedure* &rpc){
-  rpc->deregister();
   delete rpc; rpc = nullptr;
 }
 

@@ -14,6 +14,14 @@ namespace chimbuko_sim{
 
   enum class CommType { Send, Recv };
 
+  struct provDBsetup{
+    bool use_local; /**< Use a local server instance (default true)*/
+    int remote_server_nshards; /**< Number of database shards on the remote servere (default 1, only applicable for use_local = false)*/
+    std::string remote_server_addr_dir; /**< Directory where remote server address files are written (only applicable for use_local = false)*/
+    int remote_server_instances; /**< Number of remote server instances  (only applicable for use_local = false)*/
+    provDBsetup(): use_local(true), remote_server_nshards(1){}
+  };
+
   //An object that represents a rank of the AD
   class ADsim{
     std::unordered_map<unsigned long, std::list<ExecData_t> > m_all_execs; /**< Map of thread to execs */
@@ -46,7 +54,7 @@ namespace chimbuko_sim{
      * @param program_start Timestamp of program start
      * @param step_freq Frequency at which IO steps are to occur
      */
-    void init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq);
+    void init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq, const provDBsetup &pdb_setup = provDBsetup());
 
     /** 
      * @brief Instantiate the AD simulator
@@ -56,8 +64,8 @@ namespace chimbuko_sim{
      * @param program_start Timestamp of program start
      * @param step_freq Frequency at which IO steps are to occur
      */
-    ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq): ADsim(){
-      init(window_size, pid, rid, program_start, step_freq);
+    ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq, const provDBsetup &pdb_setup = provDBsetup()): ADsim(){
+      init(window_size, pid, rid, program_start, step_freq, pdb_setup);
     }
     ADsim(): m_outlier(nullptr), m_net_client(nullptr){}
 

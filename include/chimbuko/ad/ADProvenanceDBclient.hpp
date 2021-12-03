@@ -84,7 +84,7 @@ namespace chimbuko{
     sonata::Collection m_coll_normalexecs; /**< The normal executions collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
     
-    static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
+    mutable AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
 
     int m_rank; /**< MPI rank of current process */
     std::string m_server_addr; /**< Address of the server */
