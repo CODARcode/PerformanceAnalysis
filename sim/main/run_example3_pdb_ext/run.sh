@@ -13,10 +13,12 @@ if (( 1 )); then
     ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
 fi
 
+ws_addr=$(cat chimbuko/vars/chimbuko_webserver.url)
+
 #Run the simulation 
 if (( 1 )); then
     echo "Running sim"
-    ./example3 -remote_provdb chimbuko/provdb ${provdb_nshards} ${provdb_ninstances} 2>&1 | tee chimbuko/logs/sim.log
+    ./example3 -remote_provdb chimbuko/provdb ${provdb_nshards} ${provdb_ninstances} -enable_viz ${ws_addr} 2>&1 | tee chimbuko/logs/sim.log
 fi
 
 wait

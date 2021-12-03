@@ -1,6 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include<chimbuko/param.hpp>
+#include<chimbuko/util/curlJsonSender.hpp>
 #include<chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include<chimbuko/pserver/GlobalCounterStats.hpp>
 #include<chimbuko/pserver/GlobalAnomalyMetrics.hpp>
@@ -20,6 +21,7 @@ namespace chimbuko_sim{
     PSstatSenderGlobalAnomalyMetricsPayload anomaly_metrics_payload;
     LocalNet m_net; /**< The net server */
     ParamInterface* m_ad_params; /**< If using an AD algorithm to analyze the trace, these are the global parameters*/
+    curlJsonSender* m_viz; /**< Curl connection to visualization (optional, default disabled)*/
   public:
     
     /**
@@ -50,6 +52,11 @@ namespace chimbuko_sim{
       global_anomaly_metrics.add(loc);
     }
     
+    /**
+     * @brief Enable streaming output to be written to the viz on the given url
+     */
+    void enableVizOutput(const std::string &url);
+
     /**
      * @brief Mirror write functionality of PSstatSender
      */

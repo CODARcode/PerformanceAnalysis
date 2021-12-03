@@ -159,8 +159,8 @@ fi
 #Visualization
 if (( ${use_viz} == 1 )); then
     if (( ${use_pserver} != 1 )); then
-	echo "Chimbuko Services: Error - cannot use viz without the pserver"
-	exit 1
+    	echo "Chimbuko Services: Error - cannot use viz without the pserver"
+    	exit 1
     fi
     if (( ${use_provdb} == 0 )); then
 	echo "Chimbuko Services: Error - cannot use viz without the provDB"
@@ -230,6 +230,7 @@ if (( ${use_viz} == 1 )); then
 
     echo $HOST > ${var_dir}/chimbuko_webserver.host
     echo $viz_port > ${var_dir}/chimbuko_webserver.port
+    echo $ws_addr > ${var_dir}/chimbuko_webserver.url
     echo "Chimbuko Services: Webserver is running on ${HOST}:${viz_port} and is ready for the user to connect"
 fi
 

@@ -8,7 +8,7 @@ service_node_iface=eth0 #network interface upon which communication to the servi
 ####################################
 #Options for visualization module
 ####################################
-use_viz=0 #enable or disable the visualization
+use_viz=1 #enable or disable the visualization
 viz_root=/opt/chimbuko/viz    #the root directory of the visualization module  <------------ ***SET ME (if using viz)***
 viz_worker_port=6379  #the port on which to run the redis server for the visualization backend
 viz_port=5002 #the port on which to run the webserver
@@ -42,7 +42,7 @@ export FI_OFI_RXM_USE_SRX=1 # use shared recv context in RXM; should improve sca
 ####################################
 #Options for the parameter server
 ####################################
-use_pserver=0 #enable or disable the pserver
+use_pserver=1 #enable or disable the pserver
 pserver_extra_args="" #any extra command line arguments to pass
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads

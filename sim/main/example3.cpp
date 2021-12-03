@@ -14,6 +14,7 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
 #endif
 
+  int sim_step_freq_ms = 1000; //frequency with which we iterate over io step (independent of actual function timings)
   provDBsetup pdb_setup;
   int i=1;
   while(i<argc){
@@ -25,6 +26,14 @@ int main(int argc, char **argv){
       pdb_setup.remote_server_instances = std::stoi(argv[i+3]);
       pdb_setup.use_local = false;
       i+=4;
+    }else if(sarg == "-enable_viz"){
+      if(i+1 >= argc) fatal_error("Not enough arguments provided");
+      getPserver().enableVizOutput(argv[i+1]);
+      i+=2;
+    }else if(sarg == "-sim_step_freq"){
+      if(i+1 >= argc) fatal_error("Not enough arguments provided");
+      sim_step_freq_ms = std::stoi(argv[i+1]);
+      i+=2;
     }else{
       fatal_error(stringize("Unknown argument: %s",argv[i]));
     }
@@ -101,6 +110,7 @@ int main(int argc, char **argv){
     }
     //PServer dump its output
     getPserver().writeStreamingOutput();
+    std::this_thread::sleep_for(std::chrono::milliseconds(sim_step_freq_ms));
   }
 
 #ifdef USE_MPI
