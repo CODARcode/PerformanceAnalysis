@@ -344,7 +344,7 @@ using namespace chimbuko;
    var = var / size;
    verboseStream << "Final Variance in _scott_binWidth: " << var << std::endl;
    std = sqrt(var);
-   verboseStream << "STD in merging _scott_binWidth: " << std << std::endl;
+   verboseStream << "stddev in merging _scott_binWidth: " << std << std::endl;
    if (std <= 100.0) {return 0;}
 
    return ((3.5 * std ) / pow(size, 1/3));
@@ -363,7 +363,7 @@ using namespace chimbuko;
    }
    var = var / vals.size();
    std = sqrt(var);
-   verboseStream << "STD in _scott_binWidth: " << std << std::endl;
+   verboseStream << "stddev in _scott_binWidth: " << std << std::endl;
 
    return ((3.5 * std ) / pow(vals.size(), 1/3));
  }
@@ -397,7 +397,7 @@ using namespace chimbuko;
      m_histogram.bin_edges.push_back(prev + bin_width);
      prev += bin_width;
    }
-   //std::cout << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
+   verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
 
    if (m_histogram.counts.size() > 0) m_histogram.counts.clear();
    m_histogram.counts = std::vector<int>(m_histogram.bin_edges.size()-1, 0);
@@ -409,7 +409,7 @@ using namespace chimbuko;
        }
      }
    }
-   //std::cout << "Size of counts: " << m_histogram.counts.size() << std::endl;
+   verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
 
    //m_histogram.runtimes.clear();
    const double min_threshold = -1 * log2(1.00001);
@@ -423,10 +423,18 @@ using namespace chimbuko;
  int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
 
-   std::vector<double> r_times = runtimes;
+   std::vector<double> r_times(runtimes.size()); // = runtimes;
+   verboseStream << "Number of runtime events during mergin: " << runtimes.size() << std::endl;
+   verboseStream << "total number of 'g' bin_edges: " << g.bin_edges().size() << std::endl;
 
+   //Fix for XGC run where unlabelled func_id is retained causing Zero bin_edges
+   if (g.bin_edges().size() <= 0)
+     return this->create_histogram(runtimes);
+
+   //Unwrapping the histogram
    for (int i = 0; i < g.bin_edges().size() - 1; i++) {
-     for(int j = 0; j < g.counts().at(i); j++){
+     verboseStream << " Bin counts in " << i << ": " << g.counts()[i] << std::endl;
+     for(int j = 0; j < g.counts().at(i); j++){ 
        r_times.push_back(g.bin_edges().at(i));
      }
    }
