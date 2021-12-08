@@ -20,7 +20,7 @@ Options for the provenance database:
 - **provdb_nshards** : Number of database shards
 - **provdb_engine** : The OFI libfabric provider used for the Mochi stack.
 - **provdb_port** : The port of the provenance database
-- **provdb_nthreads** : Number of worker threads; should be >= the number of shards
+- **provdb_ninstances** : Number of server instances (default 1)
 
 Options for the parameter server:
 

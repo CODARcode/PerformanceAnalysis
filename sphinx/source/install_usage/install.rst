@@ -51,7 +51,7 @@ Details of how to choose the libfabrics provider used by Mercury can be found :r
 Integrating with system-installed MPI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Chimbuko requires an installation of MPI. While Spack can install MPI automatically as a dependency of Chimbuko, in most cases it is desirable to utilize the system installation. Instructions on configuring Spack to use external dependencies can be found `here <https://spack.readthedocs.io/en/latest/build_settings.html#external-packages>`_ . The simplest approach in general is to edit (create) a **packages.yaml** in one of Spack's search paths, e.g. :code:`~/.spack/packages.yaml`, with the following content:
+Chimbuko by default requires an installation of MPI. While Spack can install MPI automatically as a dependency of Chimbuko, in most cases it is desirable to utilize the system installation. Instructions on configuring Spack to use external dependencies can be found `here <https://spack.readthedocs.io/en/latest/build_settings.html#external-packages>`_ . The simplest approach in general is to edit (create) a **packages.yaml** in one of Spack's search paths, e.g. :code:`~/.spack/packages.yaml`, with the following content:
 
 .. code:: yaml
 
@@ -63,6 +63,17 @@ Chimbuko requires an installation of MPI. While Spack can install MPI automatica
           prefix: /opt/openmpi4.0.4
 
 Modified as necessary to point to your installation.	  
+
+Non-MPI installation (advanced)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chimbuko can be built without MPI by disabling the **mpi** Spack variant as follows:
+
+.. code:: bash
+
+	  spack install chimbuko~mpi ^py-setuptools-scm+toml
+
+When used in this mode the user is responsible for manually assigning a "rank" index to each instance of the online AD module, and also for ensuring that an instance of this module is created alongside each instance or rank of the target application (e.g. using a wrapper script that is launched via mpirun). We discuss how this can be achieved :ref:`here <non_mpi_run>`. 
 
 Summit
 ~~~~~~
@@ -104,7 +115,60 @@ Once installed, simply
 	  spack load tau chimbuko-performance-analysis chimbuko-visualization2
 
 after loading the modules above.	  
+
+
+Spock
+~~~~~~
+
+In the PerformanceAnalysis source we also provide a Spack environment yaml for use on Spock, :code:`spack/environments/spock.yaml`. This environment is designed for the AMD compiler suite with Rocm 4.3.0. Installation instructions follow:
+
+First download the Chimbuko and Mochi repositories:
+
+.. code:: bash
+
+	  git clone https://github.com/mochi-hpc/mochi-spack-packages.git
+	  git clone https://github.com/CODARcode/PerformanceAnalysis.git
+
+Copy the file :code:`spack/environments/spock.yaml` from the PerformanceAnalysis git repository to a convenient location and edit the paths in the :code:`repos` section to point to the paths at which you downloaded the repositories:
+
+.. code:: yaml
+
+	  repos:
+	    - /autofs/nccs-svm1_home1/ckelly/install/mochi-spack-packages
+	    - /autofs/nccs-svm1_home1/ckelly/src/AD/PerformanceAnalysis/spack/repo/chimbuko
+      
+This environment uses the following modules, which must be loaded prior to installation and running:
+
+.. code:: bash
+
+	  module reset
+	  module load PrgEnv-amd/8.2.0
+	  module load rocm/4.3.0
+	  module load cray-python/3.9.4.1
+
+To install the environment:
+
+.. code:: bash
+
+	  spack env create my_chimbuko_env spock.yaml
+	  spack env activate my_chimbuko_env
+	  spack install
+
+Unfortunately at present there are a few issues with Spack on Spock that require workarounds when loading the environment: 	 
+
+.. code:: bash
+
+	  #Looks like spack doesn't pick up cray-xpmem pkg-config loc, put at end so only use as last resort
+	  export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/usr/lib64/pkgconfig
+
+          #Looks like spack misses an rpath for Chimbuko
+          export LD_LIBRARY_PATH=/opt/cray/pe/libsci/21.08.1.2/AMD/4.0/x86_64/lib:${LD_LIBRARY_PATH}
 	  
+	  spack env activate my_chimbuko_env
+	  spack load tau chimbuko-performance-analysis chimbuko-visualization2
+
+
+
 .. _ADIOS2: https://github.com/ornladios/ADIOS2
 .. _ZeroMQ: https://zeromq.org/
 .. _CURL: https://curl.haxx.se/
