@@ -48,22 +48,82 @@ A number of variables in **chimbuko_config.sh** are marked :code:`<------------ 
   
 A full list of variables along with their description is provided in the `Appendix Section <../appendix/appendix_usage.html#chimbuko-config>`_, and more guidance is also provided in the template script.
   
-Next, in the run script, export the config script as follows:
+Next, in the run script, export the config script location and also source its contents into the script environment as follows:
 
 .. code:: bash
 
     export CHIMBUKO_CONFIG=chimbuko_config.sh
+    source ${CHIMBUKO_CONFIG}
 
 ---------------------------
 
 In order to avoid having the Chimbuko services interfere with the running of the application, we typically run the services on a dedicated node. It is also necessary to place the ranks of the AD module on the same node as the corresponding rank of the application to avoid having to pipe the traces over the network. Unfortunately the means of setting this up will vary from system to system depending on the job scheduler (e.g. using a **hostfile** with :code:`mpirun`).
 
-In this section we will concentrate on the Summit supercomputer, where the process is made more difficult by the restrictions on sharing resources between resource sets which forces us to dedicate cores to the AD instances. To achieve the job placement the first step is to generate **explicit resource files** (ERF) for the head node, AD, and main programs. For convenience we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/summit/gen_erf_summit.sh>`_ to generate the ERF files. It generates three ERF files (main.erf, ad.erf, services.erf) which are later used as input ERF files to instantiate Chimbuko services using **jsrun** command.
-This can be achieved by running the following script
+We launch the services (provenance database, the visualization module, and the parameter server) using the **run_services.sh** script provided in the PerformanceAnalysis install path. The location of this script is contained in the **chimbuko_services** variable set by *chimbuko_config.sh*. By default this location is inferred automatically but it can be set manually in the *chimbuko_config.sh*. A description of commands used in the services script is provided in `Appendix <../appendix/appendix_usage.html#launch-services>`_.
+
+The services are run as a background task such that they continue to run throughout the job. The service script writes out several useful files in the *chimbuko/vars* subdirectory, including a file containing the full run command for the AD module, *chimbuko/vars/chimbuko_ad_cmdline.var*, assuming a basic (single application) workflow. We will use the existence of this file in a wait condition to ensure the services are ready before launching the online AD module and application instances:
 
 .. code:: bash
 
-	  ./gen_erf.pl ${n_nodes_total} ${n_mpi_ranks_per_node} ${n_cores_per_rank_main} ${n_gpus_per_rank_main} ${ncores_per_host_ad}
+    <LAUNCH ON HEAD NODE> ${chimbuko_services} &
+    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+
+Here :code:`<LAUNCH ON HEAD NODE>` is the appropriate command to launch a process on the head node of the job.
+
+-----------------------------
+
+We next launch the AD modules:
+
+.. code:: bash
+
+    ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
+    eval "<LAUNCH N RANKS OF AD ON BODY NODES> ${ad_cmd} &"
+
+Where :code:`<LAUNCH N RANKS OF AD ON BODY NODES>` is the appropriate command to launch *N* ranks of the online AD module on the nodes other than the head node, where *N* is the same as the number of application ranks. Note that this command must ensure that AD rank *i* is launched on the same physical node as application rank *i* 
+    
+For more complicated workflows the AD will need to be invoked differently. To aid the user the services script writes a second file, **chimbuko/vars/chimbuko_ad_opts.var**, which contains just the initial command line options for the AD. Examples of various setups can be found among the :ref:`benchmark applications <benchmark_suite>`.
+
+-----------------------------
+
+Finally, the application is instantiated using the following command:
+
+.. code:: bash
+
+    <LAUNCH N RANKS OF APP ON BODY NODES> ${TAU_EXEC} ${EXE} ${EXE_CMDS}
+
+Where :code:`<LAUNCH N RANKS OF APP ON BODY NODES>` is the appropriate command to launch *N* ranks of the application on the nodes other than the head node, **${TAU_EXEC}** is defined in chimbuko config file as described above, **${EXE}** is the full path to the application's executable and **${EXE_CMDS}** specifies all input parameters that are required by the application executable.
+
+------------------------------
+
+Chimbuko can be run to perform offline analysis of the application by changing configuration for Tau's ADIOS plugin as `described here <../appendix/appendix_usage.html#offline-analysis>`_.
+
+------------------------------
+
+Running on Summit
+^^^^^^^^^^^^^^^^^
+
+In this section we provide specifics on launching on the Summit machine.
+
+The following *chimbuko_config.sh* setup provides optimal network performance for the Chimbuko services:
+
+- **service_node_iface** : ib0
+- **provdb_engine** : verbs
+- **provdb_domain** : mlx5_0
+
+Summit job components are started using IBM's custom *jsrun* command, which supports two methods for completely specifying resource sets that we can use to perform the placement of the services and the AD and application ranks. Note that *jsrun* does not allow different resource sets to share the same hardware resources, hence we are forced to dedicate cores to the AD instances.
+
+ERF files
+"""""""""
+
+**(WARNING: As of 12/8/21 this feature is broken and the user should use the secondary URS method documented below until a fix is made available)**
+
+The default method for completely specifying resource sets is **explicit resource files** (ERF) which are supplied using the following command: :code:`jsrun --erf_input=${erf_file}`. The file format is documented `here <https://www.ibm.com/docs/en/spectrum-lsf/10.1.0?topic=SSWRJV_10.1.0/jsm/jsrun.html>`_.
+
+For convenience we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/summit/gen_erf_summit.sh>`_ to generate the ERF files, which is executed as follows:
+
+.. code:: bash
+
+	  ./gen_erf_summit.pl ${n_nodes_total} ${n_mpi_ranks_per_node} ${n_cores_per_rank_main} ${n_gpus_per_rank_main} ${ncores_per_host_ad}
     
 where
 
@@ -72,45 +132,76 @@ where
 - **${n_cores_per_rank_main}** and **${n_gpus_per_rank_main}** specify the number of cores and GPUs, respectively, given to each rank of the application.
 - **${ncores_per_host_ad}** is the number of cores dedicated to the Chimbuko AD modules (must be a multiple of 2), with the application running on the remaining cores. Note that the total number of cores allocated per node must not exceed 42. 
 
-More details on ERF can be found `here <https://www.ibm.com/docs/en/spectrum-lsf/10.1.0?topic=SSWRJV_10.1.0/jsm/jsrun.html>`_.
+The script writes out three files: *services.erf*, *ad.erf* and *main.erf*. This allows us to fully specify the various :code:`<LAUNCH ...>` commands from the previous section:
 
-----------------------------
-
-In the next step the Chimbuko services are launched by running the **run_services.sh** script using **jsrun** command as following:
+which can be used as follows:
 
 .. code:: bash
 
-    jsrun --erf_input=services.erf ${chimbuko_services} &
-    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+	  <LAUNCH ON HEAD NODE> = jsrun --erf_input=services.erf
+	  <LAUNCH N RANKS OF AD ON BODY NODES> = jsrun --erf_input=ad.erf
+	  <LAUNCH N RANKS OF APP ON BODY NODES> = jsrun --erf_input=main.erf
 
-Here **--erf_input=services.erf** launches the services using the the services ERF generated in the previous step. **${chimbuko_services}** is the path to a script which specifies commands to launch the provenance database, the visualization module, and the parameter server. This variable is set by the configuration script. A description of commands used in the services script is provided in `Appendix <../appendix/appendix_usage.html#launch-services>`_.
+URS files
+"""""""""
 
-The while loop after the **jsrun** command is used to wait until the services have progressed to a stage at which connection is possible. At this point the script generates a command file (**chimbuko/vars/chimbuko_ad_cmdline.var**) which provides the to launch the Chimbuko's anomaly detection driver program, assuming a basic (single component) workflow. This can be invoked as follows:
+The *jsrun* command also supports specifying resource sets using :code:`jsrun --use_resource=${urf_file}` or :code:`jsrun -U ${urf_file}` where documentation of the format of these "URS" files can be found `here <https://www.ibm.com/docs/en/spectrum-lsf/10.1.0?topic=SSWRJV_10.1.0/jsm/jsrun.html>`. Note that, unlike the ERF files, the URS files do not allow specification of resource sets at the level of hardware threads, only at the level of cores.
 
-.. code:: bash
-
-    ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
-    eval "jsrun --erf_input=ad.erf -e prepended ${ad_cmd} &"
-
-Here the **ad.erf** file is used as **--erf_input** for the **jsrun** command.
-
-For more complicated workflows the AD will need to be invoked differently. To aid the user we write a second file, **chimbuko/vars/chimbuko_ad_opts.var**, which contains just the initial command line options for the AD. Examples of various setups can be found among the :ref:`benchmark applications <benchmark_suite>`.
-
------------------------------
-
-Finally, the application instantiated using the following command:
+For convenience we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/summit/gen_urs_summit.pl>`_ to generate the URS files, which is executed as follows:
 
 .. code:: bash
 
-    jsrun --erf_input=main.erf -e prepended ${TAU_EXEC} ${EXE} ${EXE_CMDS}
+	  ./gen_urs_summit.pl ${n_nodes_total} ${n_mpi_ranks_per_node} ${n_cores_per_rank_main} ${n_gpus_per_rank_main}
+    
+where
 
-Here we use the third ERF (**main.erf**) which was generated in the previous step. **${TAU_EXEC}** is defined in chimbuko config file as described in previous step. **${EXE}** is the full path to the application's executable. **${EXE_CMDS}** specifies all input parameters that are required by the application executable.
+- **${n_nodes_total}** is the total number of nodes used, including the one node that is dedicated to run the services.
+- **${n_mpi_ranks_per_node}** is the number of MPI ranks of the application (and AD) that will run on each node (must be a multiple of 2).
+- **${n_cores_per_rank_main}** and **${n_gpus_per_rank_main}** specify the number of cores and GPUs, respectively, given to each rank of the application.
 
-------------------------------
+Note that 1 core is assigned per rank of the AD, and so :code:`${n_mpi_ranks_per_node} * (${n_cores_per_rank_main} + 1)` should not exceed 42, the number of cores per node.
 
-Chimbuko can be run to perform offline analysis of the application by changing configuration for Tau's ADIOS plugin as `described here <../appendix/appendix_usage.html#offline-analysis>`_.
+The script writes out three files: *services.urs*, *ad.urs* and *main.urs*. This allows us to fully specify the various :code:`<LAUNCH ...>` commands from the previous section:
 
-------------------------------
+which can be used as follows:
+
+.. code:: bash
+
+	  <LAUNCH ON HEAD NODE> = jsrun -U services.urs
+	  <LAUNCH N RANKS OF AD ON BODY NODES> = jsrun -U ad.urs
+	  <LAUNCH N RANKS OF APP ON BODY NODES> = jsrun -U main.urs
+
+
+Running on Spock
+^^^^^^^^^^^^^^^^
+
+In this section we provide specifics on launching on the Spock machine.
+
+Spock uses the *slurm* job management system. To control the explicit placement of the ranks we will use the :code:`--nodelist` (:code:`-w`) slurm option to specify the nodes associated with a resource set, the :code:`--nodes` (:code:`-N`) option to specify the number of nodes and the :code:`--overlap` option to allow the AD and application resource sets to coexist on the same node. These options are documented `here <https://slurm.schedmd.com/srun.html>`_.
+
+The :code:`--nodelist` option requires the range of full hostnames of the nodes to be provided. In order to simplify the generation of this list we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/spock/get_nodes.pl>`_ that parses the **SLURM_JOB_NODELIST** environment variable and generates the nodelist for the services and application. To use:
+
+.. code:: bash
+
+	  service_node=$(./get_nodes.pl HEAD)
+	  body_nodelist=$(./get_nodes.pl BODY)
+
+We can now set the various :code:`<LAUNCH ..>` commands in the section above:
+
+.. code:: bash
+
+	  <LAUNCH ON HEAD NODE> = srun -n 1 -c 64 --threads-per-core=1 -N 1-1 --ntasks-per-node=1 -w ${service_node}
+	  <LAUNCH N RANKS OF AD ON BODY NODES> = srun -n ${N} -c 1 -N ${bodynodes}-${bodynodes} --ntasks-per-node=${n_mpi_ranks_per_node} -w ${body_nodelist} --overlap 
+	  <LAUNCH N RANKS OF APP ON BODY NODES> = srun -n ${N} -c ${ncores_per_rank_main} -N ${bodynodes}-${bodynodes} --ntasks-per-node=${n_mpi_ranks_per_node} -w ${body_nodelist} --gpus-per-task=${n_gpus_per_rank_main} --gpu-bind=closest --overlap
+
+Where 	  
+
+- **${n_nodes_total}** is the total number of nodes used, including the one node that is dedicated to run the services.
+- **${bodynodes}** is the number of nodes dedicated to the application and AD ranks (i.e. :code:`n_nodes_total-1`)
+- **${n_mpi_ranks_per_node}** is the number of MPI ranks of the application (and AD) that will run on each node (must be a multiple of 2).
+- **${n_cores_per_rank_main}** and **${n_gpus_per_rank_main}** specify the number of cores and GPUs, respectively, given to each rank of the application.
+
+Note that we have assigned 1 core to each rank of the AD, and so :code:`${n_mpi_ranks_per_node} * (${n_cores_per_rank_main} + 1)` should not exceed 64, the number of available cores.
 
 Scaling to large job sizes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
