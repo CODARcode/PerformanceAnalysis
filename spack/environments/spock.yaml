@@ -1,0 +1,313 @@
+spack:
+  specs:
+  - redis@5.0.3 %clang@12.0.0-amd cflags='-fcommon'
+  - mochi-sonata@0.6.102~unqlite_st ^mercury@master~checksum ^mochi-margo@develop  ^argobots@main+stackunwind+tool %clang@12.0.0-amd
+  - chimbuko-visualization2 ^py-cryptography@2.7 ^py-numpy@1.19.5 %clang@12.0.0-amd
+  - tau@master+mpi+rocm+rocprofiler+roctracer+adios2+binutils %clang@12.0.0-amd
+  - chimbuko-performance-analysis@ckelly_develop %clang@12.0.0-amd
+  - binutils@2.33.1+libiberty+headers+plugins %clang@12.0.0-amd cflags='-fcommon'
+  concretization: together
+  compilers:
+
+  - compiler:
+      spec: clang@12.0.0-amd
+      paths:
+        cc: cc
+        cxx: CC
+        f77: ftn
+        fc: ftn
+      flags: {}
+      operating_system: sles15
+      target: any
+      modules:
+      - PrgEnv-amd/8.2.0
+      - rocm/4.3.0
+      - libfabric/1.11.0.4.75      
+      environment: {}
+      extra_rpaths: []
+
+  - compiler:
+      spec: gcc@7.5.0
+      paths:
+        cc: /usr/bin/gcc
+        cxx: /usr/bin/g++
+        f77: /usr/bin/gfortran
+        fc:  /usr/bin/gfortran
+      flags: {}
+      operating_system: sles15
+      target: any
+      modules: []
+      environment: {}
+      extra_rpaths: []
+  repos:
+  #=================== THIS PATH SHOULD BE SET TO POINT TO THE mochi-spack-packages DOWNLOADED FROM https://github.com/mochi-hpc/mochi-spack-packages.git
+  - /autofs/nccs-svm1_home1/ckelly/install/mochi-spack-packages
+  #=================== THIS PATH SHOULD BE SET TO POINT TO THE repo/chimbuko SUBDIRECTORY OF THE CHIMBUKO AD SOURCE https://github.com/CODARcode/PerformanceAnalysis/ (git clone https://github.com/CODARcode/PerformanceAnalysis.git)
+  - /autofs/nccs-svm1_home1/ckelly/src/AD/PerformanceAnalysis/spack/repo/chimbuko
+  packages:
+    all:
+      compiler: [clang@12.0.0-amd, gcc@7.5.0]
+      providers:
+        mpi: [mpich]
+        pkgconfig: [pkg-config]
+    comgr:
+      buildable: false
+      externals:
+      - spec: comgr@4.3.0
+        modules:
+        - rocm/4.3.0
+    rocm-device-libs:
+      buildable: false
+      externals:
+      - spec: rocm-device-libs@4.3.0
+        modules:
+        - rocm/4.3.0
+    hip-rocclr:
+      buildable: false
+      externals:
+      - spec: hip-rocclr@4.3.0
+        modules:
+        - rocm/4.3.0
+    hip:
+      buildable: false
+      externals:
+      - spec: hip@4.3.0
+        prefix: /opt/rocm-4.3.0/hip
+        modules:
+        - rocm/4.3.0
+    rocprofiler-dev:
+      buildable: false
+      externals:
+      - spec: rocprofiler-dev@4.3.0
+        prefix: /opt/rocm-4.3.0/rocprofiler
+        modules:
+        - rocm/4.3.0
+
+    roctracer-dev:
+      buildable: false
+      externals:
+      - spec: roctracer-dev@4.3.0
+        prefix: /opt/rocm-4.3.0/roctracer
+        modules:
+        - rocm/4.3.0
+
+    hsa-rocr-dev:
+      buildable: false
+      externals:
+      - spec: hsa-rocr-dev@4.3.0
+        modules:
+        - rocm/4.3.0
+
+    llvm-amdgpu:
+      buildable: false
+      externals:
+      - spec: llvm-amdgpu@4.3.0
+        modules:
+        - rocm/4.3.0
+
+    hsakmt-roct:
+      buildable: false
+      externals:
+      - spec: hsakmt-roct@4.3.0
+        modules:
+        - rocm/4.3.0
+
+    rocm-opencl:
+      buildable: false
+      externals:
+      - spec: rocm-opencl@4.3.0
+        modules:
+        - rocm/4.3.0
+
+    rocm-smi-lib:
+      buildable: false
+      externals:
+      - spec: rocm-smi-lib@4.3.0
+        modules:
+        - rocm/4.3.0
+
+    mpi:
+      buildable: false
+
+    mpich:
+      buildable: false
+      externals:
+      - spec: mpich@8.1.10-cray
+        prefix: /opt/cray/pe/mpich/8.1.10/ofi/amd/4.3
+        modules:
+        - PrgEnv-amd/8.2.0
+        - cray-mpich/8.1.10
+
+    libzmq:
+      buildable: false
+      externals:
+      - spec: libzmq@4.3.3
+        modules:
+        - libzmq/4.3.3
+
+    cmake:
+      buildable: false
+      externals:
+      - spec: cmake@3.21.3
+        modules:
+        - cmake/3.21.3
+
+    bzip2:
+      buildable: false
+      externals:
+      - modules:
+        - bzip2/1.0.8
+        spec: bzip2@1.0.8
+
+    libffi:
+      buildable: false
+      externals:
+      - modules:
+        - libffi/3.3
+        spec: libffi@3.3.0
+
+    curl:
+      buildable: false
+      externals:
+      - modules:
+        - curl/7.79.0
+        spec: curl@7.79.0
+
+    c-blosc:
+      buildable: false
+      externals:
+      - modules:
+        - c-blosc/1.21.0
+        spec: c-blosc@1.21.0
+
+    diffutils:
+      buildable: false
+      externals:
+      - modules:
+        - diffutils/3.8
+        spec: diffutils@3.8
+
+    perl:
+      buildable: false
+      externals:
+      - modules:
+        - perl/5.34.0
+        spec: perl@5.34.0
+
+    zfp:
+      buildable: false
+      externals:
+      - modules:
+        - zfp/0.5.5
+        spec: zfp@0.5.5
+
+    papi:
+      buildable: false
+      externals:
+      - modules:
+        - papi/6.0.0.10
+        spec: papi@6.0.0.10
+
+    hwloc:
+      buildable: false
+      externals:
+      - modules:
+        - hwloc/2.5.0
+        spec: hwloc@2.5.0
+
+    gettext:
+      buildable: false
+      externals:
+      - modules:
+        - gettext/0.21
+        spec: gettext@0.21
+
+    zlib:
+      buildable: false
+      externals:
+      - modules:
+        - zlib/1.2.11
+        spec: zlib@1.2.11
+
+    gdbm:
+      buildable: false
+      externals:
+      - modules:
+        - gdbm/1.19
+        spec: gdbm@1.19
+
+    sqlite:
+      buildable: false
+      externals:
+      - modules:
+        - sqlite/3.36.0
+        spec: sqlite@3.36.0
+
+    googletest:
+      buildable: false
+      externals:
+      - modules:
+        - googletest/1.11.0
+        spec: googletest@1.11.0
+
+    libpng:
+      buildable: false
+      externals:
+      - modules:
+        - libpng/1.6.37
+        spec: libpng@1.6.37
+
+    libelf:
+      buildable: false
+      externals:
+      - modules:
+        - libelf/0.8.13
+        spec: libelf@0.8.13
+
+    elfutils:
+      buildable: false
+      externals:
+      - modules:
+        - elfutils/0.182
+        spec: elfutils@0.182
+
+    expat:
+      buildable: false
+      externals:
+      - modules:
+        - expat/2.4.1
+        spec: expat@2.4.1
+
+    libfabric:
+      buildable: false
+      externals:
+      - modules:
+        - libfabric/1.11.0.4.75
+        spec: libfabric@1.11.0.4.75
+
+    boost:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - boost/1.77.0
+        spec: boost@1.77.0
+      compiler: []
+
+
+    python:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - cray-python/3.9.4.1
+        spec: python@3.9.4.1
+      compiler: []
+
+
+
+  view: true
