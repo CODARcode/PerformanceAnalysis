@@ -23,6 +23,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1),
 #endif
 				  prov_outputpath(""),
+                                  prov_record_startstep(-1),
+                                  prov_record_stopstep(-1),  
 				  perf_outputpath(""), perf_step(10),
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
@@ -389,6 +391,10 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
 					const unsigned long last_event_ts) const{
+  //Optionally skip provenance data recording on certain steps
+  if(m_params.prov_record_startstep != -1 && step < m_params.prov_record_startstep) return;
+  if(m_params.prov_record_stopstep != -1 && step > m_params.prov_record_stopstep) return;
+ 
   //Gather provenance data on anomalies and send to provenance database
   if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB

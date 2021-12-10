@@ -108,6 +108,8 @@ optionalArgsParser & getOptionalArgsParser(){
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
     addOptionalCommandLineArg(p, step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
+    addOptionalCommandLineArg(p, prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
+    addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
 
     initialized = true;
   }
