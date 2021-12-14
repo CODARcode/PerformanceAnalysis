@@ -89,3 +89,20 @@ Message Message::createReply() const
     reply.m_head.frame() = m_head.frame();
     return reply;
 }
+
+std::string Message::kind_str() const {
+#define KSTR(A) case A: return #A
+
+  switch((MessageKind)m_head.kind()){
+    KSTR(DEFAULT);
+    KSTR(CMD);
+    KSTR(PARAMETERS);
+    KSTR(ANOMALY_STATS);
+    KSTR(COUNTER_STATS);
+    KSTR(FUNCTION_INDEX);
+    KSTR(ANOMALY_METRICS);
+    KSTR(AD_PS_COMBINED_STATS);
+    default: return "UNKNOWN";
+  }
+#undef KSTR
+}

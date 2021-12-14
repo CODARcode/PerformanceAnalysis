@@ -1,5 +1,7 @@
-#include<chimbuko/util/string.hpp>
 #include<sim/provdb.hpp>
+#ifdef ENABLE_PROVDB
+#include<chimbuko/util/string.hpp>
+
 
 using namespace chimbuko;
 using namespace chimbuko_sim;
@@ -45,3 +47,5 @@ provDBsim::~provDBsim(){
   delete admin;
   delete provider;
 }
+
+#endif

@@ -391,7 +391,9 @@ TEST(ADOutlierSSTtest, TestAnomalyScore){
   double score = outlier.computeScoreTest(it, params);
   std::cout << "Score for " << it->get_json().dump() << " : " << score << std::endl;
   
-  double expect = (1-0.682689492137086)/2.; //half of probability of 1-sigma up/down fluctuation from https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
+  //double expect = (1-0.682689492137086)/2.; //half of probability of 1-sigma up/down fluctuation from https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
+  double expect = 1.0; //1 std.dev discrepancy
+
   EXPECT_NEAR(score, expect, 1e-7);
 
   events.push_back(createFuncExecData_t(0,0,0,  100, "myfunc", 1000, mean - std_dev));

@@ -1,3 +1,5 @@
+#include <chimbuko_config.h>
+#ifdef ENABLE_PROVDB
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
@@ -28,6 +30,7 @@ namespace chimbuko_sim{
   //Set before first ADsim is created
   inline int & nshards(){ static int n=1; return n; }
 
+  //Get the local provDBsim object
   inline provDBsim & getProvDB(){ static provDBsim pdb(nshards()); return pdb; }
-
 };
+#endif

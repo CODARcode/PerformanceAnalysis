@@ -20,12 +20,12 @@ Options for the provenance database:
 - **provdb_nshards** : Number of database shards
 - **provdb_engine** : The OFI libfabric provider used for the Mochi stack.
 - **provdb_port** : The port of the provenance database
-- **provdb_nthreads** : Number of worker threads; should be >= the number of shards
+- **provdb_ninstances** : Number of server instances (default 1)
 
 Options for the parameter server:
 
 - **ad_win_size** : Number of events around an anomaly to store; provDB entry size is proportional to this
-- **ad_alg** : AD algorithm to use. "sstd" or "hbos"
+- **ad_alg** : AD algorithm to use. "sstd" or "hbos" or "copod"
 - **ad_outlier_sstd_sigma** : number of standard deviations that defines an outlier.
 - **ad_outlier_hbos_threshold** : The percentile of events outside of which are considered anomalies by the HBOS algorithm.
 
@@ -172,7 +172,7 @@ Additional AD Variables
 - **-program_idx** : For workflows with multiple component programs, a "program index" must be supplied to the AD instances attached to those processes.
 - **-rank** : By default the data rank assigned to an AD instance is taken from its MPI rank in MPI_COMM_WORLD. This rank is used to verify the incoming trace data. This option allows the user to manually set the rank index.
 - **-override_rank** : This option disables the data rank verification and instead overwrites the data rank of the incoming trace data with the data rank stored in the AD instance. The value supplied must be the original data rank (this is used to generate the correct trace filename).
-- **-ad_algorithm** : This sets the AD algorithm to use for online analysis: "sstd" or "hbos". Default value is "hbos".
+- **-ad_algorithm** : This sets the AD algorithm to use for online analysis: "sstd" or "hbos" or "copod". Default value is "hbos".
 - **-hbos_threshold** : This sets the threshold to control density of detected anomalies used by HBOS algorithm. Its value ranges between 0 and 1. Default value is 0.99
 
 

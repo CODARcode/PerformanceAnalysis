@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include <cassert>
 #include <unordered_map>
 #include "ADNetClient.hpp"

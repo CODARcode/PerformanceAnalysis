@@ -4,7 +4,6 @@
 #include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
-#include <mpi.h>
 #include <chimbuko/net/mpi_net.hpp>
 #else
 #include <chimbuko/net/zmq_net.hpp>
@@ -51,7 +50,7 @@ struct pserverArgs{
 #endif
 
 #ifdef ENABLE_PROVDB
-  std::string provdb_addr;
+  std::string provdb_addr_dir;
 #endif
 
   std::string prov_outputpath;
@@ -61,7 +60,7 @@ struct pserverArgs{
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr("")
+	       , provdb_addr_dir("")
 #endif
   {}
 
@@ -85,7 +84,7 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the global function and counter statistics will not be send to the provenance DB.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
+      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 
@@ -125,6 +124,7 @@ int main (int argc, char ** argv){
   }
   GlobalAnomalyStats global_func_stats; //global anomaly statistics
   GlobalCounterStats global_counter_stats; //global counter statistics
+  GlobalAnomalyMetrics global_anom_metrics; //global anomaly metrics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
 
   //Optionally load previously-computed AD algorithm statistics
@@ -159,9 +159,9 @@ int main (int argc, char ** argv){
   try {
 #ifdef ENABLE_PROVDB
     //Connect to the provenance database
-    if(args.provdb_addr.size()){
+    if(args.provdb_addr_dir.size()){
       progressStream << "Pserver: connecting to provenance database" << std::endl;
-      provdb_client.connect(args.provdb_addr);
+      provdb_client.connectMultiServer(args.provdb_addr_dir);
     }
 #endif
 
@@ -187,14 +187,14 @@ int main (int argc, char ** argv){
 
     net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params));
     net.add_payload(new NetPayloadGetParams(param));
-    net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats));
-    net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats));
+    net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats));
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsPayload(&global_anom_metrics));
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully
@@ -277,5 +277,8 @@ int main (int argc, char ** argv){
   }
 
   progressStream << "Pserver: finished" << std::endl;
+
+  delete param;
+
   return 0;
 }

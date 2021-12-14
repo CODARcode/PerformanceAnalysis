@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "../unit_test_cmdline.hpp"
 
 #include<thread>
 #include<chrono>
@@ -92,7 +93,12 @@ void create_save_json(const std::unordered_map<unsigned long, std::vector<std::v
 }
 
 TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
-
+  //Get trace data dir from command line
+  if(_argc < 2){
+    throw std::runtime_error("Path to trace data directory must be provided as an argument!");
+  }
+  std::string trace_data_dir = _argv[1];
+  
   int ranks = 4;
   std::vector<int> v_io_steps(ranks);
   std::vector<int> v_functions(ranks);
@@ -108,8 +114,8 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     ChimbukoParams params;
     //Parameters for the connection to the instrumented binary trace output
     params.trace_engineType = "BPFile";  // BPFile or SST
-    params.trace_data_dir = "<PATH>/test/data"; //ad/test/data";  // *.bp location
-    std::string bp_prefix = "tau-metrics";  // bp file prefix (e.g. tau-metrics-[nwchem])
+    params.trace_data_dir = trace_data_dir; // *.bp location
+    std::string bp_prefix = "tau-metrics"; //"tau-metrics-xgc-es-cpp-gpu"; // bp file prefix (e.g. tau-metrics-[nwchem])
 
     //The remainder are optional arguments. Enable using the appropriate command line switch
     params.program_idx = 0;
@@ -122,7 +128,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     params.prov_outputpath = "";
   #ifdef ENABLE_PROVDB
     params.nprovdb_shards = 1;
-    params.provdb_addr = ""; //don't use provDB by default
+    params.provdb_addr_dir = ""; //don't use provDB by default
   #endif
     params.err_outputpath = ""; //use std::cerr for errors by default
     params.trace_connect_timeout = 60;
@@ -151,7 +157,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     //If neither the provenance database or the provenance output path are set, default to outputting to pwd
     if(params.prov_outputpath.size() == 0
   #ifdef ENABLE_PROVDB
-       && params.provdb_addr.size() == 0
+       && params.provdb_addr_dir.size() == 0
   #endif
        ){
       params.prov_outputpath = "./bpfile_test_results";

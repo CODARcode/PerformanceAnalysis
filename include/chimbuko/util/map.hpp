@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<unordered_map>
 
 namespace chimbuko{

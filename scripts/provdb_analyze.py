@@ -89,6 +89,19 @@ def generateIndex(interface, keys, collection):
 
     return results
 
+#Write the index to disk
+def writeIndex(filename, index):
+    f = open(filename,"w")
+    json.dump(index, f)
+    f.close()
+
+#Read the index from disk
+def readIndex(filename):
+    f = open(filename,"r")
+    index = json.load(f)
+    f.close()
+    return index
+
 #Get an event using the index tuple obtained from the provided index
 def getEventByID(interface, index, idx_tuple):
     collection = index['__collection']
@@ -119,15 +132,53 @@ def getRecordsByKeyValue(interface, index, key, value, sort_key = 'entry'):
         lst.sort(key=lambda x: x[sort_key])
     return lst
 
-#Generate a string containing a summary of an event:  (process, rank, thread, function name, runtime, runtime/avg)
+#Generate a string containing a summary of an event:  (process, rank, thread, function name, step, exclusive runtime, inclusive runtime, outlier score, outlier severity)
 #If the event was a GPU event, the thread index will be replaced by GPU${DEVICE}/${CONTEXT}/${STREAM}
 def summarizeEvent(event):
     thr_str = "{}".format(event['tid'])
     if event['is_gpu_event']:
         thr_str = "GPU{}/{}/{}".format(event['gpu_location']['device'],event['gpu_location']['context'],event['gpu_location']['stream'])    
-    return "{} {} {} {} {}s {}".format(event['pid'],event['rid'],  thr_str, event['func'], float(event['runtime_exclusive'])/1e6, float(event['runtime_exclusive'])/float(event['func_stats']['mean']) )
+    return "pid={} rid={} tid={} func=\"{}\" step={} excl={}s tot={}s score={} severity={}".format(event['pid'],event['rid'],  thr_str, event['func'], event['io_step'], float(event['runtime_exclusive'])/1e6, float(event['runtime_total'])/1e6, event['outlier_score'], event['outlier_severity'])
+                                             
+
+#Get the function profile information for application index 'app'
+#Returns a dictionary indexed by the function name with entries
+#    'excl_time_tot' : the total exclusive time (in seconds) spent in the function over all ranks and threads
+#    'count' : the number of times the function was encountered over all ranks and threads
+#    'excl_time_mean' : the average exclusive time (in seconds) spent in the function over all occurences
+#    'frac_time' : the amount of time spent in the function over all occurences relative to the total runtime spent in all threads and ranks
+def getFunctionProfile(interface, app):
+        profile = interface.getGlobalDB().filter('func_stats', "function($f){return $f[\"app\"] == %d;}" % app)
+        total_time = 0 #sum of exclusive times is total time
+        fprofile = {}
+        for f in profile:
+            #Don't currently sum times but can reconstruct from count and mean
+            j = json.loads(f)
+            count = int(j['exclusive']['count'])
+            excl_mean = float(j['exclusive']['mean']) / 1e6   #seconds
+            excl_tot = count * excl_mean
+            fname = j['name']
+            fprofile[fname] = {}
+            fprofile[fname]['excl_time_tot'] = excl_tot
+            fprofile[fname]['count'] = count
+            fprofile[fname]['excl_time_mean'] = excl_mean
+            total_time += excl_tot
 
 
+        for f in fprofile.keys():
+            fprofile[f]['frac_time'] = fprofile[f]['excl_time_tot']/total_time
+
+        return fprofile
+
+#Print summary information for each function sorted by the total exclusive runtime spent in the function
+def summarizeProfile(fprofile):
+    fordered = sorted(fprofile.keys(), key=lambda x: fprofile[x]['excl_time_tot'], reverse=True)
+    for f in fordered:
+        finfo = fprofile[f]
+        print("(name='%s') (total excl. time=%es) (count=%d) (avg. excl. time=%es) (runtime fraction=%e)" % (f,finfo['excl_time_tot'],finfo['count'],finfo['excl_time_mean'],finfo['frac_time']) )
+
+
+    
 if __name__ == '__main__':
     argc = len(sys.argv)
     if(argc != 2):

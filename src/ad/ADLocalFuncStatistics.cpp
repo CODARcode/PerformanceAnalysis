@@ -7,32 +7,6 @@
 
 using namespace chimbuko;
 
-ADLocalFuncStatistics::FuncStats::State::State(const ADLocalFuncStatistics::FuncStats &p):  pid(p.pid), id(p.id), name(p.name), n_anomaly(p.n_anomaly), 
-										     inclusive(p.inclusive.get_state()), exclusive(p.exclusive.get_state()){}
-  
-
-nlohmann::json ADLocalFuncStatistics::FuncStats::State::get_json() const{
-  nlohmann::json obj;
-  obj["pid"] = pid;
-  obj["id"] = id;
-  obj["name"] = name;
-  obj["n_anomaly"] = n_anomaly;
-  obj["inclusive"] = inclusive.get_json();
-  obj["exclusive"] = exclusive.get_json();
-  return obj;
-}
-
-void ADLocalFuncStatistics::FuncStats::set_state(const State &to){
-  pid = to.pid;
-  id = to.id;
-  name = to.name;
-  n_anomaly = to.n_anomaly;
-  inclusive.set_state(to.inclusive);
-  exclusive.set_state(to.exclusive);
-}
-
-
-
 nlohmann::json ADLocalFuncStatistics::State::get_json() const{
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();

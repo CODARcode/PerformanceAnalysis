@@ -30,8 +30,8 @@ TEST(TestLocalNet, TestSingleton){
 
 class NetPayloadBounceback: public NetPayloadBase{
 public:
-  MessageKind kind() const{ return MessageKind::CMD; }
-  MessageType type() const{ return MessageType::REQ_ECHO; }
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
     std::cout << "Bounce received: '" << message.buf() << "'" << std::endl;

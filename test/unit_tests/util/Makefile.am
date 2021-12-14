@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs 
 
 testdir = $(prefix)/test/unit_tests/util
-test_PROGRAMS = DispatchQueue commandLineParser RunStats error memutils PerfStats
+test_PROGRAMS = DispatchQueue commandLineParser RunStats error memutils PerfStats environment
 
 DispatchQueue_SOURCES = DispatchQueue.cpp ../unit_test_main.cpp
 DispatchQueue_LDADD = $(LDADD)
@@ -22,3 +22,5 @@ memutils_LDADD = $(LDADD)
 PerfStats_SOURCES = PerfStats.cpp ../unit_test_main.cpp
 PerfStats_LDADD = $(LDADD)
 
+environment_SOURCES = environment.cpp ../unit_test_main.cpp
+environment_LDADD = $(LDADD)

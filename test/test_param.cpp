@@ -1,5 +1,5 @@
 #include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/pserver/global_anomaly_stats.hpp"
+#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
@@ -289,7 +289,7 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
     EXPECT_EQ(0, param.collect_func_data().size());
 
     std::unordered_map<unsigned long, RunStats> g_inclusive, g_exclusive;
-    RunStats l_inclusive, l_exclusive;
+    RunStats l_inclusive(true), l_exclusive(true); //accumulate total runtimes
 
     l_inclusive.clear();
     l_inclusive.push(10); l_inclusive.push(10.5); l_inclusive.push(9.5);

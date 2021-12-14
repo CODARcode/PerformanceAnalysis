@@ -10,7 +10,7 @@ ExecData_t::ExecData_t()
   : m_pid(0), m_rid(0), m_tid(0), m_fid(0),
     m_entry(0), m_exit(0), m_runtime(0), m_exclusive(0),
     m_n_children(0), m_n_messages(0),
-    m_label(0), m_can_delete(true), m_gpu_correlation_id_partner(0), m_score(-1){}
+    m_label(0), m_gpu_correlation_id_partner(0), m_score(-1), m_references(0){}
 
 ExecData_t::ExecData_t(const Event_t& ev) : ExecData_t()
 {
@@ -38,6 +38,11 @@ ExecData_t::ExecData_t(const eventID &id, unsigned long pid, unsigned long rid, 
 }
 
 ExecData_t::~ExecData_t() {}
+
+void ExecData_t::deregister_reference(){ 
+  if(m_references == 0) fatal_error("Attempting to deregister and event whose external reference count is 0!");
+  --m_references; 
+}
 
 void ExecData_t::update_exit(unsigned long exit){
   m_exit = exit;

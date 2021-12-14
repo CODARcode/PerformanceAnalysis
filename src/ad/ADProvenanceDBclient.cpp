@@ -4,7 +4,8 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
-
+#include<chimbuko/provdb/setup.hpp>
+#include<chimbuko/util/error.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -12,23 +13,51 @@ using namespace chimbuko;
 
 
 void AnomalousSendManager::purge(){
-  while(!outstanding.empty() && outstanding.front().completed()){ //requests completing in-order so we can stop when we encounter the first non-complete
-    outstanding.front().wait(); //simply cleans up resources, non-blocking because already complete
-    outstanding.pop();
+  auto it = outstanding.begin();
+  while(it != outstanding.end()){
+    if(it->completed()) 
+      it = outstanding.erase(it);
+    else 
+      ++it;
   }
+
+  int nremaining = outstanding.size();
+  int ncomplete_remaining = 0;
+  for(auto const &e: outstanding)
+    if(e.completed()) ++ncomplete_remaining;
+  
+  if(ncomplete_remaining > 0)
+    recoverable_error("After purging complete sends from the front of the queue, the queue still contains " + std::to_string(ncomplete_remaining) + "/" + std::to_string(nremaining) + " completed but unremoved ids");
 }
 
 sonata::AsyncRequest & AnomalousSendManager::getNewRequest(){
   purge();
-  outstanding.emplace();
+  outstanding.emplace_back();
   return outstanding.back();
 }
 
 void AnomalousSendManager::waitAll(){
+  //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to flush
+  std::atomic<bool> ready(false); 
+  int heartbeat_freq = 20;
+  std::thread heartbeat([heartbeat_freq, &ready]{
+			  typedef std::chrono::high_resolution_clock Clock;
+			  typedef std::chrono::seconds Sec;
+			  Clock::time_point start = Clock::now();
+			  while(!ready.load(std::memory_order_relaxed)){
+			    int sec = std::chrono::duration_cast<Sec>(Clock::now() - start).count();
+			    if(sec >= heartbeat_freq && sec % heartbeat_freq == 0) //complain every heartbeat_freq seconds
+			      std::cout << "AnomalousSendManager::waitAll still waiting for queue flush after " << sec << "s" << std::endl;
+			    std::this_thread::sleep_for(std::chrono::seconds(1));
+			  }
+			});	    
+  
   while(!outstanding.empty()){ //flush the queue
     outstanding.front().wait();
-    outstanding.pop();
+    outstanding.pop_front();
   }
+  ready.store(true, std::memory_order_relaxed);
+  heartbeat.join();
 }  
 
 size_t AnomalousSendManager::getNoutstanding(){
@@ -40,10 +69,6 @@ AnomalousSendManager::~AnomalousSendManager(){
   waitAll();
   verboseStream << "AnomalousSendManager exiting" << std::endl;
 }
-
-
-AnomalousSendManager ADProvenanceDBclient::anom_send_man;
-
 
 ADProvenanceDBclient::~ADProvenanceDBclient(){ 
   disconnect();
@@ -68,7 +93,6 @@ const sonata::Collection & ADProvenanceDBclient::getCollection(const ProvenanceD
 }
 
 static void delete_rpc(thallium::remote_procedure* &rpc){
-  rpc->deregister();
   delete rpc; rpc = nullptr;
 }
 
@@ -104,7 +128,7 @@ void ADProvenanceDBclient::disconnect(){
   }
 }
 
-void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
+void ADProvenanceDBclient::connect(const std::string &addr, const std::string &db_name, const int provider_idx){
   try{
     //Reset the protocol if necessary
     std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
@@ -115,12 +139,9 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
       ADProvenanceDBengine::setProtocol(protocol,mode);      
     }      
 
-    int shard = m_rank % nshards;
-    std::string db_name = stringize("provdb.%d", shard);
-
     thallium::engine &eng = ADProvenanceDBengine::getEngine();
     m_client = sonata::Client(eng);
-    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << std::endl;
+    verboseStream << "DB client rank " << m_rank << " connecting to database " << db_name << " on address " << addr << " and provider idx " << provider_idx << std::endl;
     
     {
       //Have another thread produce heartbeat information so we can know if the AD gets stuck waiting to connect to the provDB
@@ -139,7 +160,7 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 	  }
 	});	    
 
-      m_database = m_client.open(addr, 0, db_name);
+      m_database = m_client.open(addr, provider_idx, db_name);
       ready.store(true, std::memory_order_relaxed);
       heartbeat.join();
     }
@@ -163,13 +184,60 @@ void ADProvenanceDBclient::connect(const std::string &addr, const int nshards){
 #ifdef ENABLE_MARGO_STATE_DUMP
     m_margo_dump = new thallium::remote_procedure(eng.define("margo_dump").disable_response());
 #endif
-
+    m_server_addr = addr;
     m_is_connected = true;
     verboseStream << "DB client rank " << m_rank << " connected successfully to database" << std::endl;
 
   }catch(const sonata::Exception& ex) {
     throw std::runtime_error(std::string("Provenance DB client could not connect due to exception: ") + ex.what());
   }
+}
+
+
+
+void ADProvenanceDBclient::connectSingleServer(const std::string &addr, const int nshards){
+  ProvDBsetup setup(nshards, 1);
+
+  //Assign shards round-robin
+  int shard = m_rank % nshards;      
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
+}
+
+void ADProvenanceDBclient::connectMultiServer(const std::string &addr_file_dir, const int nshards, const int ninstances){
+  ProvDBsetup setup(nshards, ninstances);
+
+  //Assign shards round-robin
+  int shard = m_rank % nshards;
+  int instance = setup.getShardInstance(shard); //which server instance
+  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
+}
+
+void ADProvenanceDBclient::connectMultiServerShardAssign(const std::string &addr_file_dir, const int nshards, const int ninstances, const std::string &shard_assign_file){
+  ProvDBsetup setup(nshards, ninstances);
+
+  std::ifstream f(shard_assign_file);
+  if(f.fail()) throw std::runtime_error("Could not open shard assignment file " + shard_assign_file + "\n");
+  int shard = -1;
+  for(int i=0;i<=m_rank;i++){
+    f >> shard;
+    if(f.fail()) throw std::runtime_error("Failed to reach assignment for rank " + std::to_string(m_rank) + "\n");
+  }
+  f.close();
+
+  int instance = setup.getShardInstance(shard); //which server instance
+  verboseStream << "DB client rank " << m_rank << " assigned shard " << shard << " on instance "<< instance << std::endl;
+  std::string addr = setup.getInstanceAddress(instance, addr_file_dir);
+  std::string db_name = setup.getShardDBname(shard);
+  int provider = setup.getShardProviderIndex(shard);
+  
+  connect(addr, db_name, provider);
 }
 
 uint64_t ADProvenanceDBclient::sendData(const nlohmann::json &entry, const ProvenanceDataType type) const{

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<array>
 #include<boost/functional/hash.hpp>
 

@@ -1,7 +1,13 @@
+#include<chimbuko_config.h>
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 #include "chimbuko/chimbuko.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <thread>
+
+#ifdef USE_MPI
 
 class ADTest : public ::testing::Test
 {
@@ -395,3 +401,6 @@ TEST_F(ADTest, ReadExecDataTest)
     }
 #endif
 }
+
+
+#endif

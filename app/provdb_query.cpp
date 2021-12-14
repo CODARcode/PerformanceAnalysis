@@ -197,7 +197,7 @@ int main(int argc, char** argv){
 
 	clients[s].reset(new ADProvenanceDBclient(s));
 	clients[s]->setEnableHandshake(false);	      
-	clients[s]->connect(addr, nshards);
+	clients[s]->connect(addr, db_shard_names[s], 0);
 	if(!clients[s]->isConnected()){
 	  engine.finalize();
 	  throw std::runtime_error(stringize("Could not connect to database shard %d!", s));
@@ -225,7 +225,7 @@ int main(int argc, char** argv){
       std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
       admin.attachDatabase(addr, 0, db_name, "unqlite", config);    
     
-      client.connect(addr);
+      client.connect(addr,0);
       if(!client.isConnected()){
 	engine.finalize();
 	throw std::runtime_error("Could not connect to global database");

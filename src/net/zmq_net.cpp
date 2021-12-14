@@ -1,5 +1,5 @@
-#ifdef _USE_ZMQNET
 #include "chimbuko/net/zmq_net.hpp"
+#ifdef _USE_ZMQNET
 #include "chimbuko/message.hpp"
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/verbose.hpp"
@@ -28,8 +28,8 @@ public:
   std::mutex &m;
   NetPayloadHandShakeWithCount(int &clients, bool &client_has_connected, std::mutex &m): clients(clients), m(m), client_has_connected(client_has_connected){}
 
-  MessageKind kind() const{ return MessageKind::DEFAULT; }
-  MessageType type() const{ return MessageType::REQ_ECHO; }
+  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
     response.set_msg(std::string("Hello!I am NET!"), false);
@@ -49,8 +49,8 @@ public:
   std::mutex &m;
   NetPayloadClientDisconnectWithCount(int &clients, std::mutex &m): clients(clients), m(m){}
 
-  MessageKind kind() const{ return MessageKind::DEFAULT; }
-  MessageType type() const{ return MessageType::REQ_QUIT; }
+  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
     response.set_msg("", false);
@@ -72,8 +72,8 @@ public:
   std::mutex &m;
   NetPayloadClientRemoteStop(bool &register_stop_cmd, std::mutex &m): register_stop_cmd(register_stop_cmd), m(m){}
   
-  MessageKind kind() const{ return MessageKind::CMD; }
-  MessageType type() const{ return MessageType::REQ_QUIT; }
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
     response.set_msg("", false);
@@ -285,7 +285,7 @@ void ZMQNet::run()
     }else if(err == -1){ //actual error
       if(errno == EINTR){
 	std::cout << "ZMQNet received system signal to stop, shutting down" << std::endl;
-	stop_status == Status::StoppedBySignal;
+	stop_status = Status::StoppedBySignal;
       }else{
 	recoverable_error(std::string("ZMQnet::run polling failed with error: ") + strerror(errno) + "\n");
 	stop_status = Status::StoppedByError;

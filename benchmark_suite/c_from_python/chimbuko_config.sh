@@ -26,15 +26,18 @@ chimbuko_services="infer" #The location of the Chimbuko service script. If set t
 use_provdb=1 #enable or disable the provDB. If disabled the provenance data will be written as JSON ASCII into the ${provdb_writedir} set below
 provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
+provdb_ninstances=1 #number of database server instances. Shards are distributed over instances
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database
-provdb_nthreads=4 #number of worker threads; should be >= the number of shards
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***
 
+export FI_UNIVERSE_SIZE=1600  # Defines the expected number of provenance DB clients per instance <------------- *** SET ME (should be larger than the number of clients/instance)
+export FI_MR_CACHE_MAX_COUNT=0   # disable MR cache in libfabric; still problematic as of libfabric 1.10.1
+export FI_OFI_RXM_USE_SRX=1 # use shared recv context in RXM; should improve scalability
 
 ####################################
 #Options for the parameter server

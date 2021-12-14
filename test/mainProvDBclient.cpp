@@ -1,9 +1,12 @@
+#include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/string.hpp>
+#ifdef USE_MPI
 #include <mpi.h>
+#endif
 #include <dirent.h>
 #include <regex>
 #include <thread>
@@ -22,7 +25,7 @@ TEST(ADProvenanceDBclientTest, Connects){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
     connect_fail = true;
   }
@@ -35,7 +38,7 @@ TEST(ADProvenanceDBclientTest, ConnectsTwice){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection for second time" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
     connect_fail = true;
   }
@@ -48,7 +51,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -79,7 +82,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -110,7 +113,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -143,7 +146,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     std::vector<nlohmann::json> objs(2);
     objs[0]["hello"] = "world " + rank_str;
@@ -176,7 +179,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json objs = nlohmann::json::array();
     objs[0] = nlohmann::json::object({ {"hello","myfriend " + rank_str} });
@@ -209,7 +212,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -245,7 +248,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     std::vector<nlohmann::json> objs(2);
     objs[0]["hello"] = "world " + rank_str;
@@ -283,7 +286,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json objs = nlohmann::json::array();
     objs[0] = nlohmann::json::object({ {"hello","myfriend " + rank_str} });
@@ -343,7 +346,7 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
     ADProvenanceDBclient client(rank);
     std::cout << "Client attempting connection" << std::endl;
     try{
-      client.connect(addr,nshards);
+      client.connectSingleServer(addr,nshards);
 
       client.serverDumpState();
 
@@ -366,7 +369,9 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
 
 int main(int argc, char** argv) 
 {
+#ifdef USE_MPI
   MPI_Init(&argc, &argv);
+#endif
   chimbuko::enableVerboseLogging() = true;
   assert(argc >= 3);
   addr = argv[1];
@@ -374,11 +379,19 @@ int main(int argc, char** argv)
   nshards = strToAny<int>(argv[2]);
   std::cout << "Number of shards is " << nshards << std::endl;
 
+#ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#else
+  rank = 0;
+#endif
+
   rank_str = anyToStr(rank);
 
   ::testing::InitGoogleTest(&argc, argv);
   int ret = RUN_ALL_TESTS();
+
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   return ret;
 }

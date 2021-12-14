@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include "chimbuko/AD.hpp"
 
 namespace chimbuko {
@@ -32,10 +32,12 @@ namespace chimbuko {
     std::string prov_outputpath; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
 #ifdef ENABLE_PROVDB
     //Parameters associated with the provenance database
-    std::string provdb_addr; /**< Address of the provenance database. If empty the provenance DB will not be used.
-				< Has format "ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}". Should also accept "tcp://${IP_ADDR}:${PORT}" */
+    std::string provdb_addr_dir; /**< Directory in which the provenance database writes its address files. If an empty string the provDB will not be used*/
     int nprovdb_shards; /**< Number of database shards*/
+    int nprovdb_instances; /**< Number of instances of the provenance database server*/
 #endif
+    int prov_record_startstep; /**< If != -1, the IO step on which to start recording provenance information for anomalies */
+    int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */
 
     unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
 
@@ -193,6 +195,14 @@ namespace chimbuko {
 				  const unsigned long first_event_ts,
 				  const unsigned long last_event_ts) const;
 
+
+    /**
+     * @brief Gather and send the required data to the pserver
+     */
+    void gatherAndSendPSdata(const Anomalies &anomalies,
+			     const int step,
+			     const unsigned long first_event_ts,
+			     const unsigned long last_event_ts) const;
 
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB

@@ -1,5 +1,5 @@
 #include<chimbuko/ad/ADLocalCounterStatistics.hpp>
-#include<chimbuko/pserver/global_counter_stats.hpp>
+#include<chimbuko/pserver/GlobalCounterStats.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 

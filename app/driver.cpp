@@ -1,3 +1,7 @@
+#include<chimbuko_config.h>
+#ifdef USE_MPI
+#include<mpi.h>
+#endif
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/string.hpp"
@@ -78,8 +82,9 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
     addOptionalCommandLineArg(p, prov_outputpath, "Output provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 #ifdef ENABLE_PROVDB
-    addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
+    addOptionalCommandLineArg(p, provdb_addr_dir, "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
     addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+    addOptionalCommandLineArg(p, nprovdb_instances, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
 #endif
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
@@ -89,12 +94,22 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
     addOptionalCommandLineArg(p, parser_beginstep_timeout, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
 
-    addOptionalCommandLineArg(p, rank, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
+    addOptionalCommandLineArg(p, rank, 
+#ifdef USE_MPI
+			      "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)"
+#else
+			      "Set the rank index of the trace data (default 0)"
+#endif
+			      );
+
+
     p.addOptionalArg(new overrideRankArg); //-override_rank <idx>
     p.addOptionalArg(new setLoggingHeadRankArg); //-logging_head_rank <rank>
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
     addOptionalCommandLineArg(p, step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
+    addOptionalCommandLineArg(p, prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
+    addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
 
     initialized = true;
   }
@@ -110,7 +125,11 @@ void printHelp(){
   getOptionalArgsParser().help(std::cout);
 }
 
-ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_world_rank){
+ChimbukoParams getParamsFromCommandLine(int argc, char** argv
+#ifdef USE_MPI
+, const int mpi_world_rank
+#endif
+){
   if(argc < 4){
     std::cerr << "Expected at least 4 arguments: <exe> <BPFile/SST> <.bp location> <bp file prefix>" << std::endl;
     exit(-1);
@@ -140,7 +159,8 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   params.prov_outputpath = "";
 #ifdef ENABLE_PROVDB
   params.nprovdb_shards = 1;
-  params.provdb_addr = ""; //don't use provDB by default
+  params.nprovdb_instances = 1;
+  params.provdb_addr_dir = ""; //don't use provDB by default
 #endif
   params.err_outputpath = ""; //use std::cerr for errors by default
   params.trace_connect_timeout = 60;
@@ -153,8 +173,13 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
 
   //By default assign the rank index of the trace data as the MPI rank of the AD process
   //Allow override by user
-  if(params.rank < 0)
+  if(params.rank < 0){
+#ifdef USE_MPI
     params.rank = mpi_world_rank;
+#else
+    params.rank = 0; //default to 0 for non-MPI applications
+#endif
+  }
 
   params.verbose = params.rank == 0; //head node produces verbose output
 
@@ -169,7 +194,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv, const int mpi_wor
   //If neither the provenance database or the provenance output path are set, default to outputting to pwd
   if(params.prov_outputpath.size() == 0
 #ifdef ENABLE_PROVDB
-     && params.provdb_addr.size() == 0
+     && params.provdb_addr_dir.size() == 0
 #endif
      ){
     params.prov_outputpath = ".";
@@ -187,26 +212,35 @@ int main(int argc, char ** argv){
     return 0;
   }
 
+#ifdef USE_MPI
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 
   int mpi_world_rank, mpi_world_size;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);
+#endif
 
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE"))
     enableVerboseLogging() = true;
 
   //Parse Chimbuko parameters
-  ChimbukoParams params = getParamsFromCommandLine(argc, argv, mpi_world_rank);
+  ChimbukoParams params = getParamsFromCommandLine(argc, argv
+#ifdef USE_MPI
+    , mpi_world_rank
+#endif
+    );
+
   if(params.rank == progressHeadRank()) params.print();
 
-  if(enableVerboseLogging())
+  if(enableVerboseLogging()){
     headProgressStream(params.rank) << "Driver rank " << params.rank << ": Enabling verbose debug output" << std::endl;
-
+  }
 
   verboseStream << "Driver rank " << params.rank << ": waiting at pre-run barrier" << std::endl;
+#ifdef USE_MPI
   MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   bool error = false;
 
@@ -248,6 +282,7 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       // Average analysis time and total number of outliers
       // -----------------------------------------------------------------------
+#ifdef USE_MPI
       verboseStream << "Driver rank " << params.rank << ": waiting at post-run barrier" << std::endl;
       MPI_Barrier(MPI_COMM_WORLD);
       processing_time = duration_cast<milliseconds>(t2 - t1).count();
@@ -274,6 +309,19 @@ int main(int argc, char ** argv){
 	total_n_comm_events = global_measures[1];
 	total_n_counter_events = global_measures[2];
       }
+#else
+      //Without MPI only report local parameters. In principle we could aggregate using the Pserver if we really want the global information
+      total_processing_time = processing_time;
+      total_n_outliers = n_outliers;
+      total_frames = frames;
+
+      total_n_func_events = n_func_events;
+      total_n_comm_events = n_comm_events;
+      total_n_counter_events = n_counter_events;
+      
+      int mpi_world_size = 1;
+#endif
+
 
       headProgressStream(params.rank) << "Driver rank " << params.rank << ": Final report\n"
 				  << "Avg. num. frames over MPI ranks : " << (double)total_frames/(double)mpi_world_size << "\n"
@@ -301,7 +349,9 @@ int main(int argc, char ** argv){
     error = true;
   }
 
+#ifdef USE_MPI
   MPI_Finalize();
+#endif
   headProgressStream(params.rank) << "Driver is exiting" << std::endl;
   return error ? 1 : 0;
 }

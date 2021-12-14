@@ -51,7 +51,7 @@ The schema for the **'anomaly_stats'** object is as follows:
 |       [
 |         {
 |           **'data'**: *Number of anomalies and anomaly time window for process/rank broken down by io step (array)*
-|                [  
+|                [
 |                   {
 |                      **'app'**: *Program index*,
 |                      **'max_timestamp'**: *Latest time of anomaly in io step*,
@@ -89,6 +89,36 @@ The schema for the **'anomaly_stats'** object is as follows:
 |        },
 |        ...
 |      ], *end of* **anomaly** *array*
+|  **‘anomaly_metrics’**:
+|      [
+|        {
+|           **'app'**: *Application*,
+|           **'rank'**: *Program rank*,
+|           **'fid'**: *function ID*,
+|           **'fname'**: *function name*,
+|           **‘_id'**: *a global index to track each (app, rank, func), for internal use*,
+|           **'new_data'**: *Statistics of anomaly metrics aggregated over multiple IO steps since the last pserver->viz send*
+|           {
+|              **'first_io_step'**: *first io step in sum*
+|              **'last_io_step'**: *last io step in sum*
+|              **‘max_timestamp’**: *max timestamp of last IO step of this period*
+|              **‘min_timestamp’**: *min timestamp of first IO step of this period*
+|              **'severity'**: *RunStats assigned severity*
+|              **'score'**: *RunStats assigned score*
+|              **'count'**: *RunStats count*
+|           }
+|           **'all_data'**: *Statistics of anomaly metrics aggregated since the beginning of the run*
+|           {
+|              **'first_io_step'**: *first io step in sum*
+|              **'last_io_step'**: *last io step in sum*
+|              **‘max_timestamp’**: *max timestamp of last IO step since start of run*
+|              **‘min_timestamp’**: *min timestamp of first IO step since start of run*
+|              **'severity'**: *RunStats assigned severity*
+|              **'score'**: *RunStats score*
+|              **'count'**: *RunStats count*
+|           }
+|       }
+|     ], *end of* **anomaly_metrics**
 |  **'func'**:    *Statistics on anomalies broken down by function, collected over entire run to-date (array)*
 |      [
 |        {

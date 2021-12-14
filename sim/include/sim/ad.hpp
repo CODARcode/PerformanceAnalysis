@@ -1,17 +1,26 @@
 #pragma once
-
+#include <chimbuko_config.h>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/ad/ADMetadataParser.hpp>
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/ad/ADCounter.hpp>
 #include<chimbuko/ad/ADOutlier.hpp>
+#include<chimbuko/ad/ADio.hpp>
 #include<map>
 
 namespace chimbuko_sim{
   using namespace chimbuko;
 
   enum class CommType { Send, Recv };
+
+  struct provDBsetup{
+    bool use_local; /**< Use a local server instance (default true)*/
+    int remote_server_nshards; /**< Number of database shards on the remote servere (default 1, only applicable for use_local = false)*/
+    std::string remote_server_addr_dir; /**< Directory where remote server address files are written (only applicable for use_local = false)*/
+    int remote_server_instances; /**< Number of remote server instances  (only applicable for use_local = false)*/
+    provDBsetup(): use_local(true), remote_server_nshards(1){}
+  };
 
   //An object that represents a rank of the AD
   class ADsim{
@@ -29,7 +38,11 @@ namespace chimbuko_sim{
     int m_rid;
     ADNormalEventProvenance m_normal_events;
     ADMetadataParser m_metadata;
+#ifdef ENABLE_PROVDB
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
+#else
+    std::unique_ptr<ADio> m_prov_io; /**< Write to disk if provDB not in use */
+#endif
     ADThreadNetClient *m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
     ADOutlier* m_outlier; /**< The local outlier algorithm instance, if used*/
   public:
@@ -41,7 +54,7 @@ namespace chimbuko_sim{
      * @param program_start Timestamp of program start
      * @param step_freq Frequency at which IO steps are to occur
      */
-    void init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq);
+    void init(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq, const provDBsetup &pdb_setup = provDBsetup());
 
     /** 
      * @brief Instantiate the AD simulator
@@ -51,8 +64,8 @@ namespace chimbuko_sim{
      * @param program_start Timestamp of program start
      * @param step_freq Frequency at which IO steps are to occur
      */
-    ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq): ADsim(){
-      init(window_size, pid, rid, program_start, step_freq);
+    ADsim(int window_size, int pid, int rid, unsigned long program_start, unsigned long step_freq, const provDBsetup &pdb_setup = provDBsetup()): ADsim(){
+      init(window_size, pid, rid, program_start, step_freq, pdb_setup);
     }
     ADsim(): m_outlier(nullptr), m_net_client(nullptr){}
 
@@ -63,7 +76,9 @@ namespace chimbuko_sim{
       if(m_net_client) delete m_net_client;
     }
 
+#ifdef ENABLE_PROVDB
     ADProvenanceDBclient &getProvDBclient(){ return *m_pdb_client; }
+#endif
 
     /**
      * @brief Add a function execution on a specific thread
@@ -82,6 +97,15 @@ namespace chimbuko_sim{
 			       unsigned long runtime,
 			       bool is_anomaly = false,
 			       double outlier_score = 0.);
+
+    /**
+     * @brief Modify the runtime of an existing execution
+     * @param exec_it The iterator to the execution (output of previous addExec)
+     * @param new_runtime The new function runtime
+     */
+    void updateRuntime(CallListIterator_t exec_it,
+		       unsigned long new_runtime);
+
 
     /**
      * @brief Attach a counter to an execution t_delta us after the start of the execution
