@@ -156,6 +156,13 @@ ParamInterface
    :project: api
    :path: ../../../include/chimbuko/param.hpp
 
+CopodParam
+----------
+
+.. doxygenfile:: copod_param.hpp
+  :project: api
+  :path: ../../../include/chimbuko/param/copod_param.hpp
+
 HbosParam
 ---------
 
