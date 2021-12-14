@@ -15,7 +15,7 @@ Design
    :scale: 50 %
    :alt: Simple parameter server architecture
 
-   Parameter server architecture 
+   Parameter server architecture
 
 (**C**)lients (i.e. on-node AD modules) send requests with their locally-computed anomaly detection algorithm parameters to be aggregated with the global parameters and the updated parameters returned to the client. Network communication is performed using the `ZeroMQ <https://zeromq.org>`_ library and using `Cereal <https://uscilab.github.io/cereal/>`_ for data serialization.
 
@@ -24,11 +24,18 @@ via the **Backend** router in round-robin fashion. For the task of updating para
 
 A dedicated (**S**)treaming thread (cf. :ref:`api/api_code:PSstatSender`) is maintained that periodically sends the latest global statistics to the visualization server.
 
+Anomaly ranking metrics
+-----------------------
+
+Two metrics are developed that are assigned to each outlier that allow the user to focus on the subset of anomalies that are most important:
+the anomaly score reflects how unlikely an anomaly is, and the anomaly severity reflects how important the anomaly is to the runtime of the application.
+PS includes these values in the provenance information and allow for the convenient sorting and filtering
+of the anomalies in post-analysis. We have tested to present the individual choice of these metrics in the
+online visualization module.
 
 ..
-  While testing has demonstratedThis simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing. 
+  While testing has demonstratedThis simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing.
   In the following subsection, we will describe the scalable parameter server.
   Scalable Parameter Server
   -------------------------
   TBD
-
