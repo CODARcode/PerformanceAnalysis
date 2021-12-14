@@ -51,7 +51,7 @@ The schema for the **'anomaly_stats'** object is as follows:
 |       [
 |         {
 |           **'data'**: *Number of anomalies and anomaly time window for process/rank broken down by io step (array)*
-|                [  
+|                [
 |                   {
 |                      **'app'**: *Program index*,
 |                      **'max_timestamp'**: *Latest time of anomaly in io step*,
@@ -89,6 +89,33 @@ The schema for the **'anomaly_stats'** object is as follows:
 |        },
 |        ...
 |      ], *end of* **anomaly** *array*
+|  **‘anomaly_metrics’**:
+|      [
+|        {
+|           …,
+|           **‘_id**: number, // a global index to track each (app, rank, func), for internal use
+|           **'new_data'**: object   //Statistics of anomaly metrics aggregated over multiple IO steps since the last pserver->viz send
+|           {
+|              **'first_io_step'**: number   //first io step in sum
+|              **'last_io_step'**: number  //last io step in sum
+|              **‘max_timestamp’**: number //max timestamp of last IO step of this period
+|              **‘min_timestamp’**: number // min timestamp of first IO step of this period
+|              **'severity'**: RunStats
+|              **'score'**: RunStats
+|              **'count'**: RunStats
+|           }
+|           **'all_data'**: object  //Statistics of anomaly metrics aggregated since the beginning of the run
+|           {
+|              **'first_io_step'**: number   //first io step in sum
+|              **'last_io_step'**: number  //last io step in sum
+|              **‘max_timestamp’**: number, //max timestamp of last IO step since start of run
+|              **‘min_timestamp’**: number, // min timestamp of first IO step since start of run
+|              **'severity'**: RunStats
+|              **'score'**: RunStats
+|              **'count'**: RunStats
+|           }
+|       }
+|     ], *end of* **anomaly_metrics**
 |  **'func'**:    *Statistics on anomalies broken down by function, collected over entire run to-date (array)*
 |      [
 |        {
