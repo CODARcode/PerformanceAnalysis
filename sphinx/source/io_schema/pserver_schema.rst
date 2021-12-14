@@ -92,27 +92,30 @@ The schema for the **'anomaly_stats'** object is as follows:
 |  **‘anomaly_metrics’**:
 |      [
 |        {
-|           …,
-|           **‘_id**: number, // a global index to track each (app, rank, func), for internal use
-|           **'new_data'**: object   //Statistics of anomaly metrics aggregated over multiple IO steps since the last pserver->viz send
+|           **'app'**: *Application*,
+|           **'rank'**: *Program rank*,
+|           **'fid'**: *function ID*,
+|           **'fname'**: *funciton name*,
+|           **‘_id'**: *a global index to track each (app, rank, func), for internal use*,
+|           **'new_data'**: *Statistics of anomaly metrics aggregated over multiple IO steps since the last pserver->viz send*
 |           {
-|              **'first_io_step'**: number   //first io step in sum
-|              **'last_io_step'**: number  //last io step in sum
-|              **‘max_timestamp’**: number //max timestamp of last IO step of this period
-|              **‘min_timestamp’**: number // min timestamp of first IO step of this period
-|              **'severity'**: RunStats
-|              **'score'**: RunStats
-|              **'count'**: RunStats
+|              **'first_io_step'**: *first io step in sum*
+|              **'last_io_step'**: *last io step in sum*
+|              **‘max_timestamp’**: *max timestamp of last IO step of this period*
+|              **‘min_timestamp’**: *min timestamp of first IO step of this period*
+|              **'severity'**: *RunStats assigned severity*
+|              **'score'**: *RunStats assigned score*
+|              **'count'**: *RunStats count*
 |           }
-|           **'all_data'**: object  //Statistics of anomaly metrics aggregated since the beginning of the run
+|           **'all_data'**: *Statistics of anomaly metrics aggregated since the beginning of the run*
 |           {
-|              **'first_io_step'**: number   //first io step in sum
-|              **'last_io_step'**: number  //last io step in sum
-|              **‘max_timestamp’**: number, //max timestamp of last IO step since start of run
-|              **‘min_timestamp’**: number, // min timestamp of first IO step since start of run
-|              **'severity'**: RunStats
-|              **'score'**: RunStats
-|              **'count'**: RunStats
+|              **'first_io_step'**: *first io step in sum*
+|              **'last_io_step'**: *last io step in sum*
+|              **‘max_timestamp’**: *max timestamp of last IO step since start of run*
+|              **‘min_timestamp’**: *min timestamp of first IO step since start of run*
+|              **'severity'**: *RunStats assigned severity*
+|              **'score'**: *RunStats score*
+|              **'count'**: *RunStats count*
 |           }
 |       }
 |     ], *end of* **anomaly_metrics**
