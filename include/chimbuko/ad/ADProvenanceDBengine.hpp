@@ -3,7 +3,7 @@
 
 #ifdef ENABLE_PROVDB
 
-#include <sonata/Client.hpp>
+#include <thallium.hpp>
 
 namespace chimbuko{
 

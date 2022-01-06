@@ -144,6 +144,12 @@ if test "$enable_provenancedb" != "no"; then
    AC_CHECK_LIB([mercury], [_init], [],  [AC_MSG_WARN([Could not link to Mercury: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([margo], [_init], [],  [AC_MSG_WARN([Could not link to Margo: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([abt], [_init], [],  [AC_MSG_WARN([Could not link to Argobots: Provenance DB will not be built]); enable_provenancedb=no]  )
+
+   AC_CHECK_LIB([yokan-client], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([yokan-server], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([yokan-admin], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
+   AC_CHECK_LIB([uuid], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
+
 fi
 
 AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")

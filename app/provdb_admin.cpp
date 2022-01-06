@@ -8,10 +8,12 @@
 #include "chimbuko/util/commandLineParser.hpp"
 #include "chimbuko/util/string.hpp"
 #include "chimbuko/util/time.hpp"
+#include "chimbuko/util/error.hpp"
 #include <iostream>
-#include <sonata/Admin.hpp>
-#include <sonata/Provider.hpp>
-#include <sonata/Client.hpp>
+#include <thallium.hpp>
+#include <yokan/cxx/admin.hpp>
+#include <yokan/cxx/server.hpp>
+#include <yokan/cxx/client.hpp>
 #include <unistd.h>
 #include <fstream>
 #include <set>
@@ -136,19 +138,12 @@ struct ProvdbArgs{
   int ninstances;
   int nshards;
   std::string db_type;
-  unsigned long db_commit_freq;
   std::string db_write_dir;
-  bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
   std::string db_margo_config;
-
-  bool db_use_aggregator; /**< Use the aggregator backend*/
-  int db_batch_size; /**< Batch size for "aggregator" backend*/
-
-  bool db_bypass_unqlite;
-  
-  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""),
-		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true){}
+ 
+  ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("leveldb"), db_write_dir("."), db_base_config(""), db_margo_config("")
+		{}
 };
 
 
@@ -171,14 +166,9 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
     addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
     addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
-    addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
-    addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
-    addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
     addOptionalCommandLineArgMultiValue(parser, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -191,9 +181,6 @@ int main(int argc, char** argv) {
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
-    if(args.db_in_mem && args.db_type != "unqlite") throw std::runtime_error("-db_in_mem option not valid for backends other than unqlite");
-
-    if(args.db_in_mem){ PSprogressStream << "Using in-memory database" << std::endl; }
 
     std::string eng_opt = args.engine;
     if(args.ip.size() > 0){
@@ -214,22 +201,17 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    //Determine the backend
-    std::string sonata_backend = args.db_use_aggregator ? "aggregator" : args.db_type;
-
-    //Get base Sonata backend configuration
+    //Get base Yokan backend configuration
     nlohmann::json base_config;
     if(args.db_base_config.size() > 0){
       std::ifstream in(args.db_base_config);
       if(in.fail()){ throw std::runtime_error("Failed to read db config file " + args.db_base_config); }
       base_config = nlohmann::json::parse(in);
-    }else if(args.db_use_aggregator){
-      base_config["batch_size"] = args.db_batch_size;
-      base_config["backend"] = args.db_type; //backend of aggregator backend is still configurable!
-      base_config["config"]["mutex"] = "global"; //as we have only 1 ES per DB we don't need a mutex
+    }else if(args.db_type == "leveldb"){
+      base_config["error_if_exists"] = true;
+      base_config["create_if_missing"] = true;
     }else{
-      base_config["mutex"] = "global"; //as we have only 1 ES per DB we don't need a mutex
-      if(args.db_bypass_unqlite) base_config["bypass"] = true;
+      fatal_error("Unknown database type");
     }
 
     PSprogressStream << "initializing thallium with address: " << eng_opt << std::endl;
@@ -325,80 +307,87 @@ int main(int argc, char** argv) {
     engine.define("margo_dump", margo_dump_rpc).disable_response();
 #endif
 
-    std::string addr = (std::string)engine.self();  //ip and port of admin
+    tl::endpoint endpoint = engine.self();
+
+    std::string addr = (std::string)endpoint;  //ip and port of admin
+    hg_addr_t addr_hg = endpoint.get_addr();
+
+    std::string provider_config = "{}";
 
     { //Scope in which provider is active
 
       //Initialize providers
       int glob_provider_idx = setup.getGlobalDBproviderIndex();
-      std::unique_ptr<sonata::Provider> glob_provider;
-      if(instance_do_global_db) glob_provider.reset(new sonata::Provider(engine, glob_provider_idx, "", glob_pool));
+      std::unique_ptr<yokan::Provider> glob_provider;
+      if(instance_do_global_db) glob_provider.reset(new yokan::Provider(engine.get_margo_instance(), glob_provider_idx, "", provider_config.c_str(), glob_pool.native_handle()));
 
-      std::vector<std::unique_ptr<sonata::Provider> > shard_providers(nshard_instance);
+      std::vector<std::unique_ptr<yokan::Provider> > shard_providers(nshard_instance);
       std::vector<int> shard_provider_indices(nshard_instance);
       for(int s=0;s<nshard_instance;s++){
 	int shard = instance_shard_offset + s;
 	shard_provider_indices[s] = setup.getShardProviderIndex(shard);
-	shard_providers[s].reset(new sonata::Provider(engine, shard_provider_indices[s], "", shard_pools[s]));
+	shard_providers[s].reset(new yokan::Provider(engine.get_margo_instance(), shard_provider_indices[s], "", provider_config.c_str(), shard_pools[s].native_handle()));
       }
 						  
       PSprogressStream << "provider is running on " << addr << std::endl;
 
       { //Scope in which admin object is active
-	sonata::Admin admin(engine);
+	yokan::Admin admin(engine.get_margo_instance());
 
 	//Setup global databaase
 	std::string glob_db_name = setup.getGlobalDBname();
+	yk_database_id_t glob_db_id;
 	if(instance_do_global_db){
-	  std::string path = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), glob_db_name.c_str());
+	  std::string path = stringize("%s/%s.%s", args.db_write_dir.c_str(), glob_db_name.c_str(),  args.db_type.c_str());
 	  
 	  nlohmann::json glob_db_config = base_config;
-	  if(args.db_use_aggregator) glob_db_config["config"]["path"] = path;
-	  else glob_db_config["path"] = path;
+	  glob_db_config["path"] = path;
+	  glob_db_config["name"] = glob_db_name;
 	  
-	  PSprogressStream << "creating global data database: " << glob_db_name << " " << glob_db_config.dump() << " " << sonata_backend << std::endl;
-	  admin.createDatabase(addr, setup.getGlobalDBproviderIndex(), glob_db_name, sonata_backend, glob_db_config.dump());
+	  PSprogressStream << "creating global data database: " << glob_db_name << " on provider " << glob_provider_idx << " with config " << glob_db_config.dump() << " and type " << args.db_type << std::endl;
+	  glob_db_id = admin.openDatabase(addr_hg, glob_provider_idx, "", args.db_type.c_str(), glob_db_config.dump().c_str());
 	}	
 
 	//Setup database shards
 	PSprogressStream << "creating " << nshard_instance << " database shards with index offset " << instance_shard_offset << std::endl;
 
 	std::vector<std::string> db_shard_names(nshard_instance);
+	std::vector<yk_database_id_t> db_shard_ids(nshard_instance);
 	for(int s=0;s<nshard_instance;s++){
 	  int shard = instance_shard_offset + s;
 	  db_shard_names[s] = setup.getShardDBname(shard);
 
-	  std::string path = args.db_in_mem ? ":mem:" : stringize("%s/%s.unqlite", args.db_write_dir.c_str(), db_shard_names[s].c_str());
+	  std::string path = stringize("%s/%s.%s", args.db_write_dir.c_str(), db_shard_names[s].c_str(), args.db_type.c_str());
 	  
 	  nlohmann::json config = base_config;
-	  if(args.db_use_aggregator) config["config"]["path"] = path;
-	  else config["path"] = path;
+	  config["path"] = path;
+	  config["name"] = db_shard_names[s];
 
-	  PSprogressStream << "shard " << shard << ": " << db_shard_names[s] << " " << config.dump() << " " << sonata_backend << std::endl;
-	  admin.createDatabase(addr, shard_provider_indices[s], db_shard_names[s], sonata_backend, config.dump());
+	  PSprogressStream << "shard " << shard << ": " << db_shard_names[s] << " on provider " << shard_provider_indices[s] << " with config " << config.dump() << " and type " << args.db_type << std::endl;
+	  db_shard_ids[s] = admin.openDatabase(addr_hg, shard_provider_indices[s], "", args.db_type.c_str(), config.dump().c_str());
 	}
 
 	//Create the collections
 	{ //scope in which client is active
-	  sonata::Client client(engine);
+	  yokan::Client client(engine.get_margo_instance());
 
 	  //Initialize the provdb shards
-	  std::vector<sonata::Database> db(nshard_instance);
+	  std::vector<yokan::Database> db(nshard_instance);
 	  for(int s=0;s<nshard_instance;s++){
-	    db[s] = client.open(addr, shard_provider_indices[s], db_shard_names[s]);
-	    db[s].create("anomalies");
-	    db[s].create("metadata");
-	    db[s].create("normalexecs");
+	    db[s] = client.makeDatabaseHandle(addr_hg, shard_provider_indices[s], db_shard_ids[s]); 
+	    db[s].createCollection("anomalies");
+	    db[s].createCollection("metadata");
+	    db[s].createCollection("normalexecs");
 	  }
 
 	  PSprogressStream << "initialized shard collections" << std::endl;
 
 	  //Initialize the global provdb
-	  std::unique_ptr<sonata::Database> glob_db;
+	  std::unique_ptr<yokan::Database> glob_db;
 	  if(instance_do_global_db){
-	    glob_db.reset(new sonata::Database(client.open(addr, glob_provider_idx, glob_db_name)));
-	    glob_db->create("func_stats");
-	    glob_db->create("counter_stats");
+	    glob_db.reset(new yokan::Database(client.makeDatabaseHandle(addr_hg, glob_provider_idx, glob_db_id)));
+	    glob_db->createCollection("func_stats");
+	    glob_db->createCollection("counter_stats");
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
 
@@ -424,20 +413,6 @@ int main(int argc, char** argv) {
 	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
 	    if(iter % 20 == 0){ verboseStream << "ProvDB Admin heartbeat" << std::endl; }
 	    
-	    unsigned long commit_timer_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - commit_timer_start).count();
-	    if(args.db_commit_freq > 0 && commit_timer_ms >= args.db_commit_freq){
-	      PSverboseStream << "committing database to disk" << std::endl;
-	      for(int s=0;s<nshard_instance;s++){		
-		PSverboseStream << "committing shard " << s + instance_shard_offset << std::endl;
-		db[s].commit();
-	      }
-	      if(instance_do_global_db){
-		PSverboseStream << "committing global db" << std::endl;
-		glob_db->commit();
-	      }
-	      commit_timer_start = Clock::now();
-	    }
-
 	    //If at least one client has previously connected but none are now connected, shutdown the server
 	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
 

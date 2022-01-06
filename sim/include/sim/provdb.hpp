@@ -2,7 +2,8 @@
 #ifdef ENABLE_PROVDB
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
-#include<chimbuko/ad/ADProvenanceDBclient.hpp>
+#include <sonata/Client.hpp>
+#include<chimbuko/ad/ADProvenanceDBengine.hpp>
 
 namespace chimbuko_sim{
   using namespace chimbuko;

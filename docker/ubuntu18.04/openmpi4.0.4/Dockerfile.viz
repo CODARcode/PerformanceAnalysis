@@ -1,7 +1,7 @@
 FROM chimbuko/mochi:ubuntu18.04 as build
 
 WORKDIR /Downloads
-RUN echo "FORCE UPDATE 12/2/20 9.47am" >> /dev/null && \
+RUN echo "FORCE UPDATE 12/27/21 10.24am" >> /dev/null && \
     git clone https://github.com/CODARcode/ChimbukoVisualizationII.git && \
     cd ChimbukoVisualizationII && \
     curl -O http://download.redis.io/redis-stable.tar.gz && \

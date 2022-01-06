@@ -7,7 +7,7 @@ FROM build_base AS build
 
 WORKDIR /Downloads
 
-RUN echo "FORCE UPDATE 4_23_21_12_12" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
+RUN echo "FORCE UPDATE 12_27_21_10_25" >> /dev/null && git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git
 RUN cd PerformanceAnalysis/ && ./autogen.sh
 
 WORKDIR /build

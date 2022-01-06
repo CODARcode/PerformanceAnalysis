@@ -16,8 +16,11 @@ using namespace chimbuko;
 //For these tests the provenance DB admin must be running
 std::string addr;
 int rank;
+int ranks;
 int nshards;
 std::string rank_str;
+
+#if 1
 
 TEST(ADProvenanceDBclientTest, Connects){
 
@@ -27,6 +30,7 @@ TEST(ADProvenanceDBclientTest, Connects){
   try{
     client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     connect_fail = true;
   }
   EXPECT_EQ(connect_fail, false);
@@ -40,6 +44,7 @@ TEST(ADProvenanceDBclientTest, ConnectsTwice){
   try{
     client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     connect_fail = true;
   }
   EXPECT_EQ(connect_fail, false);
@@ -56,7 +61,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::AnomalyData);
+    yk_id_t rid = client.sendData(obj, ProvenanceDataType::AnomalyData);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
@@ -70,6 +75,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 
     EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -87,7 +93,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::Metadata);
+    yk_id_t rid = client.sendData(obj, ProvenanceDataType::Metadata);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
@@ -101,6 +107,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
     EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -118,7 +125,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::NormalExecData);
+    yk_id_t rid = client.sendData(obj, ProvenanceDataType::NormalExecData);
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
@@ -132,6 +139,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
 
     EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -153,7 +161,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
     objs[1]["hello"] = "again " + rank_str;
 
     std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
-    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    std::vector<yk_id_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
     EXPECT_EQ(rid.size(), 2);
 
     for(int i=0;i<2;i++){    
@@ -168,6 +176,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
       EXPECT_EQ(same, true);
     }
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -186,7 +195,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
     objs[1] = nlohmann::json::object({ {"hello","what? " + rank_str} });
 
     std::cout << "Sending " << std::endl << objs.dump() << std::endl;
-    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    std::vector<yk_id_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
     EXPECT_EQ(rid.size(), 2);
 
     for(int i=0;i<2;i++){    
@@ -201,6 +210,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
       EXPECT_EQ(same, true);
     }
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -236,6 +246,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 
     EXPECT_EQ(same, true);
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -274,6 +285,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
       EXPECT_EQ(same, true);
     }
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
@@ -312,10 +324,187 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
       EXPECT_EQ(same, true);
     }
   }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
     fail = true;
   }
   EXPECT_EQ(fail, false);
 }
+
+
+TEST(ADProvenanceDBclientTest, TestClearAll){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+
+    auto &coll = client.getCollection(ProvenanceDataType::AnomalyData);
+   
+    nlohmann::json objs = nlohmann::json::array();
+    objs[0] = nlohmann::json::object({ {"hello","myfriend " + rank_str} });
+    objs[1] = nlohmann::json::object({ {"hello","what? " + rank_str} });
+
+    client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    EXPECT_NE(coll.size(), 0);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    client.clearAllData(ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    EXPECT_EQ(coll.size(), 0);
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+TEST(ADProvenanceDBclientTest, TestRetrieveAll){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+
+    auto &coll = client.getCollection(ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    client.clearAllData(ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    EXPECT_EQ(coll.size(), 0);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+  
+    nlohmann::json objs = nlohmann::json::array();
+    objs[0] = nlohmann::json::object({ {"rank", rank_str}, {"val", 0} });
+    objs[1] = nlohmann::json::object({ {"rank", rank_str}, {"val", 1} });
+
+    client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    std::vector<std::string> all = client.retrieveAllData(ProvenanceDataType::AnomalyData);
+    EXPECT_GE(all.size(), 2); //other ranks may also have stored data
+    
+    std::vector<nlohmann::json> all_json(all.size());
+    for(int i=0;i<all.size();i++) all_json[i] = nlohmann::json::parse(all[i]);
+
+    int rcount = 0;
+    int count0 = 0;
+    int count1 = 0;
+
+    for(int i=0;i<all.size();i++){
+      EXPECT_EQ( all_json[i].contains("rank"), true );
+      if(all_json[i]["rank"] == rank_str){
+	++rcount;
+	int val = all_json[i]["val"];
+	if(val == 0) count0++;
+	else if(val == 1) count1++;
+	else FAIL() << "Invalid value " << val;
+      }
+    }
+    EXPECT_EQ(rcount, 2);
+    EXPECT_EQ(count0, 1);
+    EXPECT_EQ(count1, 1);
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+#endif
+
+
+TEST(ADProvenanceDBclientTest, TestLuaFilter){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+
+    auto &coll = client.getCollection(ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    client.clearAllData(ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    EXPECT_EQ(coll.size(), 0);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+  
+    nlohmann::json objs = nlohmann::json::array();
+    objs[0] = nlohmann::json::object({ {"rank", rank}, {"val", 0} });
+    objs[1] = nlohmann::json::object({ {"rank", rank}, {"val", 1} });
+
+    client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    std::string query = "data = cjson.decode(__doc__)\nreturn data[\"rank\"] == " + rank_str + " and data[\"val\"] == 0";
+    std::vector<std::string> rdata = client.filterData(ProvenanceDataType::AnomalyData, query);
+    EXPECT_EQ(rdata.size(),1);
+    
+    nlohmann::json rdata_json = nlohmann::json::parse(rdata[0]);
+    EXPECT_EQ( rdata_json["rank"], rank );
+    EXPECT_EQ( rdata_json["val"], 0 );
+
+    rdata.clear();
+
+    query = "data = cjson.decode(__doc__)\nreturn data[\"rank\"] == " + rank_str + " and data[\"val\"] == 1";
+    rdata = client.filterData(ProvenanceDataType::AnomalyData, query);
+    EXPECT_EQ(rdata.size(),1);
+    
+    rdata_json = nlohmann::json::parse(rdata[0]);
+    EXPECT_EQ( rdata_json["rank"], rank );
+    EXPECT_EQ( rdata_json["val"], 1 );
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+
+
 
 
 bool fileExistsMatchingRegex(const std::string &dir, const std::regex &regex){
@@ -381,8 +570,10 @@ int main(int argc, char** argv)
 
 #ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &ranks);
 #else
   rank = 0;
+  ranks = 1;
 #endif
 
   rank_str = anyToStr(rank);

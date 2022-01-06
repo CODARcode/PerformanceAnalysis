@@ -14,11 +14,6 @@ packages:
     externals:
     - spec: zlib@1.2.11
       prefix: /usr
-  ncurses:
-    buildable: false
-    externals:
-    - spec: ncurses@6.1
-      prefix: /usr
   m4:
     buildable: false
     externals:
