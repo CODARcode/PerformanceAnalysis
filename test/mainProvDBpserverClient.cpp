@@ -43,7 +43,7 @@ TEST(PSProvenanceDBclientTest, SendReceiveData){
       nlohmann::json obj;
       obj["hello"] = "world";
       std::cout << "Sending " << obj.dump() << std::endl;
-      uint64_t rid = client.sendData(obj, GlobalProvenanceDataType::FunctionStats);
+      yk_id_t rid = client.sendData(obj, GlobalProvenanceDataType::FunctionStats);
       EXPECT_NE(rid, -1);
 
       nlohmann::json check;
@@ -56,7 +56,7 @@ TEST(PSProvenanceDBclientTest, SendReceiveData){
       nlohmann::json obj;
       obj["what's"] = "up";
       std::cout << "Sending " << obj.dump() << std::endl;
-      uint64_t rid = client.sendData(obj, GlobalProvenanceDataType::CounterStats);
+      yk_id_t rid = client.sendData(obj, GlobalProvenanceDataType::CounterStats);
       EXPECT_NE(rid, -1);
 
       nlohmann::json check;
@@ -94,7 +94,7 @@ TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
       obj.push_back(o2);
 
       std::cout << "Sending " << obj.dump() << std::endl;
-      std::vector<uint64_t> rid = client.sendMultipleData(obj, GlobalProvenanceDataType::FunctionStats);
+      std::vector<yk_id_t> rid = client.sendMultipleData(obj, GlobalProvenanceDataType::FunctionStats);
       EXPECT_EQ(rid.size(),2);
       EXPECT_NE(rid[0], -1);
       EXPECT_NE(rid[1], -1);
@@ -151,6 +151,7 @@ int main(int argc, char** argv)
     std::cout << "Rank 0 complete, waiting at barrier" << std::endl;
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
+    std::cout << "Rank 0 barrier passed, disconnecting" << std::endl;
   }else{
     std::cout << "Rank " << rank << " acting as AD client and connecting to database on " << addr << std::endl;
     ADProvenanceDBclient client(rank); 
@@ -159,10 +160,12 @@ int main(int argc, char** argv)
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD); //wait for rank 0 to do its business
 #endif
+    std::cout << "Rank " << rank << " barrier passed, disconnecting" << std::endl;
     ret = 0;
   }
 #ifdef USE_MPI
   MPI_Finalize();
 #endif
+  std::cout << "Rank " << rank << " complete" << std::endl;
   return ret;
 }

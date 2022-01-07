@@ -3,11 +3,8 @@
 
 #ifdef ENABLE_PROVDB
 
-#include <sonata/Client.hpp>
-#include <nlohmann/json.hpp>
-#include <queue>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/provdb/provDBclient.hpp>
 
 namespace chimbuko{
 
@@ -19,23 +16,17 @@ namespace chimbuko{
   /**
    * @Client for the pserver interaction with the provevance database
    */
-  class PSProvenanceDBclient{
+  class PSProvenanceDBclient: public provDBclient{
   private:
-    sonata::Client m_client; /**< Sonata client */
-    sonata::Database m_database; /**< Sonata database */
-    sonata::Collection m_coll_funcstats; /**< The function statistics collection */
-    sonata::Collection m_coll_counterstats; /**< The counter statistics collection */
-    bool m_is_connected; /**< True if connection has been established to the provider */
-    
-    thallium::endpoint m_server; /**< Endpoint for provDB comms*/
+    std::unique_ptr<yokan::Collection> m_coll_funcstats; /**< The function statistics collection */
+    std::unique_ptr<yokan::Collection> m_coll_counterstats; /**< The counter statistics collection */
+
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
     bool m_perform_handshake; /**< Optionally disable the client->server registration */
 
-    PerfStats *m_stats; /**< Performance data gathering*/
-
   public:
-    PSProvenanceDBclient(): m_is_connected(false), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
+    PSProvenanceDBclient();
 
     ~PSProvenanceDBclient();
     
@@ -51,13 +42,7 @@ namespace chimbuko{
      * @param addr_file_dir The directory containing the address files created by the provDB
      */
     void connectMultiServer(const std::string &addr_file_dir);
-
-
-    /**
-     * @brief Check if connnection has been established to provider
-     */
-    bool isConnected() const{ return m_is_connected; }
-    
+   
     /**
      * @brief Disconnect if presently connected
      */
@@ -71,8 +56,8 @@ namespace chimbuko{
     /**
      * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
      */
-    sonata::Collection & getCollection(const GlobalProvenanceDataType type);
-    const sonata::Collection & getCollection(const GlobalProvenanceDataType type) const;
+    yokan::Collection & getCollection(const GlobalProvenanceDataType type);
+    const yokan::Collection & getCollection(const GlobalProvenanceDataType type) const;
 		
     /**
      * @brief Send data JSON objects synchronously to the database (blocking)
@@ -80,7 +65,7 @@ namespace chimbuko{
      * @param type The data type
      * @return Entry index
      */
-    uint64_t sendData(const nlohmann::json &entry, const GlobalProvenanceDataType type) const;
+    yk_id_t sendData(const nlohmann::json &entry, const GlobalProvenanceDataType type) const;
 
     /**
      * @brief Send *JSON array* of JSON objects synchronously to the database (blocking). This is intended for sending many independent data entries at once.
@@ -88,7 +73,7 @@ namespace chimbuko{
      * @param type The data type
      * @return Vector of entry indices. Array will have zero size if database not connected.
      */
-    std::vector<uint64_t> sendMultipleData(const nlohmann::json &entries, const GlobalProvenanceDataType type) const;
+    std::vector<yk_id_t> sendMultipleData(const nlohmann::json &entries, const GlobalProvenanceDataType type) const;
 
     /**
      * @brief Retrieve an inserted JSON object synchronously from the database by index (blocking) (primarily for testing)
@@ -97,7 +82,7 @@ namespace chimbuko{
      * @param[in] type The data type
      * @return True if the client was able to retrieve the object
      */
-    bool retrieveData(nlohmann::json &entry, uint64_t index, const GlobalProvenanceDataType type) const;
+    bool retrieveData(nlohmann::json &entry, yk_id_t index, const GlobalProvenanceDataType type) const;
 
     /**
      * @brief Retrieve all records from the database
@@ -112,7 +97,7 @@ namespace chimbuko{
     /**
      * @brief Link a PerfStats instance to monitor performance
      */
-    void linkPerf(PerfStats *stats){ m_stats = stats; }
+    void linkPerf(PerfStats *stats);
   };
 
 };

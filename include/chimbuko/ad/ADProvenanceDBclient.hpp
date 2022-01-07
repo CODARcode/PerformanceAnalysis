@@ -3,13 +3,8 @@
 
 #ifdef ENABLE_PROVDB
 
-#include <yokan/cxx/client.hpp>
-#include <yokan/cxx/database.hpp>
-#include <yokan/cxx/collection.hpp>
-#include <nlohmann/json.hpp>
-#include <list>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/provdb/provDBclient.hpp>
 
 namespace chimbuko{
 
@@ -19,78 +14,15 @@ namespace chimbuko{
   enum class ProvenanceDataType { AnomalyData, Metadata, NormalExecData };
 
   /**
-   * @brief A container for an outstanding request and the ids of the DB entries
-   */
-  struct OutstandingRequest{
-    mutable thallium::eventual<void> req; /**< The request instance */
-    std::vector<yk_id_t> ids; /**< The ids of the inserted data, *populated only once request is complete* */
-    
-    /**
-     * @brief Default constructor. For async sends it is safe to use this as the ids array is resized by the send functions
-     */
-    OutstandingRequest(){}
-
-    /**
-     * @brief Block until the request is complete
-     */
-    inline void wait() const{
-      req.wait();
-    }
-  };
-
-
-  /**
-   * @brief Manager class for containing outstanding anomalous requests
-   *
-   * Sonata requires an instance of AsyncRequest live for long enough that the request completes
-   * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
-   */
-  class AnomalousSendManager{
-    std::list<thallium::eventual<void> > outstanding;
-
-    /**
-     * @brief Remove completed requests if size > MAX_OUTSTANDING
-     */
-    void purge();
-  public:
-    /**
-     * @brief Get a new AsyncRequest instance reference pointing to an object in the FIFO
-     */
-    thallium::eventual<void> & getNewRequest();
-
-    /**
-     * @brief Block (wait) until all outstanding requests have completed
-     */
-    void waitAll();
-
-    /**
-     * @brief Get the number of incomplete (outstanding) requests
-     *
-     * Non-const because it must purge completed requests from the queue prior to counting
-     */
-    size_t getNoutstanding();
-
-    ~AnomalousSendManager();
-  };
-
-
-  /**
    * @Client for interacting with provevance database
    */
-  class ADProvenanceDBclient{
+  class ADProvenanceDBclient: public provDBclient{
   private:
-    yokan::Client m_client; /**< Sonata client */
-    yokan::Database m_database; /**< Sonata database */
     std::unique_ptr<yokan::Collection> m_coll_anomalies; /**< The anomalies collection */
     std::unique_ptr<yokan::Collection> m_coll_metadata; /**< The metadata collection */
     std::unique_ptr<yokan::Collection> m_coll_normalexecs; /**< The normal executions collection */
-    bool m_is_connected; /**< True if connection has been established to the provider */
-    
-    mutable AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
 
     int m_rank; /**< MPI rank of current process */
-    std::string m_server_addr; /**< Address of the server */
-    thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
     thallium::remote_procedure *m_stop_server; /** RPC to shutdown server*/
@@ -98,26 +30,7 @@ namespace chimbuko{
     thallium::remote_procedure *m_margo_dump; /** RPC to request the server dump its state*/
 #endif    
     bool m_perform_handshake; /**< Optionally disable the client->server registration */
-
-    PerfStats *m_stats; /**< Performance data gathering*/
-
-    /**
-     * @brief Send std::vector of JSON strings asynchronously to the database (non-blocking). This is intended for sending many independent data entries at once.
-     * @param entries std::vector of data
-     * @param type The data type
-     * @param req Allow querying of the outstanding request and retrieval of ids (once complete). If nullptr the request will be anonymous (fire-and-forget)
-     */
-    void sendMultipleDataAsync(const std::vector<std::string> &entries, const ProvenanceDataType type, OutstandingRequest *req = nullptr) const;
-
-    /**
-     * @brief Send std::vector of JSON strings synchronously to the database (blocking). This is intended for sending many independent data entries at once.
-     * @param entries std::vector of data
-     * @param type The data type
-     * @return Vector of entry indices. Array will have zero size if database not connected.
-     */
-    std::vector<yk_id_t> sendMultipleData(const std::vector<std::string> &entries, const ProvenanceDataType type) const;
-
-    
+   
   public:
     /**
      * @brief Constructor
@@ -166,12 +79,7 @@ namespace chimbuko{
      * @param shard_assign_file A file containing the shard used by each rank. The file format should have 1 line per rank, in ascending order, containing just the shard index
      */
     void connectMultiServerShardAssign(const std::string &addr_file_dir, const int nshards, const int ninstances, const std::string &shard_assign_file);
-
-    /**
-     * @brief Check if connnection has been established to provider
-     */
-    bool isConnected() const{ return m_is_connected; }
-    
+   
     /**
      * @brief Disconnect if presently connected
      */
@@ -246,10 +154,6 @@ namespace chimbuko{
      */
     bool retrieveData(nlohmann::json &entry, yk_id_t index, const ProvenanceDataType type) const;
 
-    /**
-     * @brief Block (wait) until all outstanding anomalous sends have completed
-     */
-    void waitForSendComplete();
 
     /**
      * @brief Retrieve all records from the database
@@ -279,13 +183,7 @@ namespace chimbuko{
     /**
      * @brief Link a PerfStats instance to monitor performance
      */
-    void linkPerf(PerfStats *stats){ m_stats = stats; }
-
-    /**
-     * @brief Get the number of incomplete (outstanding) asynchronous stores
-     */
-    size_t getNoutstandingAsyncReqs(){ return 0; }  // anom_send_man.getNoutstanding(); }
-
+    void linkPerf(PerfStats *stats);
 
     /**
      * @brief Issue a stop request to the server

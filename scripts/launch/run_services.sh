@@ -103,7 +103,7 @@ if (( ${use_provdb} == 1 )); then
     provdb_addr_dir=$(readlink -f ${provdb_dir})
 
     cd ${provdb_dir}
-    rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address*
+    rm -rf ${provdb_writedir}/provdb.*  provider.address*
 
     #Enable better error reporting from Mercury
     export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
@@ -115,7 +115,7 @@ if (( ${use_provdb} == 1 )); then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
 	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
-	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
+	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
 	sleep 1
     done
 
@@ -141,19 +141,6 @@ else
     echo "Chimbuko Services: Provenance database is not in use, provenance data will be stored in ASCII format at ${provdb_writedir}"
     extra_args+=" -prov_outputpath ${provdb_writedir}"
     ps_extra_args+=" -prov_outputpath ${provdb_writedir}"
-fi
-
-#Committer
-if (( ${use_provdb} == 1 )); then
-    echo "==========================================="
-    echo "Instantiating committer"
-    echo "==========================================="
-    for((i=0;i<provdb_ninstances;i++)); do
-	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
-	sleep 1
-    done
-    sleep 3
 fi
 
 #Visualization

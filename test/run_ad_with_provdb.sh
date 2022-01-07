@@ -4,7 +4,7 @@ set -e
 set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
-    rm -f provdb.*.unqlite*  provider.address*
+    rm -rf provdb.*  provider.address*
 
     #Find a protocol supported by libfabric
     protocol=
@@ -31,7 +31,7 @@ if [ -f "../bin/provdb_admin" ]; then
     wait
   
     #Do a run with 2 shards and 1 server instance
-    rm -f provdb.*.unqlite*  provider.address*
+    rm -rf provdb.*  provider.address*
 
     ../bin/provdb_admin ${ip}:${port} -engine "$protocol" -nshards 2 &
     while [ ! -f provider.address.0 ]; do
@@ -44,7 +44,7 @@ if [ -f "../bin/provdb_admin" ]; then
     wait
 
     #Do a run with multiple shards and 2 server instances
-    rm -f provdb.*.unqlite*  provider.address*
+    rm -rf provdb.*  provider.address*
 
     port2=1235
 

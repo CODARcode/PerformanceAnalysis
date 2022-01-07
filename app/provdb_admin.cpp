@@ -165,9 +165,9 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
     addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
     addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-    addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
+    addOptionalCommandLineArg(parser, db_type, "Specify the Yokan database type (default \"leveldb\")");
     addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
-    addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Yokan databases. The database path will be appended automatically (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
     addOptionalCommandLineArgMultiValue(parser, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
@@ -454,6 +454,8 @@ int main(int argc, char** argv) {
       margo_dump("margo_dump_end_provide_scope." + std::to_string(instance));
 #endif
     }//provider scope
+
+    if( margo_addr_free(engine.get_margo_instance(), addr_hg) != HG_SUCCESS) fatal_error("Could not free address object");
 
     PSprogressStream << "shutting down server engine" << std::endl;
     delete mtx; //delete mutex prior to engine finalize

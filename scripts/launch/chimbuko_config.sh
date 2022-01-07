@@ -30,7 +30,6 @@ provdb_ninstances=1 #number of database server instances. Shards are distributed
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database. For >1 instance the port of instance i will be provdb_port+i 
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
-provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***

@@ -1,3 +1,11 @@
+#if 1
+
+int main(void){
+  return 0;
+}
+
+#else
+
 //A tool for rebuilding the unqlite databases from JSON dumps produced when Chimbuko is run without the provenance database component
 #include <chimbuko_config.h>
 #ifndef ENABLE_PROVDB
@@ -346,3 +354,5 @@ int main(int argc, char** argv){
   }
   return 0;
 }
+
+#endif

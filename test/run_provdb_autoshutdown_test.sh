@@ -4,7 +4,7 @@ set -e
 set -o pipefail
 
 if [ -f "../bin/provdb_admin" ]; then
-    rm -f provdb.*.unqlite*  provider.address*
+    rm -rf provdb.*  provider.address*
 
     #Find a protocol supported by libfabric
     protocol=
