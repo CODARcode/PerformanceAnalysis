@@ -304,13 +304,16 @@ struct ClientActionConnect: public ClientActionBlocking{
   int rank;
   int srank;
   std::string sname;
-
-  ClientActionConnect(int rank, int srank, const std::string &sname): rank(rank), srank(srank), sname(sname), ClientActionBlocking(){}
+  bool connected;
+  
+  ClientActionConnect(int rank, int srank, const std::string &sname): rank(rank), srank(srank), sname(sname), connected(false), ClientActionBlocking(){}
 
   void perform(ADNetClient &client) override{
     verboseStream << "ADThreadNetClient rank " << rank << " connecting to PS" << std::endl;
     client.connect_ps(rank, srank, sname);
-    verboseStream << "ADThreadNetClient rank " << rank << " successfully connected to PS" << std::endl;
+    connected = client.use_ps();
+    if(connected) verboseStream << "ADThreadNetClient rank " << rank << " successfully connected to PS" << std::endl;
+    else verboseStream << "ADThreadNetClient rank " << rank << " failed to connect to PS" << std::endl;
     this->notify();
   }
 };
@@ -474,7 +477,7 @@ void ADThreadNetClient::connect_ps(int rank, int srank, std::string sname){
   ClientActionConnect action(rank, srank,sname);
   enqueue_action(&action);
   action.wait_for();
-  m_use_ps = true; //indicate that we are connected to the ps
+  m_use_ps = action.connected; //indicate that we are connected to the ps
 }
 void ADThreadNetClient::disconnect_ps(){
   ClientActionDisconnect action;
