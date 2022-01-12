@@ -45,7 +45,7 @@ export FI_OFI_RXM_USE_SRX=1 # use shared recv context in RXM; should improve sca
 use_pserver=1 #enable or disable the pserver
 pserver_extra_args="" #any extra command line arguments to pass
 pserver_port=5559  #port for parameter server
-pserver_nt=2 #number of worker threads
+pserver_nt=1 #number of worker threads
 ####################################
 #Options for the AD module
 ####################################

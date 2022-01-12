@@ -133,10 +133,13 @@ void doWork(std::unordered_map<int,
       //Parse the message and instantiate a reply message with appropriate sender
       Message msg, msg_reply;
       msg.set_msg(strmsg, true);
+
+      MessageKind kind = (MessageKind)msg.kind();
+      MessageType type = (MessageType)msg.type();
       
       timer.start();
       NetInterface::find_and_perform_action(msg_reply, msg, payloads_t);
-      perf.add(perf_prefix + "find_and_perform_action_ms", timer.elapsed_ms());
+      perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
       
       strmsg = msg_reply.data();
       verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;

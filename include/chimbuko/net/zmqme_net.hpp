@@ -64,6 +64,11 @@ namespace chimbuko {
     static int recv_NB(void* socket, std::string& strmsg);
 
 
+    /**
+     * @brief Set the base port upon which the connection is made (thread ports are offset by thread index). Must be called prior to run(..). Default 5559
+     */
+    void setBasePort(const int port){ m_base_port = port; }
+
   protected:
 
     /**
