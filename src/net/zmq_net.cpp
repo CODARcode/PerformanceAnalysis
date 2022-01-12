@@ -153,9 +153,12 @@ void doWork(void* context,
     msg.set_msg(strmsg, true);
     perf.add(perf_prefix + "message_parse_ms", timer.elapsed_ms());
 
+    MessageKind kind = (MessageKind)msg.kind();
+    MessageType type = (MessageType)msg.type();
+
     timer.start();
     NetInterface::find_and_perform_action(msg_reply, msg, payloads);
-    perf.add(perf_prefix + "find_and_perform_action_ms", timer.elapsed_ms());
+    perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
 
     //Send the reply
     strmsg = msg_reply.data();

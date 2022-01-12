@@ -189,6 +189,8 @@ int main (int argc, char ** argv){
     net.add_payload(new NetPayloadGetParams(param));
     net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics));
     net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
+    net.add_payload(new NetPayloadPing);
+
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz

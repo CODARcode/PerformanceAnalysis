@@ -26,6 +26,7 @@ struct Args{
   int hpserver_nthr;
   int perf_write_freq;
   std::string perf_dir;
+  std::string benchmark_pattern;
 
   Args(){
     cycles = 10;
@@ -36,6 +37,7 @@ struct Args{
     hpserver_nthr = 1;
     perf_write_freq = 10;
     perf_dir=".";
+    benchmark_pattern = "ad";
   }
 };
 
@@ -61,6 +63,8 @@ int main(int argc, char **argv){
     addOptionalCommandLineArgDefaultHelpString(cmdline, hpserver_nthr);
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
+    addOptionalCommandLineArgDefaultHelpString(cmdline, benchmark_pattern); //set the comms pattern: "ad" = like the usual AD client (default),   "ping" = each cycle just send a (blocking)ping
+ 
 
     if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
       cmdline.help();
@@ -167,7 +171,7 @@ int main(int argc, char **argv){
       cyc_timer.start();
       std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
       //Send a parameters object
-      {
+      if(args.benchmark_pattern == "ad"){
 	timer.start();
 	Message msg;
 	msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
@@ -181,7 +185,7 @@ int main(int argc, char **argv){
       }
 
       //Send combined statistics information
-      {
+      if(args.benchmark_pattern == "ad"){
 	timer.start();
 	Message msg;
 	msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, c);
@@ -192,6 +196,17 @@ int main(int argc, char **argv){
 	timer.start();
 	net_client.async_send(msg);
 	stats.add("comb_stats_update_async_comms_ms", timer.elapsed_ms());
+      }
+
+      //Send ping
+      if(args.benchmark_pattern == "ping"){
+	Message msg;
+	msg.set_info(rank, 0, MessageType::REQ_ECHO, MessageKind::CMD);
+	msg.set_msg("ping", false);
+	
+	timer.start();
+	net_client.send_and_receive(msg);
+	stats.add("ping_pong_comms_ms", timer.elapsed_ms());
       }
 
       //Sleep to catch up with 1 second cycle cadence as in real client

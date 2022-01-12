@@ -22,6 +22,8 @@ enum MessageType {
     REP_ECHO = 50
 };
 
+std::string toString(const MessageType m);
+
 /**
  * @brief Enum of the message "kind" describing the context of the action
  */
@@ -36,10 +38,16 @@ enum MessageKind {
     AD_PS_COMBINED_STATS = 7
 };
 
+std::string toString(const MessageKind m);
+
+
 enum MessageCmd {
     QUIT = 0,
     ECHO = 1
 };
+
+std::string toString(const MessageCmd m);
+
 
 /**
  * @brief A class containing a message and header that can be serialized in JSON form for communication

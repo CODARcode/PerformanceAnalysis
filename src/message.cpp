@@ -6,6 +6,53 @@
 
 using namespace chimbuko;
 
+std::string chimbuko::toString(const MessageType m){
+#define KSTR(A) case A: return #A
+
+  switch(m){
+    KSTR(REQ_ADD);
+    KSTR(REQ_GET);
+    KSTR(REQ_CMD);
+    KSTR(REQ_QUIT);
+    KSTR(REQ_ECHO);
+    KSTR(REP_ADD);
+    KSTR(REP_GET);
+    KSTR(REP_CMD);
+    KSTR(REP_QUIT);
+    KSTR(REP_ECHO);
+    default: return "UNKNOWN";
+  }
+#undef KSTR
+}
+
+std::string chimbuko::toString(const MessageKind m){
+#define KSTR(A) case A: return #A
+
+  switch(m){
+    KSTR(DEFAULT);
+    KSTR(CMD);
+    KSTR(PARAMETERS);
+    KSTR(ANOMALY_STATS);
+    KSTR(COUNTER_STATS);
+    KSTR(FUNCTION_INDEX);
+    KSTR(ANOMALY_METRICS);
+    KSTR(AD_PS_COMBINED_STATS);
+    default: return "UNKNOWN";
+  }
+#undef KSTR
+}
+
+std::string chimbuko::toString(const MessageCmd m){
+#define KSTR(A) case A: return #A
+
+  switch(m){
+    KSTR(QUIT);
+    KSTR(ECHO);
+    default: return "UNKNOWN";
+  }
+#undef KSTR
+}
+
 // ---------------------------------------------------------------------------
 // Implementation of Message::Header class
 // ---------------------------------------------------------------------------
@@ -91,18 +138,5 @@ Message Message::createReply() const
 }
 
 std::string Message::kind_str() const {
-#define KSTR(A) case A: return #A
-
-  switch((MessageKind)m_head.kind()){
-    KSTR(DEFAULT);
-    KSTR(CMD);
-    KSTR(PARAMETERS);
-    KSTR(ANOMALY_STATS);
-    KSTR(COUNTER_STATS);
-    KSTR(FUNCTION_INDEX);
-    KSTR(ANOMALY_METRICS);
-    KSTR(AD_PS_COMBINED_STATS);
-    default: return "UNKNOWN";
-  }
-#undef KSTR
+  return toString((MessageKind)m_head.kind());
 }
