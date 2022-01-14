@@ -146,3 +146,247 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
   //Test the net-sent version agrees
   EXPECT_EQ(glb, glb_net);
 }
+
+
+
+TEST(GlobalAnomalyMetricsTest, TestCombination){  
+  RunStats stats1,stats2,stats3,stats4;
+  for(int i=0;i<100;i++){
+    stats1.push(M_PI * (i+1));
+    stats2.push(M_PI*M_PI * (i+1));
+    stats3.push(M_PI*M_PI*M_PI * (i+1));
+    stats4.push(M_PI*M_PI*M_PI*M_PI * (i+1));
+  }
+
+  int pid = 111;
+  int fid1=99, fid2=33;
+  std::string fname1="func1", fname2="func2";
+  int count1=122,count2=999;
+
+  //fid1 data 1
+  FuncAnomalyMetrics::State fstate_fid1_1;
+  fstate_fid1_1.score = stats1.get_state();
+  fstate_fid1_1.severity = stats2.get_state();
+  fstate_fid1_1.count = count1;
+  fstate_fid1_1.fid = fid1;
+  fstate_fid1_1.func = fname1;
+
+  //fid1 data 2
+  FuncAnomalyMetrics::State fstate_fid1_2;
+  fstate_fid1_2.score = stats3.get_state();
+  fstate_fid1_2.severity = stats4.get_state();
+  fstate_fid1_2.count = count2;
+  fstate_fid1_2.fid = fid1;
+  fstate_fid1_2.func = fname1;
+  
+  //fid2 data 1
+  FuncAnomalyMetrics::State fstate_fid2_1;
+  fstate_fid2_1.score = stats3.get_state();
+  fstate_fid2_1.severity = stats4.get_state();
+  fstate_fid2_1.count = count1;
+  fstate_fid2_1.fid = fid2;
+  fstate_fid2_1.func = fname2;
+  
+  int rid1=22, rid2=77;
+  int step1=34, step2=98, step3=101, step4=200;
+  int first1 = 1024, first2=2944, first3=8888, first4=10000;
+  int last1 = 2888, last2=3004, last3=4000, last4=4232;
+
+  //2 datasets with fid1 and rid1
+  ADLocalAnomalyMetrics::State lstate_fid1_rid1_1;
+  lstate_fid1_rid1_1.app = pid;
+  lstate_fid1_rid1_1.rank = rid1;
+  lstate_fid1_rid1_1.step = step1;
+  lstate_fid1_rid1_1.first_event_ts = first1;
+  lstate_fid1_rid1_1.last_event_ts = last1;
+  lstate_fid1_rid1_1.func_anom_metrics = { {fid1, fstate_fid1_1} };
+
+  ADLocalAnomalyMetrics ldata_fid1_rid1_1;
+  ldata_fid1_rid1_1.set_state(lstate_fid1_rid1_1);
+
+  ADLocalAnomalyMetrics::State lstate_fid1_rid1_2;
+  lstate_fid1_rid1_2.app = pid;
+  lstate_fid1_rid1_2.rank = rid1;
+  lstate_fid1_rid1_2.step = step2;
+  lstate_fid1_rid1_2.first_event_ts = first2;
+  lstate_fid1_rid1_2.last_event_ts = last2;
+  lstate_fid1_rid1_2.func_anom_metrics = { {fid1, fstate_fid1_2} };
+
+  ADLocalAnomalyMetrics ldata_fid1_rid1_2;
+  ldata_fid1_rid1_2.set_state(lstate_fid1_rid1_2);
+
+  //1 dataset with fid2 and rid1
+  ADLocalAnomalyMetrics::State lstate_fid2_rid1_1;
+  lstate_fid2_rid1_1.app = pid;
+  lstate_fid2_rid1_1.rank = rid1;
+  lstate_fid2_rid1_1.step = step3;
+  lstate_fid2_rid1_1.first_event_ts = first3;
+  lstate_fid2_rid1_1.last_event_ts = last3;
+  lstate_fid2_rid1_1.func_anom_metrics = { {fid2, fstate_fid2_1} };
+
+  ADLocalAnomalyMetrics ldata_fid2_rid1_1;
+  ldata_fid2_rid1_1.set_state(lstate_fid2_rid1_1);
+
+  //1 dataset with fid1 and rid2
+  ADLocalAnomalyMetrics::State lstate_fid1_rid2_1;
+  lstate_fid1_rid2_1.app = pid;
+  lstate_fid1_rid2_1.rank = rid2;
+  lstate_fid1_rid2_1.step = step4;
+  lstate_fid1_rid2_1.first_event_ts = first4;
+  lstate_fid1_rid2_1.last_event_ts = last4;
+  lstate_fid1_rid2_1.func_anom_metrics = { {fid1, fstate_fid1_2} };
+
+  ADLocalAnomalyMetrics ldata_fid1_rid2_1;
+  ldata_fid1_rid2_1.set_state(lstate_fid1_rid2_1);
+
+  
+  {
+    //Data with same fid, different rid
+    GlobalAnomalyMetrics g1;
+    g1.add(ldata_fid1_rid1_1);
+
+    GlobalAnomalyMetrics g2;
+    g2.add(ldata_fid1_rid2_1);
+
+    GlobalAnomalyMetrics gall;
+    gall.add(ldata_fid1_rid1_1);
+    gall.add(ldata_fid1_rid2_1);
+
+    GlobalAnomalyMetrics gcomb(g1);
+    ASSERT_EQ(gcomb, g1);
+
+    gcomb += g2;
+
+    auto pit_all = gall.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_all, gall.getRecentMetrics().end());
+
+    auto rit1_all = pit_all->second.find(rid1);
+    ASSERT_NE(rit1_all, pit_all->second.end());
+    ASSERT_EQ(rit1_all->second.size(),1); //one fid
+
+    auto rit2_all = pit_all->second.find(rid2);
+    ASSERT_NE(rit2_all, pit_all->second.end());
+    ASSERT_EQ(rit2_all->second.size(),1); //one fid
+
+    auto fit1_all = rit1_all->second.find(fid1);
+    ASSERT_NE(fit1_all, rit1_all->second.end());
+
+    auto fit2_all = rit2_all->second.find(fid1);
+    ASSERT_NE(fit2_all, rit2_all->second.end());
+
+
+    auto pit_comb = gcomb.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_comb, gcomb.getRecentMetrics().end());
+
+    auto rit1_comb = pit_comb->second.find(rid1);
+    ASSERT_NE(rit1_comb, pit_comb->second.end());
+    ASSERT_EQ(rit1_comb->second.size(),1); //one fid
+
+    auto rit2_comb = pit_comb->second.find(rid2);
+    ASSERT_NE(rit2_comb, pit_comb->second.end());
+    ASSERT_EQ(rit2_comb->second.size(),1); //one fid
+
+    auto fit1_comb = rit1_comb->second.find(fid1);
+    ASSERT_NE(fit1_comb, rit1_comb->second.end());
+
+    auto fit2_comb = rit2_comb->second.find(fid1);
+    ASSERT_NE(fit2_comb, rit2_comb->second.end());
+
+    ASSERT_EQ(fit1_comb->second, fit1_all->second);
+    ASSERT_EQ(fit2_comb->second, fit2_all->second);
+  }
+
+
+  {
+    //Data with same rid, different fid
+    GlobalAnomalyMetrics g1;
+    g1.add(ldata_fid1_rid1_1);
+
+    GlobalAnomalyMetrics g2;
+    g2.add(ldata_fid2_rid1_1);
+
+    GlobalAnomalyMetrics gall;
+    gall.add(ldata_fid1_rid1_1);
+    gall.add(ldata_fid2_rid1_1);
+
+    GlobalAnomalyMetrics gcomb(g1);
+    ASSERT_EQ(gcomb, g1);
+
+    gcomb += g2;
+
+    auto pit_all = gall.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_all, gall.getRecentMetrics().end());
+
+    auto rit1_all = pit_all->second.find(rid1);
+    ASSERT_NE(rit1_all, pit_all->second.end());
+    ASSERT_EQ(rit1_all->second.size(),2); //two fids
+
+    auto fit1_all = rit1_all->second.find(fid1);
+    ASSERT_NE(fit1_all, rit1_all->second.end());
+
+    auto fit2_all = rit1_all->second.find(fid2);
+    ASSERT_NE(fit2_all, rit1_all->second.end());
+
+
+    auto pit_comb = gcomb.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_comb, gcomb.getRecentMetrics().end());
+
+    auto rit1_comb = pit_comb->second.find(rid1);
+    ASSERT_NE(rit1_comb, pit_comb->second.end());
+    ASSERT_EQ(rit1_comb->second.size(),2); //two fids
+
+    auto fit1_comb = rit1_comb->second.find(fid1);
+    ASSERT_NE(fit1_comb, rit1_comb->second.end());
+
+    auto fit2_comb = rit1_comb->second.find(fid2);
+    ASSERT_NE(fit2_comb, rit1_comb->second.end());
+
+    ASSERT_EQ(fit1_comb->second, fit1_all->second);
+    ASSERT_EQ(fit2_comb->second, fit2_all->second);
+  }
+
+  {
+    //Data with same rid and fid
+    GlobalAnomalyMetrics g1;
+    g1.add(ldata_fid1_rid1_1);
+
+    GlobalAnomalyMetrics g2;
+    g2.add(ldata_fid1_rid1_2);
+
+    GlobalAnomalyMetrics gall;
+    gall.add(ldata_fid1_rid1_1);
+    gall.add(ldata_fid1_rid1_2);
+
+    GlobalAnomalyMetrics gcomb(g1);
+    ASSERT_EQ(gcomb, g1);
+
+    gcomb += g2;
+
+    auto pit_all = gall.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_all, gall.getRecentMetrics().end());
+
+    auto rit1_all = pit_all->second.find(rid1);
+    ASSERT_NE(rit1_all, pit_all->second.end());
+    ASSERT_EQ(rit1_all->second.size(),1); //one fid
+
+    auto fit1_all = rit1_all->second.find(fid1);
+    ASSERT_NE(fit1_all, rit1_all->second.end());
+
+    auto pit_comb = gcomb.getRecentMetrics().find(pid);
+    ASSERT_NE(pit_comb, gcomb.getRecentMetrics().end());
+
+    auto rit1_comb = pit_comb->second.find(rid1);
+    ASSERT_NE(rit1_comb, pit_comb->second.end());
+    ASSERT_EQ(rit1_comb->second.size(),1); //one fid
+
+    auto fit1_comb = rit1_comb->second.find(fid1);
+    ASSERT_NE(fit1_comb, rit1_comb->second.end());
+
+    ASSERT_EQ(fit1_comb->second, fit1_all->second);
+  }
+
+
+
+
+
+}

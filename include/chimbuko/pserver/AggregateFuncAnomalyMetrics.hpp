@@ -7,6 +7,8 @@ namespace chimbuko {
   /**< An object holding aggregated anomaly metrics on a function for a specific rank*/
   struct AggregateFuncAnomalyMetrics{
   public:
+    AggregateFuncAnomalyMetrics(){}
+
     /**
      * @brief Constructor
      * @param pid Program idx
@@ -94,6 +96,13 @@ namespace chimbuko {
      * @brief Inequality operator
      */
     bool operator!=(const AggregateFuncAnomalyMetrics &r) const{ return !( *this == r ); }
+
+    /**
+     * @brief Merge two instances of AggregateFuncAnomalyMetrics
+     *
+     * pid, rid, fid, func must match
+     */
+     AggregateFuncAnomalyMetrics & operator+=(const AggregateFuncAnomalyMetrics &r);
 
 
   private:

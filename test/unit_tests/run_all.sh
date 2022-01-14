@@ -42,6 +42,7 @@ set -o pipefail
 ./pserver/GlobalAnomalyStats
 ./pserver/AggregateFuncAnomalyMetrics
 ./pserver/GlobalAnomalyMetrics
+./pserver/GlobalCounterStats
 ./net/ZMQMENet
 ./net/ZMQNet
 ./net/LocalNet

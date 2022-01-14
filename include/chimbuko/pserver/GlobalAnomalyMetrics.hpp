@@ -20,6 +20,15 @@ namespace chimbuko{
     typedef std::unordered_map<int, std::unordered_map<int,  std::unordered_map<int, AggregateFuncAnomalyMetrics> > > AnomalyMetricsMapType; /**< Map of program idx, rank and function idx to aggregated metrics */
 
     GlobalAnomalyMetrics(){}
+   
+
+    /**
+     * @brief Copy constructor
+     *
+     * Thread safe
+     */
+    GlobalAnomalyMetrics(const GlobalAnomalyMetrics &r);
+
 
     /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
@@ -62,6 +71,15 @@ namespace chimbuko{
      * NOT thread safe
      */
     bool operator!=(const GlobalAnomalyMetrics &r) const{ return !(*this == r); }
+
+
+    /**
+     * @brief Combine two instances of GlobalAnomalyMetrics
+     *
+     * Thread safe
+     */
+    GlobalAnomalyMetrics & operator+=(const GlobalAnomalyMetrics &r);
+
   private:
 
     /**

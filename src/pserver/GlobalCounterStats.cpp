@@ -1,6 +1,12 @@
 #include <chimbuko/pserver/GlobalCounterStats.hpp>
+#include <chimbuko/util/map.hpp>
 
 using namespace chimbuko;
+
+GlobalCounterStats::GlobalCounterStats(const GlobalCounterStats &r){
+  std::lock_guard<std::mutex> _(r.m_mutex);
+  m_counter_stats = r.m_counter_stats;
+}
 
 void GlobalCounterStats::add_counter_data(const ADLocalCounterStatistics &loc){
   std::lock_guard<std::mutex> _(m_mutex);
@@ -52,4 +58,10 @@ void PSstatSenderGlobalCounterStatsPayload::add_json(nlohmann::json &into) const
   nlohmann::json stats = m_stats->get_json_state(); //a JSON array
   if(stats.size())
     into["counter_stats"] = std::move(stats);
+}
+
+GlobalCounterStats & GlobalCounterStats::operator+=(const GlobalCounterStats &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_counter_stats, r.m_counter_stats);
 }

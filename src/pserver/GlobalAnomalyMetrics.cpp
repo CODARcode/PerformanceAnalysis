@@ -2,9 +2,22 @@
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/error.hpp>
 #include <chimbuko/util/string.hpp>
+#include <chimbuko/util/map.hpp>
 
 using namespace chimbuko;
 
+GlobalAnomalyMetrics::GlobalAnomalyMetrics(const GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  m_anomaly_metrics_full = r.m_anomaly_metrics_full;
+  m_anomaly_metrics_recent = r.m_anomaly_metrics_recent;
+}
+
+GlobalAnomalyMetrics & GlobalAnomalyMetrics::operator+=(const GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_anomaly_metrics_full, r.m_anomaly_metrics_full);
+  unordered_map_plus_equals(m_anomaly_metrics_recent, r.m_anomaly_metrics_recent);
+}
 
 void GlobalAnomalyMetrics::add(GlobalAnomalyMetrics::AnomalyMetricsMapType &into, const ADLocalAnomalyMetrics& data){
   std::lock_guard<std::mutex> _(m_mutex);
