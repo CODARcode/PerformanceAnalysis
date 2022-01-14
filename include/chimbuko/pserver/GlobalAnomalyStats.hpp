@@ -22,6 +22,13 @@ namespace chimbuko{
     GlobalAnomalyStats(){}
 
     /**
+     * @brief Copy constructor
+     *
+     * Thread safe (locks input object)
+     */
+    GlobalAnomalyStats(const GlobalAnomalyStats & r);
+
+    /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
      *
      * Thread safe
@@ -136,6 +143,14 @@ namespace chimbuko{
      * NOT thread safe
      */
     bool operator!=(const GlobalAnomalyStats &r) const{ return !( *this == r ); }
+
+
+    /**
+     * @brief Combine GlobalAnomalyStats instances
+     *
+     * Thread safe; locks both this and r when appropriate
+     */
+    GlobalAnomalyStats & operator+=(const GlobalAnomalyStats & r);
 
   protected:    
     std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */

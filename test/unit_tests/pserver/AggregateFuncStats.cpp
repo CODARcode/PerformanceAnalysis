@@ -101,5 +101,97 @@ TEST(TestAggregateFuncStats, AggregationAndJSON){
 }
 
 
+TEST(TestAggregateFuncStats, Combination){  
+  //Generate some stats representing the inclusive and exclusive runtimes collected over 2 different io steps
+  RunStats incl1(true), incl2(true), excl1(true), excl2(true); //total runtimes should aggregate
+
+  std::mt19937 gen(1234);
+  std::normal_distribution<> dexcl(100,20);
+  std::normal_distribution<> dincl_add(200,100);
+
+  double tsum_incl = 0, tsum_excl = 0;
+
+  for(int i=0;i<100;i++){
+    double e1 = dexcl(gen);
+    double i1 = e1 + dincl_add(gen);
+
+    double e2 = dexcl(gen);
+    double i2 = e2 + dincl_add(gen);
+    
+    incl1.push(i1);
+    excl1.push(e1);
+    
+    incl2.push(i2);
+    excl2.push(e2);
+
+    tsum_incl += i1 + i2;
+    tsum_excl += e1 + e2;
+  }
+
+  int pid = 99;
+  int fid = 77;
+  std::string fname = "my_func";
+
+  int nanom1 = 23; //anoms on first step
+  int nanom2 = 44; //anoms on second step
+
+  AggregateFuncStats fstats_all(pid,fid,fname);
+  fstats_all.add(nanom1, incl1, excl1);
+  fstats_all.add(nanom2, incl2, excl2);
+
+  AggregateFuncStats fstats1(pid,fid,fname);
+  fstats1.add(nanom1, incl1, excl1);
+
+  AggregateFuncStats fstats2(pid,fid,fname);
+  fstats2.add(nanom2, incl2, excl2);
+
+  //Test error for wrong pid
+  AggregateFuncStats fstats_wrongpid(pid+1,fid,fname);
+  bool err = false;
+  try{
+    AggregateFuncStats fstats_all_cp(fstats_all);
+    fstats_all_cp += fstats_wrongpid;
+  }catch(const std::exception &e){
+    err = true;
+  }
+  ASSERT_EQ(err, true);
+
+  //Test error for wrong fid
+  AggregateFuncStats fstats_wrongfid(pid,fid+1,fname);
+  try{
+    AggregateFuncStats fstats_all_cp(fstats_all);
+    fstats_all_cp += fstats_wrongfid;
+  }catch(const std::exception &e){
+    err = true;
+  }
+  ASSERT_EQ(err, true);
+
+  //Test error for wrong fname
+  AggregateFuncStats fstats_wrongfname(pid,fid+1,fname+"_wrong");
+  try{
+    AggregateFuncStats fstats_all_cp(fstats_all);
+    fstats_all_cp += fstats_wrongfname;
+  }catch(const std::exception &e){
+    err = true;
+  }
+  ASSERT_EQ(err, true);
+  
+  //Test combination
+  AggregateFuncStats comb(fstats1);
+  comb += fstats2;
+
+  EXPECT_NEAR(comb.get_func_anomaly().mean(), fstats_all.get_func_anomaly().mean(), 1e-8);
+  EXPECT_NEAR(comb.get_func_anomaly().stddev(), fstats_all.get_func_anomaly().stddev(), 1e-8);
+  EXPECT_NEAR(comb.get_inclusive().mean(), fstats_all.get_inclusive().mean(), 1e-8);
+  EXPECT_NEAR(comb.get_inclusive().stddev(), fstats_all.get_inclusive().stddev(), 1e-8);
+  EXPECT_NEAR(comb.get_exclusive().mean(), fstats_all.get_exclusive().mean(), 1e-8);
+  EXPECT_NEAR(comb.get_exclusive().stddev(), fstats_all.get_exclusive().stddev(), 1e-8); 
+}
+
+
+
+
+
+
 
 

@@ -1,4 +1,5 @@
 #include "chimbuko/pserver/AggregateFuncStats.hpp"
+#include "chimbuko/util/error.hpp"
 
 using namespace chimbuko;
 
@@ -23,4 +24,12 @@ nlohmann::json AggregateFuncStats::get_json() const{
   object["inclusive"] = m_inclusive.get_json();
   object["exclusive"] = m_exclusive.get_json();
   return object;
+}
+
+AggregateFuncStats & AggregateFuncStats::operator+=(const AggregateFuncStats &r){
+  if(r.m_pid != m_pid || r.m_fid != m_fid || r.m_func != m_func) fatal_error("Instances should refer to the same process/function!");
+  m_func_anomaly += r.m_func_anomaly;
+  m_inclusive+= r.m_inclusive;
+  m_exclusive+= r.m_exclusive;
+  return *this;
 }

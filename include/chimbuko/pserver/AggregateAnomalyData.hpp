@@ -85,7 +85,13 @@ namespace chimbuko {
      */
     bool operator!=(const AggregateAnomalyData &r) const{ return !( *this == r ); }
 
-
+    /**
+     * @brief Combine two AggregateAnomalyData instances
+     *
+     * Note that the m_data lists are simply concatenated and so may be in a different order than if all the data were collected in a single AggregateAnomalyData instance. However we guarantee no ordering in the list anyway; the data are simply appended as an when it comes in from the clients,
+     */
+    AggregateAnomalyData & operator+=(const AggregateAnomalyData &r);    
+    
   private:
     mutable std::mutex               m_mutex;
     RunStats                 m_stats; /** Statistics on the number of anomalies collected per io step since start of run as well as count of total anomalies*/

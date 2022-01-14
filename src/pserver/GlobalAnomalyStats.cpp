@@ -6,6 +6,32 @@
 
 using namespace chimbuko;
 
+GlobalAnomalyStats::GlobalAnomalyStats(const GlobalAnomalyStats & r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    m_anomaly_stats = r.m_anomaly_stats;
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    m_funcstats = r.m_funcstats;
+  }
+}
+
+GlobalAnomalyStats & GlobalAnomalyStats::operator+=(const GlobalAnomalyStats & r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    std::lock_guard<std::mutex> __(m_mutex_anom);
+    unordered_map_plus_equals(m_anomaly_stats, r.m_anomaly_stats);
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    std::lock_guard<std::mutex> __(m_mutex_func);
+    unordered_map_plus_equals(m_funcstats, r.m_funcstats);
+  }
+  return *this;
+}
+
+
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
   auto pit = m_anomaly_stats.find(anom.get_app());

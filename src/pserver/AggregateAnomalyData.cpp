@@ -1,5 +1,6 @@
 #include "chimbuko/pserver/AggregateAnomalyData.hpp"
 #include "chimbuko/util/string.hpp"
+#include "chimbuko/util/error.hpp"
 #include <sstream>
 
 using namespace chimbuko;
@@ -122,4 +123,11 @@ nlohmann::json AggregateAnomalyData::get_json_and_flush(int pid, int rid){
     delete stats.second;
   }
   return object;
+}
+
+AggregateAnomalyData & AggregateAnomalyData::operator+=(const AggregateAnomalyData &r){
+  m_stats += r.m_stats;
+  if(m_data == nullptr || r.m_data == nullptr) fatal_error("List pointers should not be null!");
+  m_data->insert(m_data->end(), r.m_data->begin(), r.m_data->end());
+  return *this;
 }
