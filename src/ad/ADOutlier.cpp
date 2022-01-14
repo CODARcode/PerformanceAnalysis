@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/distributions/empirical_cumulative_distribution_function.hpp>
+#include <limits>
 
 using namespace chimbuko;
 
@@ -323,12 +324,15 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //probability of runtime counts
   std::vector<double> prob_counts = std::vector<double>(hist.counts().size(), 0.0);
   double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
+  int lowest_count  = std::numeric_limits<int>::max();
 
   for(int i=0; i < hist.counts().size(); i++){
     int count = hist.counts().at(i);
     double p = count / tot_runtimes;
     prob_counts.at(i) += p;
-
+    
+    if (count < lowest_count)
+      lowest_count = count;
   }
 
   //Create HBOS score vector
@@ -371,6 +375,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
   const int num_bins = hist.counts().size();
   verboseStream << "Bin width: " << bin_width << std::endl;
+
+  //FOR DEBUG ONLY print histogram
+  for(int i=0; i<hist.bin_edges().size(); i++){
+     verboseStream << "Bin_edge("<< i << "): " << hist.bin_edges()[i] << std::endl;
+     if (i < hist.counts().size())
+        verboseStream << ", Counts: " << hist.counts()[i] << std::endl;
+  }
 
   int top_out = 0;
   for (auto itt : data) {
@@ -451,6 +462,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       }
 
+      //handle when ad_score = 0
+      if (ad_score <= 0) {
+
+	ad_score = -1 * log2((lowest_count / tot_runtimes) + m_alpha); 
+
+      }
+
+
       itt->set_outlier_score(ad_score);
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
 
@@ -461,7 +480,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
           verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
           outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
           n_outliers += 1;
-
+	  
+	  //FOR DEBUG ONLY 
+	  verboseStream << "Runtime: " << runtime_i << std::endl;
       }
     //}
       else {
@@ -627,6 +648,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   //probability of runtime counts
   //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
   double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
+  int lowest_count = std::numeric_limits<int>::max();
 
   if (tot_runtimes <= 0 ) {
 	  return n_outliers;
@@ -646,6 +668,9 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
       verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
       recon_idx++;
     }
+
+    if (count < lowest_count)
+      lowest_count = count;
   }
 
 
@@ -744,6 +769,10 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 	verboseStream << "AD: COPOD: runtime Index" << std::endl;
         continue;
       }
+
+      //handle when ad_score = 0
+      if (ad_score <= 0)
+        ad_score = -1 * log2((lowest_count / tot_runtimes) + m_alpha);
 
       itt->set_outlier_score(ad_score);
       verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;

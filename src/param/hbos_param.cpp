@@ -184,6 +184,11 @@ using namespace chimbuko;
       */
       min_runtime = MIN(l.bin_edges().at(0), g.bin_edges().at(0));
       max_runtime = MAX(l.bin_edges().at(l.bin_edges().size()-1), g.bin_edges().at(g.bin_edges().size()-1));
+      
+      //FOR DEBUG ONLY 
+
+      verboseStream << "l.bin_edges(0): " << l.bin_edges().at(0) << ", g.bin_edges(0): " << g.bin_edges().at(0) << std::endl;
+      verboseStream << "l.bin_edges(last): " << l.bin_edges().at(l.bin_edges().size()-1) << ", g.bin_edges(last): " << g.bin_edges().at(g.bin_edges().size()-1) << std::endl;
 
      std::vector<double> comb_binedges;
      std::vector<int> comb_counts;
@@ -422,8 +427,9 @@ using namespace chimbuko;
 
  int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
  {
-
-   std::vector<double> r_times(runtimes.size()); // = runtimes;
+   const int tot_size = runtimes.size() + std::accumulate(g.counts().begin(), g.counts().end(), 0);   
+   std::vector<double> r_times(tot_size); // = runtimes;
+   int idx = 0;
    verboseStream << "Number of runtime events during mergin: " << runtimes.size() << std::endl;
    verboseStream << "total number of 'g' bin_edges: " << g.bin_edges().size() << std::endl;
 
@@ -435,9 +441,13 @@ using namespace chimbuko;
    for (int i = 0; i < g.bin_edges().size() - 1; i++) {
      verboseStream << " Bin counts in " << i << ": " << g.counts()[i] << std::endl;
      for(int j = 0; j < g.counts().at(i); j++){ 
-       r_times.push_back(g.bin_edges().at(i));
+       //r_times.push_back(g.bin_edges().at(i));
+       r_times.at(idx++) = g.bin_edges().at(i);
      }
    }
+
+   for (int i = 0; i< runtimes.size(); i++)
+     r_times.at(idx++) = runtimes.at(i);
 
    m_histogram.glob_threshold = g.get_threshold();
    //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
