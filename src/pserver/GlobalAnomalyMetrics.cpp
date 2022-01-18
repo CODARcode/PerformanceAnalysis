@@ -17,6 +17,16 @@ GlobalAnomalyMetrics & GlobalAnomalyMetrics::operator+=(const GlobalAnomalyMetri
   std::lock_guard<std::mutex> __(r.m_mutex);
   unordered_map_plus_equals(m_anomaly_metrics_full, r.m_anomaly_metrics_full);
   unordered_map_plus_equals(m_anomaly_metrics_recent, r.m_anomaly_metrics_recent);
+  return *this;
+}
+
+void GlobalAnomalyMetrics::merge_and_flush(GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_anomaly_metrics_full, r.m_anomaly_metrics_full);
+  unordered_map_plus_equals(m_anomaly_metrics_recent, r.m_anomaly_metrics_recent);
+  
+  r.m_anomaly_metrics_recent.clear();
 }
 
 void GlobalAnomalyMetrics::add(GlobalAnomalyMetrics::AnomalyMetricsMapType &into, const ADLocalAnomalyMetrics& data){

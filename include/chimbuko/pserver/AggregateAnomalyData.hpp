@@ -33,48 +33,31 @@ namespace chimbuko {
     void add(const AnomalyData& d, bool bStore = true);
 
     /**
-     * @brief Get copy of the current statistics and the pointer 
-     *        to data list.
-     * 
-     * WARN: Once this function is called, the pointer to the 
-     * current data list is returned and new (empty) data list is
-     * allocated. So, it is callee's responsibility to free the 
-     * allocated memory.
-     * 
-     * @return std::pair<RunStats, std::list<AnomalyData>*> 
+     * @brief Get the current statistics
      */
-    std::pair<RunStats, std::list<AnomalyData>*> get();
-
-    /**
-     * @brief Return a copy of current statistics
-     *
-     * Note: this function does not return a reference because the internal state is constantly changing. 
-     *       Here we temporarily lock the state while generating the copy
-     */
-    RunStats get_stats() const;
+    const RunStats & get_stats() const{ return m_stats; }
 
     /**
      * @brief Get the pointer to the data list
-     * 
-     * WARN: As it returns the pointer to the data list,
-     * new data can be added to the list in other threads. 
-     * Also, it shouldn't be freed by the callee.
-     * 
-     * @return std::list<AnomalyData>* 
      */
-    std::list<AnomalyData>* get_data() const;
+    std::list<AnomalyData> const* get_data() const{ return m_data; }
 
     /**
-     * @brief Get the current statistics in JSON format and flush the list of AnomalyData collected since previous call to get()
+     * @brief Get the current statistics in JSON format
      * @param pid The program index
      * @param rid The rank index
      */
-    nlohmann::json get_json_and_flush(int pid, int rid);
+    nlohmann::json get_json(int pid, int rid) const;
 
     /**
      * @brief Return the number of JSON-formatted strings of serialized incoming AnomalyData since the last flush
      */
     size_t get_n_data() const;
+
+    /**
+     * @brief Flush the list of AnomalyData
+     */
+    void flush();
 
     /**
      * @brief Comparison operator
@@ -93,7 +76,6 @@ namespace chimbuko {
     AggregateAnomalyData & operator+=(const AggregateAnomalyData &r);    
     
   private:
-    mutable std::mutex               m_mutex;
     RunStats                 m_stats; /** Statistics on the number of anomalies collected per io step since start of run as well as count of total anomalies*/
     std::list<AnomalyData> * m_data; /**< A list of AnomalyData instances captured since last flush*/
   };

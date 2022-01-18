@@ -31,6 +31,25 @@ GlobalAnomalyStats & GlobalAnomalyStats::operator+=(const GlobalAnomalyStats & r
   return *this;
 }
 
+void GlobalAnomalyStats::merge_and_flush(GlobalAnomalyStats &r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    std::lock_guard<std::mutex> __(m_mutex_anom);
+    unordered_map_plus_equals(m_anomaly_stats, r.m_anomaly_stats);
+    
+    for(auto &p: r.m_anomaly_stats){
+      for(auto &r: p.second){
+	r.second.flush();
+      }
+    }
+
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    std::lock_guard<std::mutex> __(m_mutex_func);
+    unordered_map_plus_equals(m_funcstats, r.m_funcstats);
+  }
+}
 
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
@@ -103,7 +122,8 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
       for(auto & rp: pp.second){
 	unsigned long rid = rp.first; //rank
 	
-	nlohmann::json object = rp.second.get_json_and_flush(pid,rid);
+	nlohmann::json object = rp.second.get_json(pid,rid);
+	rp.second.flush(); //flush the data
 	if(!object.empty())
 	  jsonObjects.push_back(std::move(object));
       }

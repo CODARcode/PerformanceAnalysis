@@ -383,6 +383,15 @@ TEST(GlobalAnomalyMetricsTest, TestCombination){
     ASSERT_NE(fit1_comb, rit1_comb->second.end());
 
     ASSERT_EQ(fit1_comb->second, fit1_all->second);
+
+
+    //Test merge_and_flush
+    GlobalAnomalyMetrics g2_cp(g2);
+    GlobalAnomalyMetrics gcomb2(g1);
+    gcomb2.merge_and_flush(g2_cp);
+    EXPECT_EQ(gcomb2, gcomb);
+    EXPECT_NE(g2_cp.getToDateMetrics().size(), 0);
+    EXPECT_EQ(g2_cp.getRecentMetrics().size(), 0);
   }
 
 

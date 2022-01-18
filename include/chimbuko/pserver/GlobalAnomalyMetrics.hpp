@@ -79,6 +79,13 @@ namespace chimbuko{
      * Thread safe
      */
     GlobalAnomalyMetrics & operator+=(const GlobalAnomalyMetrics &r);
+    
+    /**
+     * @brief Merge the input GlobalAnomalyMetrics and then flush it
+     *
+     * Thread safe
+     */   
+    void merge_and_flush(GlobalAnomalyMetrics &r);
 
   private:
 

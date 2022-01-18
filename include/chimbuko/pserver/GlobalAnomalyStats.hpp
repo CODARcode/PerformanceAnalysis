@@ -152,6 +152,14 @@ namespace chimbuko{
      */
     GlobalAnomalyStats & operator+=(const GlobalAnomalyStats & r);
 
+    /**
+     * @brief Merge the input GlobalAnomalyStats and then flush it
+     *
+     * Thread safe
+     */   
+    void merge_and_flush(GlobalAnomalyStats &r);
+
+
   protected:    
     std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, AggregateFuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/

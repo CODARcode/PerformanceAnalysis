@@ -305,6 +305,14 @@ TEST(TestGlobalAnomalyStats, Combine){
     EXPECT_EQ( a_comb_rank1.get_data()->size(), 2 );
     EXPECT_EQ( a_comb_rank1.get_data()->front(), anom_rank1_1 );
     EXPECT_EQ( a_comb_rank1.get_data()->back(), anom_rank1_2 );
+
+    //Check merge_and_flush
+    GlobalAnomalyStats a_comb2(a1);
+    GlobalAnomalyStats a2_cp(a2);
+    a_comb2.merge_and_flush(a2_cp);
+    EXPECT_EQ(a_comb2, a_comb);
+    const AggregateAnomalyData & a2_cp_rank1 = a2_cp.get_anomaly_stat_container(pid, rank1);
+    EXPECT_EQ(a2_cp_rank1.get_data()->size(), 0);
   }
 
   

@@ -169,6 +169,7 @@ TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
     std::vector<std::string> anomaly_data;
     std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData*> > anomaly_stats, c_anomaly_stats;
     std::unordered_map<int, std::unordered_map<unsigned long, int> > n_anomaly_data;
+    std::mutex mtx;
 
     // generate pseudo data
     for (int app_id = 0; app_id < (int)N_RANKS.size(); app_id++)
@@ -206,8 +207,9 @@ TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
     std::vector<threadPool::TaskFuture<void>> v;
     for (int i = 0; i < (int)anomaly_data.size(); ++i)
     {
-        v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, i](){
+      v.push_back(tpool.sumit([&anomaly_data, &anomaly_stats, &mtx, i](){
 	      AnomalyData d;
+	      std::lock_guard<std::mutex> _(mtx);
 	      d.net_deserialize(anomaly_data[i]);
 	      anomaly_stats[d.get_app()][d.get_rank()]->add(d);
         }));
@@ -222,13 +224,12 @@ TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
       for(auto &rp : pp.second){
 	unsigned long rid = rp.first;
 
-        auto stats = rp.second->get();
+	const RunStats &stats = rp.second->get_stats();
         RunStats c_stats = c_anomaly_stats[pid][rid]->get_stats();
         
-        EXPECT_EQ(c_stats, stats.first);
-        EXPECT_EQ(n_anomaly_data[pid][rid], stats.second->size());
+        EXPECT_EQ(c_stats, stats);
+        EXPECT_EQ(n_anomaly_data[pid][rid], rp.second->get_data()->size());
         delete rp.second;
-        delete stats.second;
         delete c_anomaly_stats[pid][rid];
       }
     }
