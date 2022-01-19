@@ -48,6 +48,7 @@ GlobalCounterStats & GlobalCounterStats::operator+=(const GlobalCounterStats &r)
   std::lock_guard<std::mutex> _(m_mutex);
   std::lock_guard<std::mutex> __(r.m_mutex);
   unordered_map_plus_equals(m_counter_stats, r.m_counter_stats);
+  return *this;
 }
 
 void NetPayloadUpdateCounterStats::action(Message &response, const Message &message){
