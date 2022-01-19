@@ -44,6 +44,12 @@ nlohmann::json GlobalCounterStats::get_json_state() const{
   return jsonObjects;
 }
 
+GlobalCounterStats & GlobalCounterStats::operator+=(const GlobalCounterStats &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_counter_stats, r.m_counter_stats);
+}
+
 void NetPayloadUpdateCounterStats::action(Message &response, const Message &message){
   check(message);
   if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
@@ -60,8 +66,13 @@ void PSstatSenderGlobalCounterStatsPayload::add_json(nlohmann::json &into) const
     into["counter_stats"] = std::move(stats);
 }
 
-GlobalCounterStats & GlobalCounterStats::operator+=(const GlobalCounterStats &r){
-  std::lock_guard<std::mutex> _(m_mutex);
-  std::lock_guard<std::mutex> __(r.m_mutex);
-  unordered_map_plus_equals(m_counter_stats, r.m_counter_stats);
+void PSstatSenderGlobalCounterStatsCombinePayload::add_json(nlohmann::json &into) const{ 
+  GlobalCounterStats comb;
+  for(int i=0;i<m_stats.size();i++)
+    comb += m_stats[i];
+
+  nlohmann::json stats = comb.get_json_state(); //a JSON array
+  if(stats.size())
+    into["counter_stats"] = std::move(stats);
 }
+

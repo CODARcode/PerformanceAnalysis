@@ -122,9 +122,9 @@ int main (int argc, char ** argv){
     // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
     // exit(EXIT_FAILURE);
   }
-  GlobalAnomalyStats global_func_stats; //global anomaly statistics
-  GlobalCounterStats global_counter_stats; //global counter statistics
-  GlobalAnomalyMetrics global_anom_metrics; //global anomaly metrics
+  std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
+  std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
+  std::vector<GlobalAnomalyMetrics> global_anom_metrics(args.nt); //global anomaly metrics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
 
   //Optionally load previously-computed AD algorithm statistics
@@ -188,7 +188,7 @@ int main (int argc, char ** argv){
     for(int i=0;i<args.nt;i++){
       net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params),i);
       net.add_payload(new NetPayloadGetParams(param),i);
-      net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics),i);
+      net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
       net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
       net.add_payload(new NetPayloadPing,i);
     }
@@ -196,9 +196,9 @@ int main (int argc, char ** argv){
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsPayload(&global_anom_metrics));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsCombinePayload(global_func_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalCounterStatsCombinePayload(global_counter_stats));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsCombinePayload(global_anom_metrics));
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully
@@ -220,8 +220,11 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
     if(provdb_client.isConnected() || args.prov_outputpath.size() > 0){
-      nlohmann::json global_func_stats_j = global_func_stats.collect_func_data();
-      nlohmann::json global_counter_stats_j = global_counter_stats.get_json_state();
+      GlobalAnomalyStats tmp_fstats; for(int i=0;i<args.nt;i++) tmp_fstats += global_func_stats[i];
+      nlohmann::json global_func_stats_j = tmp_fstats.collect_func_data();
+
+      GlobalCounterStats tmp_cstats; for(int i=0;i<args.nt;i++) tmp_cstats += global_counter_stats[i];
+      nlohmann::json global_counter_stats_j = tmp_cstats.get_json_state();
 
       if(provdb_client.isConnected()){
 	progressStream << "Pserver: sending final statistics to provDB" << std::endl;

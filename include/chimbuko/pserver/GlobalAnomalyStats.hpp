@@ -191,6 +191,17 @@ namespace chimbuko{
     void add_json(nlohmann::json &into) const override;
   };
 
+  /**
+   * @brief Payload object for communicating anomaly data pserver->viz that aggregates multiple instances of GlobalAnomalyStats and sends the aggregate data
+   */ 
+  class PSstatSenderGlobalAnomalyStatsCombinePayload: public PSstatSenderPayloadBase{
+  private:    
+    std::vector<GlobalAnomalyStats> &m_stats;
+  public:
+    PSstatSenderGlobalAnomalyStatsCombinePayload(std::vector<GlobalAnomalyStats> &stats): m_stats(stats){}
+    void add_json(nlohmann::json &into) const override;
+  };
+
 
 
 };

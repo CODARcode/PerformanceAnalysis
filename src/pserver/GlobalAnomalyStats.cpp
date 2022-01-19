@@ -199,3 +199,13 @@ void PSstatSenderGlobalAnomalyStatsPayload::add_json(nlohmann::json &into) const
   if(stats.size() > 0)
     into["anomaly_stats"] = std::move(stats);
 }
+
+void PSstatSenderGlobalAnomalyStatsCombinePayload::add_json(nlohmann::json &into) const{ 
+  GlobalAnomalyStats comb;
+  for(int i=0;i<m_stats.size();i++)
+    comb.merge_and_flush(m_stats[i]);
+
+  nlohmann::json stats = comb.collect();
+  if(stats.size() > 0)
+    into["anomaly_stats"] = std::move(stats);
+}
