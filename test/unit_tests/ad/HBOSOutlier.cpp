@@ -226,10 +226,12 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-      //ZMQNet ps;
-      ps.add_payload(new NetPayloadUpdateParams(&global_params_ps));
-      ps.add_payload(new NetPayloadGetParams(&global_params_ps));
-      ps.init(&argc, &argv, 4); //4 workers
+      int nt = 4; //4 workers
+      for(int i=0;i<nt;i++){
+	ps.add_payload(new NetPayloadUpdateParams(&global_params_ps),i);
+	ps.add_payload(new NetPayloadGetParams(&global_params_ps),i);
+      }
+      ps.init(&argc, &argv, nt);
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
       barrier2.wait();

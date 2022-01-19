@@ -116,7 +116,7 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  ParamInterface * param = ParamInterface::set_AdParam(args.ad); //"hbos"); //sstd"); //HbosParam param; //global collection of parameters used to identify anomalies
+  ParamInterface * param = ParamInterface::set_AdParam(args.ad); //global collection of parameters used to identify anomalies
   if (param == nullptr) {
     fatal_error("INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos.");
     // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
@@ -185,11 +185,13 @@ int main (int argc, char ** argv){
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
     }
 
-    net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params));
-    net.add_payload(new NetPayloadGetParams(param));
-    net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics));
-    net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map));
-    net.add_payload(new NetPayloadPing);
+    for(int i=0;i<args.nt;i++){
+      net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params),i);
+      net.add_payload(new NetPayloadGetParams(param),i);
+      net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats, &global_counter_stats, &global_anom_metrics),i);
+      net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
+      net.add_payload(new NetPayloadPing,i);
+    }
 
     net.init(nullptr, nullptr, args.nt);
 

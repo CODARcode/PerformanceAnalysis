@@ -1,3 +1,4 @@
+#include<chimbuko_config.h>
 #ifdef _USE_ZMQNET
 
 #include "gtest/gtest.h"
@@ -50,5 +51,48 @@ TEST(TestZMQNet, StopsWhenAsked){
   net.finalize();
 }
 
+class NetPayloadPing2: public NetPayloadBase{
+public:
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_GET; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    response.set_msg(std::string("pong2"), false);
+  };
+};
+
+
+TEST(TestZMQNet, ErrorIfMissingPayloads){
+
+  int nt = 2;
+  //Check for error if not all threads have a work item
+  {
+    ZMQNet net;
+    net.add_payload(new NetPayloadPing, 0);
+    bool err = false;
+    try{
+      net.init(nullptr,nullptr,nt);
+    }catch(const std::exception &e){
+      std::cout << "Caught expected error: " << e.what() << std::endl;
+      err = true;
+    }
+    ASSERT_EQ(err,true);
+  }
+  //Check that the check that all threads have payloads mapped to the same type/kind works
+  {
+    ZMQNet net;
+    net.add_payload(new NetPayloadPing, 0);
+    net.add_payload(new NetPayloadPing, 1);
+    net.add_payload(new NetPayloadPing2, 1);
+    bool err = false;
+    try{
+      net.init(nullptr,nullptr,nt);
+    }catch(const std::exception &e){
+      std::cout << "Caught expected error: " << e.what() << std::endl;
+      err = true;
+    }
+    ASSERT_EQ(err,true);
+  }
+}
 
 #endif

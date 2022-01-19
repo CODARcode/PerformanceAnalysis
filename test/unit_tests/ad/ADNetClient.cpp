@@ -148,15 +148,16 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-  		       ZMQNet ps;
-		       ps.add_payload(new NetPayloadBounceback);
-  		       ps.init(&argc, &argv, 4); //4 workers
-  		       ps.run(".");
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       barrier2.wait();
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.finalize();
-  		     });
+      int nt = 4;  //4 workers
+      ZMQNet ps;
+      for(int i=0;i<4;i++) ps.add_payload(new NetPayloadBounceback,i);
+      ps.init(&argc, &argv, nt);
+      ps.run(".");
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      barrier2.wait();
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   bool success = true;
@@ -230,16 +231,17 @@ TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
-  		       ZMQNet ps;
-		       ps.add_payload(new NetPayloadBouncebackDelayed);
-  		       ps.init(&argc, &argv, 4); //4 workers
-		       ps.setPort(port);
-  		       ps.run(".");
-		       std::cout << "PS thread waiting at barrier" << std::endl;
-		       barrier2.wait();
-		       std::cout << "PS thread terminating connection" << std::endl;
-		       ps.finalize();
-  		     });
+      int nt = 4; //4 workers
+      ZMQNet ps;
+      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadBouncebackDelayed,i);
+      ps.init(&argc, &argv, 4); 
+      ps.setPort(port);
+      ps.run(".");
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      barrier2.wait();
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   bool success = true;
@@ -357,6 +359,98 @@ TEST(ADNetClient, TestRemoteStop){
 }
 
 
+class NetPayloadGetValue: public NetPayloadBase{
+  int val;
+public:
+  NetPayloadGetValue(int val): val(val){}
+
+  MessageKind kind() const override{ return MessageKind::CMD; }
+  MessageType type() const override{ return MessageType::REQ_ECHO; }
+  void action(Message &response, const Message &message) override{
+    check(message);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    response.set_msg(std::to_string(val), false);
+  };
+};
+
+
+TEST(ADNetClientTestConnectPS, SendRecvThreadZMQnet){  
+  //Test a comms pattern where each worker thread reads from a separate object
+#ifdef _USE_MPINET
+#warning "Testing with MPINET not available"
+#elif defined(_USE_ZMQNET)
+  std::cout << "Using ZMQ net" << std::endl;
+
+  Barrier barrier2(2);
+
+  std::string sinterface = "tcp://*:5559";
+  std::string sname = "tcp://localhost:5559";
+
+  int argc; char** argv = nullptr;
+  std::cout << "Initializing PS thread" << std::endl;
+  std::thread ps_thr([&]{
+      int nt = 4;  //4 workers
+      int vals[nt] = {11,22,33,44};
+
+      ZMQNet ps;
+      for(int i=0;i<4;i++) ps.add_payload(new NetPayloadGetValue(vals[i]),i);
+      ps.init(&argc, &argv, nt);
+      ps.run(".");
+      std::cout << "PS thread waiting at barrier" << std::endl;
+      barrier2.wait();
+      std::cout << "PS thread terminating connection" << std::endl;
+      ps.finalize();
+    });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  bool success = true;
+  std::set<std::string> responses;
+
+  std::cout << "Initializing AD thread" << std::endl;
+  std::thread out_thr([&]{
+      try{
+	ADZMQNetClient net_client;
+	net_client.connect_ps(0, 0, sname);
+
+	for(int i=0;i<4;i++){
+	  Message msg;
+	  msg.set_info(0,0,REQ_ECHO,CMD);
+	  msg.set_msg("Hello!!");
+
+	  try{
+	    net_client.send_and_receive(msg, msg);
+	  }catch(std::exception &e){
+	    std::cout << "Got unexpected error: " << e.what();
+	    success = false;
+	  }
+	  if(success) responses.insert(msg.buf());
+	  else break;
+	}
+
+	std::cout << "AD thread terminating connection" << std::endl;
+	net_client.disconnect_ps();
+	std::cout << "AD thread waiting at barrier" << std::endl;
+	barrier2.wait();
+      }catch(const std::exception &e){
+	std::cerr << e.what() << std::endl;
+      }
+      //barrier2.wait();
+    });
+  
+  ps_thr.join();
+  out_thr.join();
+  
+  EXPECT_EQ(success, true);
+  EXPECT_EQ(responses.count("11"),1);
+  EXPECT_EQ(responses.count("22"),1);
+  EXPECT_EQ(responses.count("33"),1);
+  EXPECT_EQ(responses.count("44"),1);
+
+#else
+#error "Requires compiling with MPI or ZMQ net"
+#endif
+
+}
 
 
 

@@ -49,15 +49,18 @@ TEST_F(NetTest, NetSendRecvMultiThreadSingleClientTest)
 #endif
 
     SstdParam param;
-    net.add_payload(new NetPayloadUpdateParams(&param));
-    net.add_payload(new NetPayloadGetParams(&param));
+    int nt = 10;
+    for(int i=0;i<nt;i++){
+      net.add_payload(new NetPayloadUpdateParams(&param),i);
+      net.add_payload(new NetPayloadGetParams(&param),i);
+    }
 
     std::cout << "NetSendRecvMultiThreadSingleClientTest payloads are:" << std::endl;
     net.list_payloads(std::cout);
 
     //net.set_parameter( dynamic_cast<ParamInterface*>(&param) );
 
-    net.init(nullptr, nullptr, 10);
+    net.init(nullptr, nullptr, nt);
     net.run();
 
     const int n_clients = 1;
@@ -89,9 +92,12 @@ TEST_F(NetTest, NetSendRecvMultiThreadMultiClientTest)
 #endif
 
     SstdParam param;
-    net.add_payload(new NetPayloadUpdateParams(&param));
-    net.add_payload(new NetPayloadGetParams(&param));
-    net.init(nullptr, nullptr, 10);
+    int nt = 10;
+    for(int i=0;i<nt;i++){
+      net.add_payload(new NetPayloadUpdateParams(&param),i);
+      net.add_payload(new NetPayloadGetParams(&param),i);
+    }
+    net.init(nullptr, nullptr, nt);
     net.run();
 
     const int n_clients = 10;
@@ -159,10 +165,13 @@ TEST_F(NetTest, NetSendRecvAnomalyStatsTest)
 
     SstdParam param;
     GlobalAnomalyStats glob_stats;
-    net.add_payload(new NetPayloadUpdateParams(&param));
-    net.add_payload(new NetPayloadGetParams(&param));
-    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
-    net.init(nullptr, nullptr, 10);
+    int nt = 10;
+    for(int i=0;i<nt;i++){
+      net.add_payload(new NetPayloadUpdateParams(&param),i);
+      net.add_payload(new NetPayloadGetParams(&param),i);
+      net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats),i);
+    }
+    net.init(nullptr, nullptr, nt);
     net.run();
 
     std::cout << "check results" << std::endl;
@@ -216,11 +225,13 @@ TEST_F(NetTest, NetStatSenderTest)
 
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&glob_stats));
     stat_sender.run_stat_sender("http://0.0.0.0:5000/post");
-
-    net.add_payload(new NetPayloadUpdateParams(&param));
-    net.add_payload(new NetPayloadGetParams(&param));
-    net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats));
-    net.init(nullptr, nullptr, 10);
+    int nt = 10;
+    for(int i=0;i<nt;i++){
+      net.add_payload(new NetPayloadUpdateParams(&param),i);
+      net.add_payload(new NetPayloadGetParams(&param),i);
+      net.add_payload(new NetPayloadUpdateAnomalyStats(&glob_stats),i);
+    }
+    net.init(nullptr, nullptr, nt);
     net.run();
 
     // at this point, all pseudo AD modules finished sending 

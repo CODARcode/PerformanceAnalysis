@@ -7,6 +7,7 @@
 #include "chimbuko/util/error.hpp"
 #include <iostream>
 #include <string.h>
+#include <set>
 
 #ifdef _PERF_METRIC
 #include <chrono>
@@ -86,11 +87,7 @@ public:
 
 
 ZMQNet::ZMQNet() : m_context(nullptr), m_n_requests(0), m_max_pollcyc_msg(10), m_io_threads(1), m_clients(0), m_client_has_connected(false), m_port(5559), m_status(ZMQNet::Status::NotStarted), m_autoshutdown(true), m_poll_timeout(-1), m_remote_stop_cmd(false)
-{
-  add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex));
-  add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex));
-  add_payload(new NetPayloadClientRemoteStop(m_remote_stop_cmd, m_mutex));
-}
+{}
 
 ZMQNet::~ZMQNet()
 {
@@ -102,9 +99,34 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
     if(zmq_ctx_set(m_context, ZMQ_IO_THREADS, m_io_threads) != 0)
       fatal_error("ZMQNet::init couldn't set number of io threads to requested amount");
 
-    //Check worker_idx = 0 for all payloads
-    for(auto const &e : m_payloads)
-      if(e.first != 0) fatal_error("ZMQNet all payloads must have worker_idx=0");
+    //Because ZMQNet workers are interchangeable, added a check to ensure all workers have a work item associated with a given message kind/type
+    std::set<std::pair<MessageKind, MessageType> > mtypes;
+    for(auto const &t: m_payloads)
+      for(auto const &k : t.second)
+	for(auto const &t: k.second)
+	  mtypes.insert(std::pair<MessageKind, MessageType>(k.first,t.first));
+    if(mtypes.size()){ //only do the check if work items have actually been assigned
+      for(int t=0; t<nt; t++){
+	auto thrit = m_payloads.find(t);
+	if(thrit == m_payloads.end()) fatal_error(stringize("Thread %d does not have any payloads!", t));
+	auto const &tloads = thrit->second;
+
+	for(auto const &kt: mtypes){
+	  verboseStream << "ZMQNet::init checking thread " << t << " payloads for " << toString(kt.first) << "," << toString(kt.second) << std::endl;
+	  auto kit = tloads.find(kt.first);
+	  if(kit == tloads.end()) fatal_error(stringize("Thread %d does not have a payload for message kind %s",t,toString(kt.first).c_str()));
+	  auto tit = kit->second.find(kt.second);
+	  if(tit == kit->second.end()) fatal_error(stringize("Thread %d does not have a payload for message type %s",t,toString(kt.second).c_str()));
+	}
+      }
+    }
+
+    //Add default work to all threads
+    for(int t=0;t<nt;t++){
+      add_payload(new NetPayloadHandShakeWithCount(m_clients, m_client_has_connected, m_mutex),t);
+      add_payload(new NetPayloadClientDisconnectWithCount(m_clients, m_mutex),t);
+      add_payload(new NetPayloadClientRemoteStop(m_remote_stop_cmd, m_mutex),t);
+    }
 
     init_thread_pool(nt);
 }
@@ -177,8 +199,10 @@ void ZMQNet::init_thread_pool(int nt){
   m_perf_thr.resize(nt);
 
   for (int i = 0; i < nt; i++) {
+    auto pit = m_payloads.find(i);
+    if(pit == m_payloads.end()) fatal_error("Could not find work for thread");
     m_threads.push_back(
-			std::thread(&doWork, std::ref(m_context), std::ref(m_payloads.begin()->second), std::ref(m_perf_thr[i]), i )
+			std::thread(&doWork, std::ref(m_context), std::ref(pit->second), std::ref(m_perf_thr[i]), i )
 			);
   }
 }

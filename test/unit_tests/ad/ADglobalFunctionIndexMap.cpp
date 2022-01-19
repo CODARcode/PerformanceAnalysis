@@ -23,10 +23,11 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
+      int nt = 4;  //4 workers
       PSglobalFunctionIndexMap glob_map;
       ZMQNet ps;
-      ps.add_payload(new NetPayloadGlobalFunctionIndexMap(&glob_map));
-      ps.init(&argc, &argv, 4); //4 workers
+      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMap(&glob_map),i);
+      ps.init(&argc, &argv, nt);
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
       barrier2.wait();
@@ -93,10 +94,11 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
+      int nt = 4; //4 workers
       PSglobalFunctionIndexMap glob_map;
       ZMQNet ps;
-      ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map));
-      ps.init(&argc, &argv, 4); //4 workers
+      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map),i);
+      ps.init(&argc, &argv, nt); 
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
       barrier2.wait();
@@ -176,10 +178,11 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
   int argc; char** argv = nullptr;
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
+      int nt = 4;  //4 workers
       PSglobalFunctionIndexMap glob_map;
       ZMQNet ps;
-      ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map));
-      ps.init(&argc, &argv, 4); //4 workers
+      for(int i=0;i<nt; i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map),i);
+      ps.init(&argc, &argv, nt);
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
       barrier2.wait();
