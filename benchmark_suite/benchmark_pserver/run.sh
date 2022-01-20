@@ -18,7 +18,7 @@ echo "Driver is : " $(which driver)
 
 rm -rf chimbuko
 
-use_hpserver=1
+use_hpserver=0
 if (( $use_hpserver == 1 )); then
     echo "Using hpserver"
     SERVICES=./run_services_hpserver.sh
@@ -45,9 +45,11 @@ nanomalies_per_func=1
 cycle_time_ms=1000
 perf_write_freq=5   #cycles
 perf_dir=chimbuko/logs
-benchmark_pattern="ping"   #"ad"
+benchmark_pattern="ad"
+algorithm=${ad_alg}
+hbos_bins=20
 
-client_cmd="$exe ${pserver_addr} -cycles ${cycles} -nfuncs ${nfuncs} -ncounters ${ncounters} -nanomalies_per_func ${nanomalies_per_func} -cycle_time_ms ${cycle_time_ms} -benchmark_pattern ${benchmark_pattern} -perf_write_freq ${perf_write_freq} -perf_dir ${perf_dir} 2>&1 | tee chimbuko/logs/client.log"
+client_cmd="$exe ${pserver_addr} -cycles ${cycles} -nfuncs ${nfuncs} -ncounters ${ncounters} -nanomalies_per_func ${nanomalies_per_func} -cycle_time_ms ${cycle_time_ms} -benchmark_pattern ${benchmark_pattern} -perf_write_freq ${perf_write_freq} -perf_dir ${perf_dir} -algorithm ${algorithm} -hbos_bins ${hbos_bins} 2>&1 | tee chimbuko/logs/client.log"
 #export CHIMBUKO_VERBOSE=1
 
 if (( 1 )); then

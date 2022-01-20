@@ -4,6 +4,8 @@
 #include<chimbuko/ad/utils.hpp>
 #include<chimbuko/util/commandLineParser.hpp>
 #include<chimbuko/param/sstd_param.hpp>
+#include<chimbuko/param/hbos_param.hpp>
+#include<chimbuko/param/copod_param.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/ad/ADLocalFuncStatistics.hpp>
@@ -27,6 +29,8 @@ struct Args{
   int perf_write_freq;
   std::string perf_dir;
   std::string benchmark_pattern;
+  std::string algorithm;
+  int hbos_bins;
 
   Args(){
     cycles = 10;
@@ -38,6 +42,8 @@ struct Args{
     perf_write_freq = 10;
     perf_dir=".";
     benchmark_pattern = "ad";
+    algorithm = "sstd";
+    hbos_bins = 20;
   }
 };
 
@@ -64,7 +70,8 @@ int main(int argc, char **argv){
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
     addOptionalCommandLineArgDefaultHelpString(cmdline, benchmark_pattern); //set the comms pattern: "ad" = like the usual AD client (default),   "ping" = each cycle just send a (blocking)ping
- 
+    addOptionalCommandLineArgDefaultHelpString(cmdline, algorithm); //algorithm, default "sstd"
+    addOptionalCommandLineArgDefaultHelpString(cmdline, hbos_bins); //default 20
 
     if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
       cmdline.help();
@@ -96,12 +103,37 @@ int main(int argc, char **argv){
     net_client.linkPerf(&stats);  
 
     //Set up a params object with the required number of params
-    SstdParam params;
-    for(int i=0;i<args.nfuncs;i++){
-      RunStats &r = params[i];
-      for(int j=0;j<100;j++)
-	r.push(double(j));
+    ParamInterface *params;
+    if(args.algorithm == "sstd"){
+      SstdParam *p = new SstdParam;
+      for(int i=0;i<args.nfuncs;i++){
+	RunStats &r = (*p)[i];
+	for(int j=0;j<100;j++)
+	  r.push(double(j));
+      }
+      params = p;
+    }else if(args.algorithm == "hbos" || args.algorithm == "copod"){
+      Histogram::Data d;
+      d.counts.resize(args.hbos_bins);
+      d.bin_edges.resize(args.hbos_bins+1);
+      for(int i=0;i<args.hbos_bins;i++) d.counts[i] = i;
+      for(int i=0;i<args.hbos_bins+1;i++) d.bin_edges[i] = i;
+      Histogram hd;
+      hd.set_hist_data(d);
+
+      if(args.algorithm == "hbos"){
+	HbosParam *p = new HbosParam;
+	for(int i=0;i<args.nfuncs;i++) (*p)[i] = hd;
+	params = p;
+      }else{
+	CopodParam *p = new CopodParam;
+	for(int i=0;i<args.nfuncs;i++) (*p)[i] = hd;
+	params = p;
+      }
+    }else{
+      fatal_error("Unknown AD algorithm");
     }
+
 
     int nevent = 100;
     if(nevent < args.nanomalies_per_func) nevent = args.nanomalies_per_func;
@@ -143,7 +175,7 @@ int main(int argc, char **argv){
     PerfTimer timer;
 
     //To make the benchmark as lightweight as possible, precompute the messages and send the same each cycle
-    std::string params_msg = params.serialize();
+    std::string params_msg = params->serialize();
 
     int pid = 0;
     int step = 0;
@@ -261,7 +293,9 @@ int main(int argc, char **argv){
     }
     
     stats.write();
+    delete params;
   }
+  
   MPI_Finalize();
   return 0;
 }
