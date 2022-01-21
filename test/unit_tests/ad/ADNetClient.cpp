@@ -390,7 +390,7 @@ TEST(ADNetClientTestConnectPS, SendRecvThreadZMQnet){
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
       int nt = 4;  //4 workers
-      int vals[nt] = {11,22,33,44};
+      int vals[4] = {11,22,33,44};
 
       ZMQNet ps;
       for(int i=0;i<4;i++) ps.add_payload(new NetPayloadGetValue(vals[i]),i);
