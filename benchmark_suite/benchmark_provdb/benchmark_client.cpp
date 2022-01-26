@@ -34,6 +34,7 @@ struct Args{
   bool do_state_dump; //have the provdb record its state every time the perf stats are written (by rank 0)
   int max_outstanding_sends; //if set >0 the benchmark will pause when the number of outstanding asynchronous sends reaches this number until it reaches 0 again
   std::string load_shard_map; //read an explicit map of rank -> shard if ! ""
+  bool run_database_test; //test the database connection before the benchmark
   
   Args(){
     cycles = 10;
@@ -52,8 +53,41 @@ struct Args{
     do_state_dump = false;
     max_outstanding_sends = 0;
     load_shard_map = "";
+    run_database_test = true;
   }
 };
+
+//A test to ensure the client has a working connection to the database
+void databaseTest(ADProvenanceDBclient &client, const int rank){
+  std::string rank_str = std::to_string(rank);
+  std::vector<nlohmann::json> objs(2);
+  objs[0]["hello"] = "world " + rank_str;
+  objs[1]["hello"] = "again " + rank_str;
+
+  OutstandingRequest req;
+    
+  std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+  client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData,&req);
+  assert(req.ids.size() == 2);
+
+  req.wait(); //wait for completion
+    
+  for(int i=0;i<2;i++){    
+    nlohmann::json check;
+    assert( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData) == true );
+    
+    std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+    bool same = check["hello"] ==  (i==0? "world " + rank_str : "again " + rank_str);
+    std::cout << "JSON objects are the same? " << same << std::endl;
+    assert(same);
+  }
+
+  std::cout << "Database test passed on rank " << rank << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
 
 int main(int argc, char **argv){
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
@@ -83,7 +117,7 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, do_state_dump);
   addOptionalCommandLineArgDefaultHelpString(cmdline, max_outstanding_sends);
   addOptionalCommandLineArgDefaultHelpString(cmdline, load_shard_map);
-
+  addOptionalCommandLineArgDefaultHelpString(cmdline, run_database_test);
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
     cmdline.help();
@@ -109,6 +143,8 @@ int main(int argc, char **argv){
   std::cout << "Rank " << rank << " connected successfully to provDB, waiting for barrier sync" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
   std::cout << "Rank " << rank << " synced, proceeding" << std::endl;
+
+  if(args.run_database_test) databaseTest(provdb_client, rank);
   
   provdb_client.linkPerf(&stats);
   
