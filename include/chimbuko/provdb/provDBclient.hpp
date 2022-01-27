@@ -66,6 +66,11 @@ namespace chimbuko{
     size_t getNoutstanding();
 
     ~AnomalousSendManager();
+
+    /**
+     * @brief Get list of outstanding requests. For testing only
+     */
+    std::list<thallium::eventual<void> > & getOutstandingEvents(){ return outstanding; }
   };
 
   /**
@@ -228,6 +233,10 @@ namespace chimbuko{
      */
     size_t getNoutstandingAsyncReqs(){ return anom_send_man.getNoutstanding(); }
     
+    /**
+     * @brief Get the anomalous send manager. Should be used for testing only
+     */
+    AnomalousSendManager & getAnomSendManager(){ return anom_send_man; }
   };
 
 

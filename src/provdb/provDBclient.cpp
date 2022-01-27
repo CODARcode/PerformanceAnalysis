@@ -12,23 +12,20 @@ using namespace chimbuko;
 #define PROVDB_ENABLE_ASYNC
 
 void AnomalousSendManager::purge(){
+  int npurged = 0;
+  verboseStream << "AnomalousSendManager::purge starting purge with " << outstanding.size() << " outstanding requests" << std::endl;
+
   auto it = outstanding.begin();
   while(it != outstanding.end()){
     if(it->test()){
       it->wait();
       it = outstanding.erase(it);
+      npurged++;
     }else{
       ++it;
     }
   }
-
-  int nremaining = outstanding.size();
-  int ncomplete_remaining = 0;
-  for(auto &e: outstanding)
-    if(e.test()) ++ncomplete_remaining;
-  
-  if(ncomplete_remaining > 0)
-    recoverable_error("After purging complete sends from the front of the queue, the queue still contains " + std::to_string(ncomplete_remaining) + "/" + std::to_string(nremaining) + " completed but unremoved ids");
+  verboseStream << "AnomalousSendManager::purge purged " << npurged << " completed requests, " << outstanding.size() <<" outstanding requests remain" << std::endl;
 }
 
 thallium::eventual<void> & AnomalousSendManager::getNewRequest(){
@@ -256,7 +253,7 @@ void provDBclient::sendDataAsync(const nlohmann::json &entry, const yokan::Colle
   thallium::eventual<void> *sreq;
 
   if(req == nullptr){
-    ids = nullptr; //utilize sonata mechanism for anomalous request
+    ids = nullptr;
     sreq = &anom_send_man.getNewRequest();
   }else{
     req->ids.resize(1);
@@ -267,7 +264,7 @@ void provDBclient::sendDataAsync(const nlohmann::json &entry, const yokan::Colle
   yokan::Collection const* coll_ptr = &coll;
   std::string record = entry.dump();
 
-  thallium::xstream::self().make_thread([ids, sreq, coll_ptr, record]() {
+  ADProvenanceDBengine::getAsyncXstream().make_thread([ids, sreq, coll_ptr, record]() {
       yk_id_t id = coll_ptr->store(record.data(), record.size());
       if(ids != nullptr) *ids = id;
       sreq->set_value();
@@ -288,7 +285,7 @@ void provDBclient::sendMultipleDataAsync(const std::vector<std::string> &entries
   thallium::eventual<void> *sreq;
 
   if(req == nullptr){
-    ids = nullptr; //utilize sonata mechanism for anomalous request
+    ids = nullptr;
     ftimer.start();
     sreq = &anom_send_man.getNewRequest();
     if(m_stats) m_stats->add(m_stats_prefix+"sendmulti_async_getnewreq_ms", ftimer.elapsed_ms());
@@ -300,7 +297,7 @@ void provDBclient::sendMultipleDataAsync(const std::vector<std::string> &entries
 
   yokan::Collection const* coll_ptr = &coll;
 
-  thallium::xstream::self().make_thread([ids, sreq, coll_ptr, entries, size]() {
+  ADProvenanceDBengine::getAsyncXstream().make_thread([ids, sreq, coll_ptr, entries, size]() {
       yk_id_t tmp[size];
       const void* ptrs[size];
       size_t sizes[size];

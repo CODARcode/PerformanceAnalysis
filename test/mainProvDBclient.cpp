@@ -20,8 +20,6 @@ int ranks;
 int nshards;
 std::string rank_str;
 
-#if 1
-
 TEST(ADProvenanceDBclientTest, Connects){
 
   bool connect_fail = false;
@@ -312,6 +310,8 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 
     req.wait(); //wait for completion
 
+    EXPECT_TRUE(req.req.test());
+
     for(int i=0;i<2;i++){    
       nlohmann::json check;
       EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
@@ -329,6 +329,97 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
   }
   EXPECT_EQ(fail, false);
 }
+
+
+
+//Test the async send that does not return an outstanding request
+TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsyncAnonymous){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+
+    nlohmann::json obj;
+    obj["hello"] = "world " + rank_str;
+    std::cout << "Sending " << obj.dump() << " asynchronously" << std::endl;
+
+    client.sendDataAsync(obj, ProvenanceDataType::AnomalyData);
+
+    //Ensure there is an outstanding request in the manager (this list is not purged automatically even if the eventual has completed; purges are triggered through internal processes in the client but in this test we avoid those, hence we know the list should remain populated)
+    auto & man = client.getAnomSendManager();
+    EXPECT_EQ(man.getOutstandingEvents().size(), 1);
+
+    //Check the eventual is satisfied in the background
+    while(!man.getOutstandingEvents().front().test() ){
+      std::cout << "Outstanding request not yet complete" << std::endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    std::cout << "Outstanding request complete" << std::endl;
+    
+    std::cout << "Waiting for outstanding sends to complete (should take no time now)" << std::endl;
+    client.waitForSendComplete();
+
+    //Check 0 outstanding sends
+    EXPECT_EQ( client.getNoutstandingAsyncReqs(), 0 );
+
+    std::vector<std::string> all_str = client.retrieveAllData(ProvenanceDataType::AnomalyData);
+    bool found = false;
+    for(auto &rs : all_str){
+      nlohmann::json rc = nlohmann::json::parse(rs);
+      if(rc["hello"] == "world " + rank_str){
+	found =  true;
+	break;
+      }
+    }
+    EXPECT_TRUE(found);
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+//Test that multiple submitted async outstanding requests drains naturally
+TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsyncAnonymousDrains){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+
+    nlohmann::json obj;
+    obj["hello"] = "world " + rank_str;
+    std::cout << "Sending " << obj.dump() << " asynchronously" << std::endl;
+
+    int nsend = 50;
+    for(int i=0;i<nsend;i++){
+      client.sendDataAsync(obj, ProvenanceDataType::AnomalyData);
+    }
+
+    int no;
+    while( (no=client.getNoutstandingAsyncReqs()) > 0){
+      std::cout << "# outstanding " << no << std::endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    EXPECT_EQ( client.getNoutstandingAsyncReqs(), 0 );
+
+    std::cout << "Waiting for outstanding sends to complete" << std::endl;
+    client.waitForSendComplete();
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+
+
+
 
 
 TEST(ADProvenanceDBclientTest, TestClearAll){
@@ -437,9 +528,6 @@ TEST(ADProvenanceDBclientTest, TestRetrieveAll){
   }
   EXPECT_EQ(fail, false);
 }
-
-
-#endif
 
 
 TEST(ADProvenanceDBclientTest, TestLuaFilter){

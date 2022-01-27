@@ -18,6 +18,8 @@ namespace chimbuko{
      */
     struct data_v{
       thallium::engine* m_eng;
+      thallium::managed<thallium::xstream>* m_async; /**< An xstream for supporting the asynchronous sends*/
+
       std::pair<std::string, int> m_protocol; /**< The protocol and mode (client/server)*/
       bool m_is_initialized;
       inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp;ofi_rxm", THALLIUM_CLIENT_MODE}), m_is_initialized(false){}
@@ -34,7 +36,7 @@ namespace chimbuko{
 
       inline ~data_v(){
 	finalize();
-       }
+      }
     };
 
     /**
@@ -71,6 +73,14 @@ namespace chimbuko{
      */
     static inline void finalize(){
       data().finalize();
+    }
+    
+    /**
+     * @brief Obtain the execution stream ued to service asynchronous sends
+     */
+    static inline thallium::xstream & getAsyncXstream(){
+      data().initialize();
+      return **data().m_async;
     }
 
     /**
