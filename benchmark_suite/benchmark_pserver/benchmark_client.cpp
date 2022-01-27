@@ -98,8 +98,8 @@ int main(int argc, char **argv){
 
     if(!net_client.use_ps()) fatal_error("Client did not connect to pserver");
 
-    std::cout << "TEST " << net_client.use_ps() << std::endl;
-    
+    MPI_Barrier(MPI_COMM_WORLD); //have all clients sync up before proceeding
+        
     net_client.linkPerf(&stats);  
 
     //Set up a params object with the required number of params
