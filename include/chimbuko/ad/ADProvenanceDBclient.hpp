@@ -5,7 +5,7 @@
 
 #include <sonata/Client.hpp>
 #include <nlohmann/json.hpp>
-#include <queue>
+#include <list>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
 #include <chimbuko/util/PerfStats.hpp>
 
@@ -44,7 +44,7 @@ namespace chimbuko{
    * If we are not interested in retrieving the data again we can just store them somewhere and periodically purge them
    */
   class AnomalousSendManager{
-    std::queue<sonata::AsyncRequest> outstanding;
+    std::list<sonata::AsyncRequest> outstanding;
 
     /**
      * @brief Remove completed requests if size > MAX_OUTSTANDING
@@ -84,9 +84,10 @@ namespace chimbuko{
     sonata::Collection m_coll_normalexecs; /**< The normal executions collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
     
-    static AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
+    mutable AnomalousSendManager anom_send_man; /**< Manager for outstanding anomalous requests */
 
     int m_rank; /**< MPI rank of current process */
+    std::string m_server_addr; /**< Address of the server */
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
@@ -123,9 +124,37 @@ namespace chimbuko{
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
-     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
+     * @param db_name The name of the database
+     * @param provider_idx The Sonata provider index     
      */
-    void connect(const std::string &addr, const int nshards);
+    void connect(const std::string &addr, const std::string &db_name, const int provider_idx);
+
+    /**
+     * @brief Connect the client to the provenance database server
+     * @param addr The server address
+     * @param nshards the number of database shards. Connection to shard will be round-robin by rank
+     *
+     * This version assumes a single database server instance on the provided address     
+     */
+    void connectSingleServer(const std::string &addr, const int nshards);
+
+    /**
+     * @brief Connect the client to the provenance database server instance in a multi-instance setup
+     * @param addr_file_dir The directory in which the server addresses are output by the provDB
+     * @param nshards The number of database shards. Connection to shard will be round-robin by rank
+     * @param ninstance The number of server instances
+     */
+    void connectMultiServer(const std::string &addr_file_dir, const int nshards, const int ninstances);
+
+
+    /**
+     * @brief Connect the client to the provenance database server instance in a multi-instance setup using a specific assignment of rank to shard given in an input file
+     * @param addr_file_dir The directory in which the server addresses are output by the provDB
+     * @param nshards The number of database shards. Connection to shard will be round-robin by rank
+     * @param ninstance The number of server instances
+     * @param shard_assign_file A file containing the shard used by each rank. The file format should have 1 line per rank, in ascending order, containing just the shard index
+     */
+    void connectMultiServerShardAssign(const std::string &addr_file_dir, const int nshards, const int ninstances, const std::string &shard_assign_file);
 
     /**
      * @brief Check if connnection has been established to provider

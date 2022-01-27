@@ -2,9 +2,32 @@
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/util/error.hpp>
 #include <chimbuko/util/string.hpp>
+#include <chimbuko/util/map.hpp>
 
 using namespace chimbuko;
 
+GlobalAnomalyMetrics::GlobalAnomalyMetrics(const GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  m_anomaly_metrics_full = r.m_anomaly_metrics_full;
+  m_anomaly_metrics_recent = r.m_anomaly_metrics_recent;
+}
+
+GlobalAnomalyMetrics & GlobalAnomalyMetrics::operator+=(const GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_anomaly_metrics_full, r.m_anomaly_metrics_full);
+  unordered_map_plus_equals(m_anomaly_metrics_recent, r.m_anomaly_metrics_recent);
+  return *this;
+}
+
+void GlobalAnomalyMetrics::merge_and_flush(GlobalAnomalyMetrics &r){
+  std::lock_guard<std::mutex> _(m_mutex);
+  std::lock_guard<std::mutex> __(r.m_mutex);
+  unordered_map_plus_equals(m_anomaly_metrics_full, r.m_anomaly_metrics_full);
+  unordered_map_plus_equals(m_anomaly_metrics_recent, r.m_anomaly_metrics_recent);
+  
+  r.m_anomaly_metrics_recent.clear();
+}
 
 void GlobalAnomalyMetrics::add(GlobalAnomalyMetrics::AnomalyMetricsMapType &into, const ADLocalAnomalyMetrics& data){
   std::lock_guard<std::mutex> _(m_mutex);
@@ -94,6 +117,16 @@ void NetPayloadUpdateAnomalyMetrics::action(Message &response, const Message &me
 
 void PSstatSenderGlobalAnomalyMetricsPayload::add_json(nlohmann::json &into) const{ 
   nlohmann::json stats = m_metrics->get_json();
+  if(stats.size() > 0)
+    into["anomaly_metrics"] = std::move(stats);
+}
+
+void PSstatSenderGlobalAnomalyMetricsCombinePayload::add_json(nlohmann::json &into) const{ 
+  GlobalAnomalyMetrics comb;
+  for(int i=0;i<m_metrics.size();i++)
+    comb.merge_and_flush(m_metrics[i]);
+
+  nlohmann::json stats = comb.get_json();
   if(stats.size() > 0)
     into["anomaly_metrics"] = std::move(stats);
 }

@@ -9,7 +9,9 @@
 using namespace chimbuko;
 
 //For these tests the provenance DB admin must be running
-std::string addr;
+int nshards;
+int ninstances;
+std::string addr_file_dir;
 int world_rank;
 int world_size;
 
@@ -27,8 +29,11 @@ TEST(ADTestWithProvDB, BpfileTest)
 
     params.outlier_sigma = 6.0;
     params.only_one_frame = true; //just analyze first IO frame
-    
-    params.provdb_addr = addr;
+    params.ad_algorithm = "sstd";
+
+    params.provdb_addr_dir = addr_file_dir;
+    params.nprovdb_shards = nshards;
+    params.nprovdb_instances = ninstances;
 
     Chimbuko driver;
     unsigned long n_outliers = 0, frames = 0;
@@ -64,13 +69,21 @@ TEST(ADTestWithProvDB, BpfileTest)
     assert( MPI_Allreduce(MPI_IN_PLACE, &n_outliers, 1, MPI_UNSIGNED_LONG , MPI_SUM, MPI_COMM_WORLD) == MPI_SUCCESS);
 #endif
 
-    if(world_rank == 0){
-      std::cout << "MPI rank 0: total outliers over all ranks: " << n_outliers << std::endl;
+    //When using multiple server instances the outliers will be distributed across servers/ shards and won't all be accessible by the head node.
+    //Thus we need to aggregate
+    //Shards are assigned round-robin to ranks
+    int rank_shard = world_rank % nshards;
+    std::vector<unsigned long> noutliers_shard(nshards, 0);
+    noutliers_shard[rank_shard] = driver.getProvenanceDBclient().retrieveAllData(ProvenanceDataType::AnomalyData).size();
+   
+    assert( MPI_Allreduce(MPI_IN_PLACE, noutliers_shard.data(), nshards, MPI_UNSIGNED_LONG , MPI_MAX, MPI_COMM_WORLD) == MPI_SUCCESS); //use max to fill in the array
 
-      std::vector<std::string> recs = driver.getProvenanceDBclient().retrieveAllData(ProvenanceDataType::AnomalyData);
-      std::cout << "MPI rank 0 retrieved " << recs.size() << " records from provenance database." << std::endl;
-      EXPECT_EQ(recs.size(), n_outliers);
-    }
+    unsigned long noutliers_pdb = 0;
+    for(int s=0;s<nshards;s++) noutliers_pdb += noutliers_shard[s];
+
+    if(world_rank == 0) std::cout << "MPI rank 0: total outliers over all ranks: " << n_outliers << " number in database (over " << nshards << " shards): " << noutliers_pdb << std::endl;
+
+    EXPECT_EQ(noutliers_pdb, n_outliers);
 
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
@@ -82,10 +95,12 @@ TEST(ADTestWithProvDB, BpfileTest)
 
 int main(int argc, char** argv) 
 {
-  assert(argc == 2);
-  addr = argv[1];
-  std::cout << "Provenance DB admin is on address: " << addr << std::endl;
-
+  assert(argc == 4);
+  addr_file_dir = argv[1];
+  nshards = std::stoi(argv[2]);
+  ninstances = std::stoi(argv[3]);
+  std::cout << "Provenance DB admin address directory: " << addr_file_dir << " #shards: " << nshards << " #instances: " << ninstances << std::endl;   
+  
 #ifdef USE_MPI
   assert( MPI_Init(&argc, &argv) == MPI_SUCCESS );
 

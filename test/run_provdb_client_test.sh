@@ -17,7 +17,7 @@ if [ -f "../bin/provdb_admin" ]; then
     
     #Connect via tcp
     echo "Test 4 clients 1 shard ${protocol}"
-    rm -f provdb.*.unqlite*  provider.address margo_dump*.state
+    rm -f provdb.*.unqlite*  provider.address* margo_dump*.state
 
     ip=$(hostname -i)
     port=1234
@@ -25,12 +25,12 @@ if [ -f "../bin/provdb_admin" ]; then
 
     ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards} &
     admin=$!
-    while [ ! -f provider.address ]; do
+    while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
     done
 
-    mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address) ${shards}
+    mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address.0) ${shards}
 
     kill $admin
     while [[ $(ps $admin | wc -l) == 2 ]]; do
@@ -41,17 +41,17 @@ if [ -f "../bin/provdb_admin" ]; then
     #Repeat with multiple clients and multiple shards
     #sleep 3
     echo "Test 4 clients 2 shards ${protocol}"
-    rm -f provdb.*.unqlite*  provider.address  margo_dump*.state
+    rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=2
 
     ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards}  &
     admin=$!
-    while [ ! -f provider.address ]; do
+    while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
     done
 
-    mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address) ${shards}
+    mpirun -n 4 --allow-run-as-root --oversubscribe ./mainProvDBclient $(cat provider.address.0) ${shards}
 
     kill $admin
     while [[ $(ps $admin | wc -l) == 2 ]]; do
@@ -61,17 +61,17 @@ if [ -f "../bin/provdb_admin" ]; then
    
     #Connect via na+sm
     echo "Test 1 clients 1 shards na+sm"
-    rm -f provdb.*.unqlite*  provider.address  margo_dump*.state
+    rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=1
 
     ../bin/provdb_admin "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
     admin=$!
-    while [ ! -f provider.address ]; do
+    while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
     done
 
-    ./mainProvDBclient $(cat provider.address) ${shards}
+    ./mainProvDBclient $(cat provider.address.0) ${shards}
 
     kill $admin
 

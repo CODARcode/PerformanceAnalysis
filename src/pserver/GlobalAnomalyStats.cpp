@@ -6,6 +6,51 @@
 
 using namespace chimbuko;
 
+GlobalAnomalyStats::GlobalAnomalyStats(const GlobalAnomalyStats & r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    m_anomaly_stats = r.m_anomaly_stats;
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    m_funcstats = r.m_funcstats;
+  }
+}
+
+GlobalAnomalyStats & GlobalAnomalyStats::operator+=(const GlobalAnomalyStats & r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    std::lock_guard<std::mutex> __(m_mutex_anom);
+    unordered_map_plus_equals(m_anomaly_stats, r.m_anomaly_stats);
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    std::lock_guard<std::mutex> __(m_mutex_func);
+    unordered_map_plus_equals(m_funcstats, r.m_funcstats);
+  }
+  return *this;
+}
+
+void GlobalAnomalyStats::merge_and_flush(GlobalAnomalyStats &r){
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_anom);
+    std::lock_guard<std::mutex> __(m_mutex_anom);
+    unordered_map_plus_equals(m_anomaly_stats, r.m_anomaly_stats);
+    
+    for(auto &p: r.m_anomaly_stats){
+      for(auto &r: p.second){
+	r.second.flush();
+      }
+    }
+
+  }
+  {
+    std::lock_guard<std::mutex> _(r.m_mutex_func);
+    std::lock_guard<std::mutex> __(m_mutex_func);
+    unordered_map_plus_equals(m_funcstats, r.m_funcstats);
+  }
+}
+
 void GlobalAnomalyStats::update_anomaly_stat(const AnomalyData &anom){
   std::lock_guard<std::mutex> _(m_mutex_anom);
   auto pit = m_anomaly_stats.find(anom.get_app());
@@ -77,7 +122,8 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
       for(auto & rp: pp.second){
 	unsigned long rid = rp.first; //rank
 	
-	nlohmann::json object = rp.second.get_json_and_flush(pid,rid);
+	nlohmann::json object = rp.second.get_json(pid,rid);
+	rp.second.flush(); //flush the data
 	if(!object.empty())
 	  jsonObjects.push_back(std::move(object));
       }
@@ -150,6 +196,16 @@ void NetPayloadUpdateAnomalyStats::action(Message &response, const Message &mess
 
 void PSstatSenderGlobalAnomalyStatsPayload::add_json(nlohmann::json &into) const{ 
   nlohmann::json stats = m_stats->collect();
+  if(stats.size() > 0)
+    into["anomaly_stats"] = std::move(stats);
+}
+
+void PSstatSenderGlobalAnomalyStatsCombinePayload::add_json(nlohmann::json &into) const{ 
+  GlobalAnomalyStats comb;
+  for(int i=0;i<m_stats.size();i++)
+    comb.merge_and_flush(m_stats[i]);
+
+  nlohmann::json stats = comb.collect();
   if(stats.size() > 0)
     into["anomaly_stats"] = std::move(stats);
 }

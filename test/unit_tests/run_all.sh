@@ -38,9 +38,11 @@ set -o pipefail
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
 ./pserver/AggregateFuncStats
+./pserver/AggregateAnomalyData
 ./pserver/GlobalAnomalyStats
 ./pserver/AggregateFuncAnomalyMetrics
 ./pserver/GlobalAnomalyMetrics
+./pserver/GlobalCounterStats
 ./net/ZMQMENet
 ./net/ZMQNet
 ./net/LocalNet

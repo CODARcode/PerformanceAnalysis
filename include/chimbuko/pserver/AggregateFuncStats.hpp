@@ -8,6 +8,11 @@ namespace chimbuko {
   struct AggregateFuncStats{
   public:
     /**
+     * @brief Default constructor. Note there are no setters for the labels; this function is needed for some STL routines
+     */
+    AggregateFuncStats(){}
+    
+    /**
      * @brief Constructor
      * @param pid Program idx
      * @param fid Function idx
@@ -65,6 +70,10 @@ namespace chimbuko {
      */
     bool operator!=(const AggregateFuncStats &r) const{ return !( *this == r ); }
 
+    /**
+     * @brief Merge two instances of AggregateFuncStats
+     */
+    AggregateFuncStats & operator+=(const AggregateFuncStats &r);
 
   private:
     int m_pid; /**< Program idx */

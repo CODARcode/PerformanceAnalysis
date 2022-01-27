@@ -55,6 +55,18 @@ namespace chimbuko {
       response.set_msg(std::string("Hello!I am NET!"), false);
     };
   };
+  /**
+   * @brief Ping command
+   */
+  class NetPayloadPing: public NetPayloadBase{
+  public:
+    MessageKind kind() const override{ return MessageKind::CMD; }
+    MessageType type() const override{ return MessageType::REQ_ECHO; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      response.set_msg(std::string("pong"), false);
+    };
+  };
 
   /**
    * @brief Network interface class

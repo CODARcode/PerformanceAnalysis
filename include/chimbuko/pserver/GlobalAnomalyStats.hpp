@@ -22,6 +22,13 @@ namespace chimbuko{
     GlobalAnomalyStats(){}
 
     /**
+     * @brief Copy constructor
+     *
+     * Thread safe (locks input object)
+     */
+    GlobalAnomalyStats(const GlobalAnomalyStats & r);
+
+    /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
      *
      * Thread safe
@@ -137,6 +144,22 @@ namespace chimbuko{
      */
     bool operator!=(const GlobalAnomalyStats &r) const{ return !( *this == r ); }
 
+
+    /**
+     * @brief Combine GlobalAnomalyStats instances
+     *
+     * Thread safe; locks both this and r when appropriate
+     */
+    GlobalAnomalyStats & operator+=(const GlobalAnomalyStats & r);
+
+    /**
+     * @brief Merge the input GlobalAnomalyStats and then flush it
+     *
+     * Thread safe
+     */   
+    void merge_and_flush(GlobalAnomalyStats &r);
+
+
   protected:    
     std::unordered_map<int, std::unordered_map<unsigned long, AggregateAnomalyData> > m_anomaly_stats; /**< Map of program index and rank to the statistics of the number of anomalies per step and the AnomalyData objects that have been added by that AD instance since the last flush */
     std::unordered_map<unsigned long, std::unordered_map<unsigned long, AggregateFuncStats> > m_funcstats; /**< Map of program index and function index to aggregated profile statistics on the function*/
@@ -165,6 +188,17 @@ namespace chimbuko{
     GlobalAnomalyStats *m_stats;
   public:
     PSstatSenderGlobalAnomalyStatsPayload(GlobalAnomalyStats *stats): m_stats(stats){}
+    void add_json(nlohmann::json &into) const override;
+  };
+
+  /**
+   * @brief Payload object for communicating anomaly data pserver->viz that aggregates multiple instances of GlobalAnomalyStats and sends the aggregate data
+   */ 
+  class PSstatSenderGlobalAnomalyStatsCombinePayload: public PSstatSenderPayloadBase{
+  private:    
+    std::vector<GlobalAnomalyStats> &m_stats;
+  public:
+    PSstatSenderGlobalAnomalyStatsCombinePayload(std::vector<GlobalAnomalyStats> &stats): m_stats(stats){}
     void add_json(nlohmann::json &into) const override;
   };
 

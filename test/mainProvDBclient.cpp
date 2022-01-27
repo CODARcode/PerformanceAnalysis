@@ -25,7 +25,7 @@ TEST(ADProvenanceDBclientTest, Connects){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
     connect_fail = true;
   }
@@ -38,7 +38,7 @@ TEST(ADProvenanceDBclientTest, ConnectsTwice){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection for second time" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
   }catch(const std::exception &ex){
     connect_fail = true;
   }
@@ -51,7 +51,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -82,7 +82,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -113,7 +113,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -146,7 +146,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     std::vector<nlohmann::json> objs(2);
     objs[0]["hello"] = "world " + rank_str;
@@ -179,7 +179,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json objs = nlohmann::json::array();
     objs[0] = nlohmann::json::object({ {"hello","myfriend " + rank_str} });
@@ -212,7 +212,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
@@ -248,7 +248,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     std::vector<nlohmann::json> objs(2);
     objs[0]["hello"] = "world " + rank_str;
@@ -286,7 +286,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
   ADProvenanceDBclient client(rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr,nshards);
+    client.connectSingleServer(addr,nshards);
 
     nlohmann::json objs = nlohmann::json::array();
     objs[0] = nlohmann::json::object({ {"hello","myfriend " + rank_str} });
@@ -346,7 +346,7 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
     ADProvenanceDBclient client(rank);
     std::cout << "Client attempting connection" << std::endl;
     try{
-      client.connect(addr,nshards);
+      client.connectSingleServer(addr,nshards);
 
       client.serverDumpState();
 

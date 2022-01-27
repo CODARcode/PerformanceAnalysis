@@ -87,3 +87,165 @@ TEST(AggregateFuncAnomalyMetrics, Aggregation){
   EXPECT_EQ(compare( agg.get_score_stats(), expect_score, 1e-10), true);
   EXPECT_EQ(compare( agg.get_severity_stats(), expect_severity, 1e-10), true);
 }
+
+bool near(const RunStats &a, const RunStats &b, double tol){
+  return fabs( a.mean() - b.mean() ) < tol && fabs( a.stddev() - b.stddev() ) < tol;
+}
+
+TEST(AggregateFuncAnomalyMetrics, Combination){
+  RunStats stats1,stats2,stats3,stats4;
+  for(int i=0;i<100;i++){
+    stats1.push(M_PI * (i+1));
+    stats2.push(M_PI*M_PI * (i+1));
+    stats3.push(M_PI*M_PI*M_PI * (i+1));
+    stats4.push(M_PI*M_PI*M_PI*M_PI * (i+1));
+  }
+
+  int pid = 111;
+  int fid1=99, fid2=33;
+  std::string fname1="func1", fname2="func2";
+  int count1=122,count2=999;
+
+  //fid1 data 1
+  FuncAnomalyMetrics::State fstate_fid1_1;
+  fstate_fid1_1.score = stats1.get_state();
+  fstate_fid1_1.severity = stats2.get_state();
+  fstate_fid1_1.count = count1;
+  fstate_fid1_1.fid = fid1;
+  fstate_fid1_1.func = fname1;
+  
+  FuncAnomalyMetrics fdata_fid1_1;
+  fdata_fid1_1.set_state(fstate_fid1_1);
+
+  //fid1 data 2
+  FuncAnomalyMetrics::State fstate_fid1_2;
+  fstate_fid1_2.score = stats3.get_state();
+  fstate_fid1_2.severity = stats4.get_state();
+  fstate_fid1_2.count = count2;
+  fstate_fid1_2.fid = fid1;
+  fstate_fid1_2.func = fname1;
+  
+  FuncAnomalyMetrics fdata_fid1_2;
+  fdata_fid1_2.set_state(fstate_fid1_2);
+
+  //fid2 data 1
+  FuncAnomalyMetrics::State fstate_fid2_1;
+  fstate_fid2_1.score = stats3.get_state();
+  fstate_fid2_1.severity = stats4.get_state();
+  fstate_fid2_1.count = count1;
+  fstate_fid2_1.fid = fid2;
+  fstate_fid2_1.func = fname2;
+  
+  FuncAnomalyMetrics fdata_fid2_1;
+  fdata_fid2_1.set_state(fstate_fid2_1);
+
+  int rid1=22, rid2=77;
+  int step1=34, step2=98, step3=101, step4=200;
+  int first1 = 1024, first2=2944, first3=8888, first4=10000;
+  int last1 = 2888, last2=3004, last3=4000, last4=4232;
+
+  {
+    //Check fail if rank indices don't match
+    AggregateFuncAnomalyMetrics d1(pid, rid1, fid1, fname1);
+    AggregateFuncAnomalyMetrics d2(pid, rid2, fid1, fname1);
+    bool err = false;
+    try{
+      d1 += d2;
+    }catch(const std::exception &e){
+      err = true;
+    }
+    ASSERT_TRUE(err);
+  }
+  {
+    //Check fail if func indices don't match
+    AggregateFuncAnomalyMetrics d1(pid, rid1, fid1, fname1);
+    AggregateFuncAnomalyMetrics d2(pid, rid1, fid2, fname1);
+    bool err = false;
+    try{
+      d1 += d2;
+    }catch(const std::exception &e){
+      err = true;
+    }
+    ASSERT_TRUE(err);
+  }
+  {
+    //Check fail if func names don't match
+    AggregateFuncAnomalyMetrics d1(pid, rid1, fid1, fname1);
+    AggregateFuncAnomalyMetrics d2(pid, rid1, fid1, fname2);
+    bool err = false;
+    try{
+      d1 += d2;
+    }catch(const std::exception &e){
+      err = true;
+    }
+    ASSERT_TRUE(err);
+  }
+
+  {
+    //Check merge for which first entry timestamps first and last are min and max of pair, respectively and step is earlier
+    AggregateFuncAnomalyMetrics d1(pid, rid1, fid1, fname1);
+    d1.add(fdata_fid1_1, step1, first1, last4);
+
+    AggregateFuncAnomalyMetrics d2(pid, rid1, fid1, fname1);
+    d2.add(fdata_fid1_2, step2, first2, last3);
+    
+    AggregateFuncAnomalyMetrics dall(pid, rid1, fid1, fname1);
+    dall.add(fdata_fid1_1, step1, first1, last4);
+    dall.add(fdata_fid1_2, step2, first2, last3);
+
+    AggregateFuncAnomalyMetrics dcomb(d1);
+    ASSERT_EQ(dcomb, d1);
+    dcomb += d2;
+
+    EXPECT_EQ(dcomb.get_first_event_ts(), first1);
+    EXPECT_EQ(dcomb.get_last_event_ts(), last4);
+    EXPECT_EQ(dcomb.get_first_io_step(), step1);
+    EXPECT_EQ(dcomb.get_last_io_step(), step2);
+
+    EXPECT_EQ(dcomb.get_first_event_ts(), dall.get_first_event_ts());
+    EXPECT_EQ(dcomb.get_last_event_ts(), dall.get_last_event_ts());
+    EXPECT_EQ(dcomb.get_first_io_step(), dall.get_first_io_step());
+    EXPECT_EQ(dcomb.get_last_io_step(), dall.get_last_io_step());
+    
+    EXPECT_TRUE( near(dcomb.get_count_stats(), dall.get_count_stats(), 1e-8) );
+    EXPECT_TRUE( near(dcomb.get_score_stats(), dall.get_score_stats(), 1e-8) );
+    EXPECT_TRUE( near(dcomb.get_severity_stats(), dall.get_severity_stats(), 1e-8) );
+  }
+
+
+  {
+    //Check merge for which second entry timestamps first and last are min and max of pair, respectively and step is earlier
+    AggregateFuncAnomalyMetrics d1(pid, rid1, fid1, fname1);
+    d1.add(fdata_fid1_1, step2, first2, last3);
+
+    AggregateFuncAnomalyMetrics d2(pid, rid1, fid1, fname1);
+    d2.add(fdata_fid1_2, step1, first1, last4);
+    
+    AggregateFuncAnomalyMetrics dall(pid, rid1, fid1, fname1);
+    dall.add(fdata_fid1_1, step2, first2, last3);
+    dall.add(fdata_fid1_2, step1, first1, last4);
+
+    AggregateFuncAnomalyMetrics dcomb(d1);
+    ASSERT_EQ(dcomb, d1);
+    dcomb += d2;
+
+    EXPECT_EQ(dcomb.get_first_event_ts(), first1);
+    EXPECT_EQ(dcomb.get_last_event_ts(), last4);
+    EXPECT_EQ(dcomb.get_first_io_step(), step1);
+    EXPECT_EQ(dcomb.get_last_io_step(), step2);
+
+    EXPECT_EQ(dcomb.get_first_event_ts(), dall.get_first_event_ts());
+    EXPECT_EQ(dcomb.get_last_event_ts(), dall.get_last_event_ts());
+    EXPECT_EQ(dcomb.get_first_io_step(), dall.get_first_io_step());
+    EXPECT_EQ(dcomb.get_last_io_step(), dall.get_last_io_step());
+    
+    EXPECT_TRUE( near(dcomb.get_count_stats(), dall.get_count_stats(), 1e-8) );
+    EXPECT_TRUE( near(dcomb.get_score_stats(), dall.get_score_stats(), 1e-8) );
+    EXPECT_TRUE( near(dcomb.get_severity_stats(), dall.get_severity_stats(), 1e-8) );
+  }
+
+
+
+
+
+}

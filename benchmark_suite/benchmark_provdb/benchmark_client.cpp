@@ -1,5 +1,5 @@
 //A fake AD that sends data to the provenance DB at a regular cadence
-#define _PERF_METRIC
+#include<chimbuko_config.h>
 #include<mpi.h>
 #include<chimbuko/ad/ADNetClient.hpp>
 #include<chimbuko/ad/utils.hpp>
@@ -18,7 +18,7 @@
 using namespace chimbuko;
 
 struct Args{
-  std::string provdb_addr;
+  std::string provdb_addr_dir;
   int cycles;
   int callstack_size;
   int ncounters;
@@ -28,10 +28,12 @@ struct Args{
   int normal_events_per_cycle;
   size_t cycle_time_ms;
   int nshards;
+  int ninstances;
   int perf_write_freq;
   std::string perf_dir;
   bool do_state_dump; //have the provdb record its state every time the perf stats are written (by rank 0)
   int max_outstanding_sends; //if set >0 the benchmark will pause when the number of outstanding asynchronous sends reaches this number until it reaches 0 again
+  std::string load_shard_map; //read an explicit map of rank -> shard if ! ""
   
   Args(){
     cycles = 10;
@@ -42,11 +44,14 @@ struct Args{
     anomalies_per_cycle = 10;
     normal_events_per_cycle = 10; //capture max 1 normal event per anomaly
     cycle_time_ms = 1000;
+    provdb_addr_dir=".";
     nshards=1;
+    ninstances=1;
     perf_write_freq = 10;
     perf_dir=".";
     do_state_dump = false;
     max_outstanding_sends = 0;
+    load_shard_map = "";
   }
 };
 
@@ -62,7 +67,7 @@ int main(int argc, char **argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   commandLineParser<Args> cmdline;
-  addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr);
+  addMandatoryCommandLineArgDefaultHelpString(cmdline, provdb_addr_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycles);
   addOptionalCommandLineArgDefaultHelpString(cmdline, callstack_size);
   addOptionalCommandLineArgDefaultHelpString(cmdline, ncounters);
@@ -72,10 +77,12 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, normal_events_per_cycle);
   addOptionalCommandLineArgDefaultHelpString(cmdline, cycle_time_ms);
   addOptionalCommandLineArgDefaultHelpString(cmdline, nshards);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, ninstances);
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
   addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
   addOptionalCommandLineArgDefaultHelpString(cmdline, do_state_dump);
   addOptionalCommandLineArgDefaultHelpString(cmdline, max_outstanding_sends);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, load_shard_map);
 
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -92,10 +99,19 @@ int main(int argc, char **argv){
   PerfStats stats(args.perf_dir, fn_perf);
   PerfPeriodic stats_prd(args.perf_dir, fn_perf_prd);
 
+  std::cout << "Rank " << rank << " connecting to provDB" << std::endl;
   ADProvenanceDBclient provdb_client(rank);
-  provdb_client.connect(args.provdb_addr,args.nshards);
-  provdb_client.linkPerf(&stats);
+  if(args.load_shard_map.size() > 0)
+    provdb_client.connectMultiServerShardAssign(args.provdb_addr_dir,args.nshards,args.ninstances,args.load_shard_map);
+  else
+    provdb_client.connectMultiServer(args.provdb_addr_dir,args.nshards,args.ninstances);
 
+  std::cout << "Rank " << rank << " connected successfully to provDB, waiting for barrier sync" << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cout << "Rank " << rank << " synced, proceeding" << std::endl;
+  
+  provdb_client.linkPerf(&stats);
+  
   //Here we assume the sstd algorithm for now
   RunStats runstats; //any stats object
   for(int i=0;i<100;i++) runstats.push(i);
@@ -195,9 +211,10 @@ int main(int argc, char **argv){
       stats_prd.write();
       stats.write();
 
+#ifdef ENABLE_MARGO_STATE_DUMP
       if(args.do_state_dump && rank == 0)
 	provdb_client.serverDumpState();
-
+#endif
       n_steps_accum_prd = 0;
 
       if(args.max_outstanding_sends > 0 && noutstanding >= args.max_outstanding_sends){
@@ -210,6 +227,23 @@ int main(int argc, char **argv){
       }
     }      
   }//cycle loop
+
+  if(provdb_client.getNoutstandingAsyncReqs() > 0){
+    //Continue to write out #outstanding until queue is drained at same freq
+    int sleep_time_ms = args.perf_write_freq * args.cycle_time_ms;
+    while(1){
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+      int noutstanding = provdb_client.getNoutstandingAsyncReqs();
+      stats_prd.add("provdb_incomplete_async_sends", noutstanding);
+      stats_prd.add("io_steps", 0);
+      stats_prd.add("provdb_total_async_send_calls", async_send_calls); //running total stays fixed
+      
+      stats_prd.write();
+      
+      if(noutstanding == 0)
+	break;
+    }
+  }
 
   std::cout << "Rank " << rank << " disconnecting from server" << std::endl;
   provdb_client.disconnect(); //ensure data is written to stats

@@ -95,7 +95,7 @@ The schema for the **'anomaly_stats'** object is as follows:
 |           **'app'**: *Application*,
 |           **'rank'**: *Program rank*,
 |           **'fid'**: *function ID*,
-|           **'fname'**: *funciton name*,
+|           **'fname'**: *function name*,
 |           **‘_id'**: *a global index to track each (app, rank, func), for internal use*,
 |           **'new_data'**: *Statistics of anomaly metrics aggregated over multiple IO steps since the last pserver->viz send*
 |           {

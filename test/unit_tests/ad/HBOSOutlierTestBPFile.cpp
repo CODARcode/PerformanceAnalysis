@@ -128,7 +128,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     params.prov_outputpath = "";
   #ifdef ENABLE_PROVDB
     params.nprovdb_shards = 1;
-    params.provdb_addr = ""; //don't use provDB 
+    params.provdb_addr_dir = ""; //don't use provDB by default
   #endif
     params.err_outputpath = ""; //use std::cerr for errors by default
     params.trace_connect_timeout = 60;
@@ -157,7 +157,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
     //If neither the provenance database or the provenance output path are set, default to outputting to pwd
     if(params.prov_outputpath.size() == 0
   #ifdef ENABLE_PROVDB
-       && params.provdb_addr.size() == 0
+       && params.provdb_addr_dir.size() == 0
   #endif
        ){
       params.prov_outputpath = "./bpfile_test_results";
@@ -230,7 +230,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
 
       const ExecDataMap_t* m_execDataMap = event->getExecDataMap();
       verboseStream << "Starting OUtlier Detection" << std::endl;
-      if (m_execDataMap == nullptr) verboseStream << "Empty ExecDataMap_t" << std::endl;
+      if (m_execDataMap == nullptr){ verboseStream << "Empty ExecDataMap_t" << std::endl; }
 
       tad = std::clock();
       for (auto it : *m_execDataMap) { //loop over functions (key is function index)

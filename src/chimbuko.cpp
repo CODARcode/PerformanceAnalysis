@@ -20,16 +20,17 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 					hbos_threshold(0.99),
 					hbos_use_global_threshold(true),
 #ifdef ENABLE_PROVDB
-				  provdb_addr(""), nprovdb_shards(1),
+				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1),
 #endif
 				  prov_outputpath(""),
+                                  prov_record_startstep(-1),
+                                  prov_record_stopstep(-1),  
 				  perf_outputpath(""), perf_step(10),
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
                                   outlier_statistic("exclusive_runtime"),
                                   step_report_freq(1)
 {}
-
 
 void ChimbukoParams::print() const{
   std::cout << "AD Algorithm: " << ad_algorithm
@@ -51,9 +52,10 @@ void ChimbukoParams::print() const{
 	    << "\nPerf. metric outpath : " << perf_outputpath
 	    << "\nPerf. step   : " << perf_step;
 #ifdef ENABLE_PROVDB
-  if(provdb_addr.size()){
-    std::cout << "\nProvDB addr: " << provdb_addr
-	      << "\nProvDB shards: " << nprovdb_shards;
+  if(provdb_addr_dir.size()){
+    std::cout << "\nProvDB addr dir: " << provdb_addr_dir
+	      << "\nProvDB shards: " << nprovdb_shards
+      	      << "\nProvDB server instances: " << nprovdb_instances;
   }
 #endif
   if(prov_outputpath.size())
@@ -85,7 +87,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   if(m_params.rank < 0) throw std::runtime_error("Rank not set or invalid");
 
 #ifdef ENABLE_PROVDB
-  if(m_params.provdb_addr.size() == 0 && m_params.prov_outputpath.size() == 0)
+  if(m_params.provdb_addr_dir.size() == 0 && m_params.prov_outputpath.size() == 0)
     throw std::runtime_error("Neither provenance database address or provenance output dir are set - no provenance data will be written!");
 #else
   if(m_params.prov_outputpath.size() == 0)
@@ -210,9 +212,9 @@ void Chimbuko::init_counter(){
 #ifdef ENABLE_PROVDB
 void Chimbuko::init_provdb(){
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
-  if(m_params.provdb_addr.length() > 0){
+  if(m_params.provdb_addr_dir.length() > 0){
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
-    m_provdb_client->connect(m_params.provdb_addr, m_params.nprovdb_shards);
+    m_provdb_client->connectMultiServer(m_params.provdb_addr_dir, m_params.nprovdb_shards, m_params.nprovdb_instances);
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to provenance database" << std::endl;
   }
 
@@ -389,6 +391,10 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
 					const unsigned long last_event_ts) const{
+  //Optionally skip provenance data recording on certain steps
+  if(m_params.prov_record_startstep != -1 && step < m_params.prov_record_startstep) return;
+  if(m_params.prov_record_stopstep != -1 && step > m_params.prov_record_stopstep) return;
+ 
   //Gather provenance data on anomalies and send to provenance database
   if(m_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB

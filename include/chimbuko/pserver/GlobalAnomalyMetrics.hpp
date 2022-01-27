@@ -20,6 +20,15 @@ namespace chimbuko{
     typedef std::unordered_map<int, std::unordered_map<int,  std::unordered_map<int, AggregateFuncAnomalyMetrics> > > AnomalyMetricsMapType; /**< Map of program idx, rank and function idx to aggregated metrics */
 
     GlobalAnomalyMetrics(){}
+   
+
+    /**
+     * @brief Copy constructor
+     *
+     * Thread safe
+     */
+    GlobalAnomalyMetrics(const GlobalAnomalyMetrics &r);
+
 
     /**
      * @brief Merge internal statistics with those contained within the input ADLocalFuncStatistics object
@@ -62,6 +71,22 @@ namespace chimbuko{
      * NOT thread safe
      */
     bool operator!=(const GlobalAnomalyMetrics &r) const{ return !(*this == r); }
+
+
+    /**
+     * @brief Combine two instances of GlobalAnomalyMetrics
+     *
+     * Thread safe
+     */
+    GlobalAnomalyMetrics & operator+=(const GlobalAnomalyMetrics &r);
+    
+    /**
+     * @brief Merge the input GlobalAnomalyMetrics and then flush it
+     *
+     * Thread safe
+     */   
+    void merge_and_flush(GlobalAnomalyMetrics &r);
+
   private:
 
     /**
@@ -98,6 +123,17 @@ namespace chimbuko{
     GlobalAnomalyMetrics *m_metrics;
   public:
     PSstatSenderGlobalAnomalyMetricsPayload(GlobalAnomalyMetrics *metrics): m_metrics(metrics){}
+    void add_json(nlohmann::json &into) const override;
+  };
+
+  /**
+   * @brief Payload object for communicating anomaly metrics pserver->viz that aggregates multiple instances of GlobalAnomalyStats and sends the aggregate data
+   */
+  class PSstatSenderGlobalAnomalyMetricsCombinePayload: public PSstatSenderPayloadBase{
+  private:    
+    std::vector<GlobalAnomalyMetrics> &m_metrics;
+  public:
+    PSstatSenderGlobalAnomalyMetricsCombinePayload(std::vector<GlobalAnomalyMetrics> &metrics): m_metrics(metrics){}
     void add_json(nlohmann::json &into) const override;
   };
 

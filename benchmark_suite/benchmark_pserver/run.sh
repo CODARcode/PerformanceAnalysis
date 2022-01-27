@@ -1,18 +1,68 @@
 #!/bin/bash
-ranks=32
-ps_threads=4
-cycles=100
+
+export PATH=/install/AD/develop/bin:${PATH}
+export LD_LIBRARY_PATH=/install/AD/develop/lib:${LD_LIBRARY_PATH}
+
+ulimit -c unlimited
+set -e
+set -o pipefail
+
+export CHIMBUKO_CONFIG=chimbuko_config.sh
+source ${CHIMBUKO_CONFIG}
+
+SERVICES=${chimbuko_services}
+
+echo "Job starting"
+date
+echo "Driver is : " $(which driver)
+
+rm -rf chimbuko
+
+use_hpserver=0
+if (( $use_hpserver == 1 )); then
+    echo "Using hpserver"
+    SERVICES=./run_services_hpserver.sh
+fi
+
+if (( 1 )); then
+    echo "Launching services"
+
+    #Run the services
+    ${SERVICES} &
+
+    #Wait for the services to start and generate their outputs
+    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+fi
+
+#Get pserver IP
+pserver_addr=$(grep -Eo "pserver_addr tcp.*\:[0-9]+" chimbuko/vars/chimbuko_ad_opts.var | sed 's/pserver_addr //')
+
+exe=./benchmark_client
+cycles=10
 nfuncs=100
 ncounters=100
-nanomalies_per_func=2
-cycle_time_ms=32
-#rm -f ps_perf.txt ps_perf_stats.txt
-pserver ${ranks} -nt ${ps_threads} 2>&1 | tee ps.log &
+nanomalies_per_func=1
+cycle_time_ms=1000
+perf_write_freq=5   #cycles
+perf_dir=chimbuko/logs
+benchmark_pattern="ad"
+algorithm=${ad_alg}
+hbos_bins=20
 
-ip=$(hostname -i)
-pserver_addr=tcp://${ip}:5559
-mpirun --oversubscribe --allow-run-as-root -n ${ranks} ./benchmark_client ${pserver_addr} -cycles ${cycles} -nfuncs ${nfuncs} -ncounters ${ncounters} -nanomalies_per_func ${nanomalies_per_func} -cycle_time_ms ${cycle_time_ms} 2>&1 | tee client.log
+client_cmd="$exe ${pserver_addr} -cycles ${cycles} -nfuncs ${nfuncs} -ncounters ${ncounters} -nanomalies_per_func ${nanomalies_per_func} -cycle_time_ms ${cycle_time_ms} -benchmark_pattern ${benchmark_pattern} -perf_write_freq ${perf_write_freq} -perf_dir ${perf_dir} -algorithm ${algorithm} -hbos_bins ${hbos_bins} 2>&1 | tee chimbuko/logs/client.log"
+#export CHIMBUKO_VERBOSE=1
 
-dir=${ranks}rank_cyc${cycle_time_ms}ms_${ps_threads}psthr_stats
-mkdir ${dir}
-mv client_stats.json ps_perf* ${dir}
+if (( 1 )); then
+    echo "Instantiating client"
+    echo "Command is " $client_cmd
+    eval "${client_cmd}"
+fi
+
+echo "Waiting for job completion"
+wait
+
+echo "Deleting pserver output data"
+rm -f chimbuko/viz/*
+
+echo "Done"
+date

@@ -384,7 +384,7 @@ namespace chimbuko{
    *
    * Supports up to 5 variables
    *
-   * Example usage:  addOptionalCommandLineArgMultiValue(parser_instance, set_2vals, a, b)
+   * Example usage:  addOptionalCommandLineArgMultiValue(parser_instance, set_2vals, "the help", a, b)
    * called with -set_2vals 1 2   will set the structure members a and b to 1 and 2, respectively
    */
 #define addOptionalCommandLineArgMultiValue(PARSER, ARG_NAME, HELP_STR, ...) PARSER.addOptionalArgMultiValue<GET_MEMBER_PTR_CONS(PARSER, __VA_ARGS__)>( "-" #ARG_NAME, HELP_STR )

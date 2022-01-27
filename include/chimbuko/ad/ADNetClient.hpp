@@ -276,10 +276,6 @@ namespace chimbuko{
     bool m_is_running; /**< Is the worker thread running? */
     
     /**
-     * @brief Get the number of outstanding net operations
-     */
-    size_t getNwork() const;
-    /**
      * @brief Get the next net operation
      */
     ClientAction* getWorkItem();
@@ -343,6 +339,14 @@ namespace chimbuko{
      */
     void stopWorkerThread();
 
+    /**
+     * @brief Get the number of outstanding net operations
+     *
+     * Mutex locks the queue so using this too frequently may cause performance issues
+     */
+    size_t getNwork() const;
+
+    
     ~ADThreadNetClient();
   };
 

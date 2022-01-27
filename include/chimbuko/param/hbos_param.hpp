@@ -39,10 +39,6 @@ namespace chimbuko {
        * @brief Initialize histogram data
        */
       Data(){
-
-        /**
-         * @brief Resets histogram data during initialization
-         */
         clear();
       }
 
@@ -58,6 +54,9 @@ namespace chimbuko {
         bin_edges = h_bin_edges;
       }
 
+      /**
+       * @brief Resets histogram data during initialization
+       */
       void clear() {
         glob_threshold = -1 * log2(1.00001);
         counts.clear();

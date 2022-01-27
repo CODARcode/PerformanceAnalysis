@@ -42,8 +42,16 @@ namespace chimbuko{
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
+     * @param provider_idx The provider index on the server
      */
-    void connect(const std::string &addr);
+    void connect(const std::string &addr, const int provider_idx = 0);
+
+    /**
+     * @brief Connect the client the appropriate provenance database server instance using the default setup
+     * @param addr_file_dir The directory containing the address files created by the provDB
+     */
+    void connectMultiServer(const std::string &addr_file_dir);
+
 
     /**
      * @brief Check if connnection has been established to provider

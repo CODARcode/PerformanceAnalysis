@@ -1,6 +1,8 @@
 #include<chimbuko/pserver/AggregateFuncAnomalyMetrics.hpp>
+#include<chimbuko/util/error.hpp>
 #include<cassert>
 #include<limits>
+#include<algorithm>
 
 using namespace chimbuko;
 
@@ -36,4 +38,16 @@ nlohmann::json AggregateFuncAnomalyMetrics::get_json() const{
 	      {"score",m_score.get_json()},
 		{"severity",m_severity.get_json()}
   };
+}
+
+AggregateFuncAnomalyMetrics & AggregateFuncAnomalyMetrics::operator+=(const AggregateFuncAnomalyMetrics &r){
+  if(m_pid != r.m_pid || m_rid != r.m_rid || m_fid != r.m_fid || m_func != r.m_func) fatal_error("Data metadata mismatch");
+  m_count += r.m_count;
+  m_score += r.m_score;
+  m_severity += r.m_severity;
+  m_first_event_ts = std::min(m_first_event_ts, r.m_first_event_ts);
+  m_last_event_ts = std::max(m_last_event_ts, r.m_last_event_ts);
+  m_first_io_step = std::min(m_first_io_step, r.m_first_io_step);
+  m_last_io_step = std::max(m_last_io_step, r.m_last_io_step);
+  return *this;
 }

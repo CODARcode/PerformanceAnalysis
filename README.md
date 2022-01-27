@@ -12,7 +12,7 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 
 # Releases
 
-- Latest release: v4.0.0
+- Latest release: v5.0.0
 
 # Directory layout
 
@@ -29,6 +29,8 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 - scripts: scripts for interacting with the provenance database and for deployment on specific machines (e.g. Summit)
   
 - sphinx: web documentation builder
+
+- sim: a simulator for testing and benchmarking
   
 - src: source files
   

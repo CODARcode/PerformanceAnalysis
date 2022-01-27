@@ -60,7 +60,8 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |    **"io_step"**: *IO step index*,
 |    **"io_step_tstart"**: *Time of start of IO step*,
 |    **"io_step_tend"**:  *Time of end of IO step*,
-|    **"outlier_score"**: *The anomaly score of the execution (algorithm dependent)*,
+|    **"outlier_score"**: *The anomaly score of the execution reflecting how unlikely the event is (algorithm dependent, larger is more anomalous)*,
+|    **"outlier_severity"**: *The severity of the anomaly, reflecting how important the anomaly was*,
 |    **"event_window"**: *Capture of function executions and MPI comms events occuring in window around anomaly on same thread (object)*
 |    {
 |      **"exec_window"**: *The function executions in the window arranged in order of their entry time (array)*
@@ -108,6 +109,13 @@ For the SSTD (original) algorithm, the **algo_params** field has the following f
 |        **"minimum"**: *minimum of distribution*,
 |        **"skewness"**: *skewness of distribution*,
 |        **"stddev"**: *standard deviation of distribution*
+|    }
+
+For the HBOS and COPOD algorithms, the **algo_params** field has the following format:
+
+|    {
+|        **"Histogram Bin Counts"** : *the height of the histogram bin*,
+|        **"Histogram Bin Edges"** : *the edges of the bins starting with the lower edge of bin 0 followed by the upper edges of bins 0..N*
 |    }
 
 
@@ -170,7 +178,7 @@ Metadata are stored in the metadata collection in the following JSON schema:
 Note that the **tid** (thread index) for metadata is usually 0, apart from for metadata associated with a GPU context/device/stream, for which the index is the virtual thread index assigned by Tau to the context/device/stream.  
 
 Global database
--------------
+---------------
 
 Below we describe the JSON schema for the **func_stats** and **counter_stats** collections of the **global database** component of the provenance database.
 

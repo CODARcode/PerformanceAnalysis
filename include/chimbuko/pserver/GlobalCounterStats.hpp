@@ -18,31 +18,57 @@ namespace chimbuko{
    */
   class GlobalCounterStats{
   public:
+    GlobalCounterStats(){}
+
+    /**
+     * @brief Copy constructor
+     *
+     * Thread safe
+     */
+    GlobalCounterStats(const GlobalCounterStats &r);
+
     /**
      * @brief Merge internal statistics with those contained within the ADLocalCounterStatistics instance
+     *
+     * Thread safe
      */
     void add_counter_data(const ADLocalCounterStatistics &loc);
 
     /**
      * @brief Return a copy of the internal counter statistics
+     *
+     * Thread safe
      */
     std::unordered_map<unsigned long, std::unordered_map<std::string, RunStats> > get_stats() const;
     
     /**
      * @brief Serialize the state into a JSON object for sending to viz
+     *
+     * Thread safe
      */
     nlohmann::json get_json_state() const;
 
     /**
      * @brief Comparison operator
+     *
+     * NOT thread safe
      */
     bool operator==(const GlobalCounterStats &r) const{ return m_counter_stats == r.m_counter_stats; }
 
     /**
      * @brief Inequality operator
+     *
+     * NOT thread safe
      */
     bool operator!=(const GlobalCounterStats &r) const{ return !( *this == r ); }
 
+
+    /**
+     * @brief Merge two instances of GlobalCounterStats
+     *
+     * Thread safe
+     */
+    GlobalCounterStats & operator+=(const GlobalCounterStats &r);
 
   protected:
     mutable std::mutex m_mutex;
@@ -69,6 +95,17 @@ namespace chimbuko{
     GlobalCounterStats *m_stats;
   public:
     PSstatSenderGlobalCounterStatsPayload(GlobalCounterStats *stats): m_stats(stats){}
+    void add_json(nlohmann::json &into) const override;
+  };
+
+  /**
+   * @brief Payload object for communicating counter data pserver->viz that aggregates multiple instances of GlobalAnomalyStats and sends the aggregate data
+   */
+  class PSstatSenderGlobalCounterStatsCombinePayload: public PSstatSenderPayloadBase{
+  private:    
+    std::vector<GlobalCounterStats> &m_stats;
+  public:
+    PSstatSenderGlobalCounterStatsCombinePayload(std::vector<GlobalCounterStats> &stats): m_stats(stats){}
     void add_json(nlohmann::json &into) const override;
   };
 

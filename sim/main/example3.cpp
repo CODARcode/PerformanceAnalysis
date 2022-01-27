@@ -14,6 +14,31 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
 #endif
 
+  int sim_step_freq_ms = 1000; //frequency with which we iterate over io step (independent of actual function timings)
+  provDBsetup pdb_setup;
+  int i=1;
+  while(i<argc){
+    std::string sarg(argv[i]);
+    if(sarg == "-remote_provdb"){ //Allow for connection to an existing remote provDB server
+      if(i+3 >= argc) fatal_error("Not enough arguments provided");
+      pdb_setup.remote_server_addr_dir = argv[i+1];
+      pdb_setup.remote_server_nshards = std::stoi(argv[i+2]);
+      pdb_setup.remote_server_instances = std::stoi(argv[i+3]);
+      pdb_setup.use_local = false;
+      i+=4;
+    }else if(sarg == "-enable_viz"){
+      if(i+1 >= argc) fatal_error("Not enough arguments provided");
+      getPserver().enableVizOutput(argv[i+1]);
+      i+=2;
+    }else if(sarg == "-sim_step_freq"){
+      if(i+1 >= argc) fatal_error("Not enough arguments provided");
+      sim_step_freq_ms = std::stoi(argv[i+1]);
+      i+=2;
+    }else{
+      fatal_error(stringize("Unknown argument: %s",argv[i]));
+    }
+  }
+
   int window_size = 5; //number of events to record around an anomaly in the provenance data
   int pid = 0; //program index
   unsigned long program_start = 100;
@@ -25,7 +50,7 @@ int main(int argc, char **argv){
 
   std::vector<ADsim> ad;
   for(int r=0;r<n_ranks;r++)
-    ad.push_back(ADsim(window_size, pid, r, program_start, step_freq));
+    ad.push_back(ADsim(window_size, pid, r, program_start, step_freq, pdb_setup));
 
   //Setup some functions
   registerFunc("main", 500, 50, 100);
@@ -85,6 +110,7 @@ int main(int argc, char **argv){
     }
     //PServer dump its output
     getPserver().writeStreamingOutput();
+    std::this_thread::sleep_for(std::chrono::milliseconds(sim_step_freq_ms));
   }
 
 #ifdef USE_MPI

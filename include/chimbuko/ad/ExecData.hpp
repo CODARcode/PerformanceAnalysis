@@ -489,7 +489,7 @@ public:
     /**
      * @brief Return the outlier severity, representing how important the outlier is
      */  
-    double get_outlier_severity() const{ return (double)get_runtime(); }   
+    double get_outlier_severity() const{ return (double)get_exclusive(); }
 
     /**
      * @brief Set the label

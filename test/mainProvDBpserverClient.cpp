@@ -154,7 +154,7 @@ int main(int argc, char** argv)
   }else{
     std::cout << "Rank " << rank << " acting as AD client and connecting to database on " << addr << std::endl;
     ADProvenanceDBclient client(rank); 
-    client.connect(addr,1);
+    client.connectSingleServer(addr,1);
     std::cout << "Rank " << rank << " waiting at barrier" << std::endl;
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD); //wait for rank 0 to do its business

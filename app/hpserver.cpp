@@ -40,7 +40,9 @@ struct hpserverArgs{
 
   std::string stat_outputdir;
 
-  hpserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir("")
+  int base_port;
+
+  hpserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), base_port(5559)
   {}
 
   static commandLineParser<hpserverArgs> &getParser(){
@@ -55,6 +57,7 @@ struct hpserverArgs{
       addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
       addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
       addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
+      addOptionalCommandLineArg(p, base_port, "The base port. Thread worker ports are base_port+thread_index (default 5559)");
       init = true;
     }
     return p;
@@ -91,6 +94,7 @@ int main (int argc, char ** argv){
   std::vector<SstdParam> param(args.nt); //global collection of parameters used to identify anomalies
   std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
   std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
+  std::vector<GlobalAnomalyMetrics> global_anom_metrics(args.nt); //global anomaly metrics
   PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
   
   if(args.load_params_set){
@@ -106,6 +110,7 @@ int main (int argc, char ** argv){
   }
   
   ZMQMENet net;
+  net.setBasePort(args.base_port);
 #ifdef USE_MPI
   MPI_Init(&argc, &argv);
 #endif
@@ -124,9 +129,9 @@ int main (int argc, char ** argv){
     for(int t=0;t<args.nt;t++){
       net.add_payload(new NetPayloadUpdateParams(&param[t], args.freeze_params), t);
       net.add_payload(new NetPayloadGetParams(&param[t]), t);
-      net.add_payload(new NetPayloadUpdateAnomalyStats(&global_func_stats[t]), t);
-      net.add_payload(new NetPayloadUpdateCounterStats(&global_counter_stats[t]), t);
+      net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats[t], &global_counter_stats[t], &global_anom_metrics[t]), t);
       net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map), t);
+      net.add_payload(new NetPayloadPing,t);   
     }
     net.init(nullptr, nullptr, args.nt);
 
@@ -134,6 +139,7 @@ int main (int argc, char ** argv){
     //Todo: synchronize between thread instances
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats[0]));
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats[0]));
+    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsPayload(&global_anom_metrics[0]));
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Start communicating with the AD instances

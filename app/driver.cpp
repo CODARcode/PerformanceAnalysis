@@ -75,15 +75,16 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, hbos_use_global_threshold, "Set true to use a global threshold in HBOS algorithm. Dafault is true.");
     addOptionalCommandLineArg(p, program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
-    addOptionalCommandLineArg(p, net_recv_timeout, "Timeout (in ms) for blocking receives on client from parameter server");
+    addOptionalCommandLineArg(p, net_recv_timeout, "Timeout (in ms) for blocking receives on client from parameter server (default 30000)");
     addOptionalCommandLineArg(p, pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
     addOptionalCommandLineArg(p, hpserver_nthr, "Set the number of threads used by the hierarchical PS. This parameter is used to compute a port offset for the particular endpoint that this AD rank connects to (default 1)");
     addOptionalCommandLineArg(p, interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
     addOptionalCommandLineArg(p, anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
     addOptionalCommandLineArg(p, prov_outputpath, "Output provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 #ifdef ENABLE_PROVDB
-    addOptionalCommandLineArg(p, provdb_addr, "Address of the provenance database. If empty (default) the provenance DB will not be used.\nHas format \"ofi+tcp;ofi_rxm://${IP_ADDR}:${PORT}\". Should also accept \"tcp://${IP_ADDR}:${PORT}\"");
+    addOptionalCommandLineArg(p, provdb_addr_dir, "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
     addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+    addOptionalCommandLineArg(p, nprovdb_instances, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
 #endif
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
@@ -107,6 +108,8 @@ optionalArgsParser & getOptionalArgsParser(){
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
     addOptionalCommandLineArg(p, step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
+    addOptionalCommandLineArg(p, prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
+    addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
 
     initialized = true;
   }
@@ -156,7 +159,8 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv
   params.prov_outputpath = "";
 #ifdef ENABLE_PROVDB
   params.nprovdb_shards = 1;
-  params.provdb_addr = ""; //don't use provDB by default
+  params.nprovdb_instances = 1;
+  params.provdb_addr_dir = ""; //don't use provDB by default
 #endif
   params.err_outputpath = ""; //use std::cerr for errors by default
   params.trace_connect_timeout = 60;
@@ -190,7 +194,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv
   //If neither the provenance database or the provenance output path are set, default to outputting to pwd
   if(params.prov_outputpath.size() == 0
 #ifdef ENABLE_PROVDB
-     && params.provdb_addr.size() == 0
+     && params.provdb_addr_dir.size() == 0
 #endif
      ){
     params.prov_outputpath = ".";
