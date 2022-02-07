@@ -214,6 +214,68 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
   EXPECT_EQ(fail, false);
 }
 
+TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataPacked){
+  //Try the packed multisend
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+    client.enablePackedMultiSends(true);
+
+    std::vector<nlohmann::json> objs(2);
+    objs[0]["hello"] = "world packed " + rank_str;
+    objs[1]["hello"] = "again packed " + rank_str;
+
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    std::vector<yk_id_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    EXPECT_EQ(rid.size(), 2);
+
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world packed " + rank_str : "again packed " + rank_str);
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+
+    //Try without RDMA
+    client.enableMultiSendRDMA(false);
+
+    objs[0]["hello"] = "world packed no-RDMA " + rank_str;
+    objs[1]["hello"] = "again packed no-RDMA " + rank_str;
+
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    EXPECT_EQ(rid.size(), 2);
+
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world packed no-RDMA " + rank_str : "again no-RDMA " + rank_str);
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+
+
+
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 
   bool fail = false;
@@ -288,6 +350,76 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
   }
   EXPECT_EQ(fail, false);
 }
+
+
+
+TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsyncPacked){
+
+  bool fail = false;
+  ADProvenanceDBclient client(rank);
+  std::cout << "Client attempting connection" << std::endl;
+  try{
+    client.connectSingleServer(addr,nshards);
+    client.enablePackedMultiSends(true);
+
+    std::vector<nlohmann::json> objs(2);
+    objs[0]["hello"] = "world async packed " + rank_str;
+    objs[1]["hello"] = "again async packed " + rank_str;
+
+    OutstandingRequest req;
+    
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData,&req);
+    EXPECT_EQ(req.ids.size(), 2);
+
+    req.wait(); //wait for completion
+    
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world async packed " + rank_str : "again async packed " + rank_str);
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+
+    req = OutstandingRequest();
+    client.enableMultiSendRDMA(false);
+
+    objs[0]["hello"] = "world async packed no-RDMA " + rank_str;
+    objs[1]["hello"] = "again async packed no-RDMA " + rank_str;
+
+    std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
+    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData,&req);
+    EXPECT_EQ(req.ids.size(), 2);
+
+    req.wait(); //wait for completion
+    
+    for(int i=0;i<2;i++){    
+      nlohmann::json check;
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+    
+      std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
+
+      //NB, retrieval adds extra __id field, so objects not identical
+      bool same = check["hello"] ==  (i==0? "world async packed no-RDMA " + rank_str : "again async packed no-RDMA " + rank_str);
+      std::cout << "JSON objects are the same? " << same << std::endl;
+      EXPECT_EQ(same, true);
+    }
+
+
+  }catch(const std::exception &ex){
+    std::cout << "ERROR caught: " << ex.what() << std::endl;
+    fail = true;
+  }
+  EXPECT_EQ(fail, false);
+}
+
+
+
 
 
 TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){

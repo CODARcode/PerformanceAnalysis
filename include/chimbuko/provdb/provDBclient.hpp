@@ -91,6 +91,9 @@ namespace chimbuko{
 
     thallium::engine* m_eng; /**< The thallium engine*/
 
+    bool send_multi_packed; /**< Use packed sends for multiple data, copying to an intermediate buffer */
+    bool send_multi_rdma; /**< Use RDMA sends for multiple data; disabling uses regular RPC calls. Disabling requires send_multi_packed = true */
+			       
     /**
      * @brief Open a collection on a database
      */
@@ -237,6 +240,19 @@ namespace chimbuko{
      * @brief Get the anomalous send manager. Should be used for testing only
      */
     AnomalousSendManager & getAnomSendManager(){ return anom_send_man; }
+
+    /**
+     * @brief Enable (disable) the use of packed sends for multiple data, copying to an intermediate buffer (default : false)
+     */
+    void enablePackedMultiSends(bool val = true){ send_multi_packed = val; }
+
+    /**
+     * @brief Enable (disable) the use of RDMA sends for multiple data; disabling uses regular RPC calls (default: true)
+     *
+     * Disabling requires enablePackedMultiSends(true) at present
+     */
+    void enableMultiSendRDMA(bool val = true){ send_multi_rdma = val; }
+
   };
 
 

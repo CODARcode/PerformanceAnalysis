@@ -35,6 +35,8 @@ struct Args{
   int max_outstanding_sends; //if set >0 the benchmark will pause when the number of outstanding asynchronous sends reaches this number until it reaches 0 again
   std::string load_shard_map; //read an explicit map of rank -> shard if ! ""
   bool run_database_test; //test the database connection before the benchmark
+  bool use_multisend_packed; //Use packed multi-sends
+  bool use_multisend_rdma; //use RDMA for multi-sends (disabling requires use_multisend_packed = true)
   
   Args(){
     cycles = 10;
@@ -54,6 +56,8 @@ struct Args{
     max_outstanding_sends = 0;
     load_shard_map = "";
     run_database_test = true;
+    use_multisend_packed = false;
+    use_multisend_rdma = true;
   }
 };
 
@@ -118,6 +122,8 @@ int main(int argc, char **argv){
   addOptionalCommandLineArgDefaultHelpString(cmdline, max_outstanding_sends);
   addOptionalCommandLineArgDefaultHelpString(cmdline, load_shard_map);
   addOptionalCommandLineArgDefaultHelpString(cmdline, run_database_test);
+  addOptionalCommandLineArgDefaultHelpString(cmdline, use_multisend_packed); //default false
+  addOptionalCommandLineArgDefaultHelpString(cmdline, use_multisend_rdma);  //default true
 
   if(argc == 1 || (argc == 2 && std::string(argv[1]) == "-help")){
     cmdline.help();
@@ -135,6 +141,9 @@ int main(int argc, char **argv){
 
   std::cout << "Rank " << rank << " connecting to provDB" << std::endl;
   ADProvenanceDBclient provdb_client(rank);
+  provdb_client.enablePackedMultiSends(args.use_multisend_packed);
+  provdb_client.enableMultiSendRDMA(args.use_multisend_rdma);
+
   if(args.load_shard_map.size() > 0)
     provdb_client.connectMultiServerShardAssign(args.provdb_addr_dir,args.nshards,args.ninstances,args.load_shard_map);
   else

@@ -73,7 +73,7 @@ provDBclient::~provDBclient(){
   verboseStream << "provDBclient exiting" << std::endl;
 }
 
-provDBclient::provDBclient(): m_is_connected(false), m_stats(nullptr){}
+provDBclient::provDBclient(): m_is_connected(false), m_stats(nullptr), send_multi_packed(false), send_multi_rdma(true){}
 
 yokan::Collection* provDBclient::openCollection(yokan::Database &db, const std::string &coll){
   if(!db.collectionExists(coll.c_str())) fatal_error("Collection " + coll + " does not exist on server");
@@ -178,26 +178,50 @@ std::vector<yk_id_t> provDBclient::sendMultipleData(const std::vector<std::strin
   if(entries.size() == 0 || !m_is_connected) 
     return std::vector<yk_id_t>();
 
+  if(!send_multi_rdma && !send_multi_packed) fatal_error("Disabling RDMA for multi-sends requires packed sends to be enabled");
+
   PerfTimer timer;
 
   size_t size = entries.size();
   std::vector<yk_id_t> ids(size);
   const void* ptrs[size];
   size_t sizes[size];
+  size_t total_bytes = 0;
 
   for(int i=0;i<size;i++){
     ptrs[i] = (const void*)entries[i].data();
     sizes[i] = entries[i].size();
+    total_bytes += sizes[i];
   }
   if(m_stats){
     m_stats->add(m_stats_prefix+"sendmulti_nrecords", size);
     for(int i=0;i<size;i++) m_stats->add(m_stats_prefix+"sendmulti_record_size", sizes[i]);
   }
 
-  timer.start();
-  coll.storeMulti(size, ptrs, sizes, ids.data());
-  if(m_stats) m_stats->add(m_stats_prefix+"sendmulti_send_ms", timer.elapsed_ms());
+  if(send_multi_packed){
+    verboseStream << "Multi-send via storePacked" << std::endl;
+    char* pdata = (char*)malloc(total_bytes);
+    char* pto = pdata;
+    for(size_t i=0;i<size;i++){
+      memcpy(pto, ptrs[i], sizes[i]);
+      pto += sizes[i];
+    }
+    int32_t mode = YOKAN_MODE_DEFAULT;
+    if(!send_multi_rdma){
+      mode = YOKAN_MODE_NO_RDMA;
+      verboseStream << "Using no-RDMA send" << std::endl;
+    }
 
+    timer.start();
+    coll.storePacked(size, (void*)pdata, sizes, ids.data(), mode);
+    free(pdata);
+    if(m_stats) m_stats->add(m_stats_prefix+"sendmulti_packed_send_ms", timer.elapsed_ms());
+  }else{
+    verboseStream << "Multi-send via storeMulti" << std::endl;
+    timer.start();
+    coll.storeMulti(size, ptrs, sizes, ids.data());
+    if(m_stats) m_stats->add(m_stats_prefix+"sendmulti_send_ms", timer.elapsed_ms());
+  }
   return ids;
 }
 
@@ -279,6 +303,8 @@ void provDBclient::sendMultipleDataAsync(const std::vector<std::string> &entries
 #else
   if(entries.size() == 0 || !m_is_connected) return;
 
+  if(!send_multi_rdma && !send_multi_packed) fatal_error("Disabling RDMA for multi-sends requires packed sends to be enabled");
+
   PerfTimer timer, ftimer;
   size_t size = entries.size();
   yk_id_t* ids;
@@ -295,19 +321,41 @@ void provDBclient::sendMultipleDataAsync(const std::vector<std::string> &entries
     sreq = &req->req;
   }
 
+  if(send_multi_packed){
+    verboseStream << "Async multi-send via storePacked" << std::endl;
+    if(!send_multi_rdma) verboseStream << "Using no-RDMA send" << std::endl;
+  }
+
   yokan::Collection const* coll_ptr = &coll;
 
-  ADProvenanceDBengine::getAsyncXstream().make_thread([ids, sreq, coll_ptr, entries, size]() {
+  bool _send_multi_rdma = send_multi_rdma;
+  bool _send_multi_packed = send_multi_packed;
+
+  ADProvenanceDBengine::getAsyncXstream().make_thread([ids, sreq, coll_ptr, entries, size, _send_multi_rdma, _send_multi_packed]() {
       yk_id_t tmp[size];
       const void* ptrs[size];
       size_t sizes[size];
-      
+
+      size_t total_bytes = 0;      
       for(int i=0;i<size;i++){
 	ptrs[i] = (const void*)entries[i].data();
 	sizes[i] = entries[i].size();
+	total_bytes += sizes[i];
       }
 
-      coll_ptr->storeMulti(size, ptrs, sizes, ids == nullptr ? tmp : ids);
+      if(_send_multi_packed){
+	char* pdata = (char*)malloc(total_bytes);
+	char* pto = pdata;
+	for(size_t i=0;i<size;i++){
+	  memcpy(pto, ptrs[i], sizes[i]);
+	  pto += sizes[i];
+	}
+	int32_t mode = _send_multi_rdma ? YOKAN_MODE_DEFAULT : YOKAN_MODE_NO_RDMA;
+	coll_ptr->storePacked(size, (void*)pdata, sizes, ids == nullptr ? tmp : ids, mode);
+	free(pdata);
+      }else{
+	coll_ptr->storeMulti(size, ptrs, sizes, ids == nullptr ? tmp : ids);
+      }
       sreq->set_value();
     }, thallium::anonymous());
 
