@@ -147,6 +147,21 @@ struct ProvdbArgs{
 };
 
 
+void setDatabasePath(nlohmann::json &config, const std::string &path, const std::string &db_name, const std::string &db_type){
+  if(db_type == "leveldb"){  
+    std::string fpath = stringize("%s/%s.%s", path.c_str(), db_name.c_str(),  db_type.c_str());
+    config["path"] = fpath;
+  }else if(db_type == "berkeleydb"){
+    std::string fname = stringize("%s.%s", db_name.c_str(),  db_type.c_str());
+    config["home"] = path;
+    config["file"] = fname;
+  }else if(db_type == "map"){
+
+  }else{
+    fatal_error("Unknown database type");
+  }	  
+}
+
 
 int main(int argc, char** argv) {
   {
@@ -210,6 +225,11 @@ int main(int argc, char** argv) {
     }else if(args.db_type == "leveldb"){
       base_config["error_if_exists"] = true;
       base_config["create_if_missing"] = true;
+    }else if(args.db_type == "map"){ //in-memory std::map
+      base_config["use_lock"] = false; //each xstream exclusively owns a database
+    }else if(args.db_type == "berkeleydb"){
+      base_config["type"] = "btree";
+      base_config["create_if_missing"] = true;	    
     }else{
       fatal_error("Unknown database type");
     }
@@ -338,10 +358,8 @@ int main(int argc, char** argv) {
 	std::string glob_db_name = setup.getGlobalDBname();
 	yk_database_id_t glob_db_id;
 	if(instance_do_global_db){
-	  std::string path = stringize("%s/%s.%s", args.db_write_dir.c_str(), glob_db_name.c_str(),  args.db_type.c_str());
-	  
 	  nlohmann::json glob_db_config = base_config;
-	  glob_db_config["path"] = path;
+	  setDatabasePath(glob_db_config, args.db_write_dir, glob_db_name, args.db_type);
 	  glob_db_config["name"] = glob_db_name;
 	  
 	  PSprogressStream << "creating global data database: " << glob_db_name << " on provider " << glob_provider_idx << " with config " << glob_db_config.dump() << " and type " << args.db_type << std::endl;
@@ -356,11 +374,9 @@ int main(int argc, char** argv) {
 	for(int s=0;s<nshard_instance;s++){
 	  int shard = instance_shard_offset + s;
 	  db_shard_names[s] = setup.getShardDBname(shard);
-
-	  std::string path = stringize("%s/%s.%s", args.db_write_dir.c_str(), db_shard_names[s].c_str(), args.db_type.c_str());
 	  
 	  nlohmann::json config = base_config;
-	  config["path"] = path;
+	  setDatabasePath(config, args.db_write_dir, db_shard_names[s], args.db_type);
 	  config["name"] = db_shard_names[s];
 
 	  PSprogressStream << "shard " << shard << ": " << db_shard_names[s] << " on provider " << shard_provider_indices[s] << " with config " << config.dump() << " and type " << args.db_type << std::endl;
