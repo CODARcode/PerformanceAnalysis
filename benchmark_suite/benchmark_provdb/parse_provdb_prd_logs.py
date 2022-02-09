@@ -315,6 +315,27 @@ for b in range(ndata_largest):
     f.write(rr + "\n")
 f.close()
 
+#Compute the number of clients services per second assuming 2 sends per second
+print("Clients serviced per second total")
+f = open("clients_serviced_per_second_total.dat", 'w')
+for b in range(1,ndata_largest):
+    serviced=0  #number of requests services
+    for s in range(shards):
+        serviced += shard_data_combined[s].serviced[b]
+
+    #Bin time
+    bin_time = shard_data_combined[0].t[b] - shard_data_combined[0].t[b-1]
+    clients = serviced / float(bin_time * 2)
+    
+    rr="%d %d" % (shard_data_combined[0].t[b], clients)
+    print(rr)
+    f.write(rr + "\n")
+f.close()
+
+
+
+
+
 
 print("Aggregate requests serviced as a function of time (sum of serviced to now)")
 f = open("serviced_aggregate_total.dat", 'w')
