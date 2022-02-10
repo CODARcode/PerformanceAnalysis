@@ -326,37 +326,28 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //For a histogram that has bins, the number of edges should be nbin+1
   if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
 
-  //probability of runtime counts by bin
-  std::vector<double> prob_counts(nbin, 0.);
-  double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);
-  int lowest_count  = std::numeric_limits<int>::max();
-
-  for(int i=0; i < nbin; i++){
-    int count = bin_counts[i];
-    prob_counts[i] = count / tot_runtimes;
-    
-    if (count < lowest_count)
-      lowest_count = count;
-  }
-
-  //Create HBOS score vector
-  std::vector<double> out_scores_i(nbin);
-
   //Bounds of the range of possible scores
   const double max_possible_score = -1 * log2(0.0 + m_alpha); //-log2(78.88e-32) ~ 100.0 by default (i.e. the theoretical max score)
   const double min_possible_score = -1 * log2(1.0 + m_alpha); //-log2(1+78.88e-32) ~ 0.0 by default (i.e. the theoretical max score)
 
-  //Find the smallest and largest scores in the histogram
+  //Find the smallest and largest scores in the histogram (excluding empty bins)
   double min_score = max_possible_score;
   double max_score = min_possible_score;
+
+  //Compute scores
+  double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);
+  std::vector<double> out_scores_i(nbin);
+
   verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < nbin; i++){
-    double l = -1 * log2(prob_counts[i] + m_alpha);
-    out_scores_i[i] = l;
-    verboseStream << "Bin " << i << " Count: " << bin_counts[i] << ", Probability: " << prob_counts[i] << ", score: "<< l << std::endl;
-    if(prob_counts[i] > 0) {
-      min_score = std::min(min_score,l);
-      max_score = std::max(max_score,l);
+    int count = bin_counts[i];
+    double prob = count / tot_runtimes;
+    double score = -1 * log2(prob + m_alpha);
+    out_scores_i[i] = score;
+    verboseStream << "Bin " << i << ", Range " << bin_edges[i] << "-" << bin_edges[i+1] << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
+    if(prob > 0) {
+      min_score = std::min(min_score,score);
+      max_score = std::max(max_score,score);
     }
   }
   verboseStream << std::endl;
@@ -381,16 +372,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
   verboseStream << "Bin width: " << bin_width << std::endl;
 
-  //FOR DEBUG ONLY print histogram
-  if(enableVerboseLogging()){
-    for(int i=0; i< nedge; i++){
-      verboseStream << "Bin_edge("<< i << "): " << bin_edges[i];
-      if (i < nbin)
-	verboseStreamAdd << ", Counts: " << bin_counts[i];
-      verboseStreamAdd << std::endl;
-    }
-  }
-
   int top_out = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
@@ -399,51 +380,18 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       double ad_score;
 
       verboseStream << "Locating " << itt->get_json().dump() << std::endl;
-      const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, hist.bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << hist.bin_edges().size() << " & num_bins: "<< nbin << std::endl;
-      /**
-       * Sample (datapoint) can be in either first bin or does not belong to any bins
-       */
-      if( bin_ind == 0){
-        const double first_bin_edge = hist.bin_edges().at(0);
-	const double first_bin_upper_edge = hist.bin_edges().at(1);
-        const double dist = first_bin_edge - runtime_i;
-	verboseStream << "First bin edges: " << first_bin_edge << " " << first_bin_upper_edge << std::endl;
-        if( dist <= (bin_width * 0.05) ){
-          verboseStream << runtime_i << " is in first bin of Histogram but NOT outlier" << std::endl;
-	  ad_score = out_scores_i.at(0);
-	  verboseStream << "ad_score: " << ad_score << std::endl;
-        }
-        else{
-          verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
-          ad_score = max_possible_score;
-	  verboseStream << "ad_score(max_possible_score): " << ad_score << std::endl;
-        }
+      const int bin_ind = hist.getBin(runtime_i, 0.05); //allow events within 5% of the bin width away from the histogram edges to be included in the first/last bin
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << nedge << " & num_bins: "<< nbin << std::endl;
 
-      }
-      /**
-       *  If the sample does not belong to any bins
-       */
-      else if(bin_ind == nbin + 1){
-        const int last_idx = hist.bin_edges().size() - 1;
-        const double last_bin_edge = hist.bin_edges().at(last_idx);
-        const double dist = runtime_i - last_bin_edge;
-	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
-        if (dist <= (bin_width * 0.05)) {
-	  verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
-	  ad_score = out_scores_i.at(nbin - 1);
-	  verboseStream << "ad_score: " << ad_score << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-        }
-        else{
-          verboseStream << runtime_i << " is on right of histogram and an outlier" << std::endl;
-          ad_score = max_possible_score;
-	  verboseStream << "ad_score(max_possible_score): " << ad_score << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-        }
-
-      }
-      else { //bin index within histogram
+      if( bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram){
+	//Sample (datapoint) lies outside of the histogram
+	verboseStream << runtime_i << " is on " << (bin_ind == Histogram::LeftOfHistogram ? "left" : "right")  << " of histogram and an outlier" << std::endl;
+	ad_score = max_possible_score;
+	verboseStream << "ad_score(max_possible_score): " << ad_score << std::endl;
+      }else{
+	//Sample is within the histogram
 	verboseStream << runtime_i << " maybe be an outlier" << std::endl;
-	ad_score = out_scores_i.at( bin_ind );
+	ad_score = out_scores_i[bin_ind];
 	verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
       }
 
