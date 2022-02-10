@@ -19,6 +19,15 @@ namespace chimbuko {
   if(!enableVerboseLogging()){} \
   else std::cout << '[' << getDateTime() << "] "
 
+  /**
+   * @brief Macro for log output that appears when verbose logging is enabled. This version does not include the prefix and so can be used as a line continuance
+   *
+   * Example usage:  verboseStreamAdd << "Hello world!" << std::endl; 
+   */
+#define verboseStreamAdd \
+  if(!enableVerboseLogging()){} \
+  else std::cout
+
 
   /**
    * @brief Macro for log output that includes the date and time, intended for reporting progress on service components for which there is only one rank

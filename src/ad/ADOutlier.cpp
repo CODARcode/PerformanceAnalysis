@@ -234,60 +234,28 @@ Anomalies ADOutlierHBOS::run(int step) {
   Anomalies outliers;
   if (m_execDataMap == nullptr) return outliers;
 
-  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
-  //Python scripts also appear to take longer executing a function the first time
-  //This is worked around by ignoring the first time a function is encountered (per device)
-  //Set this environment variable to disable the workaround
-  bool cuda_jit_workaround = true;
-  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
-    cuda_jit_workaround = false;
-  }
-
   //Generate the statistics based on this IO step
   HbosParam param;
-  HbosParam& g = *(HbosParam*)m_param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     Histogram &hist = param[func_id];
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
-      if (itt->get_label() == 0) {
-        //Update local counts of number of times encountered
-        std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
-        auto encounter_it = m_local_func_exec_count.find(fkey);
-        if(encounter_it == m_local_func_exec_count.end())
-  	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
-        else
-  	encounter_it->second++;
-
-        if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
-
-           runtimes.push_back(this->getStatisticValue(*itt));
-        }
-      }
+      if (itt->get_label() == 0)
+	runtimes.push_back(this->getStatisticValue(*itt));
     }
+    verboseStream << "Function " << func_id << " has " << runtimes.size() << " unlabeled data points of " << it.second.size() << std::endl;
+
     if (runtimes.size() > 0) {
-      if (!g.find(func_id)) { // If func_id does not exist
-        
-	const int r = hist.create_histogram(runtimes);
-        if (r < 0) {
-		recoverable_error(std::string("AD: Func_ID does not exist"));
-		continue;
-	}
-      }
-      else { //merge with exisiting func_id, not overwrite
-
-        const int r = hist.merge_histograms(g[func_id], runtimes);
-	if (r < 0) {
-		verboseStream << "AD: Merging reset " << std::endl;
-		continue;
-	}
+      verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
+      const int r = hist.create_histogram(runtimes);
+      if (r < 0) {
+	recoverable_error(std::string("AD: Func_ID does not exist"));
+	continue;
       }
     }
-    else { 
-      //recoverable_error(std::string("AD: Zero function runtimes "));
-	    continue;
-    }
+    verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
+    verboseStream << hist << std::endl;
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -316,71 +284,111 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
+  //Check if there are any unlabeled data points first before we go through the effort of precomputing scores
+  // size_t n_unlabeled = 0;
+  // for (auto itt : data)
+  //   if(itt->get_label() == 0) ++n_unlabeled;
+
+  // if(n_unlabeled == 0){
+  //   verboseStream << "Function has no unlabeled events, skipping" << std::endl;
+  //   return 0;
+  // }
+
+
   HbosParam& param = *(HbosParam*)m_param;
   Histogram &hist = param[func_id];
 
   unsigned long n_outliers = 0;
 
-  //probability of runtime counts
-  std::vector<double> prob_counts = std::vector<double>(hist.counts().size(), 0.0);
-  double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
+  auto const & bin_counts = hist.counts();
+  auto const & bin_edges = hist.bin_edges();
+
+  size_t nbin = bin_counts.size();
+  size_t nedge = bin_edges.size();
+
+  verboseStream << "Number of bins " << nbin << std::endl;
+
+  //Check that the histogram contains bins
+  if(nbin == 0){
+    //This should only happen in the case where the histogram had no data for this function prior to this IO step and this IO step contains no unlabeled data points
+    size_t n_unlabeled=0;
+    for (auto itt : data)
+      if(itt->get_label() == 0) ++n_unlabeled;
+
+    if(n_unlabeled != 0){ 
+      fatal_error("Logic bomb: Histogram has 0 bins but dataset contains "+std::to_string(n_unlabeled)+" unlabeled data for this function!");
+    }else{
+      verboseStream << "No bins and no unlabeled data points, returning" << std::endl;
+      return 0;
+    }
+  }
+
+  //For a histogram that has bins, the number of edges should be nbin+1
+  if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
+
+  //probability of runtime counts by bin
+  std::vector<double> prob_counts(nbin, 0.);
+  double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);
   int lowest_count  = std::numeric_limits<int>::max();
 
-  for(int i=0; i < hist.counts().size(); i++){
-    int count = hist.counts().at(i);
-    double p = count / tot_runtimes;
-    prob_counts.at(i) += p;
+  for(int i=0; i < nbin; i++){
+    int count = bin_counts[i];
+    prob_counts[i] = count / tot_runtimes;
     
     if (count < lowest_count)
       lowest_count = count;
   }
 
   //Create HBOS score vector
-  std::vector<double> out_scores_i;
-  double min_score = -1 * log2(0.0 + m_alpha);
-  double max_score = -1 * log2(1.0 + m_alpha);
+  std::vector<double> out_scores_i(nbin);
+
+  //Bounds of the range of possible scores
+  const double max_possible_score = -1 * log2(0.0 + m_alpha); //-log2(78.88e-32) ~ 100.0 by default (i.e. the theoretical max score)
+  const double min_possible_score = -1 * log2(1.0 + m_alpha); //-log2(1+78.88e-32) ~ 0.0 by default (i.e. the theoretical max score)
+
+  //Find the smallest and largest scores in the histogram
+  double min_score = max_possible_score;
+  double max_score = min_possible_score;
   verboseStream << "out_scores_i: " << std::endl;
-  for(int i=0; i < prob_counts.size(); i++){
-    double l = -1 * log2(prob_counts.at(i) + m_alpha);
-    out_scores_i.push_back(l);
-    verboseStream << "Count: " << hist.counts().at(i) << ", Probability: " << prob_counts.at(i) << ", score: "<< l << std::endl;
-    if(prob_counts.at(i) > 0) {
-      if(l < min_score){
-        min_score = l;
-      }
-      if(l > max_score){
-        max_score = l;
-      }
+  for(int i=0; i < nbin; i++){
+    double l = -1 * log2(prob_counts[i] + m_alpha);
+    out_scores_i[i] = l;
+    verboseStream << "Bin " << i << " Count: " << bin_counts[i] << ", Probability: " << prob_counts[i] << ", score: "<< l << std::endl;
+    if(prob_counts[i] > 0) {
+      min_score = std::min(min_score,l);
+      max_score = std::max(max_score,l);
     }
   }
   verboseStream << std::endl;
-  verboseStream << "out_score_i size: " << out_scores_i.size() << std::endl;
   verboseStream << "min_score = " << min_score << std::endl;
   verboseStream << "max_score = " << max_score << std::endl;
 
-  if (out_scores_i.size() <= 0) {return 0;}
-
-  //compute threshold
+  //Compute threshold as a fraction of the range of scores in the histogram
   verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = min_score + (m_threshold * (max_score - min_score));
+  verboseStream << "Local threshold " << l_threshold << std::endl;
   if(m_use_global_threshold) {
     if(l_threshold < hist.get_threshold()) {
+      verboseStream << "Using global threshold as it is more stringent" << std::endl;
       l_threshold = hist.get_threshold();
     } else {
+      verboseStream << "Using local threshold as it is more stringent" << std::endl;
       hist.set_glob_threshold(l_threshold); 
     }
   }
 
   //Compute HBOS based score for each datapoint
   const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
-  const int num_bins = hist.counts().size();
   verboseStream << "Bin width: " << bin_width << std::endl;
 
   //FOR DEBUG ONLY print histogram
-  for(int i=0; i<hist.bin_edges().size(); i++){
-     verboseStream << "Bin_edge("<< i << "): " << hist.bin_edges()[i] << std::endl;
-     if (i < hist.counts().size())
-        verboseStream << ", Counts: " << hist.counts()[i] << std::endl;
+  if(enableVerboseLogging()){
+    for(int i=0; i< nedge; i++){
+      verboseStream << "Bin_edge("<< i << "): " << bin_edges[i];
+      if (i < nbin)
+	verboseStreamAdd << ", Counts: " << bin_counts[i];
+      verboseStreamAdd << std::endl;
+    }
   }
 
   int top_out = 0;
@@ -390,83 +398,65 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
       double ad_score;
 
+      verboseStream << "Locating " << itt->get_json().dump() << std::endl;
       const int bin_ind = ADOutlierHBOS::np_digitize_get_bin_inds(runtime_i, hist.bin_edges());
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << hist.bin_edges().size() << " & num_bins: "<< num_bins << std::endl;
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << hist.bin_edges().size() << " & num_bins: "<< nbin << std::endl;
       /**
        * Sample (datapoint) can be in either first bin or does not belong to any bins
-       * bin_ind == 0 (fall outside since it is too small)
        */
       if( bin_ind == 0){
         const double first_bin_edge = hist.bin_edges().at(0);
+	const double first_bin_upper_edge = hist.bin_edges().at(1);
         const double dist = first_bin_edge - runtime_i;
-	verboseStream << "First_bin_edge: " << first_bin_edge << std::endl;
+	verboseStream << "First bin edges: " << first_bin_edge << " " << first_bin_upper_edge << std::endl;
         if( dist <= (bin_width * 0.05) ){
           verboseStream << runtime_i << " is in first bin of Histogram but NOT outlier" << std::endl;
-	  if(hist.counts().size() < 1) {return 0;}
-          if(hist.counts().at(0) == 0) { /**< Ignore zero counts */
-
-            ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
-          }
-          else {
-            ad_score = out_scores_i.at(0);
-	    verboseStream << "ad_score: " << ad_score << std::endl;
-          }
+	  ad_score = out_scores_i.at(0);
+	  verboseStream << "ad_score: " << ad_score << std::endl;
         }
         else{
-          verboseStream << runtime_i << " is NOT in first bin of Histogram and it IS an outlier" << std::endl;
-          ad_score = max_score;
-	  verboseStream << "ad_score(max_score): " << ad_score << std::endl;
+          verboseStream << runtime_i << " is on left of histogram and an outlier" << std::endl;
+          ad_score = max_possible_score;
+	  verboseStream << "ad_score(max_possible_score): " << ad_score << std::endl;
         }
 
       }
       /**
        *  If the sample does not belong to any bins
        */
-      else if(bin_ind == num_bins + 1){
+      else if(bin_ind == nbin + 1){
         const int last_idx = hist.bin_edges().size() - 1;
         const double last_bin_edge = hist.bin_edges().at(last_idx);
         const double dist = runtime_i - last_bin_edge;
 	verboseStream << "last_indx: " << last_idx << ", last_bin_edge: " << last_bin_edge << std::endl;
         if (dist <= (bin_width * 0.05)) {
-          if(hist.counts().at(num_bins - 1) == 0) {   /**< Ignore zero counts */
-
-            ad_score = l_threshold - 1;
-            verboseStream << "corrected ad_score: " << ad_score << std::endl;
-          }
-          else {
-            verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
-            ad_score = out_scores_i.at(num_bins - 1);
-	    verboseStream << "ad_score: " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-          }
+	  verboseStream << runtime_i << " is on right of histogram but NOT outlier" << std::endl;
+	  ad_score = out_scores_i.at(nbin - 1);
+	  verboseStream << "ad_score: " << ad_score << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
         }
         else{
           verboseStream << runtime_i << " is on right of histogram and an outlier" << std::endl;
-          ad_score = max_score;
-	  verboseStream << "ad_score(max_score): " << ad_score << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
+          ad_score = max_possible_score;
+	  verboseStream << "ad_score(max_possible_score): " << ad_score << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
         }
 
       }
-      else {
-
-        if(hist.counts().at(bin_ind) == 0) { /**< Ignore zero counts */
-
-          ad_score = l_threshold - 1;
-          verboseStream << "corrected ad_score: " << ad_score << std::endl;
-        }
-        else {
-          verboseStream << runtime_i << " maybe be an outlier" << std::endl;
-          ad_score = out_scores_i.at( bin_ind - 1);
-	  verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << num_bins << ", out_scores_i size: " << out_scores_i.size() << std::endl;
-        }
-
+      else { //bin index within histogram
+	verboseStream << runtime_i << " maybe be an outlier" << std::endl;
+	ad_score = out_scores_i.at( bin_ind );
+	verboseStream << "ad_score(else): " << ad_score << ", bin_ind: " << bin_ind  << ", num_bins: " << nbin << ", out_scores_i size: " << out_scores_i.size() << std::endl;
       }
 
       //handle when ad_score = 0
-      if (ad_score <= 0) {
-
-	ad_score = -1 * log2((lowest_count / tot_runtimes) + m_alpha); 
-
+      //This is valid when there is only one bin as the probability is 1 and log(1) = 0
+      //Note that the total number of bins can be > 1 providing the other bins have 0 counts
+      if (ad_score <= 0 ){
+	int nbin_nonzero = 0;
+	for(int c : hist.counts())
+	  if(c>0) ++nbin_nonzero;
+	if(nbin_nonzero != 1){
+	  fatal_error("ad_score <= 0 but #bins with non zero count, "+std::to_string(nbin_nonzero)+" is not 1");
+	}
       }
 
 
@@ -475,27 +465,21 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
-
-          itt->set_label(-1);
-          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
-          n_outliers += 1;
-	  
-	  //FOR DEBUG ONLY 
-	  verboseStream << "Runtime: " << runtime_i << std::endl;
-      }
-    //}
-      else {
+	itt->set_label(-1);
+	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
+	outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+	n_outliers += 1;
+      }else {
         //Capture maximum of one normal execution per io step
         itt->set_label(1);
         if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
 	  outliers.insert(itt, Anomalies::EventType::Normal);
         }
-
       }
-    }
-  }
+
+    }//if unlabeled point
+  } //loop over data points
 
   return n_outliers;
 }

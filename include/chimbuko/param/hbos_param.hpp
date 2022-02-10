@@ -58,7 +58,7 @@ namespace chimbuko {
        * @brief Resets histogram data during initialization
        */
       void clear() {
-        glob_threshold = -1 * log2(1.00001);
+        glob_threshold = log2(1.00001);
         counts.clear();
         bin_edges.clear();
       }
@@ -71,6 +71,10 @@ namespace chimbuko {
          archive(glob_threshold, counts, bin_edges);
       }
 
+      /**
+       * @brief Comparison operator
+       */
+      bool operator==(const Data &r) const{ return glob_threshold == r.glob_threshold && counts == r.counts && bin_edges == r.bin_edges; }
 
 
     };
@@ -105,10 +109,11 @@ namespace chimbuko {
 
     /**
      * @brief Create new histogram locally for AD module's batch data instances
-     * @param r_times: a vector<double> of function run times
+     * @param r_times a vector<double> of function run times
+     * @param bin_width the bin width to use. If set to 0.0 (default) the Scott bin width will be used 
      * @return returns 0 if success, else -1
      */
-    int create_histogram(const std::vector<double>& r_times);
+    int create_histogram(const std::vector<double>& r_times, double bin_width = 0.0);
 
     /**
      * @brief merges a Histogram with function runtimes
@@ -193,17 +198,54 @@ namespace chimbuko {
      */
     nlohmann::json get_json() const;
 
+    /**
+     * @brief Return the number of bins
+     */
+    size_t Nbin() const{ return counts().size(); }
+
+    /**
+     * @brief Enums for reporting bin index outside of histogram
+     */
+    enum { LeftOfHistogram = -1, RightOfHistogram = -2 };
+    
+    /**
+     * @brief Get the bin containing value 'v'
+     * @param v The value
+     * @param tol The tolerance, as a fraction of the closest bin width,  that we allow values to be below the smallest bin or above the largest bin and still consider the value within that bin
+     * @return Bin index if within the histogram, otherwise either LeftOfHistogram or RightOfHistogram
+     */
+    int getBin(const double v, const double tol = 0.05) const;
+
+
+    /**
+     * @brief Generate a representative data set from the histogram assuming a bin is represented by its midpoint value
+     *
+     * @return Vector of values of a size equal to the sum of the bin counts
+     */
+    std::vector<double> unpack() const;
+
+    
+    /**
+     * @brief Return the sum of all the bin counts
+     */
+    int totalCount() const;
+
+    /**
+     * @brief Comparison operator
+     */
+    bool operator==(const Histogram &r) const{ return m_histogram == r.m_histogram; }
+
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
-    /*
+    /**
      * @brief Compute bin width based on Scott's rule
      * @param vals: vector of runtimes
      * @return computed bin width
      */
     static double _scott_binWidth(const std::vector<double> & vals);
 
-    /*
+    /**
      * @brief Compute bin width based on Scott's rule
      * @param global_counts: bin counts in global histogram on pserver
      * @param global_edges: bin edges in global histogram on pserver
@@ -213,10 +255,24 @@ namespace chimbuko {
      */
     static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
+
+    /**
+     * @brief Get the value represented by a bin; we use the midpoint
+     */
+    static double binValue(const size_t i, const std::vector<double> & edges);
+
+    /**
+     * @brief Get the value represented by a bin; we use the midpoint
+     */
+    inline double binValue(const size_t i) const{ return binValue(i, bin_edges()); }
+
   };
 
 
   Histogram operator+(const Histogram& g, const Histogram& l);
+
+  std::ostream & operator<<(std::ostream &os, const Histogram &h);
+
 
   /**
    * @@brief Implementation of ParamInterface for HBOS based anomaly detection
@@ -225,13 +281,21 @@ namespace chimbuko {
   public:
     HbosParam();
     ~HbosParam();
+
+    /**
+     * @brief Copy an existing HbosParam
+     */
+    void copy(const HbosParam &r){ m_hbosstats = r.m_hbosstats; }
+
     /**
      * @brief Clear all statistics
      */
     void clear() override;
 
-
-    const int find(const unsigned long& func_id);
+    /**
+     * @bin Check if the statistics for a function exist in the histogram
+     */
+    bool find(const unsigned long func_id) const;
 
     /**
      * @brief Get the internal map between global function index and statistics

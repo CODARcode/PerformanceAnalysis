@@ -42,6 +42,11 @@ public:
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
     return this->compute_outliers(anomalies,func_id, data);
   }
+
+  void setParams(const HbosParam &p){ 
+    ( (HbosParam*)m_param )->copy(p);
+  }
+
 };
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
@@ -406,4 +411,131 @@ TEST(ADOutlierSSTtest, TestAnomalyScore){
   std::cout << "Score for " << it->get_json().dump() << " : " << score << std::endl;
   
   EXPECT_NEAR(score, expect, 1e-7); //should be same probability
+}
+
+TEST(ADOutlierHBOSTest, TestAnomalyDetection){
+  ADOutlierHBOSTest outlier(ADOutlier::ExclusiveRuntime);
+  
+  //Generate a histogram
+  std::vector<int> counts = {2,8,1,0,0,2};
+  Histogram h;
+  h.set_counts(counts);
+  h.set_bin_edges({100,200,300,400,500,600,700});
+
+  //Compute the expected scores
+  double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
+  outlier.set_alpha(alpha); 
+
+  int sum_counts = std::accumulate(counts.begin(), counts.end(), 0);
+  std::vector<double> scores(counts.size());
+  for(int i=0;i<counts.size();i++){
+    double prob = double(counts[i])/sum_counts;
+    scores[i] = -1 * log2(prob + alpha); 
+  }
+
+  int fid = 33;
+  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  
+  HbosParam p;
+  p.assign(stats);
+  EXPECT_EQ( p.get_hbosstats(), stats );
+
+  outlier.setParams(p);
+
+
+  //Check data point in peak bin is not an outlier
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 250) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), scores[1], 1e-3);
+  }
+  //Check data point in the last bin is not an outlier
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 650) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
+  }
+  //Edge points within 5% of the bin width of the first and last bin should be included within that bin
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 96) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), scores[0], 1e-3);
+  }
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 704) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
+  }
+  //Points outside of the histogram should be outliers with score = 100
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 90) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
+  }
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 710) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
+  }
+  //Points in bins with 0 count should be outliers with score = 100
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 550) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+    EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
+  }
+
+
+
+
+
+
 }

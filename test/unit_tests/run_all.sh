@@ -35,6 +35,7 @@ set -o pipefail
 ./util/error
 ./util/memutils
 ./util/environment -hostname $(hostname)
+./util/Histogram
 ./param/sstd_param
 ./pserver/PSglobalFunctionIndexMap
 ./pserver/AggregateFuncStats
