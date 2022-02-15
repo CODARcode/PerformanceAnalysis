@@ -148,7 +148,7 @@ struct ProvdbArgs{
 
 
 void setDatabasePath(nlohmann::json &config, const std::string &path, const std::string &db_name, const std::string &db_type){
-  if(db_type == "leveldb"){  
+  if(db_type == "leveldb" || db_type == "rocksdb" || db_type == "tkrzw" || db_type == "lmdb" || db_type == "unqlite"){  
     std::string fpath = stringize("%s/%s.%s", path.c_str(), db_name.c_str(),  db_type.c_str());
     config["path"] = fpath;
   }else if(db_type == "berkeleydb"){
@@ -222,14 +222,24 @@ int main(int argc, char** argv) {
       std::ifstream in(args.db_base_config);
       if(in.fail()){ throw std::runtime_error("Failed to read db config file " + args.db_base_config); }
       base_config = nlohmann::json::parse(in);
-    }else if(args.db_type == "leveldb"){
+    }else if(args.db_type == "leveldb" || args.db_type == "rocksdb"){
       base_config["error_if_exists"] = true;
       base_config["create_if_missing"] = true;
     }else if(args.db_type == "map"){ //in-memory std::map
       base_config["use_lock"] = false; //each xstream exclusively owns a database
     }else if(args.db_type == "berkeleydb"){
       base_config["type"] = "btree";
-      base_config["create_if_missing"] = true;	    
+      base_config["create_if_missing"] = true;
+    }else if(args.db_type == "tkrzw"){
+      base_config["type"] = "tree";
+    }else if(args.db_type == "lmdb"){
+      base_config["create_if_missing"] = true;
+      base_config["no_lock"] = true;
+    }else if(args.db_type == "unqlite"){
+      base_config["mode"] = "create";
+      base_config["temporary"] = false;
+      base_config["use_abt_lock"] = false;
+      base_config["no_unqlite_mutex"] = true;
     }else{
       fatal_error("Unknown database type");
     }

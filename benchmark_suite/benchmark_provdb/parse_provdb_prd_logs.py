@@ -147,6 +147,10 @@ nn=0
 
 for s in range(shards):
     for r in range(len(shard_data[s])):
+        if len(shard_data[s][r].times) == 0:
+            print("Shard %d rank %d has 0 recorded times!" % (s,shard_data[s][r].rank))
+            continue
+
         prev = shard_data[s][r].times[0]
         for i in range(1,shard_data[s][r].ndata):
             t = shard_data[s][r].times[i]
@@ -165,6 +169,9 @@ t_latest = shard_data[0][0].times[-1]
 ndata_largest = 0 #largest number of data points over ranks
 for s in range(0, shards):
     for r in range(len(shard_data[s])):
+        if(len(shard_data[s][r].times) == 0):
+            continue
+        
         if shard_data[s][r].times[0] < t_earliest:
             t_earliest = shard_data[s][r].times[0]
         if shard_data[s][r].times[-1] > t_latest:
