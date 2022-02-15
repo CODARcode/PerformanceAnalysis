@@ -30,15 +30,16 @@ namespace tl = thallium;
 
 using namespace chimbuko;
 
-bool stop_wait_loop = false; //trigger breakout of main thread spin loop
 int instance; //server instance
+thallium::eventual<void> sleep_trig; //trigger used to signal to main thread that all clients have disconnected
+bool autoshutdown = true;
 
 #define PSprogressStream  progressStream << "ProvDB Admin instance " << instance << ": "
 #define PSverboseStream  verboseStream << "ProvDB Admin instance " << instance << ": "
 
-
 void termSignalHandler( int signum ) {
-  stop_wait_loop = true;
+  PSprogressStream << "Caught kill signal" << std::endl;
+  sleep_trig.set_value();
 }
 
 tl::mutex *mtx;
@@ -51,70 +52,9 @@ bool pserver_has_connected = false; //did the pserver ever connect
 bool committer_connected = false; //is the committer connected?
 bool committer_has_connected = false; //did the committer ever connect?
 
-//Allows a client to register with the provider
-void client_hello(const tl::request& req, const int rank) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  connected.insert(rank);
-  a_client_has_connected = true;
-  PSprogressStream << "Client " << rank << " has said hello: " << connected.size() << " ranks now connected" << std::endl;
-}
-//Allows a client to deregister from the provider
-void client_goodbye(const tl::request& req, const int rank) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  connected.erase(rank);
-  PSprogressStream << "Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
-}
-
-//Allows the pserver to register with the provider
-void pserver_hello(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  pserver_connected = true;
-  pserver_has_connected = true;
-  PSprogressStream << "Pserver has said hello" << std::endl;
-}
-//Allows the pserver to deregister from the provider
-void pserver_goodbye(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  pserver_connected = false;
-  PSprogressStream << "Pserver has said goodbye" << std::endl;
-}
-
-//Allows the committer to register with the provider
-void committer_hello(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  committer_connected = true;
-  committer_has_connected = true;
-  PSprogressStream << "Committer has said hello" << std::endl;
-}
-//Allows the committer to deregister from the provider
-void committer_goodbye(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  committer_connected = false;
-  PSprogressStream << "Committer has said goodbye" << std::endl;
-}
-
-//Get the connection status as a string of format 
-//"<current clients> <a client has connected (0/1)> <pserver connected (0/1)> <pserver has connected (0/1)> <committer connected (0/1)> <commiter has connected (0/1)>"
-void connection_status(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  std::stringstream ss;
-  ss << connected.size() << " " << int(a_client_has_connected) << " " 
-     << int(pserver_connected) << " " << int(pserver_has_connected) << " "
-     << int(committer_connected) << " " << int(committer_has_connected);
-  req.respond(ss.str());
-}
-
-
-
 bool cmd_shutdown = false; //true if a client has requested that the server shut down
 
-void client_stop_rpc(const tl::request& req) {
-  std::lock_guard<tl::mutex> lock(*mtx);
-  cmd_shutdown = true;
-  PSprogressStream << "Received shutdown request from client" << std::endl;
-}
-
-margo_instance_id margo_id;
+margo_instance_id margo_id; //the global margo index
 
 #ifdef ENABLE_MARGO_STATE_DUMP
 void margo_dump(const std::string &stub){
@@ -129,6 +69,89 @@ void margo_dump_rpc(const tl::request& req) {
 }
 #endif
 
+//Indicate to the main thread that all clients have disconnected
+//(Likely should be called inside a mutex)
+//Only the last client attached should enact the trigger
+void all_client_disconnected_check(){
+  if( (autoshutdown || cmd_shutdown)  &&
+      ( a_client_has_connected && connected.size() == 0 ) &&
+      ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
+      ( !committer_has_connected || (committer_has_connected && !committer_connected) )
+      ){
+    PSprogressStream << "detected all clients disconnected, shutting down" << std::endl;
+#ifdef ENABLE_MARGO_STATE_DUMP
+    margo_dump("margo_dump_all_client_disconnected." + std::to_string(instance));
+#endif
+    sleep_trig.set_value();
+  }
+}
+
+//Main thread waits for all clients to disconnect
+void wait_for_client_disconnect(){
+  sleep_trig.wait();
+}
+
+//Allows a client to register with the provider
+void client_hello(const tl::request& req, const int rank) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  connected.insert(rank);
+  a_client_has_connected = true;
+  PSprogressStream << "Client " << rank << " has said hello: " << connected.size() << " ranks now connected" << std::endl;
+}
+//Allows a client to deregister from the provider
+void client_goodbye(const tl::request& req, const int rank) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  connected.erase(rank);
+  PSprogressStream << "Client " << rank << " has said goodbye: " << connected.size() << " ranks now connected" << std::endl;
+  all_client_disconnected_check();
+}
+
+//Allows the pserver to register with the provider
+void pserver_hello(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  pserver_connected = true;
+  pserver_has_connected = true;
+  PSprogressStream << "Pserver has said hello" << std::endl;
+}
+//Allows the pserver to deregister from the provider
+void pserver_goodbye(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  pserver_connected = false;
+  PSprogressStream << "Pserver has said goodbye" << std::endl;
+  all_client_disconnected_check();
+}
+
+//Allows the committer to register with the provider
+void committer_hello(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  committer_connected = true;
+  committer_has_connected = true;
+  PSprogressStream << "Committer has said hello" << std::endl;
+}
+//Allows the committer to deregister from the provider
+void committer_goodbye(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  committer_connected = false;
+  PSprogressStream << "Committer has said goodbye" << std::endl;
+  all_client_disconnected_check();
+}
+
+//Get the connection status as a string of format 
+//"<current clients> <a client has connected (0/1)> <pserver connected (0/1)> <pserver has connected (0/1)> <committer connected (0/1)> <commiter has connected (0/1)>"
+void connection_status(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  std::stringstream ss;
+  ss << connected.size() << " " << int(a_client_has_connected) << " " 
+     << int(pserver_connected) << " " << int(pserver_has_connected) << " "
+     << int(committer_connected) << " " << int(committer_has_connected);
+  req.respond(ss.str());
+}
+
+void client_stop_rpc(const tl::request& req) {
+  std::lock_guard<tl::mutex> lock(*mtx);
+  cmd_shutdown = true;
+  PSprogressStream << "Received shutdown request from client" << std::endl;
+}
 
 struct ProvdbArgs{
   std::string ip;
@@ -193,6 +216,8 @@ int main(int argc, char** argv) {
 
     ProvdbArgs args;
     parser.parseCmdLineArgs(args, argc, argv);
+
+    autoshutdown = args.autoshutdown;
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
@@ -433,31 +458,7 @@ int main(int argc, char** argv) {
 	  //Spin quietly until SIGTERM sent
 	  signal(SIGTERM, termSignalHandler);
 	  PSprogressStream << "main thread waiting for completion" << std::endl;
-
-	  size_t iter = 0;
-	  while(!stop_wait_loop) { //stop wait loop will be set by SIGTERM handler
-	    tl::thread::sleep(engine, 1000); //Thallium engine sleeps but listens for rpc requests
-	    if(iter % 20 == 0){ verboseStream << "ProvDB Admin heartbeat" << std::endl; }
-	    
-	    //If at least one client has previously connected but none are now connected, shutdown the server
-	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
-
-	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
-	    if(
-	       (args.autoshutdown || cmd_shutdown)  &&
-	       ( a_client_has_connected && connected.size() == 0 ) &&
-	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
-	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
-	       ){
-	      PSprogressStream << "detected all clients disconnected, shutting down" << std::endl;
-#ifdef ENABLE_MARGO_STATE_DUMP
-	      margo_dump("margo_dump_all_client_disconnected." + std::to_string(instance));
-#endif
-	      break;
-	    }
-
-	    ++iter;
-	  }//wait loop
+	  wait_for_client_disconnect();
 	}//client scope
 
 #if 0 

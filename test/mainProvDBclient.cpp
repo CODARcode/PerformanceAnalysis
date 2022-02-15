@@ -260,7 +260,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataPacked){
       std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
       //NB, retrieval adds extra __id field, so objects not identical
-      bool same = check["hello"] ==  (i==0? "world packed no-RDMA " + rank_str : "again no-RDMA " + rank_str);
+      bool same = check["hello"] ==  (i==0? "world packed no-RDMA " + rank_str : "again packed no-RDMA " + rank_str);
       std::cout << "JSON objects are the same? " << same << std::endl;
       EXPECT_EQ(same, true);
     }
