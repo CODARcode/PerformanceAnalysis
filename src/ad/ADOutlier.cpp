@@ -472,77 +472,42 @@ Anomalies ADOutlierCOPOD::run(int step) {
   Anomalies outliers;
   if (m_execDataMap == nullptr) return outliers;
 
-  //If using CUDA without precompiled kernels the first time a function is encountered takes much longer as it does a JIT compile
-  //Python scripts also appear to take longer executing a function the first time
-  //This is worked around by ignoring the first time a function is encountered (per device)
-  //Set this environment variable to disable the workaround
-  bool cuda_jit_workaround = true;
-  if(const char* env_p = std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND")){
-    cuda_jit_workaround = false;
-  }
-
   //Generate the statistics based on this IO step
   CopodParam param;
-  CopodParam& g = *(CopodParam*)m_param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     Histogram &hist = param[func_id];
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
-      if (itt->get_label() == 0) {
-        //Update local counts of number of times encountered
-        std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
-        auto encounter_it = m_local_func_exec_count.find(fkey);
-        if(encounter_it == m_local_func_exec_count.end())
-  	encounter_it = m_local_func_exec_count.insert({fkey, 0}).first;
-        else
-  	encounter_it->second++;
-
-        if(!cuda_jit_workaround || encounter_it->second > 0){ //ignore first encounter to avoid including CUDA JIT compiles in stats (later this should be done only for GPU kernels
-
-           runtimes.push_back(this->getStatisticValue(*itt));
-        }
-      }
+      if (itt->get_label() == 0)
+	runtimes.push_back(this->getStatisticValue(*itt));
     }
+    verboseStream << "Function " << func_id << " has " << runtimes.size() << " unlabeled data points of " << it.second.size() << std::endl;
+
     if (runtimes.size() > 0) {
-      if (!g.find(func_id)) { // If func_id does not exist
-        const int r = hist.create_histogram(runtimes);
-        if (r < 0) {
-		recoverable_error(std::string("AD: Func_ID does not exist "));
-		continue;
-	}
+      verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
+      const int r = hist.create_histogram(runtimes);
+      if (r < 0) {
+	recoverable_error(std::string("AD: Func_ID does not exist"));
+	continue;
       }
-      else { //merge with exisiting func_id, not overwrite
+    }
+    verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
+    verboseStream << hist << std::endl;
 
-        const int r = hist.merge_histograms(g[func_id], runtimes);
-	if (r < 0) {
-		verboseStream << "AD: Merging reset " << std::endl;
-		continue;
-	}
-      }
-    }
-    else { 
-      ///recoverable_error(std::string("AD: Zero function runtimes "));
-	    continue;
-    }
-    verboseStream << "Size of runtimes: " << runtimes.size() << ", func_id: " << func_id << std::endl;
-    
     //calculate skewness of runtimes for func_id
     const double mu = std::accumulate(runtimes.begin(), runtimes.end(), 0.0) / runtimes.size();
-
-    std::vector<double> diff = std::vector<double>(runtimes.size());
-    std::transform(runtimes.begin(), runtimes.end(), diff.begin(), [mu](double x) {return x - mu;});
-    const double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-    const double stdev = std::sqrt(sq_sum / runtimes.size());
-
+    double var = 0.;
     double summ = 0;
-    for (int i=0; i<runtimes.size(); i++) {
-	summ += std::pow((runtimes.at(i) - mu), 3);
+    for(auto v: runtimes){
+      var += std::pow(v - mu, 2);
+      summ += std::pow(v - mu, 3);
     }
+    var /= runtimes.size();
+    double stdev = sqrt(var);
 
     const double abs_skewness = summ / ((runtimes.size() - 1) * std::pow(stdev,3));
     m_skewness[func_id] = (abs_skewness < 0) ? -1 : (abs_skewness > 0) ? 1 : 0;
-
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -575,6 +540,32 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   CopodParam& param = *(CopodParam*)m_param;
   Histogram &hist = param[func_id];
 
+  auto const & bin_counts = hist.counts();
+  auto const & bin_edges = hist.bin_edges();
+
+  size_t nbin = bin_counts.size();
+  size_t nedge = bin_edges.size();
+
+  verboseStream << "Number of bins " << nbin << std::endl;
+
+  //Check that the histogram contains bins
+  if(nbin == 0){
+    //This should only happen in the case where the histogram had no data for this function prior to this IO step and this IO step contains no unlabeled data points
+    size_t n_unlabeled=0;
+    for (auto itt : data)
+      if(itt->get_label() == 0) ++n_unlabeled;
+
+    if(n_unlabeled != 0){ 
+      fatal_error("Logic bomb: Histogram has 0 bins but dataset contains "+std::to_string(n_unlabeled)+" unlabeled data for this function!");
+    }else{
+      verboseStream << "No bins and no unlabeled data points, returning" << std::endl;
+      return 0;
+    }
+  }
+
+  //For a histogram that has bins, the number of edges should be nbin+1
+  if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
+
   unsigned long n_outliers = 0;
 
   //probability of runtime counts
@@ -582,9 +573,6 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
   int lowest_count = std::numeric_limits<int>::max();
 
-  if (tot_runtimes <= 0 ) {
-	  return n_outliers;
-  }
   std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
   std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
   int recon_idx = 0;
@@ -605,7 +593,6 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
       lowest_count = count;
   }
 
-
   std::vector<double> func_p_ecdf = empiricalCDF(recon_p_runtimes, true);
   std::vector<double> func_n_ecdf = empiricalCDF(recon_n_runtimes, true);
   
@@ -620,13 +607,14 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
     verboseStream << "mean_pn_ecdf.at(i): " << mean_pn_ecdf.at(i) << ", func_p_ecdf.at(i): " << func_p_ecdf.at(i) << ", func_n_ecdf.at(i): " << func_n_ecdf.at(i) << std::endl;
   }
 
-  //use skewness
+  //Compute the skewness corrected score
   std::vector<double> skewness_arr = std::vector<double>(func_p_ecdf.size(), 0.0);
-  const int p_sign = (m_skewness[func_id] - 1) < 0 ? -1 : (m_skewness[func_id] - 1) > 0 ? 1 : 0;
-  const int n_sign = (m_skewness[func_id] + 1) < 0 ? -1 : (m_skewness[func_id] + 1) > 0 ? 1 : 0;
+  double skewness = m_skewness[func_id];
+  const int p_sign = (skewness - 1) < 0 ? -1 : (skewness - 1) > 0 ? 1 : 0; //sign(skewness-1)
+  const int n_sign = (skewness + 1) < 0 ? -1 : (skewness + 1) > 0 ? 1 : 0; //sign(skewness+1)
   
   for (int i = 0; i< func_p_ecdf.size(); i++) {
-	skewness_arr.at(i) = (func_p_ecdf.at(i) * -1 * p_sign) + (func_n_ecdf.at(i) * n_sign);
+    skewness_arr.at(i) = (func_p_ecdf.at(i) * -1 * p_sign) + (func_n_ecdf.at(i) * n_sign);
   	verboseStream << "skewness_arr.at(" << i << "): " << skewness_arr.at(i) << std::endl;
   }
 

@@ -224,7 +224,31 @@ namespace chimbuko {
      */
     std::vector<double> unpack() const;
 
-    
+
+    /**
+     * @brief Get the value represented by a bin; we use the midpoint
+     */
+    inline double binValue(const size_t i) const{ return binValue(i, bin_edges()); }
+
+
+    /**
+     * @brief Workspace for empiricalCDF function allows repeated calls to avoid recomputing the total sum
+     */
+    struct empiricalCDFworkspace{
+      bool set;
+      int sum;
+      empiricalCDFworkspace(): set(false){}
+
+      int getSum(const Histogram &h);
+    };
+ 
+    /**
+     * @brief Compute the empirical CDF for a given value assuming bins are represented by bin_count counts of the midpoint value
+     * @param value The value at to which the CDF is computed
+     * @param workspace If non-null, workspace allows the preservation of the bin count sum between successive calls, reducing the cost
+     */
+    double empiricalCDF(const double value, empiricalCDFworkspace *workspace = nullptr) const;
+
     /**
      * @brief Return the sum of all the bin counts
      */
@@ -234,6 +258,12 @@ namespace chimbuko {
      * @brief Comparison operator
      */
     bool operator==(const Histogram &r) const{ return m_histogram == r.m_histogram; }
+
+    /**
+     * @brief Return a copy of the histogram but whose bin edges are negated and the bin order reversed
+     */
+    Histogram operator-() const;
+
 
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
@@ -260,12 +290,6 @@ namespace chimbuko {
      * @brief Get the value represented by a bin; we use the midpoint
      */
     static double binValue(const size_t i, const std::vector<double> & edges);
-
-    /**
-     * @brief Get the value represented by a bin; we use the midpoint
-     */
-    inline double binValue(const size_t i) const{ return binValue(i, bin_edges()); }
-
   };
 
 

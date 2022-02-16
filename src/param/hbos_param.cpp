@@ -533,6 +533,45 @@ int Histogram::create_histogram(const std::vector<double>& r_times, double bin_w
  }
 
 
+int Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
+  if(!set){
+    verboseStream << "Workspace computing sum" << std::endl;
+    sum = h.totalCount();
+    set = true;
+  }
+  return sum;
+}
+
+
+double Histogram::empiricalCDF(const double value, empiricalCDFworkspace *workspace) const{
+  int bin = getBin(value,0.);
+  if(bin == LeftOfHistogram) return 0.;
+  else if(bin == RightOfHistogram) return 1.;
+
+  //CDF is defined from count ( values <= value )
+  //Thus if the value is smaller than the midpoint of the bin we do not include the bin in the count
+  if(value < binValue(bin)) --bin;
+  if(bin < 0 ) return 0.;
+  
+  int count = 0;
+  for(int i=0;i<=bin;i++) count += m_histogram.counts[i];
+
+  int sum;
+  if(workspace != nullptr) sum = workspace->getSum(*this);
+  else sum = totalCount();
+  
+  return double(count)/sum;
+}
+
+Histogram Histogram::operator-() const{
+  Histogram out(*this);
+  Histogram::Data &d = out.m_histogram;
+  for(int b=0; b< d.bin_edges.size(); b++) d.bin_edges[b] = -d.bin_edges[b];
+  std::reverse(d.bin_edges.begin(),d.bin_edges.end());
+  std::reverse(d.counts.begin(),d.counts.end());
+  return out;
+}
+
 
 namespace chimbuko{
   std::ostream & operator<<(std::ostream &os, const Histogram &h){

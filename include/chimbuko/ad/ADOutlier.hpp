@@ -248,6 +248,12 @@ namespace chimbuko {
   /**
    * @brief COPOD anomaly detection algorithm
    *
+   * A description of the algorithm can be found in 
+   * Li, Z., Zhao, Y., Botta, N., Ionescu, C. and Hu, X. COPOD: Copula-Based Outlier Detection. IEEE International Conference on Data Mining (ICDM), 2020.
+   * https://www.andrew.cmu.edu/user/yuezhao2/papers/20-icdm-copod-preprint.pdf
+   *
+   * The implementation is based on the pyOD implementation https://pyod.readthedocs.io/en/latest/_modules/pyod/models/copod.html
+   * for which the computation of the outlier score differs slightly from that in the paper
    */
   class ADOutlierCOPOD : public ADOutlier {
   public:
