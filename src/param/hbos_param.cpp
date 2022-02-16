@@ -572,6 +572,33 @@ Histogram Histogram::operator-() const{
   return out;
 }
 
+double Histogram::skewness() const{
+  //<(a-b)^3> = <a^3 - b^3 - 3a^2 b + 3b^2 a>
+  //<(x-mu)^3> = <x^3> - mu^3 - 3<x^2> mu + 3 mu^2 <x>
+  //           = <x^3> - 3<x^2> mu + 2 mu^3
+  double avg_x3 = 0, avg_x2 = 0, avg_x = 0;
+  int csum = 0;
+  for(int b=0;b<Nbin();b++){
+    double v = binValue(b);
+    int c = m_histogram.counts[b];
+    avg_x3 += c*pow(v,3);
+    avg_x2 += c*pow(v,2);
+    avg_x += c*v;
+    csum += c;
+  }
+  avg_x3 /= csum;
+  avg_x2 /= csum;
+  avg_x /= csum;
+
+  double var = avg_x2 - avg_x*avg_x;  //<x^2> - mu^2
+  
+  double avg_xmmu_3 = avg_x3 - 3*avg_x2 * avg_x + 2 * pow(avg_x,3);
+  return double(csum)/(csum-1) * avg_xmmu_3 / pow(var, 3./2);
+}
+
+
+
+
 
 namespace chimbuko{
   std::ostream & operator<<(std::ostream &os, const Histogram &h){

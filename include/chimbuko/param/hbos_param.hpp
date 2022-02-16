@@ -264,6 +264,10 @@ namespace chimbuko {
      */
     Histogram operator-() const;
 
+    /**
+     * @brief Compute the skewness of the distribution, assuming the bins are represented by their midpoint value
+     */
+    double skewness() const;
 
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/

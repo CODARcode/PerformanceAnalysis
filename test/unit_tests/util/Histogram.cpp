@@ -486,3 +486,36 @@ TEST(TestHistogram, negatedEmpiricalCDF){
   //Check   Fbar(1.1) = n(-1.1) = 5/6
   EXPECT_NEAR(n.empiricalCDF(-1.1), 5./6, 1e-8);
 }
+
+TEST(TestHistogram, skewness){
+  //Create a fake histogram
+  std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
+  std::vector<int> counts = { 8,2,1,4 };
+  
+  Histogram g;
+  g.set_counts(counts);
+  g.set_bin_edges(edges);
+
+  //Compute naively by unpacking histogram
+  std::vector<double> gu = g.unpack();
+
+  double N = gu.size();
+  double mean = 0;
+  for(double v : gu) mean += v;
+  mean /= N;
+
+  double var = 0.;
+  double avg_xmmu_3 = 0.;
+  for(double v: gu){
+    var += pow(v - mean, 2);
+    avg_xmmu_3 += pow(v - mean, 3);
+  }
+  var /= N;
+  avg_xmmu_3 /= (N-1.);
+  
+  double expect = avg_xmmu_3 / pow(var,3./2);
+  double got = g.skewness();
+  std::cout << "Skewness got: " << got << " expect " << expect << std::endl;
+  EXPECT_NEAR(got, expect, 1e-5);
+}
+

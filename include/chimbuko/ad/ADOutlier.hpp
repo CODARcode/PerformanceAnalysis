@@ -231,11 +231,6 @@ namespace chimbuko {
      */
     double _scott_binWidth(std::vector<double>& vals);
 
-    /**
-     * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
-     */
-    int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
-
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in COPOD*/
@@ -303,11 +298,6 @@ namespace chimbuko {
     double _scott_binWidth(std::vector<double>& vals);
 
     /**
-     * @brief Assigns samples to corresponding bins in Histogram. Similar to numpy digitize in Python
-     */
-    int np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges);
-
-    /**
      * @brief Computes Empirical CDF of input vector of function runtimes
      */
     std::vector<double> empiricalCDF(const std::vector<double>& runtimes, const bool sorted=true);
@@ -318,8 +308,6 @@ namespace chimbuko {
     bool m_use_global_threshold; /**< Flag to use global threshold*/
     //double m_threshold; /**< sync with global threshold */
     OutlierStatistic m_statistic; /**< Which statistic to use for outlier detection */
-
-    std::unordered_map<unsigned long, int> m_skewness; /**< skewness for each function*/
   };
 
 

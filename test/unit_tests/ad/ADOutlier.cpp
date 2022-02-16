@@ -1,6 +1,7 @@
 #include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
+#include<chimbuko/param/copod_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
@@ -48,6 +49,22 @@ public:
   }
 
 };
+
+class ADOutlierCOPODTest: public ADOutlierCOPOD{
+public:
+  ADOutlierCOPODTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierCOPOD(stat){}
+
+  unsigned long compute_outliers_test(Anomalies &anomalies,
+				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
+    return this->compute_outliers(anomalies,func_id, data);
+  }
+
+  void setParams(const CopodParam &p){ 
+    ( (CopodParam*)m_param )->copy(p);
+  }
+
+};
+
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
@@ -532,10 +549,114 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
+}
+
+
+TEST(ADOutlierCOPODTest, TestAnomalyDetection){
+  ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
+  
+  //Generate a histogram
+  std::vector<int> counts = {2,8,1,0,0,2};
+  Histogram h;
+  h.set_counts(counts);
+  h.set_bin_edges({100,200,300,400,500,600,700});
+
+  //Compute the expected scores
+  double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
+  outlier.set_alpha(alpha); 
+
+  int fid = 33;
+  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  
+  CopodParam p;
+  p.assign(stats);
+  EXPECT_EQ( p.get_hbosstats(), stats );
+
+  outlier.setParams(p);
+
+  //Histogram above is right-skewed
+
+  //Check score for point left of histogram ; should be an outlier
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 95) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+  }
+
+  //Check score for point right of histogram ; should be an outlier
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 705) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+  }
+
+  //Check data point in peak bin is not an outlier
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 250) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+  }
+
+}
 
 
 
+//For a multi-modal distribution it is not clear how COPOD handles data in bins between peaks
+TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
+  ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
+  
+  //Generate a histogram
+  Histogram h;
+  h.set_counts({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2});
+  h.set_bin_edges({100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400});
 
+  //Compute the expected scores
+  double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
+  outlier.set_alpha(alpha); 
 
+  int fid = 33;
+  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  
+  CopodParam p;
+  p.assign(stats);
+  EXPECT_EQ( p.get_hbosstats(), stats );
+
+  outlier.setParams(p);
+
+  //Histogram above should not be strongly skewed
+  std::cout << "Histogram " << h << std::endl;
+  std::cout << "Skewness: " << h.skewness() << std::endl;
+
+  //Check score for point in middle of histogram ; should be an outlier
+  //   Interesting, it looks like COPOD does not work with multimodal distributions
+  if(0){
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 750) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),-1);
+  }
 
 }

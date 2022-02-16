@@ -433,29 +433,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 }
 
 
-int ADOutlierHBOS::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
-
-
-  if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
-    return 0;
-  }
-
-
-  for(int j=1; j < bin_edges.size(); j++){
-
-    if(X <= bin_edges.at(j)){
-
-      return (j-1);
-    }
-  }
-
-  const int ret_val = bin_edges.size();
-
-  return  ret_val;
-}
-
-
-
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierCOPOD class
  * --------------------------------------------------------------------------- */
@@ -494,20 +471,6 @@ Anomalies ADOutlierCOPOD::run(int step) {
     }
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;
-
-    //calculate skewness of runtimes for func_id
-    const double mu = std::accumulate(runtimes.begin(), runtimes.end(), 0.0) / runtimes.size();
-    double var = 0.;
-    double summ = 0;
-    for(auto v: runtimes){
-      var += std::pow(v - mu, 2);
-      summ += std::pow(v - mu, 3);
-    }
-    var /= runtimes.size();
-    double stdev = sqrt(var);
-
-    const double abs_skewness = summ / ((runtimes.size() - 1) * std::pow(stdev,3));
-    m_skewness[func_id] = (abs_skewness < 0) ? -1 : (abs_skewness > 0) ? 1 : 0;
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -528,6 +491,30 @@ Anomalies ADOutlierCOPOD::run(int step) {
   }
 
   return outliers;
+}
+
+//Compute the COPOD score
+  //We take the score as the largest of:
+  // 1) the avg of the right and left tailed 
+  // 2) the skewness corrected ECDF value
+inline double copod_score(const double runtime_i, const Histogram &hist, const Histogram &nhist, 
+			  const double m_alpha, const int p_sign, const int n_sign,
+			  Histogram::empiricalCDFworkspace &w, Histogram::empiricalCDFworkspace &nw){
+  double left_tailed_prob = hist.empiricalCDF(runtime_i, &w);
+  double right_tailed_prob = nhist.empiricalCDF(-runtime_i, &nw);
+
+  double left_tailed_score = -log2(left_tailed_prob + m_alpha);
+  double right_tailed_score = -log2(right_tailed_prob + m_alpha);
+  double avg_lr_score = (left_tailed_score + right_tailed_score)/2.;
+  double corrected_score = (left_tailed_score * -1 * p_sign) + (right_tailed_score * n_sign);
+  
+  double ad_score = std::max(avg_lr_score, corrected_score);
+  verboseStream << "Runtime: " << runtime_i 
+		<< " left-tailed prob: " << left_tailed_prob << " left-tailed score: " << left_tailed_score 
+		<< " right-tailed prob: " << right_tailed_prob << " right-tailed score: " << right_tailed_score 
+		<< " avg l/r score: " << avg_lr_score << " skewness corrected score: " << corrected_score 
+		<< " final score: " << ad_score << std::endl;
+  return ad_score;
 }
 
 unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
@@ -566,93 +553,31 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   //For a histogram that has bins, the number of edges should be nbin+1
   if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
 
-  unsigned long n_outliers = 0;
-
-  //probability of runtime counts
-  //std::vector<double> prob_counts = std::vector<double>(param[func_id].counts().size(), 0.0);
-  double tot_runtimes = std::accumulate(hist.counts().begin(), hist.counts().end(), 0.0);
-  int lowest_count = std::numeric_limits<int>::max();
-
-  std::vector<double> recon_p_runtimes = std::vector<double>(tot_runtimes, 0.0);
-  std::vector<double> recon_n_runtimes = std::vector<double>(tot_runtimes, 0.0);
-  int recon_idx = 0;
-  verboseStream << "Unwrapping Merged Histogram. Size: " << hist.counts().size() << std::endl;
-  for(int i=0; i < hist.counts().size(); i++){
-    int count = hist.counts().at(i);
-    verboseStream << "Count: " << count << ", Value: " << hist.bin_edges().at(i) << std::endl;
-    for(int j=0; j<count; j++){
-
-      recon_p_runtimes.at(recon_idx) = hist.bin_edges().at(i);
-      recon_n_runtimes.at(recon_idx) = -1 * hist.bin_edges().at(i);
-      verboseStream << "recon_idx: " << recon_idx << std::endl;
-      verboseStream << "recon_p_runtimes.at(recon_idx): " << recon_p_runtimes.at(recon_idx) << ", recon_n_runtimes.at(recon_idx): " << recon_n_runtimes.at(recon_idx) << std::endl;
-      recon_idx++;
-    }
-
-    if (count < lowest_count)
-      lowest_count = count;
-  }
-
-  std::vector<double> func_p_ecdf = empiricalCDF(recon_p_runtimes, true);
-  std::vector<double> func_n_ecdf = empiricalCDF(recon_n_runtimes, true);
-  
-  verboseStream << "Size of empiricalCDF(recon_p_runtimes): " << func_p_ecdf.size() << std::endl;
-  verboseStream << "Size of empiricalCDF(recon_n_runtimes): " << func_n_ecdf.size() << std::endl;
-
-  std::vector<double> mean_pn_ecdf = std::vector<double>(func_p_ecdf.size(), 0.0);
-  verboseStream << "Size of mean_pn_ecdf: " << mean_pn_ecdf.size() << ", func_id: " << func_id << std::endl;
-
-  for(int i=0; i < mean_pn_ecdf.size(); i++){
-    mean_pn_ecdf.at(i) = (func_p_ecdf.at(i) + func_n_ecdf.at(i)) / 2.0;
-    verboseStream << "mean_pn_ecdf.at(i): " << mean_pn_ecdf.at(i) << ", func_p_ecdf.at(i): " << func_p_ecdf.at(i) << ", func_n_ecdf.at(i): " << func_n_ecdf.at(i) << std::endl;
-  }
-
-  //Compute the skewness corrected score
-  std::vector<double> skewness_arr = std::vector<double>(func_p_ecdf.size(), 0.0);
-  double skewness = m_skewness[func_id];
+  //Compute the skewness of the histogram
+  double skewness = hist.skewness();
   const int p_sign = (skewness - 1) < 0 ? -1 : (skewness - 1) > 0 ? 1 : 0; //sign(skewness-1)
   const int n_sign = (skewness + 1) < 0 ? -1 : (skewness + 1) > 0 ? 1 : 0; //sign(skewness+1)
-  
-  for (int i = 0; i< func_p_ecdf.size(); i++) {
-    skewness_arr.at(i) = (func_p_ecdf.at(i) * -1 * p_sign) + (func_n_ecdf.at(i) * n_sign);
-  	verboseStream << "skewness_arr.at(" << i << "): " << skewness_arr.at(i) << std::endl;
-  }
 
-  std::vector<double> final_comp = std::vector<double>(skewness_arr.size(), 0.0);
-  for (int i = 0; i < skewness_arr.size(); i++) {
-	final_comp.at(i) = std::max(skewness_arr.at(i), mean_pn_ecdf.at(i));
-  }
+  //Negate the histogram to compute right-tailed ECDFs
+  Histogram nhist = -hist;
 
-
-  //Create COPOD score vector
-  std::vector<double> out_scores_i = std::vector<double>(final_comp.size(), 0.0);
-  verboseStream << "m_alpha: " << m_alpha << std::endl;
-
-  double min_score = -1 * log2(0.0 + m_alpha);
+  //Determine the outlier threshold by computing the range of scores for data points *in the histogram*
+  verboseStream << "Computing score range from histogram" << std::endl;
+  Histogram::empiricalCDFworkspace w, nw;
+  double min_score = -1 * log2(0.0 + m_alpha);   //Compute the range of scores in order to determine the outlier threshold
   double max_score = log2(1.0 + m_alpha) - min_score;
-  verboseStream << "Initializaing min_score: " << min_score << ", max_score: " << max_score <<std::endl;
-  verboseStream << "out_scores_i: " << std::endl;
-  for(int i=0; i < final_comp.size(); i++){
-    double l = -1 * log2(final_comp.at(i) + m_alpha);
-    out_scores_i.at(i) = l;
-    verboseStream << "Final_comp at " << i << ": " << final_comp.at(i) << ", score: "<< l << std::endl;
-    //if(prob_counts.at(i) > 0) {
-      if(l < min_score){
-        min_score = l;
-      }
-      if(l > max_score){
-        max_score = l;
-      }
-    //}
+  
+  for(int b=0;b<nbin;b++){
+    double v = hist.binValue(b);
+    double ad_score = copod_score(v, hist, nhist, m_alpha, p_sign, n_sign, w, nw);
+
+    min_score = std::min(ad_score, min_score);
+    max_score = std::max(ad_score, max_score);
   }
-  verboseStream << std::endl;
-  verboseStream << "out_score_i size: " << out_scores_i.size() << std::endl;
   verboseStream << "min_score = " << min_score << std::endl;
   verboseStream << "max_score = " << max_score << std::endl;
 
-  if (out_scores_i.size() <= 0) {return 0;}
-
-  //compute threshold
+  //Compute threshold
   verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = (max_score < 0) ? (-1 * m_threshold * (max_score - min_score)) : min_score + (m_threshold * (max_score - min_score));
   verboseStream << "l_threshold computed: " << l_threshold << std::endl;
@@ -660,51 +585,27 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
     if(l_threshold < hist.get_threshold() && hist.get_threshold() > (-1 * log2(1.00001))) {
       l_threshold = hist.get_threshold();
     } else {
-      hist.set_glob_threshold(l_threshold); //.get_histogram().glob_threshold = l_threshold;
-      //std::pair<size_t, size_t> msgsz_thres_update = sync_param(&param);
+      hist.set_glob_threshold(l_threshold);
     }
   }
 
-  //Compute COPOD based score for each datapoint
-
-  int top_out = 0;
-  int running_idx = 0;
+  //Perform outlier detection  
+  unsigned long n_outliers = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
 
       const double runtime_i = this->getStatisticValue(*itt); //runtimes.push_back(this->getStatisticValue(*itt));
-      double ad_score;
+      double ad_score = copod_score(runtime_i, hist, nhist, m_alpha, p_sign, n_sign, w, nw);
       
-      if (running_idx < final_comp.size()) {
-      	verboseStream << "final_comp.at(" << running_idx << "): " << final_comp.at(running_idx) << ", func_id: " << func_id << ", runtime: " << runtime_i << std::endl;
-     
-        if (out_scores_i.at(running_idx) > l_threshold) //(final_comp.at(running_idx) > 0) // < 0.9)
-	        ad_score = l_threshold + 1;
-        else
-	        ad_score = l_threshold - 1;
-        
-	running_idx++;
-      }
-      else {
-	verboseStream << "AD: COPOD: runtime Index" << std::endl;
-        continue;
-      }
-
-      //handle when ad_score = 0
-      if (ad_score <= 0)
-        ad_score = -1 * log2((lowest_count / tot_runtimes) + m_alpha);
-
       itt->set_outlier_score(ad_score);
-      verboseStream << "ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+      verboseStream << "runtime: " << runtime_i << " ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
 
       //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
-
-          itt->set_label(-1);
-          verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-          outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
-          n_outliers += 1;
-
+	itt->set_label(-1);
+	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
+	outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+	++n_outliers;
       }
       else {
         //Capture maximum of one normal execution per io step
@@ -713,34 +614,11 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
       	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
       	   outliers.insert(itt, Anomalies::EventType::Normal);
         }
-
       }
     }
   }
 
   return n_outliers;
-}
-
-
-int ADOutlierCOPOD::np_digitize_get_bin_inds(const double& X, const std::vector<double>& bin_edges) {
-
-
-  if(bin_edges.size() < 2){ // If only one bin exists in the Histogram
-    return 0;
-  }
-
-
-  for(int j=1; j < bin_edges.size(); j++){
-
-    if(X <= bin_edges.at(j)){
-
-      return (j-1);
-    }
-  }
-
-  const int ret_val = bin_edges.size();
-
-  return  ret_val;
 }
 
 std::vector<double> ADOutlierCOPOD::empiricalCDF(const std::vector<double>& runtimes, const bool sorted) {

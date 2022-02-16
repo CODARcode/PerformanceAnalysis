@@ -23,6 +23,10 @@ namespace chimbuko {
      */
     void clear() override;
 
+    /**
+     * @brief Copy an existing HbosParam
+     */
+    void copy(const CopodParam &r){ m_copodstats = r.m_copodstats; }
 
     const int find(const unsigned long& func_id);
 
