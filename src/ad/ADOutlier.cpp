@@ -535,6 +535,8 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
   verboseStream << "Number of bins " << nbin << std::endl;
 
+  verboseStream << "Histogram:" << std::endl << hist << std::endl;
+
   //Check that the histogram contains bins
   if(nbin == 0){
     //This should only happen in the case where the histogram had no data for this function prior to this IO step and this IO step contains no unlabeled data points

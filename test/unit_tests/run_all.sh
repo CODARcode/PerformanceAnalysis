@@ -24,8 +24,8 @@ set -o pipefail
 ./ad/HBOSOutlierDistributions
 ./ad/HBOSOutlier
 ./ad/HBOSOutlierADs
-./ad/HBOSOutlierTestBPFile ../data
-./ad/SSTDOutlierTestBPFile ../data
+#./ad/HBOSOutlierTestBPFile ../data
+#./ad/SSTDOutlierTestBPFile ../data
 ./ad/COPODOutlier
 ./ad/COPODOutlierADs
 ./util/DispatchQueue

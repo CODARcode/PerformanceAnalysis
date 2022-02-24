@@ -210,7 +210,7 @@ using namespace chimbuko;
    verboseStream << "max_runtime:" << max_runtime << std::endl;
    if (max_runtime < min_runtime) fatal_error("Incorrect boundary for runtime");
 
-   double start = min_runtime - 0.001*fabs(min_runtime); //start just below the first value because lower bounds are exclusive
+   double start = min_runtime - 0.01*bin_width; //start just below the first value because lower bounds are exclusive
 
    if (min_runtime == max_runtime) {
      comb_binedges.resize(2);
@@ -390,6 +390,8 @@ int Histogram::create_histogram(const std::vector<double>& r_times, double bin_w
    
    if(all_same){
      double delta = 0.01 * fabs(r_times[0]);
+     if(delta == 0.) delta = 0.001; //if the value is 0 we cannot infer a scale
+
      m_histogram.bin_edges.resize(2);
      m_histogram.bin_edges[0] = r_times[0] - delta;
      m_histogram.bin_edges[1] = r_times[0] + delta;
@@ -415,7 +417,7 @@ int Histogram::create_histogram(const std::vector<double>& r_times, double bin_w
 
    if (m_histogram.bin_edges.size() > 0) m_histogram.bin_edges.clear();
 
-   double first_edge = runtimes[0] - 0.001 * fabs(runtimes[0]); //lower edges are exclusive and we want the first data point inside the first bin
+   double first_edge = runtimes[0] - 0.01 * bin_width; //lower edges are exclusive and we want the first data point inside the first bin
 
    m_histogram.bin_edges.push_back(first_edge);
 
@@ -549,10 +551,7 @@ double Histogram::empiricalCDF(const double value, empiricalCDFworkspace *worksp
   else if(bin == RightOfHistogram) return 1.;
 
   //CDF is defined from count ( values <= value )
-  //Thus if the value is smaller than the midpoint of the bin we do not include the bin in the count
-  if(value < binValue(bin)) --bin;
-  if(bin < 0 ) return 0.;
-  
+  //We always include the full count of the bin as we do not know the distribution of the data within the bin, and assuming the bin is represented by the midpoint can lead to significant errors in outlier detection in practise  
   int count = 0;
   for(int i=0;i<=bin;i++) count += m_histogram.counts[i];
 

@@ -59,9 +59,23 @@ TEST(TestHistogram, createHistogram){
     EXPECT_EQ(h.bin_edges().size(), 2);
     EXPECT_EQ(h.counts()[0], 3);
     EXPECT_LT(h.bin_edges()[0], 0.1);
-    EXPECT_GT(h.bin_edges()[1], 0.1);
+    EXPECT_GE(h.bin_edges()[1], 0.1);
     EXPECT_EQ( h.getBin(0.1), 0 );
   }
+  //Test generation of histogram for which all data points have the same value of 0
+  {
+    std::vector<double> rtimes = {0.0,0.0,0.0};
+    Histogram h;
+    h.create_histogram(rtimes);
+    
+    EXPECT_EQ(h.counts().size(), 1);
+    EXPECT_EQ(h.bin_edges().size(), 2);
+    EXPECT_EQ(h.counts()[0], 3);
+    EXPECT_LT(h.bin_edges()[0], 0.0);
+    EXPECT_GE(h.bin_edges()[1], 0.0);
+    EXPECT_EQ( h.getBin(0.0), 0 );
+  }
+
   //Test generation of regular histogram with manually chosen bin width
   {
     std::vector<double> rtimes = {0.1,0.1,0.1,0.2,0.4};
@@ -89,7 +103,7 @@ TEST(TestHistogram, createHistogram){
   }
   //Check that if a data point lies exactly on the upper most bin edge is is still counted
   {
-    std::vector<double> rtimes = {0.1,0.1 - 0.001*0.1 + 0.1};
+    std::vector<double> rtimes = {0.1,0.1 - 0.01*0.1 + 0.1};
     Histogram h;
     h.create_histogram(rtimes, 0.1);
     
@@ -120,8 +134,16 @@ TEST(TestHistogram, createHistogram){
       EXPECT_GE(h.bin_edges()[b+1], r); //upper edge inclusive
     }      
   }
+  //Test generation of histogram where lowest value is exactly 0; the lowest bin edge should still be slightly below 0 so as not to exclude it
+  {
+    std::vector<double> rtimes = {0.0, 0.1,0.1};
+    Histogram h;
+    h.create_histogram(rtimes);
 
-
+    EXPECT_LT(h.bin_edges()[0], 0.0);
+     int b = h.getBin(0.0, 0);
+    EXPECT_EQ(b, 0);
+  }
 
 }
 
@@ -331,126 +353,115 @@ TEST(TestHistogram, negation){
 }
  
 
+double sum_counts(const std::vector<int> &counts, const int bin){
+  double out = 0;
+  for(int b=0;b<=bin;b++) out += counts[b];
+  return out;
+}
+
 TEST(TestHistogram, empiricalCDF){
   Histogram g;
   g.set_counts({2,40,24,10,3,1,0,1});
   g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
 
+  int nbin = g.Nbin();
+  EXPECT_EQ(nbin, 8);
+
+  int sum_count = 0;
+  for(auto c : g.counts()) sum_count += c;
+
   std::cout << g << std::endl;
-  
-  auto ecdf = boost::math::empirical_cumulative_distribution_function(g.unpack());
   
   //Test a value below the histogram entirely
   double value = 0.05;
   double cdf = g.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 0.);
 
   //Test a value above the histogram entirely
   value = 0.95;
   cdf = g.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 1.);
   
-  //Test a value within the first bin but before the midpoint
+  //Test a value within the first bin
   value = 0.14;
   cdf = g.empiricalCDF(value);
+  double prob = sum_counts(g.counts(),0) / sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
-  EXPECT_EQ(cdf , 0.);
-  
-  //Test a value within the last bin but above the midpoint
+  EXPECT_NEAR(prob, cdf, 1e-3);
+
+  //Test a value within the last bin
   value = 0.851;
   cdf = g.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 1.);
   
-  //Test a value below the midpoint of a middle bin
+  //Test a value of a middle bin
   value = 0.34;
   cdf = g.empiricalCDF(value);
+  prob = sum_counts(g.counts(),2) / sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
-
-  //Test a value above the midpoint of a middle bin
-  value = 0.36;
-  cdf = g.empiricalCDF(value);
-  std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
-
-
+  EXPECT_NEAR(prob, cdf, 1e-3);
 
   //Test with the workspace
   Histogram::empiricalCDFworkspace w;
   value = 0.34;
   cdf = g.empiricalCDF(value, &w);
+  prob = sum_counts(g.counts(),2) / sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);
+  EXPECT_NEAR(prob, cdf, 1e-3);
   
   EXPECT_EQ(w.sum, g.totalCount());
   EXPECT_EQ(w.set, true);
 
   value = 0.36;
   cdf = g.empiricalCDF(value, &w);
+  prob = sum_counts(g.counts(),2) / sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ecdf(value), cdf, 1e-3);  
+  EXPECT_NEAR(prob, cdf, 1e-3);  
 
-
-
-  //Test the negative empirical CDF
-  std::vector<double> tmp = g.unpack();
-  for(auto &t : tmp) t = -t;
-
-  auto ncdf = boost::math::empirical_cumulative_distribution_function(std::move(tmp));
-  
+  //Test the negative empirical CDF 
   Histogram n = -g;
   
   //Inverted:
   //counts:  1,0,1,3,10,24,40,2
   //edges; -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1
+  std::vector<int> inv_counts = { 1,0,1,3,10,24,40,2 };
+  std::vector<double> inv_edges = { -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1 };
 
   
   //Test a value below the histogram entirely
   value = -0.95;
   cdf = n.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 0.);
 
   //Test a value above the histogram entirely
   value = 0.0;
   cdf = n.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 1.);
   
-  //Test a value within the first bin but before the midpoint
+  //Test a value within the first bin
   value = -0.86;
   cdf = n.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
-  EXPECT_EQ(cdf , 0.);
+  prob = sum_counts(inv_counts, 0) / sum_count;
+  EXPECT_NEAR(prob, cdf, 1e-3);
   
-  //Test a value within the last bin but above the midpoint
+  //Test a value within the last bin
   value = -0.14;
   cdf = n.empiricalCDF(value);
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
   EXPECT_EQ(cdf , 1.);
   
-  //Test a value below the midpoint of a middle bin
+  //Test a value of a middle bin
   value = -0.26;
   cdf = n.empiricalCDF(value);
+  prob = sum_counts(inv_counts, 6) / sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
-
-  //Test a value above the midpoint of a middle bin
-  value = -0.24;
-  cdf = n.empiricalCDF(value);
-  std::cout << value << " " << cdf << std::endl;
-  EXPECT_NEAR(ncdf(value), cdf, 1e-3);
+  EXPECT_NEAR(prob, cdf, 1e-3);
 }
 
 TEST(TestHistogram, negatedEmpiricalCDF){
