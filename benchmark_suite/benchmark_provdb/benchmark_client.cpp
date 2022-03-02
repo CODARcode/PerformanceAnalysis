@@ -55,7 +55,7 @@ struct Args{
     do_state_dump = false;
     max_outstanding_sends = 0;
     load_shard_map = "";
-    run_database_test = true;
+    run_database_test = false; //appears to affect performance
     use_multisend_packed = false;
     use_multisend_rdma = true;
   }

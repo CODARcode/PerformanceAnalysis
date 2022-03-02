@@ -241,8 +241,10 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    //Get base Yokan backend configuration
+    //Get base Yokan backend configuration. No need for expensive locks as we take care to tie each shard to a separate pool and xstream
     nlohmann::json base_config;
+    base_config["disable_doc_mixin_lock"] = true;
+    
     if(args.db_base_config.size() > 0){
       std::ifstream in(args.db_base_config);
       if(in.fail()){ throw std::runtime_error("Failed to read db config file " + args.db_base_config); }
