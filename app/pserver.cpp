@@ -110,6 +110,11 @@ int main (int argc, char ** argv){
   }
   pserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
 
+  //If number of threads is not specified, choose a sensible number
+  if (args.nt <= 0){
+    args.nt = std::max(  (int)std::thread::hardware_concurrency() - 5,  1 );
+  }
+
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
     progressStream << "Pserver: Enabling verbose debug output" << std::endl;
@@ -166,13 +171,6 @@ int main (int argc, char ** argv){
 #endif
 
     //Setup network
-    if (args.nt <= 0) {
-      args.nt = std::max(
-		    (int)std::thread::hardware_concurrency() - 5,
-		    1
-		    );
-    }
-
     progressStream << "PServer: Run parameter server ";
 #ifdef _USE_ZMQNET
     std::cout << "on port " << args.port << " ";
