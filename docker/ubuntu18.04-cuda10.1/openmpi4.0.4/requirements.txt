@@ -25,7 +25,7 @@ gevent==1.4.0
 gevent-websocket==0.10.1
 greenlet==0.4.15
 html5lib==1.0.1
-httpie==1.0.3
+httpie==3.1.0
 idna==2.8
 itsdangerous==1.1.0
 Jinja2==2.10.1
