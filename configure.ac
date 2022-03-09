@@ -150,6 +150,11 @@ if test "$enable_provenancedb" != "no"; then
    AC_CHECK_LIB([yokan-admin], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([uuid], [_init], [],  [AC_MSG_WARN([Could not link to Yokan: Provenance DB will not be built]); enable_provenancedb=no]  )
 
+   #uuid header is at  "<install path>/include/uuid" . Spack adds "<install path>/include" to CPLUS_INCLUDE_PATH  but pkg-config / cmake adds "<install path>/include/uuid" to its header search list
+   #thus Yokan (cmake) does #include<uuid.h> which cannot be found when building with autotools. This workaround explicitly adds the uuid subdirectory to the CXXFLAGS
+   UUID=-I$(echo $CPLUS_INCLUDE_PATH | grep -o '[[^:]]*uuid[[^:]]*')/uuid
+   echo "Adding $UUID to CXXFLAGS"
+   CXXFLAGS+=" $UUID"
 fi
 
 AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")
