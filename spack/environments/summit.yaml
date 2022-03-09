@@ -1,12 +1,12 @@
+#This spack environment uses the following modules:  module load gcc/9.1.0 cuda/11.4.0
 spack:
   specs:
-  - py-setuptools-scm+toml
-  - adios2@2.7.1 build_type=Debug
-  - chimbuko-visualization2
-  - chimbuko-performance-analysis@ckelly_develop ^libzmq@4.3.3
-  - mochi-sonata ^mercury@master~checksum ^libfabric@1.9.0 ^mochi-margo@develop  ^argobots@main+stackunwind+tool
-  - py-mochi-sonata ^python@3.7.0
-  - tau@master %gcc@9.1.0 +cuda +mpi +pthreads +fortran +adios2 +python +papi
+  - mochi-yokan@main +berkeleydb +gdbm +leveldb +lmdb +rocksdb +tkrzw +unqlite +python +lua ^mercury@master~checksum ^libfabric@1.9.0 ^mochi-margo@develop  ^argobots@main+stackunwind+tool
+  - mochi-sonata@main~unqlite_st ^mercury@master~checksum ^libfabric@1.9.0 ^mochi-margo@develop  ^argobots@main+stackunwind+tool
+  - py-mochi-sonata ^python@3.8.10
+  - tau %gcc@9.1.0 +cuda +mpi +pthreads +fortran +adios2 +python +papi
+  - chimbuko-performance-analysis@pdb_yokan
+  - chimbuko-visualization2 ^py-cryptography@2.7
   concretization: together
   compilers:
   - compiler:
@@ -15,7 +15,7 @@ spack:
         cxx: /sw/summit/gcc/9.1.0-alpha+20190716/bin/g++
         f77: /sw/summit/gcc/9.1.0-alpha+20190716/bin/gfortran
         fc: /sw/summit/gcc/9.1.0-alpha+20190716/bin/gfortran
-      operating_system: rhel7
+      operating_system: rhel8
       target: ppc64le
       modules:
       - gcc/9.1.0
@@ -48,7 +48,7 @@ spack:
       compiler: []
     automake:
       externals:
-      - spec: automake@1.13.4
+      - spec: automake@1.16.1
         prefix: /usr
       buildable: false
       version: []
@@ -62,8 +62,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - cmake/3.18.2
-        spec: cmake@3.18.2
+        - cmake/3.20.2
+        spec: cmake@3.20.2
       compiler: []
     libfabric:
       variants: fabrics=verbs,rxm,mrail,tcp
@@ -82,9 +82,29 @@ spack:
       target: []
       providers: {}
       compiler: []
+    libunwind:
+      externals:
+      - spec: libunwind@1.5.0
+        modules:
+        - libunwind/1.5.0
+      buildable: false
+      version: []
+      target: []
+      providers: {}
+      compiler: []
+    boost:
+      externals:
+      - spec: boost@1.77.0
+        modules:
+        - boost/1.77.0
+      buildable: false
+      version: []
+      target: []
+      providers: {}
+      compiler: []
     libtool:
       externals:
-      - spec: libtool@2.4.2
+      - spec: libtool@2.4.6
         prefix: /usr
       buildable: false
       version: []
@@ -100,7 +120,7 @@ spack:
       compiler: []
     openssl:
       externals:
-      - spec: openssl@1.0.2k
+      - spec: openssl@1.1.1c
         prefix: /usr
       buildable: false
       version: []
@@ -109,7 +129,7 @@ spack:
       compiler: []
     rdma-core:
       externals:
-      - spec: rdma-core@20
+      - spec: rdma-core@34.0
         prefix: /usr
       buildable: false
       version: []
@@ -118,9 +138,9 @@ spack:
       compiler: []
     spectrum-mpi:
       externals:
-      - spec: spectrum-mpi@10.3.1.2%gcc@9.1.0
+      - spec: spectrum-mpi@10.4.0.3-20210112%gcc@9.1.0
         modules:
-        - spectrum-mpi/10.3.1.2-20200121
+        - spectrum-mpi/10.4.0.3-20210112
       buildable: false
       version: []
       target: []
@@ -128,22 +148,12 @@ spack:
       compiler: []
     ucx:
       externals:
-      - spec: ucx@1.5.1
+      - spec: ucx@1.8.0
         prefix: /usr
       buildable: false
       version: []
       target: []
       providers: {}
-      compiler: []
-    python:
-      version: []
-      target: []
-      buildable: false
-      providers: {}
-      externals:
-      - modules:
-        - python/3.7.0
-        spec: python@3.7.0
       compiler: []
 
     c-blosc:
@@ -153,8 +163,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - c-blosc/1.12.1
-        spec: c-blosc@1.12.1
+        - c-blosc/1.21.0
+        spec: c-blosc@1.21.0
       compiler: []
 
     curl:
@@ -164,8 +174,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - curl/7.63.0
-        spec: curl@7.63.0
+        - curl/7.76.1
+        spec: curl@7.76.1
       compiler: []
 
     bzip2:
@@ -175,8 +185,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - bzip2/1.0.6
-        spec: bzip2@1.0.6
+        - bzip2/1.0.8
+        spec: bzip2@1.0.8
       compiler: []
 
     diffutils:
@@ -197,19 +207,41 @@ spack:
       providers: {}
       externals:
       - modules:
-        - libffi/3.2.1
-        spec: libffi@3.2.1
+        - libffi/3.3
+        spec: libffi@3.3.0
       compiler: []
 
-    m4:
+    perl:
       version: []
       target: []
       buildable: false
       providers: {}
       externals:
       - modules:
-        - m4/1.4.18
-        spec: m4@1.4.18
+        - perl/5.30.1
+        spec: perl@5.30.1
+      compiler: []
+
+    libzmq:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - libzmq/4.3.3
+        spec: libzmq@4.3.3
+      compiler: []
+
+
+    m4:
+      externals:
+      - spec: m4@1.4.18
+        prefix: /usr
+      buildable: false
+      version: []
+      target: []
+      providers: {}
       compiler: []
 
     sz:
@@ -230,8 +262,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - papi/5.7.0
-        spec: papi@5.7.0
+        - papi/6.0.0.1
+        spec: papi@6.0.0.1
       compiler: []
 
 
@@ -242,19 +274,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - hwloc/2.0.2
-        spec: hwloc@2.0.2
-      compiler: []
-
-    libdwarf:
-      version: []
-      target: []
-      buildable: false
-      providers: {}
-      externals:
-      - modules:
-        - libdwarf/20180129
-        spec: libdwarf
+        - hwloc/2.4.1
+        spec: hwloc@2.4.1
       compiler: []
 
     gettext:
@@ -264,8 +285,8 @@ spack:
       providers: {}
       externals:
       - modules:
-        - gettext/0.19.8.1
-        spec: gettext@0.19.8.1
+        - gettext/0.21
+        spec: gettext@0.21
       compiler: []
 
     zlib:
@@ -286,11 +307,159 @@ spack:
       providers: {}
       externals:
       - modules:
-        - cuda/11.2.0
-        spec: cuda@11.2.0
+        - cuda/11.4.0
+        spec: cuda@11.4.0
+      compiler: []
+
+
+    expat:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - expat/2.3.0
+        spec: expat@2.3.0
+      compiler: []
+
+    gdbm:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - gdbm/1.19
+        spec: gdbm@1.19
+      compiler: []
+
+    sqlite:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - sqlite/3.35.5
+        spec: sqlite@3.35.5
+      compiler: []
+
+
+    xz:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - xz/5.2.5
+        spec: xz@5.2.5
+      compiler: []
+
+    readline:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - readline/8.0
+        spec: readline@8.0
+      compiler: []
+
+    python:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - python/3.8.10
+        spec: python@3.8.10
       compiler: []
 
 
 
+    googletest:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - googletest/1.11.0
+        spec: googletest@1.11.0
+      compiler: []
+
+
+
+    libpng:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - libpng/1.6.37
+        spec: libpng@1.6.37
+      compiler: []
+
+
+    libelf:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - libelf/0.8.13
+        spec: libelf@0.8.13
+      compiler: []
+
+
+    openblas:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - openblas/0.3.15-omp
+        spec: openblas@0.3.15
+      compiler: []
+
+    adios2:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - adios2/2.7.1
+        spec: adios2@2.7.1
+      compiler: []
+
+    json-c:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - json-c/0.15
+        spec: json-c@0.15
+      compiler: []
+
+    lz4:
+      version: []
+      target: []
+      buildable: false
+      providers: {}
+      externals:
+      - modules:
+        - lz4/1.9.3
+        spec: lz4@1.9.3
+      compiler: []
 
   view: true

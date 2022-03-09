@@ -15,7 +15,8 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     version('ckelly_develop', branch='ckelly_develop', preferred=True)
     version('develop', branch='develop')
     version('master', branch='master')
-
+    version('pdb_yokan', branch='pdb_yokan')
+    
     variant('perf-metric', default=True, description='Build with performance monitoring')
     variant('mpi', default=True, description='Enable building Chimbuko with MPI. If disabled the user must manually provide the rank index to the OAD.')
     
