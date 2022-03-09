@@ -29,6 +29,8 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('curl')
     depends_on('boost')
 
+    depends_on('mochi-yokan', when='@pdb_yokan')
+    
     depends_on('autoconf', type='build')
     depends_on('automake', type='build')
     depends_on('libtool',  type='build')
