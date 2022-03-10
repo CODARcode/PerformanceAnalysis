@@ -5,7 +5,6 @@
 
 from spack import *
 
-
 class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     """The PerformanceAnalysis component of Chimbuko comprising the on-node AD module, the parameter server and provenance database"""
 
@@ -36,7 +35,6 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('libtool',  type='build')
     depends_on('m4',       type='build')
 
-
     def setup_environment(self, spack_env, run_env):
         if '+mpi' in self.spec:
             spack_env.set('CXX', self.spec['mpi'].mpicxx)
@@ -48,5 +46,13 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
                args.append('--with-perf-metric')
         if '+mpi' not in self.spec:
                args.append('--disable-mpi')
-               
+
         return args
+
+    def flag_handler(self, name, flags):
+        #uuid pkg-config and cmake include path breaks the usual convention expected by spack / autotools
+        if name == 'cxxflags':
+            flags.append('-I%s/uuid' % self.spec['uuid'].prefix.include)
+
+        return (flags, None, None)
+        
