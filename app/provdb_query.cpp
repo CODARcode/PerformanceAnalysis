@@ -54,6 +54,40 @@ void printUsageAndExit(){
   exit(0);
 }
 
+
+inline nlohmann::json const* get_elem(const std::vector<std::string> &key, const nlohmann::json &j){
+  nlohmann::json const* e = &j;
+  for(auto const &k: key){
+    if(!e->contains(k)) return nullptr;
+    e = & (*e)[k];
+  }
+  return e;
+}
+
+
+void sort(nlohmann::json &j, const std::vector<std::vector<std::string> > &by_keys){
+  if(!j.is_array()) throw std::runtime_error("Sorting only works on arrays");
+  if(by_keys.size() == 0) throw std::runtime_error("Keys size is zero");
+
+  std::sort(j.begin(), j.end(), [&](const nlohmann::json &a, const nlohmann::json &b){
+      //Return true if a goes before b
+      //We want to sort in descending value
+      for(auto const &key : by_keys){
+	nlohmann::json const *aj = get_elem(key,a);
+	nlohmann::json const *bj = get_elem(key,b);
+	//if entry doesn't exist it is moved lower
+	if(aj == nullptr) return false;
+	else if(bj == nullptr) return true; 
+
+	if( *aj > *bj) return true;
+	else if( *aj < *bj) return false;
+	//continue if equal
+      }
+      return false;
+    });
+}
+
+
 void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
 	    int nargs, char** args){
   if(nargs != 2) throw std::runtime_error("Filter received unexpected number of arguments");
@@ -145,6 +179,8 @@ void filter_global(PSProvenanceDBclient &client,
   std::vector<std::string> str_results = client.filterData(coll, query);    
   for(int i=0;i<str_results.size();i++)
     result.push_back( nlohmann::json::parse(str_results[i]) );
+
+  sort(result, { {"anomaly_metrics","severity","accumulate"}, {"anomaly_metrics","score","accumulate"} });
   
   std::cout << result.dump(4) << std::endl;
 }

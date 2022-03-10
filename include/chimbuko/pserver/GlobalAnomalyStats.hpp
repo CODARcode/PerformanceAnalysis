@@ -11,6 +11,7 @@
 #include <chimbuko/net.hpp>
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/pserver/FunctionProfile.hpp>
 
 namespace chimbuko{
 
@@ -158,6 +159,13 @@ namespace chimbuko{
      * Thread safe
      */   
     void merge_and_flush(GlobalAnomalyStats &r);
+
+    /**
+     * @brief Compile profile data into the output
+     *
+     * Thread safe
+     */
+    void get_profile_data(FunctionProfile &into) const;
 
 
   protected:    

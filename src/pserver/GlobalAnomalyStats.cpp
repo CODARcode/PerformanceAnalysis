@@ -183,6 +183,14 @@ const AggregateFuncStats & GlobalAnomalyStats::get_func_stats(int pid, unsigned 
 }
 
 
+void GlobalAnomalyStats::get_profile_data(FunctionProfile &into) const{
+  std::lock_guard<std::mutex> _(m_mutex_func);
+  for(auto const& p: m_funcstats)
+    for(auto const &f: p.second)
+      into.add(f.second);
+}
+
+
 void NetPayloadUpdateAnomalyStats::action(Message &response, const Message &message){
   check(message);
   if(m_global_anom_stats == nullptr) throw std::runtime_error("Cannot update global anomaly statistics as stats object has not been linked");

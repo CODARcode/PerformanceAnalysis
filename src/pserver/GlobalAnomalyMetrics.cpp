@@ -3,6 +3,7 @@
 #include <chimbuko/util/error.hpp>
 #include <chimbuko/util/string.hpp>
 #include <chimbuko/util/map.hpp>
+#include <chimbuko/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
 
 using namespace chimbuko;
 
@@ -103,6 +104,30 @@ nlohmann::json GlobalAnomalyMetrics::get_json(){
 
   return out;
 }
+
+
+void GlobalAnomalyMetrics::get_profile_data(FunctionProfile &into) const{
+  std::lock_guard<std::mutex> _(m_mutex);
+
+  for(auto const &pelem : m_anomaly_metrics_full){
+    int pid = pelem.first;
+    std::map<int, AggregateFuncAnomalyMetricsAllRanks> func_metrics_all_ranks; //fid -> global metrics
+    for(auto const &relem : pelem.second){
+      for(auto const &felem : relem.second){
+	int fid = felem.first;
+	auto it = func_metrics_all_ranks.find(fid);
+	if(it == func_metrics_all_ranks.end())
+	  it = func_metrics_all_ranks.emplace(fid, AggregateFuncAnomalyMetricsAllRanks(pid,fid,felem.second.get_func())).first;
+	
+	it->second.add(felem.second);
+      }
+    }
+    
+    for(auto const &f : func_metrics_all_ranks)
+      into.add(f.second);
+  }
+}
+
 
 void NetPayloadUpdateAnomalyMetrics::action(Message &response, const Message &message){
   check(message);

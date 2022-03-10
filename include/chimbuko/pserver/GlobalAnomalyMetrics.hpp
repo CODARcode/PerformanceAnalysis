@@ -9,6 +9,7 @@
 #include "chimbuko/pserver/AggregateFuncAnomalyMetrics.hpp"
 #include <chimbuko/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
+#include <chimbuko/pserver/FunctionProfile.hpp>
 
 namespace chimbuko{
 
@@ -86,6 +87,13 @@ namespace chimbuko{
      * Thread safe
      */   
     void merge_and_flush(GlobalAnomalyMetrics &r);
+
+    /**
+     * @brief Compile profile data into the output
+     *
+     * Thread safe
+     */
+    void get_profile_data(FunctionProfile &into) const;
 
   private:
 

@@ -218,15 +218,21 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
     if(provdb_client.isConnected() || args.prov_outputpath.size() > 0){
-      GlobalAnomalyStats tmp_fstats; for(int i=0;i<args.nt;i++) tmp_fstats += global_func_stats[i];
-      nlohmann::json global_func_stats_j = tmp_fstats.collect_func_data();
-
       GlobalCounterStats tmp_cstats; for(int i=0;i<args.nt;i++) tmp_cstats += global_counter_stats[i];
       nlohmann::json global_counter_stats_j = tmp_cstats.get_json_state();
 
+      GlobalAnomalyStats tmp_fstats; for(int i=0;i<args.nt;i++) tmp_fstats += global_func_stats[i];
+      GlobalAnomalyMetrics tmp_metrics; for(int i=0;i<args.nt;i++) tmp_metrics += global_anom_metrics[i];
+
+      //Generate the function profile
+      FunctionProfile profile;
+      tmp_fstats.get_profile_data(profile);
+      tmp_metrics.get_profile_data(profile);
+      nlohmann::json profile_j = profile.get_json();
+
       if(provdb_client.isConnected()){
 	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
-	provdb_client.sendMultipleData(global_func_stats_j, GlobalProvenanceDataType::FunctionStats);
+	provdb_client.sendMultipleData(profile_j, GlobalProvenanceDataType::FunctionStats);
 	provdb_client.sendMultipleData(global_counter_stats_j, GlobalProvenanceDataType::CounterStats);
 	progressStream << "Pserver: disconnecting from provDB" << std::endl;
 	provdb_client.disconnect();
@@ -235,7 +241,7 @@ int main (int argc, char ** argv){
 	progressStream << "Pserver: writing final statistics to disk at path " << args.prov_outputpath << std::endl;
 	std::ofstream gf(args.prov_outputpath + "/global_func_stats.json");
 	std::ofstream gc(args.prov_outputpath + "/global_counter_stats.json");
-	gf << global_func_stats_j.dump();
+	gf << profile_j.dump();
 	gc << global_counter_stats_j.dump();
       }
     }
