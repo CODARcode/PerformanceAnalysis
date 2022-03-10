@@ -84,7 +84,6 @@ struct SSTrw{
   SSTrw(int nbarrier = 2): barrier(nbarrier), completed(false), parser(NULL), filename("commFile"){}
 };
 
-#if 1
 
 TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
   std::string filename = "commfile";
@@ -622,11 +621,9 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   std::cout << "Main thread finished" << std::endl;
 }
 
-#endif
-
-//Events same up to id string
+//Events same up to id string (set by parser) or idx (set by static count in unit test header)
 bool same_up_to_id_string(const Event_t &l, const Event_t &r){
-  if(r.type() != l.type() || r.idx() != l.idx()) return false;
+  if(r.type() != l.type()) return false;
   int len = l.get_data_len();
   for(int i=0;i<len;i++) if(l.get_ptr()[i] != r.get_ptr()[i]) return false;
   return true;
@@ -823,4 +820,137 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
     err = true;
   }
   EXPECT_EQ(err, false);
+}
+
+
+
+
+TEST(ADParserTest, TestCorrelationIDCounterIDrecorded){
+  SSTrw rw;
+
+  //This is the ADIOS2 writer thread
+  std::thread wthr([&](){
+      //The ADIOS2 writer
+      std::cout << "TEST: Writer thread opening ADIOS2 writer" << std::endl;
+      rw.openWriter();
+      rw.wr.BeginStep();
+		       
+      //Pass a correlation ID
+      rw.io.DefineAttribute<std::string>("counter " + anyToStr(1234), "Correlation ID");
+
+      //Seems like some data is required even if not used, why?
+      size_t counter_count_val = 1;
+      auto counter_count = rw.io.DefineVariable<size_t>("counter_event_count");
+      rw.wr.Put(counter_count, &counter_count_val);			 
+		       
+      rw.wr.EndStep();
+
+      std::cout << "TEST: Writer thread waiting at barrier for completion" << std::endl;
+      rw.barrier.wait();
+		       
+      std::cout << "Writer thread closing writer" << std::endl;
+      rw.closeWriter();
+      std::cout << "Writer thread finished" << std::endl;
+    });
+  
+
+  std::cout << "TEST: Opening SST reader" << std::endl;
+  rw.openReader();
+
+  EXPECT_EQ(rw.parser->getCorrelationIDcounterIdx(), -1);
+
+  std::cout << "TEST: Beginning step" << std::endl;
+  rw.parser->beginStep();
+  std::cout << "TEST: Updating attributes" << std::endl;
+  rw.parser->update_attributes();
+  std::cout << "TEST: Updating func data" << std::endl;
+  rw.parser->fetchFuncData();
+  std::cout << "TEST: Ending step" << std::endl;
+  rw.parser->endStep();
+ 
+  std::cout << "TEST: Checking results" << std::endl;
+  EXPECT_EQ(rw.parser->getCorrelationIDcounterIdx(), 1234);
+
+  //Check also it picks up the Correlation ID for test data
+  std::unordered_map<int, std::string> test_cmap = { {9876, "Correlation ID"} };
+  rw.parser->setCounterMap(test_cmap);
+  EXPECT_EQ(rw.parser->getCorrelationIDcounterIdx(), 9876);
+
+  std::cout << "TEST: Main thread waiting at barrier for writer thread completion" << std::endl;
+  rw.barrier.wait();  
+  std::cout << "Main thread closing reader" << std::endl;
+  rw.closeReader();
+  std::cout << "Main thread joining writer thread" << std::endl;
+  wthr.join();
+}
+
+
+TEST(ADParserTest, CorrelationIDeventOrderCorrectly){
+  std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
+  std::unordered_map<int, std::string> func_names = { {12,"MYFUNC"} };
+  std::unordered_map<int, std::string> counter_names = { {99,"Correlation ID"}, {122,"Another counter"} };
+
+  int ENTRY = 0;
+  int EXIT = 1;
+  int SEND = 2;
+  int RECV = 3;
+  int CORRID = 99;
+  int OTHERCOUNTER = 122;
+  int MYFUNC = 12;
+
+  int pid=0, tid=0, rid=0;
+
+  std::vector<Event_t> events = {
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
+    createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 110),
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 111),
+    createCounterEvent_t(pid, rid, tid, CORRID, 1454, 111),  //correlation ID associated with function
+    createCounterEvent_t(pid, rid, tid, OTHERCOUNTER, 444, 120),  //a different counter at the same time as the function exit, should be included in this execution
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 120),
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+    createCounterEvent_t(pid, rid, tid, CORRID, 14844, 120),  //correlation ID associated with function but with same timestamp as exit of previous function. Should not be included in the previous function
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 130)
+  };
+
+  ADParser parser("",0,rid,"BPFile");
+  parser.setFuncDataCapacity(100);
+  parser.setCommDataCapacity(100);
+  parser.setCounterDataCapacity(100);
+  parser.setFuncMap(func_names);
+  parser.setEventTypeMap(event_types);
+  parser.setCounterMap(counter_names);
+
+  std::map<int, std::vector<Event_t*> > thread_events; //store events by thread in time order
+
+  for(int i=0;i<events.size();i++){
+    thread_events[events[i].tid()].push_back( &events[i] );
+
+    if(events[i].type() == EventDataType::FUNC)
+      parser.addFuncData(events[i].get_ptr());
+    else if(events[i].type() == EventDataType::COMM)
+      parser.addCommData(events[i].get_ptr());
+    else if(events[i].type() == EventDataType::COUNT)
+      parser.addCounterData(events[i].get_ptr());
+    else
+      FAIL() << "Invalid EventDataType";
+  }
+  
+  EXPECT_EQ(parser.getNumFuncData(), 6);
+  EXPECT_EQ(parser.getNumCounterData(), 4);
+
+  std::vector<Event_t> events_out = parser.getEvents();
+  
+  EXPECT_EQ(events_out.size(), events.size());
+
+  //Output data are arranged by thread
+  int off = 0;
+  for(auto it = thread_events.begin(); it != thread_events.end(); it++){
+    for(int i=0;i<it->second.size();i++){
+      //Note, the event id strings will differ because the step index in the parser has not been set and so will default to -1
+      std::cout << it->first << " " << i << " expect " << it->second[i]->get_json().dump() << " got " << events_out[off].get_json().dump() << std::endl;
+      EXPECT_EQ(same_up_to_id_string(*it->second[i], events_out[off]), true);
+      ++off;
+    }
+  }  
 }

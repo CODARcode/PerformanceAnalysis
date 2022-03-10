@@ -18,7 +18,8 @@ using namespace chimbuko;
 ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),
     m_timer_event_count(0), m_comm_count(0), m_counter_count(0), m_perf(nullptr), m_rank(rank), m_program_idx(program_idx),
-    m_beginstep_timeout(30), m_global_func_idx_map(program_idx), m_data_rank_override(false)
+    m_beginstep_timeout(30), m_global_func_idx_map(program_idx), m_data_rank_override(false),
+    m_correlation_id_cid(-1)
 {
   m_inputFile = inputFile;
   if(inputFile == "") return;
@@ -200,6 +201,7 @@ void ADParser::update_attributes() {
 	  func_idx_name_pairs.push_back( {key,value} );
 	}else if(!m->count(key)){ 	//Append to map
 	  (*m)[key] = value;
+	  if(attrib_type == Counter && value == "Correlation ID") m_correlation_id_cid = key; //record index of special counter "Correlation ID"
 	}else{
 	  verboseStream << "ADParser::update_attributes: rank " << m_rank << " attribute key already in map, value " << m->find(key)->second << std::endl;
 	}
@@ -235,6 +237,15 @@ void ADParser::update_attributes() {
   }
 
   m_attr_once = true;
+}
+
+void ADParser::setCounterMap(const std::unordered_map<int, std::string> &m){ 
+  m_counterMap = m;
+  for(auto const &v: m)
+    if(v.second == "Correlation ID"){
+      m_correlation_id_cid = v.first;
+      break;
+    }
 }
 
 bool ADParser::checkEventOrder(const EventDataType type, bool exit_on_fail) const{
@@ -595,6 +606,8 @@ std::vector<Event_t> ADParser::getEvents() const{
   const size_t nevents[3] = { getNumFuncData(), getNumCommData(), getNumCounterData() };
   const int strides[3] = { FUNC_EVENT_DIM, COMM_EVENT_DIM, COUNTER_EVENT_DIM };
   EventDataType types[3] = { EventDataType::FUNC, EventDataType::COMM, EventDataType::COUNT };
+  static const int FUNC(0), COMM(1), COUNTER(2);
+
   size_t nvalid_event=0; //total number of valid events of all types 
   std::set<unsigned long> tids; //the set of all threads
 
@@ -672,19 +685,34 @@ std::vector<Event_t> ADParser::getEvents() const{
     while(data_t[0] != nullptr || data_t[1] != nullptr || data_t[2] != nullptr){
       //Determine what kind of func event it is (if !nullptr)
       int func_event_type = NA;
-      if(data_t[0] != nullptr) func_event_type = func_event_type_map_v[data_t[0]->eid()];
+      if(data_t[FUNC] != nullptr) func_event_type = func_event_type_map_v[data_t[FUNC]->eid()];
+
+      //Check if it the next counter is a correlation ID counter
+      bool counter_is_correlation_id(false);
+      if(data_t[COUNTER] != nullptr) counter_is_correlation_id = int(data_t[COUNTER]->counter_id()) == this->getCorrelationIDcounterIdx();
 
       //When timestamps are equal we need to decide on a priority for the ordering
-      //For entry event, funcData takes highest priority so comm and counter events are included in the function execution  
-      int earliest;
+      int priority[3];
+
+#define SET_PRIO(A,B,C) priority[0] = A; priority[1] = B; priority[2] = C; 
+
       if(func_event_type == ENTRY){
-	earliest = getEarliest(data_t);
+	//For entry event, funcData takes highest priority so comm and counter events are included in the function execution  	
+	SET_PRIO(FUNC, COMM, COUNTER);
+      }else if(func_event_type == EXIT && counter_is_correlation_id){
+	//Correlation IDs are associated only with function ENTRY events; if an EXIT event coincides with a CorrelationID the EXIT takes priority over counter events
+	//Functions are still greedy with comm events however
+	SET_PRIO(COMM, FUNC, COUNTER);
       }else{
 	//Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
-	Event_t* arrays[3] = { data_t[1], data_t[2], data_t[0]};
-	earliest = getEarliest(arrays);
-	earliest = (earliest + 1) % 3; //remap to order of data_t
+	SET_PRIO(COMM, COUNTER, FUNC);
       }
+#undef SET_PRIO
+
+      Event_t* arrays[3] = { data_t[priority[0]], data_t[priority[1]], data_t[priority[2]]};
+      int pe = getEarliest(arrays);
+      int earliest = priority[pe]; //the index of the type that is earliest
+      
       out.push_back(*data_t[earliest]);
       ++data_t[earliest];
       ++off_t[earliest];

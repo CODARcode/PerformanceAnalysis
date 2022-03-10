@@ -254,7 +254,7 @@ namespace chimbuko {
     /**
      * @brief Set the counter index->name map for testing
      */
-    void setCounterMap(const std::unordered_map<int, std::string> &m){ m_counterMap = m; }
+    void setCounterMap(const std::unordered_map<int, std::string> &m);
 
 
     /**
@@ -262,6 +262,10 @@ namespace chimbuko {
      */
     unsigned long getGlobalFunctionIndex(const unsigned long local_idx) const{ return m_global_func_idx_map.lookup(local_idx); }
 
+    /**
+     * @brief Get the counter index of the special counter "Correlation ID" if known; else return -1
+     */
+    int getCorrelationIDcounterIdx() const{ return m_correlation_id_cid; }
 
     /**
      * @brief When true the parser will override the rank index of the parsed data with the rank member parameter
@@ -314,6 +318,8 @@ namespace chimbuko {
     std::unordered_map<int, std::string> m_funcMap;     /**< function hash map (global function id --> function name) */
     std::unordered_map<int, std::string> m_eventType;   /**< event type hash map (event type id --> event name) */
     std::unordered_map<int, std::string> m_counterMap;  /**< counter hash map (counter id --> counter name) */
+
+    int m_correlation_id_cid;                           /**< counter id of "Correlation ID" counters if known (-1 otherwise) */
 
     size_t m_timer_event_count;                         /**< the number of function events in current step */
     std::vector<unsigned long> m_event_timestamps;      /**< array of all function events in the current step */
