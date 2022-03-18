@@ -6,6 +6,37 @@
 namespace chimbuko{
 
   /**
+   * @brief Base class for functional that determines the histogram bin width
+   */
+  struct binWidthSpecifier{
+    virtual double bin_width(const std::vector<double> &runtimes, const double min, const double max) const = 0;
+    virtual ~binWidthSpecifier(){}
+  };
+  /**
+   * @brief Use a fixed bin width
+   */
+  struct binWidthFixed: public binWidthSpecifier{
+    double width;
+    binWidthFixed(double width): width(width){}
+
+    double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return width; }
+  };
+  /**
+   * @brief Determine the bin width using Scott's rule
+   */
+  struct binWidthScott: public binWidthSpecifier{
+    double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
+  };
+  /**
+   * @brief Determine the bin width from the range assuming a fixed number of bins
+   */
+  struct binWidthFixedNbin: public binWidthSpecifier{
+    int nbin;
+    binWidthFixedNbin(int nbin): nbin(nbin){}
+    double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
+  };
+
+  /**
    * @brief Histogram Implementation
    *
    * Note: lower bin edges are exclusive and upper edges inclusive,  i.e. for bin b with edges  (l,u), all data v in the bin have  l < v <= u
@@ -28,9 +59,9 @@ namespace chimbuko{
     /**
      * @brief Construct a Histogram object from the data provided
      * @param data a vector<double> of data
-     * @param bin_width the bin width to use. If set to 0.0 (default) the Scott bin width will be used 
+     * @param bwspec a functional that specifies the bin width. Default to using Scott's rule
      */
-    Histogram(const std::vector<double> &data, const double bin_width = 0.0);
+    Histogram(const std::vector<double> &data, const binWidthSpecifier &bwspec = binWidthScott());
 
 
     /**
@@ -117,16 +148,17 @@ namespace chimbuko{
     /**
      * @brief Create new histogram locally for AD module's batch data instances
      * @param r_times a vector<double> of function run times
-     * @param bin_width the bin width to use. If set to 0.0 (default) the Scott bin width will be used 
+     * @param bwspec a functional that specifies the bin width. Default to using Scott's rule
      */
-    void create_histogram(const std::vector<double>& r_times, double bin_width = 0.0);
+    void create_histogram(const std::vector<double>& r_times, const binWidthSpecifier &bwspec = binWidthScott());
 
     /**
      * @brief merges a Histogram with function runtimes
      * @param g: Histogram to merge
      * @param runtimes: Function runtimes
+     * @param bwspec a functional that specifies the bin width of the merged histogram. Default to using Scott's rule
      */
-    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
+    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec = binWidthScott());
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
@@ -284,15 +316,15 @@ namespace chimbuko{
      */
     double skewness() const;
 
-  private:
-    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
-
     /**
      * @brief Compute bin width based on Scott's rule
      * @param vals: vector of runtimes
      * @return computed bin width
      */
     static double scottBinWidth(const std::vector<double> & vals);
+
+  private:
+    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
     /**
      * @brief Compute bin width based on Scott's rule

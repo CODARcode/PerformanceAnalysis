@@ -80,7 +80,7 @@ TEST(TestHistogram, createHistogram){
   {
     std::vector<double> rtimes = {0.1,0.1,0.1,0.2,0.4};
     Histogram h;
-    h.create_histogram(rtimes, 0.1);
+    h.create_histogram(rtimes, binWidthFixed(0.1));
 
     std::cout << "Regular histogram with manual bin width: " << h << std::endl;
 
@@ -101,11 +101,11 @@ TEST(TestHistogram, createHistogram){
     
     EXPECT_EQ(sum, rtimes.size());
   }
-  //Check that if a data point lies exactly on the upper most bin edge is is still counted
+  //Check that if a data point lies exactly on the upper most bin edge it is still counted
   {
     std::vector<double> rtimes = {0.1,0.1 - 0.01*0.1 + 0.1};
     Histogram h;
-    h.create_histogram(rtimes, 0.1);
+    h.create_histogram(rtimes, binWidthFixed(0.1));
     
     std::cout << "Another regular histogram with manual bin width: " << h << std::endl;
     
@@ -144,6 +144,57 @@ TEST(TestHistogram, createHistogram){
      int b = h.getBin(0.0, 0);
     EXPECT_EQ(b, 0);
   }
+
+  //Test generation of regular histogram with manually chosen number of bins
+  {
+    std::vector<double> rtimes = {0.1,0.1,0.1,0.2,0.4};
+    Histogram h;
+    h.create_histogram(rtimes, binWidthFixedNbin(4));
+
+    std::cout << "Regular histogram with manual nbin: " << h << std::endl;
+
+    EXPECT_EQ(h.Nbin(), 4);
+    
+    //NB: lower edges are exclusive, upper edges inclusive
+    EXPECT_EQ( h.getBin(0.1, 0.), 0 );
+    EXPECT_EQ( h.getBin(0.2, 0.), 1 );
+    EXPECT_EQ( h.getBin(0.3, 0.), 2 );
+    EXPECT_EQ( h.getBin(0.4, 0.), 3 );
+
+    EXPECT_EQ( h.getBin(0.0, 0.), Histogram::LeftOfHistogram);
+    EXPECT_EQ( h.getBin(0.5, 0.), Histogram::RightOfHistogram);
+    
+    //Check all data points inside histogram
+    int sum = 0;
+    for(int c: h.counts()) sum += c;
+    
+    EXPECT_EQ(sum, rtimes.size());
+
+    h.create_histogram(rtimes, binWidthFixedNbin(3));
+    EXPECT_EQ(h.Nbin(), 3);
+
+    sum = 0;
+    for(int c: h.counts()) sum += c;
+    
+    EXPECT_EQ(sum, rtimes.size());    
+
+    h.create_histogram(rtimes, binWidthFixedNbin(2));
+    EXPECT_EQ(h.Nbin(), 2);
+
+    sum = 0;
+    for(int c: h.counts()) sum += c;
+    
+    EXPECT_EQ(sum, rtimes.size());    
+
+    h.create_histogram(rtimes, binWidthFixedNbin(1));
+    EXPECT_EQ(h.Nbin(), 1);
+
+    sum = 0;
+    for(int c: h.counts()) sum += c;
+    
+    EXPECT_EQ(sum, rtimes.size());    
+  }
+
 
 }
 
@@ -475,7 +526,7 @@ TEST(TestHistogram, negatedEmpiricalCDF){
   Histogram p;
 
   //Because the bin is represented by its midpoint value, choose relatively small bin width so easier to test
-  p.create_histogram(values, 0.05);  //first edge just below 1.0
+  p.create_histogram(values, binWidthFixed(0.05));  //first edge just below 1.0
 
   //std::cout << p << std::endl;
  

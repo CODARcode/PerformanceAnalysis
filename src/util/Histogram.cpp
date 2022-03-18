@@ -5,6 +5,25 @@
 
 using namespace chimbuko;
 
+double binWidthScott::bin_width(const std::vector<double> &runtimes, const double min, const double max) const{ return Histogram::scottBinWidth(runtimes); }
+
+double binWidthFixedNbin::bin_width(const std::vector<double> &runtimes, const double min, const double max) const{ 
+  if(max == min) fatal_error("Maximum and minimum value are the same!");
+  
+  //The first bin edge is placed  0.01*bin_width before min,  and we need 
+  //bin(max) = int( floor( (max-first_edge)/bin_width ) ) == nbin-1
+  
+  //floor( (max-first_edge)/bin_width ) + 1 = nbin
+  //floor( (max-min+0.01*bin_width)/bin_width ) + 1 = nbin
+  //floor( (max-min)/bin_width + 0.01 ) + 1 = nbin
+  
+  //nbin-1 <= (max-min)/bin_width + 0.01 < nbin
+  //nbin-1.01 <= (max-min)/bin_width < nbin-0.01
+  
+  return (max - min)/(nbin-0.015);
+}
+
+
 /**
  * @brief Histogram Class Implementation
  */
@@ -13,8 +32,8 @@ using namespace chimbuko;
 Histogram::Histogram(){clear();}
 Histogram::~Histogram(){}
 
-Histogram::Histogram(const std::vector<double> &data, const double bin_width): Histogram(){
-  create_histogram(data, bin_width);
+Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &bwspec): Histogram(){
+  create_histogram(data, bwspec);
 }
 
 
@@ -255,7 +274,7 @@ void Histogram::set_hist_data(const Histogram::Data& d)
 // m_histogram.runtimes.push_back(x);
 //}
 
-void Histogram::create_histogram(const std::vector<double>& r_times, double bin_width){
+void Histogram::create_histogram(const std::vector<double>& r_times, const binWidthSpecifier &bwspec){
   if(r_times.size() == 0) fatal_error("No data points provided");
 
   //If there is only one data point or all data points have the same value we cannot use the Scott bin width rule because the std.dev is 0
@@ -277,55 +296,49 @@ void Histogram::create_histogram(const std::vector<double>& r_times, double bin_
   }
 
   //Determine the bin width
-  std::vector<double> runtimes = r_times;       
-  if(bin_width == 0.){
-    bin_width = Histogram::scottBinWidth(runtimes);
-    if (bin_width <= 0){
-      fatal_error("Scott binwidth returned an invalid value "+std::to_string(bin_width));
-    }
-  }else{
-    if(bin_width < 0.) fatal_error("Invalid bin width");
+  double min = std::numeric_limits<double>::max();
+  double max = std::numeric_limits<double>::lowest();
+  for(double v: r_times){
+    min = std::min(min,v);
+    max = std::max(max,v);
   }
+  verboseStream << "Histogram::create_histogram min=" << min << " max=" << max << std::endl;
 
-  std::sort(runtimes.begin(), runtimes.end());
-  const int h = runtimes.size() - 1;
+  double bin_width = bwspec.bin_width(r_times, min, max);
+  if(bin_width < 0.) fatal_error("Invalid bin width");
 
-  if (m_histogram.bin_edges.size() > 0) m_histogram.bin_edges.clear();
+  double first_edge = min - 0.01 * bin_width; //lower edges are exclusive and we want the first data point inside the first bin
+  double vshift = 0.001*bin_width; // bin(x) = floor(  (x-vshift -first_edge)/bin_width   the shift is to ensure that the lower bound is exclusive and the upper bound inclusive  
+  
+  //We have   bin(max) = int( floor( (max-vshift-first_edge)/bin_width ) ) == nbin-1
+  int nbin = int( floor( (max-vshift-first_edge)/bin_width ) ) + 1;
 
-  double first_edge = runtimes[0] - 0.01 * bin_width; //lower edges are exclusive and we want the first data point inside the first bin
-
-  m_histogram.bin_edges.push_back(first_edge);
-
-  double prev = m_histogram.bin_edges.at(0);
-  while(prev < runtimes.at(h)){ //no action if prev >= last data point, ensuring last data point is always included (upper bounds are inclusive)
-    m_histogram.bin_edges.push_back(prev + bin_width);
-    prev += bin_width;
+  verboseStream << "Histogram::create_histogram determined bin width " << bin_width << " and number of bins " << nbin << std::endl;
+  
+  m_histogram.bin_edges.resize(nbin+1);
+  double e = first_edge;
+  for(int b=0;b<=nbin;b++){
+    m_histogram.bin_edges[b] = e;
+    e += bin_width;
   }
-  verboseStream << "Number of bins: " << m_histogram.bin_edges.size()-1 << std::endl;
-
-  if (m_histogram.counts.size() > 0) m_histogram.counts.clear();
-  m_histogram.counts = std::vector<int>(m_histogram.bin_edges.size()-1, 0);
-  for ( int i=0; i < runtimes.size(); i++) {
-    for ( int j=1; j < m_histogram.bin_edges.size(); j++) {
-      if ( runtimes.at(i) <= m_histogram.bin_edges.at(j) ) { //upper edge inclusive
-	m_histogram.counts[j-1] += 1;
-	break;
-      }
-    }
+  
+  m_histogram.counts = std::vector<int>(nbin,0);
+  for(double v: r_times){
+    int b = int(floor((v-vshift-first_edge)/bin_width) );
+    if(b<0 || b>=nbin) fatal_error("Data point falls outside histogram range!");
+    ++m_histogram.counts[b];
   }
-  verboseStream << "Size of counts: " << m_histogram.counts.size() << std::endl;
-
+  
   //Check sum of counts is equal to the number of data points
   int count_sum = 0;
   for(int c: m_histogram.counts) count_sum += c;
-  if(count_sum != runtimes.size()) fatal_error("Histogram bin total count does not match number of data points");
+  if(count_sum != r_times.size()) fatal_error("Histogram bin total count does not match number of data points");
 
   //m_histogram.runtimes.clear();
   const double min_threshold = -1 * log2(1.00001);
   if (!(m_histogram.glob_threshold > min_threshold)) {
     m_histogram.glob_threshold = min_threshold;
   }
-  this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 }
 
 std::vector<double> Histogram::unpack() const{
@@ -349,7 +362,7 @@ int Histogram::totalCount() const{
 }
 
 
-void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
+void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec)
 {
   const int tot_size = runtimes.size() + std::accumulate(g.counts().begin(), g.counts().end(), 0);   
   std::vector<double> r_times(tot_size); // = runtimes;
@@ -359,7 +372,7 @@ void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& 
 
   //Fix for XGC run where unlabelled func_id is retained causing Zero bin_edges
   if (g.bin_edges().size() == 0){
-    this->create_histogram(runtimes);
+    this->create_histogram(runtimes,bwspec);
     return;
   }
 
@@ -377,7 +390,7 @@ void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& 
 
   m_histogram.glob_threshold = g.get_threshold();
   //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
-  this->create_histogram(r_times);
+  this->create_histogram(r_times,bwspec);
   //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
 }
 
