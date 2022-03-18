@@ -21,8 +21,8 @@ TEST(TestHistogram, getBin){
   EXPECT_EQ(h.bin_edges().size(), edges.size());
   
   //Check for data points within the histogram
-  EXPECT_EQ( h.getBin(0.15), 0 );
-  EXPECT_EQ( h.getBin(0.45), 3 );
+  EXPECT_EQ( h.getBin(0.15,0.05), 0 );
+  EXPECT_EQ( h.getBin(0.45,0.05), 3 );
   
   //Check for data below histogram and beyond tolerance
   EXPECT_EQ( h.getBin(0.0, 0.05), Histogram::LeftOfHistogram );
@@ -41,9 +41,9 @@ TEST(TestHistogram, getBin){
   EXPECT_EQ( h.getBin(0.1, 0.01), 0 );
   
   //Check upper bin edge is inclusive
-  EXPECT_EQ( h.getBin(0.2), 0 );
-  EXPECT_EQ( h.getBin(0.20001), 1 );
-  EXPECT_EQ( h.getBin(0.5), 3 );
+  EXPECT_EQ( h.getBin(0.2, 0.05), 0 );
+  EXPECT_EQ( h.getBin(0.20001, 0.05), 1 );
+  EXPECT_EQ( h.getBin(0.5, 0.05), 3 );
 
 
 }
@@ -60,7 +60,7 @@ TEST(TestHistogram, createHistogram){
     EXPECT_EQ(h.counts()[0], 3);
     EXPECT_LT(h.bin_edges()[0], 0.1);
     EXPECT_GE(h.bin_edges()[1], 0.1);
-    EXPECT_EQ( h.getBin(0.1), 0 );
+    EXPECT_EQ( h.getBin(0.1,0.05), 0 );
   }
   //Test generation of histogram for which all data points have the same value of 0
   {
@@ -73,7 +73,7 @@ TEST(TestHistogram, createHistogram){
     EXPECT_EQ(h.counts()[0], 3);
     EXPECT_LT(h.bin_edges()[0], 0.0);
     EXPECT_GE(h.bin_edges()[1], 0.0);
-    EXPECT_EQ( h.getBin(0.0), 0 );
+    EXPECT_EQ( h.getBin(0.0,0.05), 0 );
   }
 
   //Test generation of regular histogram with manually chosen bin width

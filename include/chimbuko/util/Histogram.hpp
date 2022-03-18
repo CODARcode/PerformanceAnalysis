@@ -7,6 +7,8 @@ namespace chimbuko{
 
   /**
    * @brief Histogram Implementation
+   *
+   * Note: lower bin edges are exclusive and upper edges inclusive,  i.e. for bin b with edges  (l,u), all data v in the bin have  l < v <= u
    */
   class Histogram {
 
@@ -21,6 +23,15 @@ namespace chimbuko{
      * @brief Destroy Histogram object
      */
     ~Histogram();
+
+
+    /**
+     * @brief Construct a Histogram object from the data provided
+     * @param data a vector<double> of data
+     * @param bin_width the bin width to use. If set to 0.0 (default) the Scott bin width will be used 
+     */
+    Histogram(const std::vector<double> &data, const double bin_width = 0.0);
+
 
     /**
      * @brief Data structure that stores Histogram data ( bin counts, bin edges)
@@ -107,17 +118,15 @@ namespace chimbuko{
      * @brief Create new histogram locally for AD module's batch data instances
      * @param r_times a vector<double> of function run times
      * @param bin_width the bin width to use. If set to 0.0 (default) the Scott bin width will be used 
-     * @return returns 0 if success, else -1
      */
-    int create_histogram(const std::vector<double>& r_times, double bin_width = 0.0);
+    void create_histogram(const std::vector<double>& r_times, double bin_width = 0.0);
 
     /**
      * @brief merges a Histogram with function runtimes
      * @param g: Histogram to merge
      * @param runtimes: Function runtimes
-     * @return 0 if successful, -1 if failed
      */
-    int merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
+    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes);
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
@@ -177,17 +186,27 @@ namespace chimbuko{
      */
     const double& get_threshold() const {return m_histogram.glob_threshold;}
 
-    /*
+    /**
      * @brief Get current vector of bin counts of Histogram
      * @return vector of bin counts
      */
     const std::vector<int>& counts() const {return m_histogram.counts;}
 
-    /*
+    /**
      * @brief Get current vector of bin edges of histogram
      * @return vector of bin edges
      */
     const std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
+
+    /**
+     * @brief Get the lower and upper edges of the given bin
+     */
+    inline std::pair<double,double> binEdges(const int bin) const{ return {m_histogram.bin_edges[bin],m_histogram.bin_edges[bin+1]}; }
+    
+    /**
+     * @brief Get the count of a given bin
+     */
+    inline int binCount(const int bin) const{ return m_histogram.counts[bin]; }
 
     /**
      * @brief Get the current statistics as a JSON object
@@ -210,7 +229,7 @@ namespace chimbuko{
      * @param tol The tolerance, as a fraction of the closest bin width,  that we allow values to be below the smallest bin or above the largest bin and still consider the value within that bin
      * @return Bin index if within the histogram, otherwise either LeftOfHistogram or RightOfHistogram
      */
-    int getBin(const double v, const double tol = 0.05) const;
+    int getBin(const double v, const double tol = 0.) const;
 
 
     /**
@@ -273,7 +292,7 @@ namespace chimbuko{
      * @param vals: vector of runtimes
      * @return computed bin width
      */
-    static double _scott_binWidth(const std::vector<double> & vals);
+    static double scottBinWidth(const std::vector<double> & vals);
 
     /**
      * @brief Compute bin width based on Scott's rule
@@ -283,7 +302,7 @@ namespace chimbuko{
      * @param local_edges: bin edges in local histogram in AD module
      * @return computed bin width
      */
-    static double _scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
+    static double scottBinWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
 
     /**

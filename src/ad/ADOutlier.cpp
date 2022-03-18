@@ -248,11 +248,7 @@ Anomalies ADOutlierHBOS::run(int step) {
 
     if (runtimes.size() > 0) {
       verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
-      const int r = hist.create_histogram(runtimes);
-      if (r < 0) {
-	recoverable_error(std::string("AD: Func_ID does not exist"));
-	continue;
-      }
+      hist.create_histogram(runtimes);
     }
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;
@@ -463,11 +459,7 @@ Anomalies ADOutlierCOPOD::run(int step) {
 
     if (runtimes.size() > 0) {
       verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
-      const int r = hist.create_histogram(runtimes);
-      if (r < 0) {
-	recoverable_error(std::string("AD: Func_ID does not exist"));
-	continue;
-      }
+      hist.create_histogram(runtimes);
     }
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;

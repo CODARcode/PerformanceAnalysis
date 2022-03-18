@@ -13,6 +13,11 @@ using namespace chimbuko;
 Histogram::Histogram(){clear();}
 Histogram::~Histogram(){}
 
+Histogram::Histogram(const std::vector<double> &data, const double bin_width): Histogram(){
+  create_histogram(data, bin_width);
+}
+
+
 /**
  * @brief Merge Histogram
  */
@@ -35,7 +40,7 @@ Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
   if(g.bin_edges().size()!=g.Nbin()+1) fatal_error("Invalid global histogram");
 
   //The bin width is computed from the standard deviation of the combined histogram data, assuming that a bin of count n is represented by n copies of its midpoint value
-  double bin_width = Histogram::_scott_binWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
+  double bin_width = Histogram::scottBinWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
 
   verboseStream << "BIN WIDTH while merging: " << bin_width << std::endl;
 
@@ -159,7 +164,7 @@ double Histogram::binValue(const size_t i, const std::vector<double> & edges){
   
 
 
-double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
+double Histogram::scottBinWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges){
   double sum = 0.0;
   verboseStream << "Size of Vector global_counts: " << global_counts.size() << std::endl;
   verboseStream << "Size of Vector local_counts: " << local_counts.size() << std::endl;
@@ -177,8 +182,8 @@ double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const 
     sum += count * binValue(i,global_edges);
   }
   verboseStream << std::endl;
-  verboseStream << "Size in _scott_binWidth: " << size << std::endl;
-  verboseStream << "Global sum in _scott_binWidth: " << sum << std::endl;
+  verboseStream << "Size in scottBinWidth: " << size << std::endl;
+  verboseStream << "Global sum in scottBinWidth: " << sum << std::endl;
 
   verboseStream << "Local histogram counts: ";
   for(int i = 0; i < local_counts.size(); i++) {
@@ -192,8 +197,8 @@ double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const 
     sum += count * binValue(i,local_edges);
   }
   verboseStream << std::endl;
-  verboseStream << "Total size in _scott_binWidth: " << size << std::endl;
-  verboseStream << "Total sum in _scott_binWidth: " << sum << std::endl;
+  verboseStream << "Total size in scottBinWidth: " << size << std::endl;
+  verboseStream << "Total sum in scottBinWidth: " << sum << std::endl;
 
   if(size == 0) fatal_error("Sum of bin counts over both histograms is zero!");
 
@@ -204,23 +209,23 @@ double Histogram::_scott_binWidth(const std::vector<int> & global_counts, const 
   for (int i=0;i<global_counts.size();i++){
     var += global_counts.at(i) * pow(binValue(i, global_edges) - mean, 2);
   }
-  verboseStream << "Global var in _scott_binWidth: " << var << std::endl;
+  verboseStream << "Global var in scottBinWidth: " << var << std::endl;
   for (int i=0;i<local_counts.size();i++){
     var += local_counts.at(i) * pow(binValue(i, local_edges) - mean, 2);
   }
-  verboseStream << "total var in _scott_binWidth: " << var << std::endl;
+  verboseStream << "total var in scottBinWidth: " << var << std::endl;
 
   var = var / size;
-  verboseStream << "Final Variance in _scott_binWidth: " << var << std::endl;
+  verboseStream << "Final Variance in scottBinWidth: " << var << std::endl;
   std = sqrt(var);
-  verboseStream << "stddev in merging _scott_binWidth: " << std << std::endl;
+  verboseStream << "stddev in merging scottBinWidth: " << std << std::endl;
   //if (std <= 100.0) {return 0;}
 
   return ((3.5 * std ) / pow(size, 1./3));
 
 }
 
-double Histogram::_scott_binWidth(const std::vector<double> & vals){
+double Histogram::scottBinWidth(const std::vector<double> & vals){
   //Find bin width as per Scott's rule = 3.5*std*n^-1/3
 
   double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
@@ -232,8 +237,8 @@ double Histogram::_scott_binWidth(const std::vector<double> & vals){
   }
   var = var / vals.size();
   std = sqrt(var);
-  verboseStream << "mean in _scott_binWidth: " << mean << std::endl;
-  verboseStream << "stddev in _scott_binWidth: " << std << std::endl;
+  verboseStream << "mean in scottBinWidth: " << mean << std::endl;
+  verboseStream << "stddev in scottBinWidth: " << std << std::endl;
 
   return ((3.5 * std ) / pow(vals.size(), 1./3));
 }
@@ -250,7 +255,7 @@ void Histogram::set_hist_data(const Histogram::Data& d)
 // m_histogram.runtimes.push_back(x);
 //}
 
-int Histogram::create_histogram(const std::vector<double>& r_times, double bin_width){
+void Histogram::create_histogram(const std::vector<double>& r_times, double bin_width){
   if(r_times.size() == 0) fatal_error("No data points provided");
 
   //If there is only one data point or all data points have the same value we cannot use the Scott bin width rule because the std.dev is 0
@@ -268,13 +273,13 @@ int Histogram::create_histogram(const std::vector<double>& r_times, double bin_w
     m_histogram.counts.resize(1);
     m_histogram.counts[0] = r_times.size();
     verboseStream << "Histogram::create_histogram all data points have same value. Creating 1-bin histogram with edges " << m_histogram.bin_edges[0] << "," << m_histogram.bin_edges[1] << std::endl;
-    return 0;
+    return;
   }
 
   //Determine the bin width
   std::vector<double> runtimes = r_times;       
   if(bin_width == 0.){
-    bin_width = Histogram::_scott_binWidth(runtimes);
+    bin_width = Histogram::scottBinWidth(runtimes);
     if (bin_width <= 0){
       fatal_error("Scott binwidth returned an invalid value "+std::to_string(bin_width));
     }
@@ -321,7 +326,6 @@ int Histogram::create_histogram(const std::vector<double>& r_times, double bin_w
     m_histogram.glob_threshold = min_threshold;
   }
   this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-  return 0;
 }
 
 std::vector<double> Histogram::unpack() const{
@@ -345,7 +349,7 @@ int Histogram::totalCount() const{
 }
 
 
-int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
+void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes)
 {
   const int tot_size = runtimes.size() + std::accumulate(g.counts().begin(), g.counts().end(), 0);   
   std::vector<double> r_times(tot_size); // = runtimes;
@@ -354,8 +358,10 @@ int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& r
   verboseStream << "total number of 'g' bin_edges: " << g.bin_edges().size() << std::endl;
 
   //Fix for XGC run where unlabelled func_id is retained causing Zero bin_edges
-  if (g.bin_edges().size() == 0)
-    return this->create_histogram(runtimes);
+  if (g.bin_edges().size() == 0){
+    this->create_histogram(runtimes);
+    return;
+  }
 
   //Unwrapping the histogram
   for (int i = 0; i < g.Nbin(); i++) {
@@ -371,9 +377,8 @@ int Histogram::merge_histograms(const Histogram& g, const std::vector<double>& r
 
   m_histogram.glob_threshold = g.get_threshold();
   //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
-  return this->create_histogram(r_times);
+  this->create_histogram(r_times);
   //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
-
 }
 
 nlohmann::json Histogram::get_json() const {
