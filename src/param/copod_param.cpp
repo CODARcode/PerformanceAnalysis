@@ -109,7 +109,7 @@ using namespace chimbuko;
  {
      std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: copodstats) {
-         m_copodstats[pair.first] += pair.second;
+       m_copodstats[pair.first] = Histogram::merge_histograms(m_copodstats[pair.first], pair.second);
      }
  }
 
@@ -117,8 +117,8 @@ using namespace chimbuko;
  {
     std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: copodstats) {
-         m_copodstats[pair.first] += pair.second;
-         pair.second = copodstats[pair.first];
+       m_copodstats[pair.first] = Histogram::merge_histograms(m_copodstats[pair.first], pair.second);
+       pair.second = copodstats[pair.first];
      }
 
  }

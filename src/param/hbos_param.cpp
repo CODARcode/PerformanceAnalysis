@@ -110,7 +110,7 @@ using namespace chimbuko;
      std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
        verboseStream << "Histogram merge (no response) of func " << pair.first << std::endl;
-       m_hbosstats[pair.first] += pair.second;
+       m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second);
      }
  }
 
@@ -119,7 +119,7 @@ using namespace chimbuko;
     std::lock_guard<std::mutex> _(m_mutex);
      for (auto& pair: hbosstats) {
        verboseStream << "Histogram merge (with response) of func " << pair.first << std::endl;
-       m_hbosstats[pair.first] += pair.second;
+       m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second);
        pair.second = hbosstats[pair.first];
      }
 

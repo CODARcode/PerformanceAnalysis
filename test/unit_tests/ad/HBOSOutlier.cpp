@@ -45,7 +45,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
     runtime.clear();
     for(int i=0;i<100;i++) runtime.push_back(dist2(gen));
-    h.merge_histograms(h, runtime);
+    h = Histogram::merge_histograms(h, runtime);
     std::cout << "Merged Histogram" << std::endl;
 
   }

@@ -5,11 +5,24 @@
 
 namespace chimbuko{
 
+  class Histogram;
+
   /**
    * @brief Base class for functional that determines the histogram bin width
    */
   struct binWidthSpecifier{
+    /**
+     * @brief Determine the bin with for a data set
+     * @param runtimes The data
+     * @param min The min value in the data array
+     * @param max The max value in the data array
+     */
     virtual double bin_width(const std::vector<double> &runtimes, const double min, const double max) const = 0;
+
+    /**
+     * @brief Determine the bin width for the merger of two histograms
+     */
+    virtual double bin_width(const Histogram &a, const Histogram &b) const = 0;
     virtual ~binWidthSpecifier(){}
   };
   /**
@@ -20,12 +33,14 @@ namespace chimbuko{
     binWidthFixed(double width): width(width){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return width; }
+    double bin_width(const Histogram &a, const Histogram &b) const{ return width; }
   };
   /**
    * @brief Determine the bin width using Scott's rule
    */
   struct binWidthScott: public binWidthSpecifier{
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
+    double bin_width(const Histogram &a, const Histogram &b) const override;
   };
   /**
    * @brief Determine the bin width from the range assuming a fixed number of bins
@@ -34,6 +49,7 @@ namespace chimbuko{
     int nbin;
     binWidthFixedNbin(int nbin): nbin(nbin){}
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
+    double bin_width(const Histogram &a, const Histogram &b) const override;
   };
 
   /**
@@ -157,8 +173,9 @@ namespace chimbuko{
      * @param g: Histogram to merge
      * @param runtimes: Function runtimes
      * @param bwspec a functional that specifies the bin width of the merged histogram. Default to using Scott's rule
+     * @return The merged histogram
      */
-    void merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec = binWidthScott());
+    static Histogram merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec = binWidthScott());
 
     /**
      * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
@@ -166,15 +183,7 @@ namespace chimbuko{
      * @param l: Histogram to merge
      * @return result: Merged Histogram
      */
-    friend Histogram operator+(const Histogram& g, const Histogram& l);
-
-    /**
-     * @brief Combine two Histogram instances such that the resulting statistics are the union of the two Histograms
-     * @param h: Histogram to merge
-     * @return result: Merged Histogram
-     */
-    Histogram & operator+=(const Histogram& h);
-
+    static Histogram merge_histograms(const Histogram& g, const Histogram& l, const binWidthSpecifier &bwspec = binWidthScott());
 
     /**
      * @brief set global threshold for anomaly filtering
@@ -323,9 +332,6 @@ namespace chimbuko{
      */
     static double scottBinWidth(const std::vector<double> & vals);
 
-  private:
-    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
-
     /**
      * @brief Compute bin width based on Scott's rule
      * @param global_counts: bin counts in global histogram on pserver
@@ -336,6 +342,9 @@ namespace chimbuko{
      */
     static double scottBinWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
 
+
+  private:
+    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
     /**
      * @brief Get the value represented by a bin; we use the midpoint

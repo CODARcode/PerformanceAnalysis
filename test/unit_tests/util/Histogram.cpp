@@ -220,7 +220,7 @@ TEST(TestHistogram, mergeTwoHistograms){
     l.set_counts({0,2});
     l.set_bin_edges({0.11,0.2,0.31}); //other bins don't matter
     
-    Histogram c = g + l;
+    Histogram c = Histogram::merge_histograms(g, l);
     EXPECT_EQ(c.Nbin(),2);
     EXPECT_EQ(c.bin_edges()[0], 0.1);
     EXPECT_EQ(c.bin_edges()[1], 0.2);
@@ -239,7 +239,7 @@ TEST(TestHistogram, mergeTwoHistograms){
     l.set_counts({0,2});
     l.set_bin_edges({0.11,0.2,0.31}); //other bins don't matter
     
-    Histogram c = g + l;
+    Histogram c = Histogram::merge_histograms(g, l);
     EXPECT_EQ(c.Nbin(),2);
     EXPECT_EQ(c.bin_edges()[0], 0.1);
     EXPECT_EQ(c.bin_edges()[1], 0.2);
@@ -259,7 +259,7 @@ TEST(TestHistogram, mergeTwoHistograms){
     l.set_counts({1,0,6,0,1});
     l.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6});
 
-    Histogram c = g + l;
+    Histogram c = Histogram::merge_histograms(g, l);
 
     std::cout << "g : " << g << std::endl;
     std::cout << "l : " << l << std::endl;
@@ -341,7 +341,7 @@ TEST(TestHistogram, mergeTwoHistograms){
       largest = std::max(l_midpoints[i],largest);
     }
 
-    Histogram c = g + l;
+    Histogram c = Histogram::merge_histograms(g, l);
 
     std::cout << "g : " << g << std::endl;
     std::cout << "l : " << l << std::endl;

@@ -249,7 +249,7 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
           }
           else { //merge with exisiting func_id, not overwrite
 
-            local_params_ad[func_id].merge_histograms(global_params_ad[func_id], runtimes);
+            local_params_ad[func_id] = Histogram::merge_histograms(global_params_ad[func_id], runtimes);
           }
 
           n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);

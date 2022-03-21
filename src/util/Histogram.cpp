@@ -7,6 +7,8 @@ using namespace chimbuko;
 
 double binWidthScott::bin_width(const std::vector<double> &runtimes, const double min, const double max) const{ return Histogram::scottBinWidth(runtimes); }
 
+double binWidthScott::bin_width(const Histogram &a, const Histogram &b) const{ return Histogram::scottBinWidth(a.counts(),a.bin_edges(),b.counts(),b.bin_edges()); }
+
 double binWidthFixedNbin::bin_width(const std::vector<double> &runtimes, const double min, const double max) const{ 
   if(max == min) fatal_error("Maximum and minimum value are the same!");
   
@@ -22,6 +24,15 @@ double binWidthFixedNbin::bin_width(const std::vector<double> &runtimes, const d
   
   return (max - min)/(nbin-0.015);
 }
+
+double binWidthFixedNbin::bin_width(const Histogram &a, const Histogram &b) const{
+  double min = std::min(a.bin_edges().front(),b.bin_edges().front());
+  double max = std::min(a.bin_edges().back(),b.bin_edges().back());
+  return (max - min)/(nbin-0.015);
+}
+  
+
+
 
 
 /**
@@ -40,7 +51,7 @@ Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &b
 /**
  * @brief Merge Histogram
  */
-Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
+Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, const binWidthSpecifier &bwspec) {
   verboseStream << "Histogram merge: Counts Size of Global Histogram: " << g.counts().size() << ", Counts Size of Local Histogram: " << l.counts().size() << std::endl;
 
   if (g.counts().size() == 0) {
@@ -58,8 +69,7 @@ Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
   if(l.bin_edges().size()!=l.Nbin()+1) fatal_error("Invalid local histogram");
   if(g.bin_edges().size()!=g.Nbin()+1) fatal_error("Invalid global histogram");
 
-  //The bin width is computed from the standard deviation of the combined histogram data, assuming that a bin of count n is represented by n copies of its midpoint value
-  double bin_width = Histogram::scottBinWidth(g.counts(), g.bin_edges(), l.counts(), l.bin_edges());  /**< Compute bin width for merged histogram*/
+  double bin_width = bwspec.bin_width(g,l);
 
   verboseStream << "BIN WIDTH while merging: " << bin_width << std::endl;
 
@@ -165,16 +175,6 @@ Histogram chimbuko::operator+(const Histogram& g, const Histogram& l) {
   return combined;
 }
 
-Histogram& Histogram::operator+=(const Histogram& h)
-{
-
-  Histogram combined = *this + h;
-
-
-  *this = combined;
-  //this->set_hist_data(Histogram::Data(this->get_threshold(), this->counts(), this->bin_edges()));
-  return *this;
-}
 
 
 double Histogram::binValue(const size_t i, const std::vector<double> & edges){
@@ -362,7 +362,7 @@ int Histogram::totalCount() const{
 }
 
 
-void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec)
+Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec)
 {
   const int tot_size = runtimes.size() + std::accumulate(g.counts().begin(), g.counts().end(), 0);   
   std::vector<double> r_times(tot_size); // = runtimes;
@@ -372,8 +372,7 @@ void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& 
 
   //Fix for XGC run where unlabelled func_id is retained causing Zero bin_edges
   if (g.bin_edges().size() == 0){
-    this->create_histogram(runtimes,bwspec);
-    return;
+    return Histogram(runtimes,bwspec);
   }
 
   //Unwrapping the histogram
@@ -388,10 +387,9 @@ void Histogram::merge_histograms(const Histogram& g, const std::vector<double>& 
   for (int i = 0; i< runtimes.size(); i++)
     r_times.at(idx++) = runtimes.at(i);
 
-  m_histogram.glob_threshold = g.get_threshold();
-  //verboseStream << "glob_threshold in merge_histograms = " << m_histogram.glob_threshold << std::endl;
-  this->create_histogram(r_times,bwspec);
-  //this->set_hist_data(Histogram::Data( m_histogram.glob_threshold, m_histogram.counts, m_histogram.bin_edges ));
+  Histogram out(r_times,bwspec);
+  out.m_histogram.glob_threshold = g.get_threshold();
+  return out;
 }
 
 nlohmann::json Histogram::get_json() const {
