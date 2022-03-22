@@ -69,7 +69,14 @@ int main(int argc, char **argv){
     addOptionalCommandLineArgDefaultHelpString(cmdline, hpserver_nthr);
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_write_freq);
     addOptionalCommandLineArgDefaultHelpString(cmdline, perf_dir);
-    addOptionalCommandLineArgDefaultHelpString(cmdline, benchmark_pattern); //set the comms pattern: "ad" = like the usual AD client (default),   "ping" = each cycle just send a (blocking)ping
+
+    //set the comms pattern:
+    //"ad" = like the usual AD client (default)
+    //"ping" = each cycle just send a (blocking)ping
+    //"ad_statsonly" = AD client style but without synchronizing the parameters
+    //"ad_paramsonly" = AD client style but without sending the anomaly statistics
+    addOptionalCommandLineArgDefaultHelpString(cmdline, benchmark_pattern); 
+
     addOptionalCommandLineArgDefaultHelpString(cmdline, algorithm); //algorithm, default "sstd"
     addOptionalCommandLineArgDefaultHelpString(cmdline, hbos_bins); //default 20
 
@@ -198,12 +205,18 @@ int main(int argc, char **argv){
 
     int n_steps_accum_prd = 0;
     int async_send_calls = 0;
+
+    //Decide which activities we are performing
+    bool do_param_sync = args.benchmark_pattern == "ad" || args.benchmark_pattern == "ad_paramsonly";
+    bool do_stats = args.benchmark_pattern == "ad" || args.benchmark_pattern == "ad_statsonly";
+    bool do_ping = args.benchmark_pattern == "ping";
+
     
     for(int c=0;c<args.cycles;c++){
       cyc_timer.start();
       std::cout << "Rank " << rank << " starting cycle " << c << std::endl;
       //Send a parameters object
-      if(args.benchmark_pattern == "ad"){
+      if(do_param_sync){
 	timer.start();
 	Message msg;
 	msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
@@ -217,7 +230,7 @@ int main(int argc, char **argv){
       }
 
       //Send combined statistics information
-      if(args.benchmark_pattern == "ad"){
+      if(do_stats){
 	timer.start();
 	Message msg;
 	msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, c);
@@ -231,7 +244,7 @@ int main(int argc, char **argv){
       }
 
       //Send ping
-      if(args.benchmark_pattern == "ping"){
+      if(do_ping){
 	Message msg;
 	msg.set_info(rank, 0, MessageType::REQ_ECHO, MessageKind::CMD);
 	msg.set_msg("ping", false);
