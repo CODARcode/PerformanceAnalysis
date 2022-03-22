@@ -122,11 +122,7 @@ int main (int argc, char ** argv){
   }
 
   ParamInterface * param = ParamInterface::set_AdParam(args.ad); //global collection of parameters used to identify anomalies
-  if (param == nullptr) {
-    fatal_error("INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos.");
-    // verboseStream << "INCORRECT algorithm for AdParam: Not Found. Choose sstd or hbos." << std::endl;
-    // exit(EXIT_FAILURE);
-  }
+
   std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
   std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
   std::vector<GlobalAnomalyMetrics> global_anom_metrics(args.nt); //global anomaly metrics

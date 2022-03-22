@@ -2,6 +2,7 @@
 #include "chimbuko/param/sstd_param.hpp"
 #include "chimbuko/param/hbos_param.hpp"
 #include "chimbuko/param/copod_param.hpp"
+#include "chimbuko/util/error.hpp"
 #include <chrono>
 
 using namespace chimbuko;
@@ -11,7 +12,6 @@ ParamInterface::ParamInterface()
 }
 
 ParamInterface *ParamInterface::set_AdParam(const std::string & ad_algorithm) {
-
   if (ad_algorithm == "hbos" || ad_algorithm == "HBOS") {
     return new HbosParam();
   }
@@ -22,6 +22,6 @@ ParamInterface *ParamInterface::set_AdParam(const std::string & ad_algorithm) {
     return new CopodParam();
   }
   else {
-    return nullptr;
+    fatal_error("Invalid algorithm: \"" + ad_algorithm + "\". Available options: HBOS, SSTD, COPOD");
   }
 }

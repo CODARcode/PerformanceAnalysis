@@ -20,6 +20,9 @@ namespace chimbuko {
 
     virtual ~ParamInterface(){};
 
+    /**
+     * @brief Return a pointer to a new instance of the ParamInterface derived class associated with the given algorithm
+     */
     static ParamInterface *set_AdParam(const std::string & ad_algorithm);
 
     /**
