@@ -126,6 +126,12 @@ void SstdParam::update_and_return(std::unordered_map<unsigned long, RunStats>& r
     }
 }
 
+void SstdParam::update(const SstdParam& other) { 
+  std::lock_guard<std::mutex> _(other.m_mutex);  
+  update(other.m_runstats); 
+}
+
+
 void SstdParam::show(std::ostream& os) const
 {
     os << "\n"

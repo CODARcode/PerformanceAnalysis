@@ -125,6 +125,11 @@ using namespace chimbuko;
 
  }
 
+void HbosParam::update(const HbosParam& other) { 
+  std::lock_guard<std::mutex> _(other.m_mutex);
+  update(other.m_hbosstats); 
+}
+
  nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
    auto it = m_hbosstats.find(func_id);
    if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in HbosParam::get_algorithm_params");

@@ -51,6 +51,16 @@ namespace chimbuko {
      */
     virtual std::string update(const std::string& parameters, bool return_update=false) = 0;
 
+    
+    /**
+     * @brief Update the internal run statistics with those from another instance
+     *
+     * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
+     * The other instance will be locked during the process for thread safety
+     */
+    virtual void update(const ParamInterface &other) = 0;
+
+
     /**
      * @brief Set the internal run statistics to match those included in the serialized input map. Overwrite performed only for those keys in input.
      * @param runstats The serialized input map

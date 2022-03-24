@@ -102,8 +102,17 @@ namespace chimbuko {
     /**
      * @brief Update the internal Histogram with those included in another HbosParam instance.
      * @param[in] other The other HbosParam instance
+     *
+     * The other instance is locked during the process
      */
-    void update(const HbosParam& other) { update(other.m_hbosstats); }
+    void update(const HbosParam& other);
+
+    /**
+     * @brief Update the internal run statistics with those from another instance
+     *
+     * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
+     */
+    void update(const ParamInterface &other) override{ update(dynamic_cast<HbosParam const&>(other)); }
 
     /**
      * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.

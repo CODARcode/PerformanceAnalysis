@@ -99,8 +99,17 @@ namespace chimbuko {
     /**
      * @brief Update the internal Histogram with those included in another CopodParam instance.
      * @param[in] other The other CopodParam instance
+     *
+     * The other instance is locked during the process
      */
-    void update(const CopodParam& other) { update(other.m_copodstats); }
+    void update(const CopodParam& other);
+
+    /**
+     * @brief Update the internal run statistics with those from another instance
+     *
+     * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
+     */
+    void update(const ParamInterface &other) override{ update(dynamic_cast<CopodParam const&>(other)); }
 
     /**
      * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.

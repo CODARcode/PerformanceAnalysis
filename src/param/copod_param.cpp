@@ -123,6 +123,12 @@ using namespace chimbuko;
 
  }
 
+void CopodParam::update(const CopodParam& other) { 
+  std::lock_guard<std::mutex> _(other.m_mutex);
+  update(other.m_copodstats); 
+}
+
+
  nlohmann::json CopodParam::get_algorithm_params(const unsigned long func_id) const{
    auto it = m_copodstats.find(func_id);
    if(it == m_copodstats.end()) throw std::runtime_error("Invalid function index in CopodParam::get_algorithm_params");

@@ -89,8 +89,17 @@ namespace chimbuko {
     /**
      * @brief Update the internal statistics with those included in another SstdParam instance.
      * @param[in] other The other SstdParam instance
+     *
+     * The other instance is locked during the process
      */
-    void update(const SstdParam& other) { update(other.m_runstats); }
+    void update(const SstdParam& other);
+
+    /**
+     * @brief Update the internal run statistics with those from another instance
+     *
+     * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
+     */
+    void update(const ParamInterface &other) override{ update(dynamic_cast<SstdParam const&>(other)); }
 
     /**
      * @brief Update the internal run statistics with those included in the input map. Input map is then updated to reflect new state.
