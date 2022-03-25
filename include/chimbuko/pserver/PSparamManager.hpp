@@ -62,6 +62,12 @@ namespace chimbuko{
     
 
     ~PSparamManager();
+
+    /**
+     * @brief Set the manager to force an update of the global model every time a worker is updated
+     */
+    void enableForceUpdate(bool val = true){ m_force_update = val; }
+
   protected:
     /**
      * @brief Access the global parameter object
@@ -86,6 +92,7 @@ namespace chimbuko{
     std::vector<ParamInterface*> m_worker_params; /**< The parameters for each worker*/
     std::thread* m_updater_thread; /**< The thread that updates the global model*/
     bool m_updater_exit; /**< Used to signal to the updater thread that it should exit*/
+    bool m_force_update; /**< If true, the global model is updated every time a worker is updated, used for testing*/
     mutable std::shared_mutex m_mutex;
   };
 
@@ -94,17 +101,37 @@ namespace chimbuko{
    * @brief Net payload for pserver updating params from AD
    */
   class NetPayloadUpdateParamManager: public NetPayloadBase{
-    PSparamManager* m_manager;
-    int m_worker_id;
+    PSparamManager* m_manager; /**< Pointer to the manager object*/
+    int m_worker_id; /**< Worker thread index*/
+    bool m_freeze; /**< If true the incoming message will be ignored and the global model returned*/
   public:
-
-    NetPayloadUpdateParamManager(PSparamManager* manager, int worker_id): m_manager(manager), m_worker_id(worker_id){}
+    /**
+     * @brief Constructor
+     * @param manager Pointer to the manager object
+     * @param worker_id The index of the worker thread associated with this net payload instance
+     * @param freeze If true the incoming data will be ignored and the global model returned
+     */
+    NetPayloadUpdateParamManager(PSparamManager* manager, int worker_id, bool freeze = false): m_manager(manager), m_worker_id(worker_id), m_freeze(freeze){}
 
     MessageKind kind() const override{ return MessageKind::PARAMETERS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(m_manager->updateWorkerModel(message.buf(), m_worker_id));
+      response.set_msg(m_freeze ? m_manager->getSerializedGlobalModel() : m_manager->updateWorkerModel(message.buf(), m_worker_id), false);
+    }
+  };
+  /**
+   * @brief Net payload for AD updating params from pserver
+   */
+  class NetPayloadGetParamsFromManager: public NetPayloadBase{
+    PSparamManager const* m_param;
+  public:
+    NetPayloadGetParamsFromManager(PSparamManager const* param): m_param(param){}
+    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    MessageType type() const override{ return MessageType::REQ_GET; }
+    void action(Message &response, const Message &message) override{
+      check(message);
+      response.set_msg(m_param->getSerializedGlobalModel(), false);
     }
   };
 

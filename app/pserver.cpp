@@ -43,6 +43,9 @@ struct pserverArgs{
   std::string stat_outputdir;
   std::string ad;
 
+  int model_update_freq; //frequency in ms at which the global model is updated
+  bool model_force_update; //force the global model to be updated every time a worker thread updates its model
+
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
   int zmq_io_thr;
@@ -55,7 +58,7 @@ struct pserverArgs{
 
   std::string prov_outputpath;
 
-  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath("")
+  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath(""), model_update_freq(1000), model_force_update(false)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
@@ -87,7 +90,8 @@ struct pserverArgs{
       addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
-
+      addOptionalCommandLineArg(p, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
+      addOptionalCommandLineArg(p, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
 
       init = true;
     }
@@ -121,7 +125,8 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  ParamInterface * param = ParamInterface::set_AdParam(args.ad); //global collection of parameters used to identify anomalies
+  PSparamManager param(args.nt, args.ad); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
+  param.enableForceUpdate(args.model_force_update); //decide whether the model is forced to be updated every time a worker updates its model
 
   std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
   std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
@@ -136,8 +141,14 @@ int main (int argc, char ** argv){
     nlohmann::json in_p;
     in >> in_p;
     global_func_index_map.deserialize(in_p["func_index_map"]);
-    param->assign(in_p["alg_params"].dump());
+
+    //When the global model is updated the previous model is discarded. Thus if we want to bring in params from a previous run we need to set the state of *one* of the worker threads (which are never flushed)
+    param.updateWorkerModel(in_p["alg_params"].dump(),0);
   }
+
+  //Start the aggregator thread for the global model
+  param.setGlobalModelUpdateFrequency(args.model_update_freq);
+  param.startUpdaterThread();
 
 #ifdef _USE_MPINET
   int provided;
@@ -180,8 +191,8 @@ int main (int argc, char ** argv){
     }
 
     for(int i=0;i<args.nt;i++){
-      net.add_payload(new NetPayloadUpdateParams(param, args.freeze_params),i);
-      net.add_payload(new NetPayloadGetParams(param),i);
+      net.add_payload(new NetPayloadUpdateParamManager(&param, i, args.freeze_params), i);
+      net.add_payload(new NetPayloadGetParamsFromManager(&param),i);
       net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
       net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
       net.add_payload(new NetPayloadPing,i);
@@ -210,6 +221,10 @@ int main (int argc, char ** argv){
     //At this point, all pseudo AD modules finished sending anomaly statistics data
     std::this_thread::sleep_for(std::chrono::seconds(1));
     stat_sender.stop_stat_sender(1000);
+
+    //Explicitly update global model and close the ps manager gather thread
+    param.updateGlobalModel();
+    param.stopUpdaterThread();
 
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
@@ -243,16 +258,15 @@ int main (int argc, char ** argv){
     }
 #endif
 
-    // could be output to a file
     progressStream << "Pserver: Shutdown parameter server ..." << std::endl;
-    //param.show(std::cout);
-    std::ofstream o;
-    o.open(args.logdir + "/parameters.txt");
-    if (o.is_open())
-      {
-	param->show(o);
-	o.close();
-      }
+
+    //Write params to a file
+    std::ofstream o(args.logdir + "/parameters.txt");
+    if (o.is_open()){
+      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
+      p->assign(param.getSerializedGlobalModel());
+      p->show(o);
+    }
   }
   catch (std::invalid_argument &e)
     {
@@ -279,13 +293,11 @@ int main (int argc, char ** argv){
     if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
     nlohmann::json out_p;
     out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param->serialize());
+    out_p["alg_params"] = nlohmann::json::parse(param.getSerializedGlobalModel()); //todo  - store in human readable format rather than net-serialize format
     out << out_p;
   }
 
   progressStream << "Pserver: finished" << std::endl;
-
-  delete param;
 
   return 0;
 }

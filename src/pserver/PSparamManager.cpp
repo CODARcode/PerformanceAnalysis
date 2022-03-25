@@ -4,7 +4,7 @@
 
 using namespace chimbuko;
 
-PSparamManager::PSparamManager(const int nworker, const std::string &ad_algorithm): m_agg_freq_ms(1000), m_updater_thread(nullptr), m_worker_params(nworker,nullptr), m_global_params(nullptr), m_updater_exit(false){
+PSparamManager::PSparamManager(const int nworker, const std::string &ad_algorithm): m_agg_freq_ms(1000), m_updater_thread(nullptr), m_worker_params(nworker,nullptr), m_global_params(nullptr), m_updater_exit(false), m_force_update(false){
   for(int i=0;i<nworker;i++)
     m_worker_params[i] = ParamInterface::set_AdParam(ad_algorithm);
   m_global_params = ParamInterface::set_AdParam(ad_algorithm);
@@ -13,10 +13,10 @@ PSparamManager::PSparamManager(const int nworker, const std::string &ad_algorith
 
 void PSparamManager::updateGlobalModel(){
   verboseStream << "PSparamManager::updateGlobalModel updating global model" << std::endl;
-  std::unique_lock<std::shared_mutex> _(m_mutex);
+  std::unique_lock<std::shared_mutex> _(m_mutex); //unique lock to prevent read/write from other threads
   m_global_params->clear(); //reset the global params and reform from worker params which have been aggregating since the start of the run
   for(auto p: m_worker_params)
-    m_global_params->update(*p);
+    m_global_params->update(*p); //locks the worker params temporarily
   m_latest_global_params = m_global_params->serialize();
 }
 
@@ -25,7 +25,9 @@ std::string PSparamManager::updateWorkerModel(const std::string &param, const in
   if(worker_id < 0 || worker_id >= m_worker_params.size()) fatal_error("Invalid worker id");
   m_worker_params[worker_id]->update(param, false); //thread safe
   
-  //Lock to return the cached global model
+  if(m_force_update) updateGlobalModel(); //thread safe
+
+  //Shared lock to return the cached global model to allow consecutive reads
   std::shared_lock<std::shared_mutex> _(m_mutex);
   return m_latest_global_params; //note semantics of locks guarantee that the shared lock destructor is called after the return is processed
 }
