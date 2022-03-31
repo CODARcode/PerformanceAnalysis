@@ -306,17 +306,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //Check that the histogram contains bins
   if(nbin == 0){
-    //This should only happen in the case where the histogram had no data for this function prior to this IO step and this IO step contains no unlabeled data points
-    size_t n_unlabeled=0;
-    for (auto itt : data)
-      if(itt->get_label() == 0) ++n_unlabeled;
-
-    if(n_unlabeled != 0){ 
-      fatal_error("Logic bomb: Histogram has 0 bins but dataset contains "+std::to_string(n_unlabeled)+" unlabeled data for this function!");
-    }else{
-      verboseStream << "No bins and no unlabeled data points, returning" << std::endl;
-      return 0;
-    }
+    //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this function
+    //Given that the model at this stage is unreliable anyway, we simply skip the function
+    verboseStream << "Global model is empty, skipping outlier evaluation for function " << func_id << std::endl;
+    return 0;
   }
 
   //For a histogram that has bins, the number of edges should be nbin+1
@@ -531,17 +524,10 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
   //Check that the histogram contains bins
   if(nbin == 0){
-    //This should only happen in the case where the histogram had no data for this function prior to this IO step and this IO step contains no unlabeled data points
-    size_t n_unlabeled=0;
-    for (auto itt : data)
-      if(itt->get_label() == 0) ++n_unlabeled;
-
-    if(n_unlabeled != 0){ 
-      fatal_error("Logic bomb: Histogram has 0 bins but dataset contains "+std::to_string(n_unlabeled)+" unlabeled data for this function!");
-    }else{
-      verboseStream << "No bins and no unlabeled data points, returning" << std::endl;
-      return 0;
-    }
+    //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this function
+    //Given that the model at this stage is unreliable anyway, we simply skip the function
+    verboseStream << "Global model is empty, skipping outlier evaluation for function " << func_id << std::endl;
+    return 0;
   }
 
   //For a histogram that has bins, the number of edges should be nbin+1
