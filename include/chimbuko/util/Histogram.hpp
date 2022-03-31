@@ -326,6 +326,15 @@ namespace chimbuko{
     double skewness() const;
 
     /**
+     * @brief Obtain the count of values falling between the given bounds assuming a uniform distribution of points within a bin
+     * @param l The lower bound
+     * @param h The upper bound
+     *
+     * The result is non-integer if the bounds do not align with bin boundaries
+     */
+    double uniformCountInRange(double l, double u) const;
+
+    /**
      * @brief Compute bin width based on Scott's rule
      * @param vals: vector of runtimes
      * @return computed bin width
@@ -346,10 +355,22 @@ namespace chimbuko{
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
+  protected:
     /**
      * @brief Get the value represented by a bin; we use the midpoint
      */
     static double binValue(const size_t i, const std::vector<double> & edges);
+
+    /**
+     * @brief Merge two histograms into a third assuming that the histogram bins are represented by bin_count copies of the bin's midpoint
+     */
+    static void merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l);
+
+    /**
+     * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
+     */
+    static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
+  
   };
 
 

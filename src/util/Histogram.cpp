@@ -48,6 +48,140 @@ Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &b
 }
 
 
+double Histogram::uniformCountInRange(double l, double u) const{
+  if(u<l) fatal_error("Invalid range");
+
+  int lbin = getBin(l,0);
+  if(lbin == Histogram::LeftOfHistogram){
+    lbin=0;
+    l=binEdges(0).first;
+  }else if(lbin == Histogram::RightOfHistogram){//ubin must also be right of histogram
+    return 0;
+  }
+
+  int ubin = getBin(u,0);
+  if(ubin == Histogram::RightOfHistogram){
+    ubin=Nbin()-1;
+    u=binEdges(ubin).second;
+  }else if(ubin == Histogram::LeftOfHistogram){//lbin must also be left of histogram
+    return 0; 
+  }
+  
+  auto lbinedges = binEdges(lbin);
+  auto ubinedges = binEdges(ubin);
+  int lbincount = binCount(lbin);
+  int ubincount = binCount(ubin);
+
+  if(lbin == ubin){
+    //If in the same bin 
+    double count = (u - l) / (lbinedges.second - lbinedges.first) * lbincount;
+    assert(count <= lbincount);
+    return count;
+  }else{
+    double lbinfrac = (lbinedges.second - l)/(lbinedges.second - lbinedges.first) * lbincount;
+    double ubinfrac = (u - ubinedges.first)/(ubinedges.second - ubinedges.first) * ubincount;
+    
+    assert(lbinfrac <= lbincount);
+    assert(ubinfrac <= ubincount);
+    
+    double count = lbinfrac + ubinfrac;
+    for(int b=lbin+1;b<=ubin-1;b++) count += binCount(b);
+
+    return count;
+  }
+}
+
+void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l){
+  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
+  std::vector<int> &comb_counts = combined.m_histogram.counts;
+  
+  if(comb_binedges.front() > g.bin_edges().front() || comb_binedges.front() > l.bin_edges().front()) fatal_error("Target histogram lower bound does not encompass input histograms");
+  if(comb_binedges.back() < g.bin_edges().back() || comb_binedges.back() < l.bin_edges().back()) fatal_error("Target histogram upper bound does not encompass input histograms");
+
+  int nbin_merged = comb_counts.size();
+  int new_total = 0;
+
+  for(int b=0;b<nbin_merged;b++){
+    double gc = g.uniformCountInRange(comb_binedges[b], comb_binedges[b+1]);
+    double lc = l.uniformCountInRange(comb_binedges[b], comb_binedges[b+1]);
+    int val = int(floor(gc+lc+0.5)); //round to nearest integer
+    verboseStream << "Bin " << b << " gc=" << gc << " lc=" << lc << " val=" << val << std::endl;
+    
+    comb_counts[b] += val;
+    new_total += val;
+  }
+
+  //Due to rounding issues the total number of points in the merged histogram can differ from the sum of the points in the
+  //inputs. This is undesirable. To fix this while minimizing the impact we apply the changes over the largest bin
+  int ltotal = l.totalCount();
+  int gtotal = g.totalCount();
+  
+  int diff = ltotal + gtotal - new_total;
+  if(diff != 0){
+    std::vector<std::pair<int,int> > bsorted(nbin_merged);
+    for(int b=0;b<nbin_merged;b++) bsorted[b] = { comb_counts[b], b };
+    std::sort(bsorted.begin(), bsorted.end(), [](const std::pair<int,int> &a, const std::pair<int,int> &b){ return a.first > b.first; }); //sort descending
+
+    int whichbin = bsorted[0].second; //start with largest bin
+    int whichbin_ord_idx = 0;
+    while(diff != 0){
+      if(diff > 0){ //increase largest bin by 1
+	verboseStream << "Renormalization, bin " << whichbin << " count : " << comb_counts[whichbin] << "->" << comb_counts[whichbin]+diff << std::endl;
+	comb_counts[whichbin] += diff;	
+	diff = 0;
+      }else{ //diff < 0, take care not to make bin value negative!
+	int change = std::min(comb_counts[whichbin], abs(diff));
+
+	verboseStream << "Renormalization, bin " << whichbin << " count : " << comb_counts[whichbin] << "->" << comb_counts[whichbin]-change << std::endl;
+	comb_counts[whichbin] -= change;
+	diff += change;
+	assert(comb_counts[whichbin] >= 0);
+
+	//Get next largest bin
+	++whichbin_ord_idx;
+	if(diff != 0 && whichbin_ord_idx == nbin_merged) fatal_error("Unable to renormalize the combined histogram"); //this shouldn't happen
+	whichbin = bsorted[whichbin_ord_idx].second;
+      }
+    }
+
+    int tot = 0;
+    for(int v: comb_counts) tot += v;
+    if(tot != ltotal+gtotal) fatal_error("Merge total counts do not match!");
+  }
+}
+
+
+void Histogram::merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l){
+  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
+  std::vector<int> &comb_counts = combined.m_histogram.counts;
+  double start = comb_binedges[0];
+  double bin_width = comb_binedges[1]-comb_binedges[0]; //assume uniform bin width
+
+  //Bin data points from global histogram
+  for(int i=0; i<g.Nbin(); i++){
+    double v = g.binValue(i);
+    const int inc = g.counts().at(i);
+    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
+    int id( floor( (v-start) / bin_width ) ); //uniform bin width
+    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
+
+    verboseStream << "In g " << "id: " << id << ", inc: " << inc << std::endl;
+    comb_counts[id] += inc;
+  }
+
+  //Bin data points from local histogram
+  for(int i=0; i<l.Nbin(); i++){
+    double v = l.binValue(i);
+    const int inc = l.counts().at(i);
+    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
+    int id( floor( (v-start) / bin_width ) ); //uniform bin width
+    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
+
+    verboseStream << "In l " << "id: " << id << ", inc: " << inc << std::endl;
+    comb_counts[id] += inc;
+  }
+}
+
 /**
  * @brief Merge Histogram
  */
@@ -82,8 +216,6 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   verboseStream << "Range of merged histogram " << min_runtime << "-" << max_runtime << std::endl;
       
   Histogram combined;
-  std::vector<double> comb_binedges;
-  std::vector<int> comb_counts;
 
   if ( bin_width / max_runtime < 1e-12){ //Can occur when the standard deviation of the histogram data set is 0 within rounding errors. This should only happen when both histograms have just 1 bin containing data and with the same lower bin edge
     verboseStream << "BINWIDTH is Zero within rounding errors" << std::endl;
@@ -97,7 +229,7 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
 
     if(l_nonempty > 1 || g_nonempty > 1 || l.bin_edges()[l_b] != g.bin_edges()[g_b]) fatal_error("Encountered unexpected 0 bin width in histogram merge");
 
-    //Just use the global histogram and update its bin count
+    //Both histograms have 1 bin. Just use the global histogram and update its bin count
     combined = g;
     combined.add2counts(g_b, l.counts()[l_b]);
 
@@ -105,16 +237,17 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
     return combined;
   }
 
-  //bin_width is > 0
-   
   //Compute the bin edges
-  verboseStream << "BindWidth is > 0 here: " << std::endl;
+  verboseStream << "Bind width is > 0 here: " << std::endl;
    
   verboseStream << "min_runtime:" << min_runtime << std::endl;
   verboseStream << "max_runtime:" << max_runtime << std::endl;
   if (max_runtime < min_runtime) fatal_error("Incorrect boundary for runtime");
 
   double start = min_runtime - 0.01*bin_width; //start just below the first value because lower bounds are exclusive
+
+  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
+  std::vector<int> &comb_counts = combined.m_histogram.counts;
 
   if (min_runtime == max_runtime) {
     comb_binedges.resize(2);
@@ -138,39 +271,13 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
     verboseStream << "Iterating between " << min_runtime << " and " << max_runtime << " in steps of " << bin_width << " resulted in " << comb_binedges.size() << " edges" << std::endl;
   }
    
-  comb_counts = std::vector<int>(comb_binedges.size() - 1, 0);
+  comb_counts.resize(comb_binedges.size() - 1, 0);
 
-  //Bin data points from global histogram
-  for(int i=0; i<g.Nbin(); i++){
-    double v = g.binValue(i);
-    const int inc = g.counts().at(i);
-    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
-    int id( floor( (v-start) / bin_width ) ); //uniform bin width
-    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
-
-    verboseStream << "In g " << "id: " << id << ", inc: " << inc << std::endl;
-    comb_counts[id] += inc;
-  }
-
-  //Bin data points from local histogram
-  for(int i=0; i<l.Nbin(); i++){
-    double v = l.binValue(i);
-    const int inc = l.counts().at(i);
-    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
-    int id( floor( (v-start) / bin_width ) ); //uniform bin width
-    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
-
-    verboseStream << "In l " << "id: " << id << ", inc: " << inc << std::endl;
-    comb_counts[id] += inc;
-  }
+  merge_histograms_central_value(combined, g, l);
 
   //Decide new threshold as greater of the two
-  double new_threshold = std::max( l.get_threshold(),  g.get_threshold() );
+  combined.m_histogram.glob_threshold = std::max( l.get_threshold(),  g.get_threshold() );
 
-  //Insert data into histogram
-  combined.set_glob_threshold(new_threshold);
-  combined.set_counts(comb_counts);
-  combined.set_bin_edges(comb_binedges);
   verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
   return combined;
 }
