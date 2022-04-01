@@ -434,7 +434,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   ADOutlierHBOSTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<int> counts = {2,8,1,0,0,2};
+  std::vector<double> counts = {2,8,1,0,0,2};
   Histogram h;
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
@@ -556,7 +556,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<int> counts = {2,8,1,0,0,2};
+  std::vector<double> counts = {2,8,1,0,0,2};
   Histogram h;
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});

@@ -8,12 +8,10 @@
 
 using namespace chimbuko;
 
-#if 0
-
 TEST(TestHistogram, getBin){
   //Create a fake histogram
   std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
-  std::vector<int> counts = { 1,2,0,4 };
+  std::vector<double> counts = { 1,2,0,4 };
 
   Histogram h;
   h.set_counts(counts);
@@ -253,6 +251,7 @@ TEST(TestHistogram, mergeTwoHistograms){
   //Do a regular merge for histograms with the same bin width
   //Result will not have the same bin widths because of the rebinning but we can do other checks
   {
+    std::cout << "Regular merge for histograms with same bin width" << std::endl;
     Histogram g;
     g.set_counts({0,1,4,1,0});
     g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6});  
@@ -279,11 +278,11 @@ TEST(TestHistogram, mergeTwoHistograms){
     EXPECT_GE(c.bin_edges()[c.Nbin()], midpoints.back());
 
     //Check total count is the same
-    int gc = 0; 
+    double gc = 0; 
     for(auto v: g.counts()) gc += v;
-    int lc = 0; 
+    double lc = 0; 
     for(auto v: l.counts()) lc += v;
-    int cc = 0; 
+    double cc = 0; 
     for(auto v: c.counts()) cc += v;
 
     EXPECT_EQ(gc, g.totalCount());
@@ -292,6 +291,8 @@ TEST(TestHistogram, mergeTwoHistograms){
     
     EXPECT_EQ(cc, gc+lc);
 
+#if 0
+    //EDIT: Not appropriate with uniform assumption
     //Check the bin counts in the output ranges match with the input assuming the input histograms are represented by their midpoint values
     std::vector<double> g_unpacked = g.unpack();
     std::vector<double> l_unpacked = l.unpack();
@@ -307,6 +308,8 @@ TEST(TestHistogram, mergeTwoHistograms){
       
       EXPECT_EQ(c.counts()[i], nlcl + ngbl);
     }
+#endif
+
   }
 
   //Do a regular merge for histograms with different bin widths
@@ -364,6 +367,8 @@ TEST(TestHistogram, mergeTwoHistograms){
 
     EXPECT_EQ(cc, gc+lc);
 
+#if 0
+    //EDIT: Not appropriate for uniform distribution assumption
     //Check the bin counts in the output ranges match with the input assuming the input histograms are represented by their midpoint values
     std::vector<double> g_unpacked = g.unpack();
     std::vector<double> l_unpacked = l.unpack();
@@ -379,7 +384,11 @@ TEST(TestHistogram, mergeTwoHistograms){
       
       EXPECT_EQ(c.counts()[i], nlcl + ngbl);
     }
+#endif
+
   }
+
+
 }
 
 
@@ -406,7 +415,7 @@ TEST(TestHistogram, negation){
 }
  
 
-double sum_counts(const std::vector<int> &counts, const int bin){
+double sum_counts(const std::vector<double> &counts, const int bin){
   double out = 0;
   for(int b=0;b<=bin;b++) out += counts[b];
   return out;
@@ -480,7 +489,7 @@ TEST(TestHistogram, empiricalCDF){
   //Inverted:
   //counts:  1,0,1,3,10,24,40,2
   //edges; -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1
-  std::vector<int> inv_counts = { 1,0,1,3,10,24,40,2 };
+  std::vector<double> inv_counts = { 1,0,1,3,10,24,40,2 };
   std::vector<double> inv_edges = { -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1 };
 
   
@@ -554,7 +563,7 @@ TEST(TestHistogram, negatedEmpiricalCDF){
 TEST(TestHistogram, skewness){
   //Create a fake histogram
   std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
-  std::vector<int> counts = { 8,2,1,4 };
+  std::vector<double> counts = { 8,2,1,4 };
   
   Histogram g;
   g.set_counts(counts);
@@ -582,8 +591,6 @@ TEST(TestHistogram, skewness){
   std::cout << "Skewness got: " << got << " expect " << expect << std::endl;
   EXPECT_NEAR(got, expect, 1e-5);
 }
-
-#endif
 
 struct HistogramTest: public Histogram{
   using Histogram::merge_histograms_uniform;
@@ -642,7 +649,7 @@ TEST(TestHistogram, mergeUniform){
   }
 
 
-  //Test merged histogram renormalization in response to rounding errors
+  //Test with fractional counts
   {
     HistogramTest h;
     h.set_bin_edges({-1,-0.5,0,0.5,1,1.5,2.0,2.5,3.0});
@@ -652,7 +659,7 @@ TEST(TestHistogram, mergeUniform){
     l.set_bin_edges({-1,1,3});
     l.set_counts({3,0});
 
-    EXPECT_NEAR(l.uniformCountInRange(-1,-0.5), 0.75, 0.001); //first 4 bins will get 0.75 from l  rounded up to 1
+    EXPECT_NEAR(l.uniformCountInRange(-1,-0.5), 0.75, 0.001); //first 4 bins will get 0.75 from l
     EXPECT_NEAR(l.uniformCountInRange(1,1.5), 0.0, 0.001); //last 4 bins will get 0 from l
 
     HistogramTest g;
@@ -661,13 +668,12 @@ TEST(TestHistogram, mergeUniform){
 
     EXPECT_NEAR(g.uniformCountInRange(-1,-0.5), 0.0, 0.001); //first 4 bins will get 0 from g
     EXPECT_NEAR(g.uniformCountInRange(1,1.5), 0.5, 0.001); //last 4 bins will get 0.5 from g rounded up to 1
-    EXPECT_EQ( int(floor(g.uniformCountInRange(1,1.5)+0.5)), 1);
 
     HistogramTest::merge_histograms_uniform(h,l,g);
 
     //Total count will be 8 but it should be 5, and as the bins all have value 1, it will subtract 1 from the first 3 bins (note this is something of an edge case)
-    for(int i=0;i<3;i++) EXPECT_EQ(h.binCount(i),0);
-    for(int i=3;i<8;i++) EXPECT_EQ(h.binCount(i),1);
+    for(int i=0;i<4;i++) EXPECT_NEAR(h.binCount(i),0.75,1e-12);
+    for(int i=4;i<8;i++) EXPECT_NEAR(h.binCount(i),0.5,1e-12);
   }
 
 

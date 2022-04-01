@@ -86,7 +86,7 @@ namespace chimbuko{
     struct Data {
 
       double glob_threshold; /**< global threshold used to filter anomalies*/
-      std::vector<int> counts; /**< Bin counts in Histogram*/
+      std::vector<double> counts; /**< Bin counts in Histogram*/
       std::vector<double> bin_edges; /**< Bin edges in Histogram*/
 
       /**
@@ -99,10 +99,10 @@ namespace chimbuko{
       /**
        * @brief Initialize histogram data with existing histogram data
        * @param g_threshold: Global Threshold
-       * @param h_counts: a vector<int> of histogram bin counts
-       * @param h_bin_edges: a vector<double> of histogram bin edges
+       * @param h_counts: a vector of histogram bin counts
+       * @param h_bin_edges: a vector of histogram bin edges
        */
-      Data(const double& g_threshold, const std::vector<int>& h_counts, const std::vector<double>& h_bin_edges ) {
+      Data(const double& g_threshold, const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges ) {
         glob_threshold = g_threshold;
         counts = h_counts;
         bin_edges = h_bin_edges;
@@ -188,50 +188,50 @@ namespace chimbuko{
     /**
      * @brief set global threshold for anomaly filtering
      */
-    void set_glob_threshold(const double& l) { m_histogram.glob_threshold = l;}
+    void set_glob_threshold(const double l) { m_histogram.glob_threshold = l;}
 
     /*
      * @brief set bin counts in Histogram
      * @param c: vector of bin counts
      */
-    void set_counts(const std::vector<int> & c) { m_histogram.counts = c; }
+    void set_counts(const std::vector<double> & c) { m_histogram.counts = c; }
 
     /*
      * @brief set bin edges in Histogram
      * @param be: vector of bin edges
      */
-    void set_bin_edges(const std::vector<double>& be) {m_histogram.bin_edges = be;}
+    void set_bin_edges(const std::vector<double> &be) {m_histogram.bin_edges = be;}
 
     /*
      * @brief New bin counts in Histogram
      * @param count: bin count value
      */
-    void add2counts(const int& count) {m_histogram.counts.push_back(count);}
+    void add2counts(const double count) {m_histogram.counts.push_back(count);}
 
     /*
      * @brief Update counts for a given index of bin in histogram
      * @param id: index of bin in Histogram
      * @param count: bin count value to update
      */
-    void add2counts(const int& id, const int& count) {m_histogram.counts[id] += count;}
+    void add2counts(const int id, const double count) {m_histogram.counts[id] += count;}
 
     /*
      * @brief New bin edges in histogram
      * @param bin_edge: vector of bin edges of histogram
      */
-    void add2binedges(const double& bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
+    void add2binedges(const double bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
 
     /*
      * @brief get current value of global threshold from global histogram
      * @return global threshold
      */
-    const double& get_threshold() const {return m_histogram.glob_threshold;}
+    double get_threshold() const {return m_histogram.glob_threshold;}
 
     /**
      * @brief Get current vector of bin counts of Histogram
      * @return vector of bin counts
      */
-    const std::vector<int>& counts() const {return m_histogram.counts;}
+    const std::vector<double>& counts() const {return m_histogram.counts;}
 
     /**
      * @brief Get current vector of bin edges of histogram
@@ -247,7 +247,7 @@ namespace chimbuko{
     /**
      * @brief Get the count of a given bin
      */
-    inline int binCount(const int bin) const{ return m_histogram.counts[bin]; }
+    inline double binCount(const int bin) const{ return m_histogram.counts[bin]; }
 
     /**
      * @brief Get the current statistics as a JSON object
@@ -292,10 +292,10 @@ namespace chimbuko{
      */
     struct empiricalCDFworkspace{
       bool set;
-      int sum;
+      double sum;
       empiricalCDFworkspace(): set(false){}
 
-      int getSum(const Histogram &h);
+      double getSum(const Histogram &h);
     };
  
     /**
@@ -308,7 +308,7 @@ namespace chimbuko{
     /**
      * @brief Return the sum of all the bin counts
      */
-    int totalCount() const;
+    double totalCount() const;
 
     /**
      * @brief Comparison operator
@@ -349,7 +349,7 @@ namespace chimbuko{
      * @param local_edges: bin edges in local histogram in AD module
      * @return computed bin width
      */
-    static double scottBinWidth(const std::vector<int> & global_counts, const std::vector<double> & global_edges, const std::vector<int> & local_counts, const std::vector<double> & local_edges);
+    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges);
 
 
   private:
@@ -367,10 +367,19 @@ namespace chimbuko{
     static void merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l);
 
     /**
+     * @brief Compute the range of the combined histogram for the "merge_histograms_central_value" strategy
+     */
+    static void get_merge_histograms_central_value_range(double &start, double &end, const Histogram &g, const Histogram &l, double bin_width);
+
+    /**
      * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
      */
     static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
   
+    /**
+     * @brief Compute the range of the combined histogram for the "merge_histograms_uniform" strategy
+     */ 
+    static void get_merge_histograms_uniform_value_range(double &start, double &end, const Histogram &g, const Histogram &l, double bin_width);
   };
 
 

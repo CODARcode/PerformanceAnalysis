@@ -4,7 +4,9 @@
 #include<chimbuko/pserver/PSparamManager.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
-
+#include<chimbuko/util/barrier.hpp>
+#include<chimbuko/net/zmq_net.hpp>
+#include<chimbuko/ad/ADNetClient.hpp>
 
 using namespace chimbuko;
 
@@ -15,7 +17,7 @@ public:
   using PSparamManager::getGlobalParams;
   using PSparamManager::getWorkerParams;
 };
-  
+
 TEST(TestPSparamManager, Setup){
   //Test it fails with an invalid parameter type
   bool fail = false;
@@ -218,4 +220,132 @@ TEST(TestPSparamManager, AutoUpdate){
   man1.stopUpdaterThread();
   EXPECT_FALSE(man1.updaterThreadIsRunning());
 }  
+
+
+TEST(TestPSparamManager, AutoUpdatePSthread){
+  //Test the autoupdate using a pserver thread with multiple workers
+
+  Barrier barrier2(2);
+  std::string sinterface = "tcp://*:5559"; //default port
+  std::string sname = "tcp://localhost:5559";
+
+  std::thread psthr([&barrier2]{
+      int argc; char** argv = nullptr;
+      ZMQNet ps;
+      ps.init(&argc, &argv, 3); //3 workers
+      std::cout << "PS thread initialized net" << std::endl;
+
+      PSparamManagerTest man(3, "hbos");
+      for(int i=0;i<3;i++){
+	ps.add_payload(new NetPayloadUpdateParamManager(&man, i), i);
+	ps.add_payload(new NetPayloadGetParamsFromManager(&man),i);
+      }
+      std::cout << "PS thread initialized payload" << std::endl;     
+      man.setGlobalModelUpdateFrequency(1000);
+      std::cout << "PS thread starting updater thread" << std::endl;
+      man.startUpdaterThread();
+      std::cout << "PS thread initialized net" << std::endl;
+      
+      std::cout << "PS thread starting running" << std::endl;
+      ps.run("."); //blocking
+
+      //client connects
+      //client runs tests
+      //client disconnects
+
+      barrier2.wait(); //1
+      std::cout << "PS thread shutting down" << std::endl;
+      man.stopUpdaterThread();
+      ps.finalize();
+    });      
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  std::cout << "Main thread connecting to PS" << std::endl;
   
+  ADZMQNetClient net_client;
+  net_client.connect_ps(0, 0, sname);
+
+  std::cout << "Main thread connected to PS" << std::endl;
+
+  HbosParam w1,w2,w3;
+  int fid = 11;
+  
+  //Some fake data
+  Histogram h1({1,2,3,4,5,6,7,8,9,10,11,12});
+  w1[fid] = h1;
+
+  Histogram h2({13,14,15,16,17,18});
+  w2[fid] = h2;
+
+  Histogram h3({19,20,21,22,23,24,25});
+  w3[fid] = h3;
+  
+  //Data are distributed to worker threads in round-robin. Global model will then combine in order
+  //NOTE: the first data is assigned to worker 1, not 0 because the handshake was given to worker 0!
+  //w1 ->  worker 1
+  //w2 ->  worker 2
+  //w3 ->  worker 0
+  //we need to combine in the same order because merge is not commutative
+  HbosParam combined;
+  combined.update(w3);
+  combined.update(w1);
+  combined.update(w2);
+  
+  //Send the data to the pserver
+  std::cout << "Main thread sending data to PS" << std::endl;
+
+  Message msg;
+  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_msg(w1.serialize(), false);
+  net_client.send_and_receive(msg, msg);
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    
+  msg.clear();
+  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_msg(w2.serialize(), false);
+  net_client.send_and_receive(msg, msg);
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+  msg.clear();
+  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_msg(w3.serialize(), false);
+  net_client.send_and_receive(msg, msg);
+
+
+  //Wait a few seconds for the pserver to generate the global model from this data
+  std::cout << "Main thread waiting for PS to process data" << std::endl;
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  
+  //Get the global model
+  std::cout << "Main thread getting global model" << std::endl;
+  msg.clear();
+  msg.set_info(0,0, MessageType::REQ_GET, MessageKind::PARAMETERS);
+  net_client.send_and_receive(msg, msg);
+
+  HbosParam glob;
+  glob.assign(msg.buf());
+
+  ASSERT_TRUE(combined.find(fid));
+  ASSERT_TRUE(glob.find(fid));
+
+  Histogram const& glob_h = glob[fid];
+  Histogram const& expect_h = combined[fid];
+  double gc = glob_h.totalCount();
+  double ec = expect_h.totalCount();
+  std::cout << "Global count " << gc << " expect " << ec << std::endl;
+  EXPECT_NEAR(gc,ec,1e-5);
+
+  std::cout << "Got global model:" << std::endl << glob_h << std::endl;
+  std::cout << "Expect:" << std::endl << expect_h << std::endl;
+
+  EXPECT_EQ(glob_h, expect_h);
+
+  std::cout << "Main thread disconnecting from PS" << std::endl;
+  net_client.disconnect_ps();
+
+  barrier2.wait(); //1
+
+  psthr.join();
+}
+
