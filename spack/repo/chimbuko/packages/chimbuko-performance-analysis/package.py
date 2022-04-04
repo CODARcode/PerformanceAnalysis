@@ -34,9 +34,9 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('m4',       type='build')
 
 
-    def setup_environment(self, spack_env, run_env):
+    def setup_build_environment(self, env):
         if '+mpi' in self.spec:
-            spack_env.set('CXX', self.spec['mpi'].mpicxx)
+            env.set('CXX', self.spec['mpi'].mpicxx)
 
     def configure_args(self):
         args = ["--with-network=ZMQ", "--with-adios2=%s" % self.spec['adios2'].prefix ]
