@@ -29,7 +29,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  only_one_frame(false), interval_msec(0),
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
                                   outlier_statistic("exclusive_runtime"),
-                                  step_report_freq(1)
+                                  step_report_freq(1),
+                                  analysis_step_freq(1)
 {}
 
 void ChimbukoParams::print() const{
@@ -50,7 +51,8 @@ void ChimbukoParams::print() const{
 	    << "\nInterval   : " << interval_msec << " msec"
             << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec"
 	    << "\nPerf. metric outpath : " << perf_outputpath
-	    << "\nPerf. step   : " << perf_step;
+	    << "\nPerf. step   : " << perf_step
+            << "\nAnalysis step freq. : " << analysis_step_freq ;
 #ifdef ENABLE_PROVDB
   if(provdb_addr_dir.size()){
     std::cout << "\nProvDB addr dir: " << provdb_addr_dir
@@ -508,7 +510,9 @@ void Chimbuko::run(unsigned long long& n_func_events,
   if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
 
   int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
-  unsigned long first_event_ts, last_event_ts; //earliest and latest timestamps in io frame
+  unsigned long io_step_first_event_ts, io_step_last_event_ts; //earliest and latest timestamps in io frame
+  unsigned long execdata_first_event_ts, execdata_last_event_ts; //earliest and latest timestamps in current exec data (can differ from that of the io frame if we change the analysis frequency)
+  bool execdata_first_event_ts_set = false; //do we still need to set the analysis time window bound?
 
   std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
   m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
@@ -531,6 +535,9 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
   //Loop until we lose connection with the application
   while ( parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step) ) {
+    frames++;
+    n_steps_accum_prd++;
+
     //Increment total events
     n_func_events += n_func_events_step;
     n_comm_events += n_comm_events_step;
@@ -543,7 +550,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     //Decide whether to report step progress
     bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting analysis of step " << step
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting step " << step
 							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
 							  << " counter=" << n_counter_events_step << std::endl; }
     step_timer.start();
@@ -555,45 +562,61 @@ void Chimbuko::run(unsigned long long& n_func_events,
 
     //Extract parsed events into event manager
     timer.start();
-    extractEvents(first_event_ts, last_event_ts, step);
+    extractEvents(io_step_first_event_ts, io_step_last_event_ts, step);
     m_perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
+    
+    //Update the timestamp bounds for the analysis
+    execdata_last_event_ts = io_step_last_event_ts;
+    if(!execdata_first_event_ts_set){
+      execdata_first_event_ts = io_step_first_event_ts;
+      execdata_first_event_ts_set = true;
+    }
 
-    //Run the outlier detection algorithm on the events
-    timer.start();
-    Anomalies anomalies = m_outlier->run(step);
-    m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
-    m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
+    //Are we running the analysis this step?
+    bool do_run_analysis = step % m_params.analysis_step_freq == 0;
 
-    int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
-    n_outliers += nout;
-    n_outliers_accum_prd += nout;
-    frames++;
-    n_steps_accum_prd++;
+    if(do_run_analysis){
+      //Run the outlier detection algorithm on the events
+      timer.start();
+      Anomalies anomalies = m_outlier->run(step);
+      m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
+      m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
 
-    //Generate anomaly provenance for detected anomalies and send to DB
-    timer.start();
-    extractAndSendProvenance(anomalies, step, first_event_ts, last_event_ts);
-    m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
+      int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+      int nnormal = anomalies.nEvents(Anomalies::EventType::Normal);
+      n_outliers += nout;
+      n_outliers_accum_prd += nout;
 
-    //Send any new metadata to the DB
-    timer.start();
-    sendNewMetadataToProvDB(step);
-    m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
+      //Generate anomaly provenance for detected anomalies and send to DB
+      timer.start();
+      extractAndSendProvenance(anomalies, step, execdata_first_event_ts, execdata_last_event_ts);
+      m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
+      
+      //Send any new metadata to the DB
+      timer.start();
+      sendNewMetadataToProvDB(step);
+      m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
 
-    //Gather and send statistics and data to the pserver
-    timer.start();
-    gatherAndSendPSdata(anomalies, step, first_event_ts, last_event_ts);
-    m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
+      //Gather and send statistics and data to the pserver
+      timer.start();
+      gatherAndSendPSdata(anomalies, step, execdata_first_event_ts, execdata_last_event_ts);
+      m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
 
-    //Trim the call list
-    timer.start();
-    m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
-    m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
+      //Trim the call list
+      timer.start();
+      m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
+      m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
 
-    //Flush counters
-    timer.start();
-    delete m_counter->flushCounters();
-    m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
+      //Flush counters
+      timer.start();
+      delete m_counter->flushCounters();
+      m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
+
+      //Enable update of analysis time window bound on next step
+      execdata_first_event_ts_set = false;
+
+      if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " event analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
+    }
 
     m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
@@ -640,7 +663,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed analysis of step " << step << std::endl; }
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed step " << step << std::endl; }
   } // end of parser while loop
 
   //Always dump perf at end

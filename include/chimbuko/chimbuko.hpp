@@ -62,6 +62,8 @@ namespace chimbuko {
     
     int net_recv_timeout; /**< Timeout (in ms) used for blocking receives functionality on client (driver) of parameter server */
 
+    int analysis_step_freq; /**< The frequency in IO steps at which we perform the anomaly detection. Events are retained between io steps if the analysis is not run. (default 1)*/
+
     ChimbukoParams();
 
     void print() const;
