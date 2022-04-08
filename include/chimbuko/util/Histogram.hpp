@@ -22,7 +22,7 @@ namespace chimbuko{
     /**
      * @brief Determine the bin width for the merger of two histograms
      */
-    virtual double bin_width(const Histogram &a, const Histogram &b) const = 0;
+    virtual double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const = 0;
     virtual ~binWidthSpecifier(){}
   };
   /**
@@ -33,14 +33,14 @@ namespace chimbuko{
     binWidthFixed(double width): width(width){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return width; }
-    double bin_width(const Histogram &a, const Histogram &b) const{ return width; }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return width; }
   };
   /**
    * @brief Determine the bin width using Scott's rule
    */
   struct binWidthScott: public binWidthSpecifier{
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
-    double bin_width(const Histogram &a, const Histogram &b) const override;
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override;
   };
   /**
    * @brief Determine the bin width from the range assuming a fixed number of bins
@@ -49,7 +49,7 @@ namespace chimbuko{
     int nbin;
     binWidthFixedNbin(int nbin): nbin(nbin){}
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
-    double bin_width(const Histogram &a, const Histogram &b) const override;
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override;
   };
 
   /**
@@ -88,6 +88,8 @@ namespace chimbuko{
       double glob_threshold; /**< global threshold used to filter anomalies*/
       std::vector<double> counts; /**< Bin counts in Histogram*/
       std::vector<double> bin_edges; /**< Bin edges in Histogram*/
+      double min; /**< Minimum value ever encountered*/
+      double max; /**< Maximum value ever encountered*/
 
       /**
        * @brief Initialize histogram data
@@ -102,41 +104,31 @@ namespace chimbuko{
        * @param h_counts: a vector of histogram bin counts
        * @param h_bin_edges: a vector of histogram bin edges
        */
-      Data(const double& g_threshold, const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges ) {
-        glob_threshold = g_threshold;
-        counts = h_counts;
-        bin_edges = h_bin_edges;
-      }
+      Data(const double& g_threshold, const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges, double min, double max): glob_threshold(g_threshold), counts(h_counts), bin_edges(h_bin_edges), min(min), max(max) {}
 
       /**
-       * @brief Resets histogram data during initialization
+       * @brief Resets histogram data
        */
-      void clear() {
-        glob_threshold = log2(1.00001);
-        counts.clear();
-        bin_edges.clear();
-      }
+      void clear();
 
       /**
        * @brief Serialize using cereal
        */
       template<class Archive>
       void serialize(Archive & archive){
-         archive(glob_threshold, counts, bin_edges);
+	archive(glob_threshold, counts, bin_edges, min, max);
       }
 
       /**
        * @brief Comparison operator
        */
-      bool operator==(const Data &r) const{ return glob_threshold == r.glob_threshold && counts == r.counts && bin_edges == r.bin_edges; }
+      bool operator==(const Data &r) const{ return glob_threshold == r.glob_threshold && counts == r.counts && bin_edges == r.bin_edges && min == r.min && max == r.max; }
 
 
     };
 
 
     void clear() {m_histogram.clear();}
-
-    void push (double x);
 
     /**
      * @brief returns reference to current histogram Data
@@ -196,12 +188,19 @@ namespace chimbuko{
      */
     void set_counts(const std::vector<double> & c) { m_histogram.counts = c; }
 
-    /*
+    /**
      * @brief set bin edges in Histogram
      * @param be: vector of bin edges
      */
-    void set_bin_edges(const std::vector<double> &be) {m_histogram.bin_edges = be;}
-
+    void set_bin_edges(const std::vector<double> &be){ m_histogram.bin_edges = be; }
+    
+    /**
+    * @brief Set the minimum and maximum values of data represented by the histogram
+    *
+    * both min and max values should be inside the histogram bounds!
+    */
+    void set_min_max(double min, double max);
+    
     /*
      * @brief New bin counts in Histogram
      * @param count: bin count value
@@ -299,7 +298,7 @@ namespace chimbuko{
     };
  
     /**
-     * @brief Compute the empirical CDF for a given value assuming bins are represented by bin_count counts of the midpoint value
+     * @brief Compute the empirical CDF for a given value assuming data in bins are uniformly distributed
      * @param value The value at to which the CDF is computed
      * @param workspace If non-null, workspace allows the preservation of the bin count sum between successive calls, reducing the cost
      */
@@ -352,6 +351,31 @@ namespace chimbuko{
     static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges);
 
 
+    /**
+     * @brief Compute bin width based on Scott's rule
+     * @param global_counts: bin counts in global histogram on pserver
+     * @param global_edges: bin edges in global histogram on pserver
+     * @param local_vals: local data values
+     * @return computed bin width
+     */
+    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals);
+
+
+    /**
+     * @brief Return the smallest value encountered
+     */
+    double getMin() const{ return m_histogram.min; }
+
+    /**
+     * @brief Return the largest value encountered
+     */
+    double getMax() const{ return m_histogram.max; }
+
+    /**
+     * @brief The lower bound of the histogram will be placed  getLowerBoundShiftMul()*bin_width below the minimum value
+     */
+    static double getLowerBoundShiftMul();
+
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 
@@ -367,19 +391,10 @@ namespace chimbuko{
     static void merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l);
 
     /**
-     * @brief Compute the range of the combined histogram for the "merge_histograms_central_value" strategy
-     */
-    static void get_merge_histograms_central_value_range(double &start, double &end, const Histogram &g, const Histogram &l, double bin_width);
-
-    /**
      * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
      */
     static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
   
-    /**
-     * @brief Compute the range of the combined histogram for the "merge_histograms_uniform" strategy
-     */ 
-    static void get_merge_histograms_uniform_value_range(double &start, double &end, const Histogram &g, const Histogram &l, double bin_width);
   };
 
 

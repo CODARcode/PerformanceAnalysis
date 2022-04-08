@@ -88,6 +88,8 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
     h = Histogram::merge_histograms(h, runtime);
     std::cout << "Merged Histogram" << std::endl;
 
+    EXPECT_NE(h.getMax(), std::numeric_limits<double>::lowest());
+    EXPECT_NE(h.getMin(), std::numeric_limits<double>::max());
   }
   local_params_ps.assign(local_params_ps_in);
 
@@ -97,9 +99,13 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   outlier.sync_param_test(&local_params_ps);
 
   //internal copy should be equal to global copy
-  std::string in_state = outlier.get_global_parameters()->serialize();
+  HbosParam const* g = (HbosParam const*)outlier.get_global_parameters();
+  auto it = g->get_hbosstats().find(0);
+  ASSERT_NE(it, g->get_hbosstats().end());
+  EXPECT_NE(it->second.getMax(), std::numeric_limits<double>::lowest());
+  EXPECT_NE(it->second.getMin(), std::numeric_limits<double>::max());
 
-  EXPECT_EQ(local_params_ps.serialize(), in_state);
+  EXPECT_EQ(local_params_ps.get_hbosstats(), g->get_hbosstats());
 }
 
 TEST(ADOutlierTestSyncParamWithoutPS, Works){
