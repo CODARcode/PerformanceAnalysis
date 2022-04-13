@@ -444,6 +444,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   Histogram h;
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
+  h.set_min_max(101,700);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -566,6 +567,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   Histogram h;
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
+  h.set_min_max(101,700);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -620,6 +622,19 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
     EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
   }
+  //Check data point lying on top of the min value is not an outlier despite the naive CDF being 0
+  {
+    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 101) };
+    std::vector<CallListIterator_t> data = {events.begin()};
+    Anomalies anom;
+    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    EXPECT_EQ(n, 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1);
+  }
+
 
 }
 

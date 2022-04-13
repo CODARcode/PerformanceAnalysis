@@ -50,9 +50,10 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
     Histogram &r = local_params_ad[0];
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 10000 : double(dist(gen));
-      call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
-      runtimes.push_back(val);
-      std::cout << "vals in localhist 1: " << val << std::endl;
+      unsigned long uval(val); //execdata truncates to unsigned long so we must do the same when generating the local histogram
+      call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), uval) );
+      runtimes.push_back(uval);
+      std::cout << "vals in localhist 1: " << uval << std::endl;
     }
     r.create_histogram(runtimes);
     std::vector<double> local_bin_edges = r.bin_edges();
@@ -66,9 +67,10 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
     Histogram &r = local_params_ad2[0];
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 20000 : double(dist(gen));
-      call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
-      runtimes.push_back(val);
-      std::cout << "vals in localhist 2: " << val << std::endl;
+      unsigned long uval(val);
+      call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), uval) );
+      runtimes.push_back(uval);
+      std::cout << "vals in localhist 2: " << uval << std::endl;
     }
     r.create_histogram(runtimes);
     std::vector<double> local_bin_edges = r.bin_edges();
@@ -136,31 +138,31 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
 			  ADOutlierCOPODTest outlier;
 			  outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before sync_param in AD 1" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
-
+			  std::cout << "Global and local histograms before sync_param in AD 1" << std::endl;
+			  std::cout << global_params_ps[0].get_json().dump();
+			  std::cout << local_params_ad[0].get_json().dump();
+			  std::cout << local_params_ad2[0].get_json().dump();
+			  
 			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
-
-        std::cout << "Global and local histograms after sync_param in AD 1" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
+			  
+			  std::cout << "Global and local histograms after sync_param in AD 1" << std::endl;
+			  std::cout << global_params_ps[0].get_json().dump();
+			  std::cout << local_params_ad[0].get_json().dump();
+			  std::cout << local_params_ad2[0].get_json().dump();
 
 			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
 
 
-        Anomalies outliers;
-        nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
-
-        std::cout << "# outliers detected: " << nout << std::endl;
-
-        std::cout << "Global and local histograms after Outlier detection in AD 1" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
-
+			  Anomalies outliers;
+			  nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
+			  
+			  std::cout << "# outliers detected: " << nout << std::endl;
+			  
+			  std::cout << "Global and local histograms after Outlier detection in AD 1" << std::endl;
+			  std::cout << global_params_ps[0].get_json().dump();
+			  std::cout << local_params_ad[0].get_json().dump();
+			  std::cout << local_params_ad2[0].get_json().dump();
+			  
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
 			  std::cout << "AD thread waiting at barrier" << std::endl;

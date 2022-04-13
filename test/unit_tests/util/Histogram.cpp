@@ -350,6 +350,7 @@ TEST(TestHistogram, negation){
   Histogram g;
   g.set_counts({2,40,24,10,3,1,0,1});
   g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
+  g.set_min_max(0.11,0.9);
 
   Histogram n = -g;
   EXPECT_EQ(n.getBin(-0.95, 0.), Histogram::LeftOfHistogram);
@@ -366,6 +367,9 @@ TEST(TestHistogram, negation){
   EXPECT_EQ(n.counts()[7], 2);
   
   EXPECT_EQ(n.getBin(-0.05, 0.), Histogram::RightOfHistogram);
+
+  EXPECT_EQ(n.getMax(), -0.11);
+  EXPECT_EQ(n.getMin(), -0.9);
 }
  
 
@@ -634,11 +638,30 @@ TEST(TestHistogram, mergeUniform){
     for(int i=0;i<4;i++) EXPECT_NEAR(h.binCount(i),0.75,1e-12);
     for(int i=4;i<8;i++) EXPECT_NEAR(h.binCount(i),0.5,1e-12);
   }
-
-
-
-
-
 }
 
 
+//Test the correction used for COPOD where we shift the bin edges such that the CDF of the min value is 1/N rather than 0
+TEST(TestHistogram, empiricalCDFshift){
+  Histogram g;
+  g.set_counts({2,6,5});
+  g.set_bin_edges({0.1,0.2,0.3,0.4});
+  g.set_min_max(0.1+1e-8,0.4);
+
+  //Check initial CDF is ~0
+  double min = g.getMin();
+  EXPECT_NEAR(g.empiricalCDF(min), 0., 1e-4);
+
+  double n = g.totalCount();
+  
+  //Require  (min - edge)/bin_width * bin_count[0] / n = 1./n
+  //edge = min - bin_width/bin_count[0]
+  double shift = -0.1/2;
+
+  g.shiftBinEdges(shift);
+  
+  double cdf = g.empiricalCDF(min);
+  double desire = 1./n;
+  std::cout << min << " " << cdf << " desire " << desire << std::endl;
+  EXPECT_NEAR(cdf , desire, 1e-6);
+}

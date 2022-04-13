@@ -585,6 +585,8 @@ Histogram Histogram::operator-() const{
   for(int b=0; b< d.bin_edges.size(); b++) d.bin_edges[b] = -d.bin_edges[b];
   std::reverse(d.bin_edges.begin(),d.bin_edges.end());
   std::reverse(d.counts.begin(),d.counts.end());
+  d.max = -this->m_histogram.min;
+  d.min = -this->m_histogram.max;
   return out;
 }
 
@@ -612,9 +614,10 @@ double Histogram::skewness() const{
   return csum/(csum-1.) * avg_xmmu_3 / pow(var, 3./2);
 }
 
-
-
-
+void Histogram::shiftBinEdges(const double x){
+  for(auto &e : m_histogram.bin_edges)
+    e += x;
+}
 
 namespace chimbuko{
   std::ostream & operator<<(std::ostream &os, const Histogram &h){

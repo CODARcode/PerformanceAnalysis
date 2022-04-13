@@ -376,6 +376,12 @@ namespace chimbuko{
      */
     static double getLowerBoundShiftMul();
 
+
+    /**
+     * @brief Uniformly shift the bin edges by x
+     */
+    void shiftBinEdges(const double x);
+    
   private:
     Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
 

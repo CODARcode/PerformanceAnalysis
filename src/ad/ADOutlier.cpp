@@ -488,6 +488,25 @@ inline double copod_score(const double runtime_i, const Histogram &hist, const H
   double left_tailed_prob = hist.empiricalCDF(runtime_i, &w);
   double right_tailed_prob = nhist.empiricalCDF(-runtime_i, &nw);
 
+  //When generating the histogram we place the lower bound just before the minimum value
+  //This means the CDF for the minimum value is exactly 0 whereas it should be at least 1/N
+  //This introduces an error in COPOD; whenever a new minimum is encountered, it is marked as an outlier even if it should not be
+  //To correct for this, if a data point is larger than min the CDF is shifted by 1/N
+  verboseStream << "Runtime " << runtime_i << " hist min " << hist.getMin() << std::endl;
+  if(runtime_i >= hist.getMin() ){ 
+    verboseStream << "Shifting left-tailed prob from " << left_tailed_prob << " to ";
+    left_tailed_prob += 1./w.getSum(hist); 
+    left_tailed_prob = std::min(1.0, left_tailed_prob); 
+    verboseStreamAdd << left_tailed_prob << std::endl;
+  }
+  verboseStream << "Negated runtime " << -runtime_i << " nhist min " << nhist.getMin() << std::endl;
+  if(-runtime_i >= nhist.getMin() ){ 
+    verboseStream << "Shifting right-tailed prob from " << right_tailed_prob << " to ";
+    right_tailed_prob += 1./nw.getSum(nhist); 
+    right_tailed_prob = std::min(1.0, right_tailed_prob); 
+    verboseStreamAdd << right_tailed_prob << std::endl;
+  }
+
   double left_tailed_score = -log2(left_tailed_prob + m_alpha);
   double right_tailed_score = -log2(right_tailed_prob + m_alpha);
   double avg_lr_score = (left_tailed_score + right_tailed_score)/2.;
@@ -540,6 +559,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
   //Negate the histogram to compute right-tailed ECDFs
   Histogram nhist = -hist;
+  verboseStream << "Inverted Histogram: " << std::endl << nhist << std::endl;
 
   //Determine the outlier threshold by computing the range of scores for data points *in the histogram*
   verboseStream << "Computing score range from histogram" << std::endl;
@@ -569,6 +589,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
     }
   }
 
+  verboseStream << "Performing outlier detection" << std::endl;
   //Perform outlier detection  
   unsigned long n_outliers = 0;
   for (auto itt : data) {
