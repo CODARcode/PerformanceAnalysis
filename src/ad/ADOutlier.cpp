@@ -235,10 +235,15 @@ Anomalies ADOutlierHBOS::run(int step) {
   if (m_execDataMap == nullptr) return outliers;
 
   //Generate the statistics based on this IO step
+  const HbosParam& global_param = *(HbosParam const*)m_param;
   HbosParam param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     Histogram &hist = param[func_id];
+
+    auto hit = global_param.get_hbosstats().find(func_id);
+    Histogram const* global_hist = hit == global_param.get_hbosstats().end() ? nullptr : &hit->second;
+
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       if (itt->get_label() == 0)
@@ -248,7 +253,17 @@ Anomalies ADOutlierHBOS::run(int step) {
 
     if (runtimes.size() > 0) {
       verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
-      hist.create_histogram(runtimes);
+
+      if(global_hist != nullptr){
+	//Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
+	double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
+	verboseStream << "Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
+	binWidthFixed l_bwspec(bw);
+	hist.create_histogram(runtimes, l_bwspec);
+      }else{
+	verboseStream << "Using Scott bin width of local data set to determine bin width" << std::endl;
+	hist.create_histogram(runtimes);
+      }
     }
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;

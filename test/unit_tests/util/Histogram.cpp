@@ -209,50 +209,35 @@ int count_in_range(double start, double end, const std::vector<double> &v){
 
 
 TEST(TestHistogram, mergeTwoHistograms){
-  //When the standard deviation is 0 (up to rounding errors) the number of bins diverges and must be carefully treated
-  //This should only happen when both histograms have just 1 bin containing data and with the same midpoint
+
+  //When the suggested bin size is too small we treat the merge differently
   {
     std::cout << "Test treatment of small bin size suggestions" << std::endl;
+    binWidthFixed bw(1e-20);
+
     Histogram g;
-    g.set_counts({0,4});
-    g.set_bin_edges({0.1,0.2,0.31});
-    g.set_min_max(0.101,0.31);
+    g.set_counts({1,4});
+    g.set_bin_edges({0.1,0.2,0.3});
+    g.set_min_max(0.100001,0.3);
     
     Histogram l;
-    l.set_counts({0,2});
-    l.set_bin_edges({0.11,0.2,0.31}); //other bins don't matter
-    l.set_min_max(0.111,0.31);
+    l.set_counts({3,2});
+    l.set_bin_edges({0.0,0.3,0.6}); //other bins don't matter
+    l.set_min_max(0.000001,0.6);
     
-    Histogram c = Histogram::merge_histograms(g, l);
-    EXPECT_EQ(c.Nbin(),2);
-    EXPECT_EQ(c.bin_edges()[0], 0.1);
-    EXPECT_EQ(c.bin_edges()[1], 0.2);
-    EXPECT_EQ(c.bin_edges()[2], 0.31);
-
-    EXPECT_EQ(c.counts()[0], 0);
-    EXPECT_EQ(c.counts()[1], 6);
-  }
-  //Another test like the above
-  {
-    std::cout << "Test again treatment of small bin size suggestions" << std::endl;
-    Histogram g;
-    g.set_counts({0,4});
-    g.set_bin_edges({0.1,0.2,0.31+1e-16});
-    g.set_min_max(0.101,0.31+1e-16);
-
-    Histogram l;
-    l.set_counts({0,2});
-    l.set_bin_edges({0.11,0.2,0.31}); //other bins don't matter
-    l.set_min_max(0.111,0.31);
+    Histogram c = Histogram::merge_histograms(g, l, bw);
     
-    Histogram c = Histogram::merge_histograms(g, l);
-    EXPECT_EQ(c.Nbin(),2);
-    EXPECT_EQ(c.bin_edges()[0], 0.1);
-    EXPECT_EQ(c.bin_edges()[1], 0.2);
-    EXPECT_EQ(c.bin_edges()[2], g.bin_edges()[2]);
+    //It should choose a bin width equal to the smallest of the two bin widths
+    EXPECT_NEAR( c.bin_edges()[1] - c.bin_edges()[0], 0.1, 1e-5);
 
-    EXPECT_EQ(c.counts()[0], 0);
-    EXPECT_EQ(c.counts()[1], 6);
+    //Lower edge should be near the shared min
+    EXPECT_NEAR( c.bin_edges()[0], 0.001,  1e-3);
+
+    //Upper edge should be near the shared max
+    EXPECT_NEAR( c.bin_edges()[c.Nbin()], 0.6,  1e-3);
+
+    //Number of bins should not be large
+    EXPECT_LT( c.Nbin(), 100 );    
   }
   //Do a regular merge for histograms with the same bin width
   //Result will not have the same bin widths because of the rebinning but we can do other checks
@@ -554,6 +539,40 @@ TEST(TestHistogram, skewness){
   std::cout << "Skewness got: " << got << " expect " << expect << std::endl;
   EXPECT_NEAR(got, expect, 1e-5);
 }
+
+TEST(TestHistogram, uniformCountInRange){
+  //Check for a normal histogram
+  {
+    Histogram h;
+    h.set_bin_edges({0,1,2,3});
+    h.set_counts({1,2,3});
+    h.set_min_max(1e-12, 3);
+    
+    //total sum
+    EXPECT_NEAR(h.uniformCountInRange(0,3),6.,1e-5);
+    
+    //last bin
+    EXPECT_NEAR(h.uniformCountInRange(2,3),3.,1e-5);
+
+    //partial bin
+    EXPECT_NEAR(h.uniformCountInRange(2.5,3),3./2,1e-5);
+    
+    //multiple partial bins
+    EXPECT_NEAR(h.uniformCountInRange(0.5,2.5), 0.5+2+1.5,1e-5);
+  }
+  //Check special treatment for a histogram with min=max
+  {
+    Histogram h;
+    h.set_bin_edges({0,1});
+    h.set_counts({3});
+    h.set_min_max(0.5, 0.5);
+    
+    EXPECT_NEAR(h.uniformCountInRange(0.499,0.5),3.,1e-5);
+    EXPECT_NEAR(h.uniformCountInRange(0.5,0.501),0.,1e-5);
+  }
+
+}
+
 
 struct HistogramTest: public Histogram{
   using Histogram::merge_histograms_uniform;

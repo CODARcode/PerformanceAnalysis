@@ -70,7 +70,22 @@ Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &b
 double Histogram::getLowerBoundShiftMul(){ return 1e-6; }
 
 double Histogram::uniformCountInRange(double l, double u) const{
-  if(u<l) fatal_error("Invalid range");
+  if(u<=l) fatal_error(std::string("Invalid range, require u>l but got l=") + std::to_string(l) + " u=" + std::to_string(u));
+
+  if(m_histogram.max == m_histogram.min){
+    //Ignore the bin edges, the data set is a delta function
+    double v = m_histogram.max;
+    int dbin = getBin(v,0);
+    double count = binCount(dbin);
+    verboseStream << "uniformCountInRange range " << l << ":" << u << " evaluating for max=min=" << v << ": data are in bin " << dbin << " with count " << count << " : l<v?" << int(l<v) << " u>=v?" << int(u>=v);
+    if(l < v && u>= v){
+      verboseStreamAdd << " returning " << count << std::endl;
+      return count;
+    }else{
+      verboseStreamAdd << " returning " << 0 << std::endl;
+      return 0;
+    }
+  }
 
   int lbin = getBin(l,0);
   if(lbin == Histogram::LeftOfHistogram){
@@ -177,6 +192,8 @@ void Histogram::merge_histograms_central_value(Histogram &combined, const Histog
  * @brief Merge Histogram
  */
 Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, const binWidthSpecifier &bwspec) {
+  verboseStream << "Histogram::merge_histograms merging local histogram:\n" << l << "\nand global histogram:\n" << g << std::endl;
+
   verboseStream << "Histogram merge: Counts Size of Global Histogram: " << g.counts().size() << ", Counts Size of Local Histogram: " << l.counts().size() << std::endl;
 
   if (g.counts().size() == 0) {
@@ -201,34 +218,25 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   double max = std::max(l.m_histogram.max,g.m_histogram.max);
   if(max < min) fatal_error("Min and max values out of order");
 
+  verboseStream << "Histogram::merge_histograms local hist min, max = " << l.m_histogram.min << ", " << l.m_histogram.max << "  global histogram min, max = " << g.m_histogram.min << ", " << g.m_histogram.max << std::endl;
+
   double bin_width = bwspec.bin_width(g,l,min,max);
   if(bin_width < 0.) fatal_error("Suggested bin width " + std::to_string(bin_width) + " is invalid");
 
   if(bin_width == 0. || ceil(max-min)/bin_width > 50000. ){ //Can occur when the standard deviation of the histogram data set is 0 within rounding errors. This should only happen when both histograms have just 1 bin containing data and with the same lower bin edge
     verboseStream << "Suggested bin width " << bin_width << " is too small, resulting in too many bins!" << std::endl;
-    int l_nonempty = 0; 
-    int l_b;
-    for(int i=0;i<l.Nbin();i++) if(l.counts()[i] > 0){ ++l_nonempty; l_b = i; }
 
-    int g_nonempty = 0; 
-    int g_b;
-    for(int i=0;i<g.Nbin();i++) if(g.counts()[i] > 0){ ++g_nonempty; g_b = i; }
-
-    if(l_nonempty > 1 || g_nonempty > 1 || l.bin_edges()[l_b] != g.bin_edges()[g_b]) fatal_error("Encountered unexpected small bin width in histogram merge");
-
-    //Both histograms have 1 bin. Just use the global histogram and update its bin count
-    Histogram combined(g);
-    combined.add2counts(g_b, l.counts()[l_b]);
-
-    verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
-    return combined;
+    //Choose the smaller of the bin widths of the two inputs
+    bin_width = std::min(g.bin_edges()[1]-g.bin_edges()[0], l.bin_edges()[1]-l.bin_edges()[0]);
+    if(bin_width == 0. || ceil(max-min)/bin_width > 50000. ) fatal_error("Failed to determine the appropriate bin width");
   }
 
   verboseStream << "Histogram::merge_histograms suggested bin width " << bin_width << std::endl;
 
   double range_start = min - getLowerBoundShiftMul() * bin_width; //lower edges are exclusive and we want the first data point inside the first bin
   double range_end = max;
- 
+  verboseStream << "Histogram::merge_histograms determined range " << range_start << ":" << range_end << std::endl;
+
   //Adjust the bin width such that the upper edge is equal to the max value
   int nbin = int( ceil( (range_end - range_start)/bin_width ) );
   if(nbin < 0) fatal_error("Negative bin count encountered, possible integer overflow");
@@ -263,6 +271,11 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
       std::stringstream ss; ss << "Logic bomb: bin of max value " << bin_max << " is not the last bin, " << nbin-1 << std::endl;
       fatal_error(ss.str());
     }
+    if(fabs(comb_binedges[nbin]-range_end) > 1e-12*bin_width){
+      std::stringstream ss; ss << "Logic bomb: upper bin edge " << comb_binedges[nbin] << "of merged histogram does not match expected range_end=" << range_end;
+      fatal_error(ss.str());
+    }
+    comb_binedges[nbin] = range_end; //correct for floating point errors
 
     verboseStream << "Iterating between " << range_start << " and " << range_end << " in steps of " << bin_width << " resulted in " << comb_binedges.size() << " edges" << std::endl;
   }
@@ -276,6 +289,9 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   combined.m_histogram.glob_threshold = std::max( l.get_threshold(),  g.get_threshold() );
 
   verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
+
+  verboseStream << "Histogram::merge_histograms merged local histogram:\n" << l << "\nand global histogram:\n" << g << "\nobtained:\n" << combined << std::endl;
+
   return combined;
 }
 
@@ -288,64 +304,47 @@ double Histogram::binValue(const size_t i, const std::vector<double> & edges){
 
 
 double Histogram::scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges){
-  double sum = 0.0;
-  verboseStream << "Size of Vector global_counts: " << global_counts.size() << std::endl;
-  verboseStream << "Size of Vector local_counts: " << local_counts.size() << std::endl;
+  verboseStream << "scottBinWidth (2 histograms)" << std::endl << "Size of Vector global_counts: " << global_counts.size() << std::endl << "Size of Vector local_counts: " << local_counts.size() << std::endl;
 
-  verboseStream << "Global histogram counts: ";
-  double size = 0;
+  double size = 0., avgx = 0., avgx2 = 0.;
+
   for(int i = 0; i < global_counts.size(); i++) {
     double count = global_counts[i];
     if (count < 0) fatal_error("Negative count encountered in global_counts!");
-    //count = -1 * count;
-    if (count != 0){
-      verboseStreamAdd << global_edges[i]<<"-"<<global_edges[i+1] << ":" << count << std::endl;
-    }
     size += count;
-    sum += count * binValue(i,global_edges);
+    double v = binValue(i,global_edges);
+    avgx += count * v;
+    avgx2 += count * v*v;
   }
-  verboseStream << std::endl;
-  verboseStream << "Size in scottBinWidth: " << size << std::endl;
-  verboseStream << "Global sum in scottBinWidth: " << sum << std::endl;
-
-  verboseStream << "Local histogram counts: ";
   for(int i = 0; i < local_counts.size(); i++) {
     double count = local_counts[i];
     if (count < 0) fatal_error("Negative count encountered in local_counts!");
-    //count = -1 * count;
-    if (count != 0){
-      verboseStreamAdd << local_edges[i]<<"-"<<local_edges[i+1] << ":" << count << std::endl;
-    }
     size += count;
-    sum += count * binValue(i,local_edges);
+    double v = binValue(i,local_edges);
+    avgx += count * v;
+    avgx2 += count * v*v;
   }
-  verboseStream << std::endl;
-  verboseStream << "Total size in scottBinWidth: " << size << std::endl;
-  verboseStream << "Total sum in scottBinWidth: " << sum << std::endl;
+
+  verboseStream << "Size : " << size << " sum(x)=" << avgx << " and sum(x^2)=" << avgx2 << std::endl;
 
   if(size == 0) fatal_error("Sum of bin counts over both histograms is zero!");
 
-  const double mean = sum / size;
-  verboseStream << "mean in _xcott_binWidth: " << mean << std::endl;
+  avgx /= size;
+  avgx2 /= size;
 
-  double var = 0.0, std=0.0;
-  for (int i=0;i<global_counts.size();i++){
-    var += global_counts.at(i) * pow(binValue(i, global_edges) - mean, 2);
-  }
-  verboseStream << "Global var in scottBinWidth: " << var << std::endl;
-  for (int i=0;i<local_counts.size();i++){
-    var += local_counts.at(i) * pow(binValue(i, local_edges) - mean, 2);
-  }
-  verboseStream << "total var in scottBinWidth: " << var << std::endl;
+  verboseStream << "Mean in scottBinWidth: " << avgx << std::endl;
 
-  var = var / size;
-  verboseStream << "Final Variance in scottBinWidth: " << var << std::endl;
-  std = sqrt(var);
-  verboseStream << "stddev in merging scottBinWidth: " << std << std::endl;
-  //if (std <= 100.0) {return 0;}
+  double var = avgx2 - avgx*avgx;
+  if(var < 0){
+    if(fabs(var) < 1e-16*avgx) var = 0;
+    else fatal_error("Negative variance encountered!");
+  }
+
+  double std = sqrt(var);
+
+  verboseStream << "Final Variance in scottBinWidth: " << var << std::endl << "stddev in merging scottBinWidth: " << std << std::endl;
 
   return ((3.5 * std ) / pow(size, 1./3));
-
 }
 
 double Histogram::scottBinWidth(const std::vector<double> & vals){

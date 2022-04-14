@@ -330,6 +330,7 @@ namespace chimbuko{
      * @param h The upper bound
      *
      * The result is non-integer if the bounds do not align with bin boundaries
+     * Requires u>l
      */
     double uniformCountInRange(double l, double u) const;
 
