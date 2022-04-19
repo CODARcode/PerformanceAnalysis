@@ -51,6 +51,42 @@ namespace chimbuko{
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override;
     double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override;
   };
+  /**
+   * @brief Base class for binWidthSpecifier derivatives that impose a cap on the number of bins
+   */
+  struct binWidthMaxNbinBase{
+    int maxbins;
+    binWidthMaxNbinBase(int maxbins): maxbins(maxbins){}
+
+    /**
+     * @brief Compute the current #bins and adjust the bin width accordingly if too large
+     */
+    double correct_bin_width(double bin_width, const double min, const double max) const;
+  };
+
+  /**
+   * @brief Use a fixed bin width but adjust if the number of bins is larger than some maximum
+   */
+  struct binWidthFixedMaxNbin: public binWidthMaxNbinBase, public binWidthSpecifier{
+    int maxbins;
+    double width;
+    binWidthFixedMaxNbin(double width, int maxbins): width(width),binWidthMaxNbinBase(maxbins){}
+
+    double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return correct_bin_width(width,min,max); }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return correct_bin_width(width,min,max); }
+  };
+  /**
+   * @brief Determine the bin width using Scott's rule but adjust if the number of bins is larger than some maximum
+   */
+  struct binWidthScottMaxNbin: public binWidthMaxNbinBase, public binWidthScott{
+    binWidthScottMaxNbin(int maxbins): binWidthMaxNbinBase(maxbins){}
+
+    double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return correct_bin_width(this->binWidthScott::bin_width(runtimes,min,max),min,max); }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override{ return correct_bin_width(this->binWidthScott::bin_width(a,b,min,max),min,max); }
+  };
+
+
+
 
   /**
    * @brief Histogram Implementation
@@ -127,6 +163,13 @@ namespace chimbuko{
 
     };
 
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      m_histogram.serialize(archive);
+    }
 
     void clear() {m_histogram.clear();}
 
@@ -312,7 +355,8 @@ namespace chimbuko{
     /**
      * @brief Comparison operator
      */
-    bool operator==(const Histogram &r) const{ return m_histogram == r.m_histogram; }
+    inline bool operator==(const Histogram &r) const{ return m_histogram == r.m_histogram; }
+    inline bool operator!=(const Histogram &r) const{ return !(*this == r); }
 
     /**
      * @brief Return a copy of the histogram but whose bin edges are negated and the bin order reversed

@@ -17,7 +17,7 @@ using namespace chimbuko;
 /**
  * HBOS based implementation
  */
- HbosParam::HbosParam() {
+HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
    clear();
  }
 
@@ -25,9 +25,18 @@ using namespace chimbuko;
 
  }
 
+ void HbosParam::copy(const HbosParam &r){ 
+   std::lock_guard<std::mutex> _(r.m_mutex);
+   std::lock_guard<std::mutex> __(m_mutex);
+   m_hbosstats = r.m_hbosstats; 
+   m_maxbins = r.m_maxbins;
+ }
+
+
  void HbosParam::clear()
  {
-     m_hbosstats.clear();
+   std::lock_guard<std::mutex> _(m_mutex);
+   m_hbosstats.clear();
  }
 
  void HbosParam::show(std::ostream& os) const
@@ -44,91 +53,93 @@ using namespace chimbuko;
      os << std::endl;
  }
 
- void HbosParam::assign(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void HbosParam::assign(const HbosParam &other)
  {
-     std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
-         m_hbosstats[pair.first] = pair.second;
-     }
+   std::lock_guard<std::mutex> _(other.m_mutex);
+   std::lock_guard<std::mutex> __(m_mutex);
+
+   for (auto& pair: other.m_hbosstats) {
+     m_hbosstats[pair.first] = pair.second;
+   }
  }
 
  void HbosParam::assign(const std::string& parameters)
  {
-     std::unordered_map<unsigned long, Histogram> hbosstats;
-
-     deserialize_cerealpb(parameters, hbosstats);
-     assign(hbosstats);
+   HbosParam tmp;
+   deserialize_cerealpb(parameters, tmp);
+   assign(tmp);
  }
 
  std::string HbosParam::serialize() const
  {
-     std::lock_guard<std::mutex> _{m_mutex};
-
-     return serialize_cerealpb(m_hbosstats);
+   std::lock_guard<std::mutex> _{m_mutex};
+   return serialize_cerealpb(*this);
  }
 
- std::string HbosParam::serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ std::string HbosParam::serialize_cerealpb(const HbosParam &p)
  {
-   std::unordered_map<unsigned long, Histogram::Data> histdata;
-   for(auto const& e : hbosstats)
-     histdata[e.first] = e.second.get_histogram();
    std::stringstream ss;
    {
      cereal::PortableBinaryOutputArchive wr(ss);
-     wr(histdata);
+     wr(p.m_hbosstats);
+     wr(p.m_maxbins);
    }
    return ss.str();
  }
 
- void HbosParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void HbosParam::deserialize_cerealpb(const std::string& parameters, HbosParam &p)
  {
+   p.clear();
    std::stringstream ss; ss << parameters;
-   std::unordered_map<unsigned long, Histogram::Data> histdata;
+
    {
      cereal::PortableBinaryInputArchive rd(ss);
-     rd(histdata);
+     rd(p.m_hbosstats);
+     rd(p.m_maxbins);
    }
-   for(auto const& e : histdata)
-     hbosstats[e.first] = Histogram::from_hist_data(e.second);
  }
 
  std::string HbosParam::update(const std::string& parameters, bool return_update)
  {
-     std::unordered_map<unsigned long, Histogram> hbosstats;
-     deserialize_cerealpb(parameters, hbosstats);
-     if(return_update){
-       update_and_return(hbosstats); //update hbosstats to reflect changes
-       return serialize_cerealpb(hbosstats);
-     }else{
-       update(hbosstats);
-       return "";
-     }
+   HbosParam local_model;
+   deserialize_cerealpb(parameters, local_model);
+   if(return_update){
+     update_and_return(local_model); //update hbosstats to reflect changes
+     return serialize_cerealpb(local_model);
+   }else{
+     update(local_model);
+     return "";
+   }
  }
 
- void HbosParam::update(const std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void HbosParam::update(const HbosParam &from)
  {
-     std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
-       verboseStream << "Histogram merge (no response) of func " << pair.first << std::endl;
-       m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second);
-     }
+   std::lock_guard<std::mutex> _(from.m_mutex);
+   std::lock_guard<std::mutex> __(m_mutex);
+   m_maxbins = from.m_maxbins; //copy the max number of bins from the input data
+   binWidthScottMaxNbin bwspec(m_maxbins); //use Scott method to set the bin width
+   
+   for (auto& pair: from.m_hbosstats) {
+     verboseStream << "Histogram merge (no response) of func " << pair.first << std::endl;
+     m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second, bwspec);
+   }
  }
 
- void HbosParam::update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats)
+ void HbosParam::update_and_return(HbosParam &to_from)
  {
-    std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: hbosstats) {
-       verboseStream << "Histogram merge (with response) of func " << pair.first << std::endl;
-       m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second);
-       pair.second = hbosstats[pair.first];
-     }
+   std::lock_guard<std::mutex> _(to_from.m_mutex);
+   std::lock_guard<std::mutex> __(m_mutex);
+   m_maxbins = to_from.m_maxbins; //copy the max number of bins from the input data
+   binWidthScottMaxNbin bwspec(m_maxbins); //use Scott method to set the bin width
+
+   for (auto& pair: to_from.m_hbosstats) {
+     verboseStream << "Histogram merge (with response) of func " << pair.first << std::endl;
+     m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second, bwspec);
+     pair.second = m_hbosstats[pair.first];
+   }
 
  }
 
-void HbosParam::update(const HbosParam& other) { 
-  std::lock_guard<std::mutex> _(other.m_mutex);
-  update(other.m_hbosstats); 
-}
 
  nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
    auto it = m_hbosstats.find(func_id);
@@ -140,3 +151,29 @@ void HbosParam::update(const HbosParam& other) {
  bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
 
 
+void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, HbosParam const *global_param){
+  if (runtimes.size() > 0) {
+    verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
+
+    Histogram const* global_hist = nullptr;
+    if(global_param != nullptr){
+      auto hit = global_param->get_hbosstats().find(func_id);
+      if(hit != global_param->get_hbosstats().end()) global_hist = &hit->second;
+    }
+
+    Histogram &hist = m_hbosstats[func_id];
+    if(global_hist != nullptr){
+      //Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
+      double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
+      verboseStream << "Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
+      binWidthFixedMaxNbin l_bwspec(bw, m_maxbins);
+      hist.create_histogram(runtimes, l_bwspec);
+    }else{
+      verboseStream << "Using Scott bin width of local data set to determine bin width" << std::endl;
+      binWidthScottMaxNbin l_bwspec(m_maxbins);
+      hist.create_histogram(runtimes, l_bwspec);
+    }
+    verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
+    verboseStream << hist << std::endl;
+  }
+}

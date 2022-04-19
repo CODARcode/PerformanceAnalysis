@@ -22,6 +22,8 @@ namespace chimbuko {
 
     double hbos_threshold; /**< Threshold used by HBOS algorithm to filter outliers. Set in config file*/
     bool hbos_use_global_threshold; /**< Global threshold flag in HBOS*/
+    int hbos_max_bins; /**< Maximum number of bins to use in HBOS algorithm histograms*/
+
     //Parameters associated with communicating with the parameter server*/
     std::string pserver_addr; /**< The address of the parameter server.
 				 < If no parameter server is in use, this string should be empty (length zero)

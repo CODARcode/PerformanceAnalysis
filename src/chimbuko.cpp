@@ -16,9 +16,10 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   net_recv_timeout(30000),
 				  pserver_addr(""), hpserver_nthr(1),
 				  anom_win_size(10),
-					ad_algorithm("hbos"),
-					hbos_threshold(0.99),
-					hbos_use_global_threshold(true),
+				  ad_algorithm("hbos"),
+				  hbos_threshold(0.99),
+				  hbos_use_global_threshold(true),
+				  hbos_max_bins(200),
 #ifdef ENABLE_PROVDB
 				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1),
 #endif
@@ -191,15 +192,18 @@ void Chimbuko::init_net_client(){
 void Chimbuko::init_outlier(){
   if(!m_event) throw std::runtime_error("Event managed must be initialized before calling init_outlier");
 
+  ADOutlier::AlgoParams params;
+  params.hbos_thres = m_params.hbos_threshold;
+  params.glob_thres = m_params.hbos_use_global_threshold;
+  params.sstd_sigma = m_params.outlier_sigma;
+  params.hbos_max_bins = m_params.hbos_max_bins;
+
   ADOutlier::OutlierStatistic stat;
-  if(m_params.outlier_statistic == "exclusive_runtime") stat = ADOutlier::ExclusiveRuntime;
-  else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADOutlier::InclusiveRuntime;
+  if(m_params.outlier_statistic == "exclusive_runtime") params.stat = ADOutlier::ExclusiveRuntime;
+  else if(m_params.outlier_statistic == "inclusive_runtime") params.stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(stat, m_params.ad_algorithm, m_params.hbos_threshold, m_params.hbos_use_global_threshold, m_params.outlier_sigma);
-  if (m_outlier == nullptr) {
-	fatal_error("INCORRECT Algorithm: Not Found");
-  }
+  m_outlier = ADOutlier::set_algorithm(m_params.ad_algorithm, params);
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);

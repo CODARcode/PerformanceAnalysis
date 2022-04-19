@@ -75,7 +75,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
   int N = 50;
 
-  std::unordered_map<unsigned long, Histogram> local_params_ps_in;
+  HbosParam local_params_ps_in;
   {
     Histogram &h = local_params_ps_in[0];
     std::vector<double> runtime;
@@ -461,7 +461,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
   
   HbosParam p;
-  p.assign(stats);
+  p.set_hbosstats(stats);
   EXPECT_EQ( p.get_hbosstats(), stats );
 
   outlier.setParams(p);

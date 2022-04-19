@@ -1,5 +1,6 @@
 #include<chimbuko_config.h>
 #include<chimbuko/param/hbos_param.hpp>
+#include<chimbuko/util/serialize.hpp>
 #include "gtest/gtest.h"
 #include <sstream>
 #include "../unit_test_common.hpp"
@@ -684,3 +685,93 @@ TEST(TestHistogram, empiricalCDFshift){
   std::cout << min << " " << cdf << " desire " << desire << std::endl;
   EXPECT_NEAR(cdf , desire, 1e-6);
 }
+
+TEST(TestHistogram, maxNbinBinWidthSpecifiers){
+  std::vector<double> runtimes = { 1,2,3,4,5,6,7,8,9,10 };
+
+  //Test that the bin width specifiers that enforce a maximum number of bins are working
+  {
+    binWidthFixedMaxNbin bw1(0.1, 200);  
+    EXPECT_EQ(bw1.bin_width(runtimes,1,10), 0.1);
+    Histogram h(runtimes, bw1);
+    
+    EXPECT_EQ(h.Nbin(),91);
+    EXPECT_NEAR(h.bin_edges()[1]-h.bin_edges()[0],0.1,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
+  }
+
+  {
+    binWidthFixedMaxNbin bw1(0.1, 50);  
+    EXPECT_NEAR(bw1.bin_width(runtimes,1,10), (10-0.99999)/50, 1e-2 );
+    Histogram h(runtimes, bw1);
+    
+    EXPECT_EQ(h.Nbin(),50);
+    EXPECT_NEAR(h.bin_edges()[1]-h.bin_edges()[0], (10-0.99999)/50,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
+  }
+
+  {
+    binWidthScott bws;  
+    binWidthScottMaxNbin bwsf(200);
+
+    EXPECT_EQ(bws.bin_width(runtimes,1,10), bwsf.bin_width(runtimes,1,10) );
+    Histogram hs(runtimes, bws);
+    Histogram hsf(runtimes, bwsf);
+    
+    EXPECT_EQ(hs,hsf);
+  }
+
+  {
+    binWidthScott bws;  
+    binWidthScottMaxNbin bwsf(1);
+
+    EXPECT_NE(bws.bin_width(runtimes,1,10), bwsf.bin_width(runtimes,1,10) );
+    Histogram hs(runtimes, bws);
+    Histogram hsf(runtimes, bwsf);
+    
+    EXPECT_EQ(hsf.Nbin(),1);
+    EXPECT_NE(hs,hsf);    
+  }
+}
+
+
+TEST(TestHistogram, serialize){
+  Histogram g;
+  g.set_counts({2,40,24,10,3,1,0,1});
+  g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
+  g.set_min_max(0.1+1e-8,0.9);
+
+  {
+    std::stringstream ss;
+    {
+      cereal::PortableBinaryOutputArchive wr(ss);
+      wr(g);
+    }
+    
+    Histogram h;
+    {
+      cereal::PortableBinaryInputArchive rd(ss);
+      rd(h);
+    }
+    EXPECT_EQ(g,h);
+    EXPECT_EQ(h.Nbin(),g.Nbin());
+  }
+
+  std::unordered_map<int, Histogram> gg = { {123, g} };
+  {
+    std::stringstream ss;
+    {
+      cereal::PortableBinaryOutputArchive wr(ss);
+      wr(gg);
+    }
+    
+    std::unordered_map<int, Histogram> hh;
+    {
+      cereal::PortableBinaryInputArchive rd(ss);
+      rd(hh);
+    }
+    EXPECT_EQ(gg,hh);
+  }
+ 
+
+}
+   
+  

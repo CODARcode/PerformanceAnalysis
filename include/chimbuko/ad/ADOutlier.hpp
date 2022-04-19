@@ -12,6 +12,7 @@
 #include "chimbuko/util/Anomalies.hpp"
 
 namespace chimbuko {
+
   /**
    * @brief abstract class for anomaly detection algorithms
    *
@@ -23,6 +24,26 @@ namespace chimbuko {
      * @brief Enumeration of which statistic is used for outlier detection
      */
     enum OutlierStatistic { ExclusiveRuntime, InclusiveRuntime };
+
+    /**
+     * @brief Unified structure for passing the parameters of the AD algorithms to the factory method
+     */
+    struct AlgoParams{
+      OutlierStatistic stat; /**< Which statistic is used */
+    
+      //SSTD
+      double sstd_sigma; /**< The number of sigma that defines an outlier*/
+    
+      //HBOS/COPOD
+      double hbos_thres; /**< The outlier threshold*/
+
+      //HBOS
+      bool glob_thres; /**< Should the global threshold be used? */
+      int hbos_max_bins; /**< The maximum number of bins in a histogram */
+
+      AlgoParams();
+    };
+
 
     /**
      * @brief Construct a new ADOutlier object
@@ -38,7 +59,7 @@ namespace chimbuko {
     /**
      * @brief Fatory method to select AD algorithm at runtime
      */
-    static ADOutlier *set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const bool & glob_thres, const double & sstd_sigma);
+    static ADOutlier *set_algorithm(const std::string & algorithm, const AlgoParams &params);
 
     /**
      * @brief check if the parameter server is in use
@@ -189,9 +210,13 @@ namespace chimbuko {
 
     /**
      * @brief Construct a new ADOutlierHBOS object
+     * @param stat Which statistic to use
+     * @param threshold The threshold defining an outlier
+     * @param use_global_threshold The threshold is maintained as part of the global model
+     * @param maxbins The maximum number of bins in the histograms
      *
      */
-    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
+    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true, int maxbins = 200);
 
     /**
      * @brief Destroy the ADOutlierHBOS object
@@ -235,9 +260,9 @@ namespace chimbuko {
     double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in COPOD*/
     bool m_use_global_threshold; /**< Flag to use global threshold*/
-    //double m_threshold; /** sync with global threshold */
-    OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
-
+    //double m_threshold; /**< Sync with global threshold */
+    OutlierStatistic m_statistic; /**< Which statistic to use for outlier detection */
+    int m_maxbins; /**< Maximum number of bin in the histograms */
   };
 
   /**

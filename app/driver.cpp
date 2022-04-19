@@ -72,7 +72,8 @@ optionalArgsParser & getOptionalArgsParser(){
   if(!initialized){
     addOptionalCommandLineArg(p, ad_algorithm, "Set an AD algorithm to use: hbos or sstd.");
     addOptionalCommandLineArg(p, hbos_threshold, "Set Threshold for HBOS anomaly detection filter.");
-    addOptionalCommandLineArg(p, hbos_use_global_threshold, "Set true to use a global threshold in HBOS algorithm. Dafault is true.");
+    addOptionalCommandLineArg(p, hbos_use_global_threshold, "Set true to use a global threshold in HBOS algorithm. Default is true.");
+    addOptionalCommandLineArg(p, hbos_max_bins, "Set the maximum number of bins for histograms in the HBOS algorithm. Default 200.");
     addOptionalCommandLineArg(p, program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
     addOptionalCommandLineArg(p, outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
     addOptionalCommandLineArg(p, net_recv_timeout, "Timeout (in ms) for blocking receives on client from parameter server (default 30000)");
@@ -150,6 +151,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv
   params.ad_algorithm = "hbos";
   params.hbos_threshold = 0.99;
   params.hbos_use_global_threshold = true;
+  params.hbos_max_bins = 200;
   params.net_recv_timeout = 30000;
   params.pserver_addr = "";  //don't use pserver by default
   params.hpserver_nthr = 1;

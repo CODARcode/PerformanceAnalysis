@@ -13,6 +13,9 @@
 
 using namespace chimbuko;
 
+ADOutlier::AlgoParams::AlgoParams(): stat(ADOutlier::ExclusiveRuntime), sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200){}
+
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
@@ -27,20 +30,18 @@ ADOutlier::~ADOutlier() {
     }
 }
 
-ADOutlier *ADOutlier::set_algorithm(OutlierStatistic stat, const std::string & algorithm, const double & hbos_thres, const bool & glob_thres, const double & sstd_sigma) {
-
+ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoParams &params) {
   if (algorithm == "sstd" || algorithm == "SSTD") {
-
-    return new ADOutlierSSTD(stat, sstd_sigma);
+    return new ADOutlierSSTD(params.stat, params.sstd_sigma);
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
-    return new ADOutlierHBOS(stat, hbos_thres, glob_thres);
+    return new ADOutlierHBOS(params.stat, params.hbos_thres, params.glob_thres, params.hbos_max_bins);
   }
   else if (algorithm == "copod" || algorithm == "COPOD") {
-    return new ADOutlierCOPOD(stat, hbos_thres);
+    return new ADOutlierCOPOD(params.stat, params.hbos_thres);
   }
-  else {
-    return nullptr;
+  else{
+    fatal_error("Invalid algorithm: " + algorithm);
   }
 }
 
@@ -221,7 +222,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold, int maxbins) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
     m_param = new HbosParam();
 }
 
@@ -237,13 +238,10 @@ Anomalies ADOutlierHBOS::run(int step) {
   //Generate the statistics based on this IO step
   const HbosParam& global_param = *(HbosParam const*)m_param;
   HbosParam param;
+  param.setMaxBins(m_maxbins); //communicates the maxbins parameter to the pserver (it should be the same for all clients)
+
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
-    Histogram &hist = param[func_id];
-
-    auto hit = global_param.get_hbosstats().find(func_id);
-    Histogram const* global_hist = hit == global_param.get_hbosstats().end() ? nullptr : &hit->second;
-
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       if (itt->get_label() == 0)
@@ -251,22 +249,7 @@ Anomalies ADOutlierHBOS::run(int step) {
     }
     verboseStream << "Function " << func_id << " has " << runtimes.size() << " unlabeled data points of " << it.second.size() << std::endl;
 
-    if (runtimes.size() > 0) {
-      verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
-
-      if(global_hist != nullptr){
-	//Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
-	double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
-	verboseStream << "Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
-	binWidthFixed l_bwspec(bw);
-	hist.create_histogram(runtimes, l_bwspec);
-      }else{
-	verboseStream << "Using Scott bin width of local data set to determine bin width" << std::endl;
-	hist.create_histogram(runtimes);
-      }
-    }
-    verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
-    verboseStream << hist << std::endl;
+    param.generate_histogram(func_id, runtimes, &global_param);
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -332,11 +315,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //Bounds of the range of possible scores
   const double max_possible_score = -1 * log2(0.0 + m_alpha); //-log2(78.88e-32) ~ 100.0 by default (i.e. the theoretical max score)
-  const double min_possible_score = -1 * log2(1.0 + m_alpha); //-log2(1+78.88e-32) ~ 0.0 by default (i.e. the theoretical max score)
 
   //Find the smallest and largest scores in the histogram (excluding empty bins)
-  double min_score = max_possible_score;
-  double max_score = min_possible_score;
+  double min_score = std::numeric_limits<double>::max();
+  double max_score = std::numeric_limits<double>::lowest();  
 
   //Compute scores
   double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);

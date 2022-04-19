@@ -20,8 +20,10 @@ namespace chimbuko {
 
     /**
      * @brief Copy an existing HbosParam
+     *
+     * Thread safe
      */
-    void copy(const HbosParam &r){ m_hbosstats = r.m_hbosstats; }
+    void copy(const HbosParam &r);
 
     /**
      * @brief Clear all statistics
@@ -37,6 +39,11 @@ namespace chimbuko {
      * @brief Get the internal map between global function index and statistics
      */
     const std::unordered_map<unsigned long, Histogram> & get_hbosstats() const{ return m_hbosstats; }
+
+    /**
+     * @brief Set the internal map between function index and statistics to the provided input
+     */
+    void set_hbosstats(const std::unordered_map<unsigned long, Histogram> &to){ m_hbosstats = to; }
 
     /**
      * @brief Get the number of functions for which statistics are being collected
@@ -59,24 +66,22 @@ namespace chimbuko {
 
     /**
      * @brief Set the internal Histogram to match those included in the serialized input map. Overwrite performed only for those keys in input.
-     * @param parameters The serialized input map
+     * @param parameters The serialized input data
      */
     void assign(const std::string& parameters) override;
 
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Set the internal Histogram to match those included in the input map. Overwrite performed only for those keys in input.
-     * @param hbosstats The input map between global function index and Histogram
+     * @brief Set the internal data to match those included in the input. Overwrite performed only for those keys in input.
+     * @param params The input data
      */
-    void assign(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void assign(const HbosParam & params);
 
     /**
-     * @brief Convert a Histogram mapping into a Cereal portable binary representration
-     * @param hbosstats The Histogram mapping
-     * @return Histogram in string format
+     * @brief Convert a HbosParam into a string representration
      */
-    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& hbosstats);
+    static std::string serialize_cerealpb(const HbosParam &params);
 
     /**
      * @brief Get an element of the internal map
@@ -85,27 +90,19 @@ namespace chimbuko {
     Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
 
     /**
-     * @brief Convert a Histogram Cereal portable binary representation string into a map
-     * @param[in] parameters The parameter string
-     * @param[out] hbosstats The map between global function index and histogram statistics
+     * @brief Deserialize a serialized HbosParam object Histogram Cereal portable binary representation string into a map
+     * @param[in] parameters The serialized object
+     * @param[out] into The deserialized object
      */
-    static void deserialize_cerealpb(const std::string& parameters,
-			    std::unordered_map<unsigned long, Histogram>& hbosstats);
-
+    static void deserialize_cerealpb(const std::string& parameters, HbosParam &into);
 
     /**
-     * @brief Update the internal histogram with those included in the input map
-     * @param[in] hbosstats The map between global function index and histogram
-     */
-    void update(const std::unordered_map<unsigned long, Histogram>& hbosstats);
-
-    /**
-     * @brief Update the internal Histogram with those included in another HbosParam instance.
-     * @param[in] other The other HbosParam instance
+     * @brief Update the internal histogram with those included in the input data
+     * @param[in] param The input HbosParam object
      *
      * The other instance is locked during the process
      */
-    void update(const HbosParam& other);
+    void update(const HbosParam &other);
 
     /**
      * @brief Update the internal run statistics with those from another instance
@@ -115,22 +112,37 @@ namespace chimbuko {
     void update(const ParamInterface &other) override{ update(dynamic_cast<HbosParam const&>(other)); }
 
     /**
-     * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.
-     * @param[in,out] hbosstats The map between global function index and statistics
+     * @brief Update the internal data with those included in the input. The input is then updated to reflect new state.
+     * @param[in,out] from_into The input/output data
      */
-    void update_and_return(std::unordered_map<unsigned long, Histogram>& hbosstats);
+    void update_and_return(HbosParam &from_into);
 
     /**
-     * @brief Update the internal histogram with those included in another HbosParam instance. Other HbosParam is then updated to reflect new state.
-     * @param[in,out] other The other HbosParam instance
+     * @brief Get the parameters (histogram) associated with a specific function in JSON format
      */
-    void update_and_return(HbosParam& other) { update_and_return(other.m_hbosstats); }
-
-
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
+    /**
+     * @brief Get the maximum number of bins
+     */
+    inline int getMaxBins() const{ return m_maxbins; }
+
+    /**
+     * @brief Set the maximum number of bins
+     */
+    inline void setMaxBins(const int b){ m_maxbins = b; }
+
+    /**
+     * @brief Generate the histogram for a particular function based on the batch of runtimes
+     * @param func_id The function index
+     * @param runtimes The function runtimes
+     * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
+     */
+    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, HbosParam const *global_param = nullptr);
+    
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
+    int m_maxbins; /**< Maximum number of bins to use in the histograms */
   };
 
 

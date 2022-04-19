@@ -69,7 +69,13 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
 
   auto const & p = adAlgorithmParams();
   if(p.algorithm != "none"){    
-    m_outlier = ADOutlier::set_algorithm(p.stat, p.algorithm, p.hbos_thres, p.glob_thres, p.sstd_sigma);
+    ADOutlier::AlgoParams params;
+    params.stat = p.stat;
+    params.hbos_thres = p.hbos_thres;
+    params.glob_thres = p.glob_thres;
+    params.sstd_sigma = p.sstd_sigma;
+
+    m_outlier = ADOutlier::set_algorithm(p.algorithm, params);
     getPserver(); //force construction of pserver
     m_net_client = new ADThreadNetClient(true); //use local comms
     m_net_client->connect_ps(m_rid);

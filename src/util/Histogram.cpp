@@ -36,6 +36,18 @@ double binWidthFixedNbin::bin_width(const Histogram &a, const Histogram &b, cons
   double x = Histogram::getLowerBoundShiftMul();
   return (max - min)/(nbin-x-0.001);
 }
+
+double binWidthMaxNbinBase::correct_bin_width(double bin_width, const double min, const double max) const{
+  double x = Histogram::getLowerBoundShiftMul();
+
+  //The first bin edge is placed  x*bin_width before min,  and we need  nbin <= maxbins
+  //range_start = min - x*bin_width  
+  //nbin = ceil( (max - range_start)/bin_width ) = ceil( (max-min)/bin_width + x )
+  if(bin_width == 0. || int(ceil( (max-min)/bin_width + x)) > maxbins)
+    return (max - min)/(maxbins-x-0.001); //use same solution as the fixedNbin functions
+  else
+    return bin_width;
+}
   
 
 void Histogram::Data::clear() {

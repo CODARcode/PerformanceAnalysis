@@ -35,7 +35,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
   int N = 50;
 
-  std::unordered_map<unsigned long, Histogram> local_params_ps_in;
+  HbosParam local_params_ps_in;
   {
     Histogram &h = local_params_ps_in[0];
     std::vector<double> runtime;
@@ -209,8 +209,8 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
   std::cout << local_params_ad[0].get_json().dump();
 
   HbosParam combined_params_ps; //what we expect
-  combined_params_ps.assign(global_params_ps.get_hbosstats());
-  combined_params_ps.update(local_params_ad.get_hbosstats());
+  combined_params_ps.assign(global_params_ps);
+  combined_params_ps.update(local_params_ad);
 
 
 #ifdef _USE_MPINET
