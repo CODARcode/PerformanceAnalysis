@@ -341,6 +341,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   verboseStream << "max_score = " << max_score << std::endl;
 
   //Compute threshold as a fraction of the range of scores in the histogram
+#if 0
   verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = min_score + (m_threshold * (max_score - min_score));
   verboseStream << "Local threshold " << l_threshold << std::endl;
@@ -353,6 +354,24 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       hist.set_glob_threshold(l_threshold); 
     }
   }
+#else
+  //Rather than using the score range, which can become large for bins with small counts and is sensitive to the bin size and to bin shaving,
+  //we can define the threshold based on the relative probability of a bin to the peak bin
+  //p_i / p_max <= Q
+  //Q = 1- hbos_threshold   as hbos_threshold default 0.99
+
+  //s=-log2(p + alpha)
+
+  //Threshold at 
+  //p_i = Q p_max
+  //2^-s_i -alpha = Q ( 2^-s_min - alpha )
+  //s_i = -log2 [ Q 2^-s_min + (1-Q)alpha ]
+  if(m_threshold >= 1.0) fatal_error("Invalid threshold value");
+  double Q = 1-m_threshold;
+  double l_threshold = -log2( Q*pow(2,-min_score) + (1.-Q)*m_alpha );
+  
+  verboseStream << "Condition p_i/p_max <= " << Q << " maps to local threshold " << l_threshold << std::endl;
+#endif
 
   //Compute HBOS based score for each datapoint
   const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);

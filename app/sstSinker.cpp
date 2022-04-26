@@ -5,6 +5,7 @@
 #endif
 #include "chimbuko/AD.hpp"
 #include <chrono>
+#include <map>
 #include "chimbuko/util/commandLineParser.hpp"
 #include "chimbuko/util/string.hpp"
 #include "chimbuko/util/error.hpp"
@@ -16,11 +17,13 @@ struct SinkerArgs{
   int timeout;
   int beginstep_timeout;
   bool dump_events;
+  bool dump_runtimes;
 #ifndef USE_MPI
   int rank;
 #endif
-  
-  SinkerArgs(): timeout(60), beginstep_timeout(30), dump_events(false)
+  int rank_override; //manually override the rank ;  -1 default does nothing
+
+  SinkerArgs(): timeout(60), beginstep_timeout(30), dump_events(false), dump_runtimes(false), rank_override(-1)
 #ifndef USE_MPI
 	      , rank(-1)
 #endif
@@ -47,6 +50,27 @@ void dumpEvents(std::ostream &os, const std::vector<Event_t> &events, ADParser* 
   }
 }
 
+void extractRuntimes(std::map<unsigned long, std::vector<unsigned long> > &into, const std::vector<Event_t> &events, ADEvent &event_man){ 
+  for(auto const &e: events) event_man.addEvent(e);
+  ExecDataMap_t const &execs = *event_man.getExecDataMap();  //std::unordered_map<unsigned long, std::vector<CallListIterator_t>> 
+  for(auto const &e: execs){
+    std::vector<unsigned long> &into_f = into[e.first];
+    for(auto const &cit: e.second)
+      into_f.push_back(cit->get_exclusive());
+  }
+  event_man.purgeCallList();
+}
+
+void dumpRuntimes(std::ostream &os, const std::map<unsigned long, std::vector<unsigned long> > &rtimes){
+  for(auto const &fe: rtimes){
+    for(unsigned long t: fe.second)
+      os << fe.first << " " << t << std::endl;
+  }
+}  
+    
+
+
+
 
 int main(int argc, char ** argv){
 #ifdef USE_MPI
@@ -60,6 +84,9 @@ int main(int argc, char ** argv){
       addOptionalCommandLineArg(cmdline, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
       addOptionalCommandLineArg(cmdline, beginstep_timeout, "Specify the SST beginStep timeout in seconds (Default 30s)");
       addOptionalCommandLineArg(cmdline, dump_events, "Request that the parsed events be dumped to a file \"${BPFILENAME}.dump\". Requires \"fetch\" to be true. (Default false)");
+      addOptionalCommandLineArg(cmdline, dump_runtimes, "Request that the parsed function execution (exclusive) runtimes be dumped to a file \"${BPFILENAME}.runtimes\". Requires \"fetch\" to be true. (Default false)");
+      addOptionalCommandLineArg(cmdline, rank_override, "Manually override the rank index obtained from MPI. (Default: -1  (do nothing) )");
+
 #ifndef USE_MPI
       addOptionalCommandLineArg(cmdline, rank, "Specify the rank of the application (Default 0)");
 #endif
@@ -89,6 +116,10 @@ int main(int argc, char ** argv){
       //Rank is specified by cmdline option (default 0)
       world_rank = args.rank;
 #endif
+      if(args.rank_override != -1){
+	if(args.rank_override < 0) fatal_error("Invalid rank provided");
+	world_rank = args.rank_override;
+      }
 
       std::string inputFile = prefix + "-" + std::to_string(world_rank) + ".bp";
 
@@ -128,7 +159,19 @@ int main(int argc, char ** argv){
       //Initialize dump output
       std::ofstream *dump = nullptr;
       if(args.dump_events) dump = new std::ofstream(inputFile + ".dump");
-      
+
+      //Initialize execution time dump output
+      std::ofstream *dump_runtimes = nullptr;
+      ADEvent event_man;
+      std::map<unsigned long, std::vector<unsigned long> > fruntimes; //fid -> runtimes
+
+      if(args.dump_runtimes){
+	dump_runtimes = new std::ofstream(inputFile + ".runtimes");
+	event_man.linkFuncMap(parser->getFuncMap());
+	event_man.linkEventType(parser->getEventType());
+	event_man.linkCounterMap(parser->getCounterMap());
+      }
+            
       // -----------------------------------------------------------------------
       // Start analysis
       // -----------------------------------------------------------------------
@@ -152,13 +195,21 @@ int main(int argc, char ** argv){
 	    parser->fetchFuncData();
 	    parser->fetchCommData();
 	    parser->fetchCounterData();
+	    parser->endStep(); //end step before parsing events as ADIOS2 can delay copy to step end
+
+	    std::vector<Event_t> events;
+	    if(args.dump_events || args.dump_runtimes) events = parser->getEvents();
 
 	    if(args.dump_events)
-	      dumpEvents(*dump, parser->getEvents(),parser);
+	      dumpEvents(*dump, events,parser);
+	    
+	    if(args.dump_runtimes)
+	      extractRuntimes(fruntimes, events, event_man);
+	    
+	  }else{
+	    parser->endStep();
 	  }
-
 	  frames++;
-	  parser->endStep();
 	}
       t2 = high_resolution_clock::now();
       if (world_rank == 0) {
@@ -170,6 +221,10 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       delete parser;
       if(dump) delete dump;
+      if(dump_runtimes){
+	dumpRuntimes(*dump_runtimes, fruntimes);
+	delete dump_runtimes;
+      }
     }
   catch (std::invalid_argument &e)
     {

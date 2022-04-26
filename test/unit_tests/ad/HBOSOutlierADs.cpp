@@ -129,25 +129,25 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::string glob_params_comb_ad, glob_params_comb_ad2, comb_params_serialize, comb_params_serialize2;
   std::cout << "Initializing AD thread 1" << std::endl;
   std::thread out_thr([&]{
-			try{
-			  ADThreadNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  ADOutlierHBOSTest outlier;
-			  outlier.linkNetworkClient(&net_client);
+      try{
+	ADThreadNetClient net_client;
+	net_client.connect_ps(0, 0, sname);
+	ADOutlierHBOSTest outlier;
+	outlier.linkNetworkClient(&net_client);
 
         std::cout << "Global and local histograms before sync_param in AD 1" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
 
-			  outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
+	outlier.sync_param_test(&local_params_ad); //add local to global in PS and return to AD
 
         std::cout << "Global and local histograms after sync_param in AD 1" << std::endl;
         std::cout << global_params_ps[0].get_json().dump();
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
 
-			  glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
+	glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
 
 
         Anomalies outliers;
@@ -160,15 +160,15 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
         std::cout << local_params_ad[0].get_json().dump();
         std::cout << local_params_ad2[0].get_json().dump();
 
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
+	std::cout << "AD thread terminating connection" << std::endl;
+	net_client.disconnect_ps();
+	std::cout << "AD thread waiting at barrier" << std::endl;
+	barrier2.wait();
+      }catch(const std::exception &e){
+	std::cerr << e.what() << std::endl;
+      }
 
-		      });
+    });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -176,45 +176,46 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
-			try{
-			  ADThreadNetClient net_client;
-			  net_client.connect_ps(0, 0, sname);
-			  ADOutlierHBOSTest outlier;
-			  outlier.linkNetworkClient(&net_client);
+      try{
+	ADThreadNetClient net_client;
+	net_client.connect_ps(0, 0, sname);
+	ADOutlierHBOSTest outlier;
+	outlier.set_threshold(0.98); //new merge strategy results in bin that doesn't quite go outside the outlier range by default
+	outlier.linkNetworkClient(&net_client);
 
-        std::cout << "Global and local histograms before sync_param in AD 2" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
+	std::cout << "Global and local histograms before sync_param in AD 2" << std::endl;
+	std::cout << global_params_ps[0].get_json().dump();
+	std::cout << local_params_ad[0].get_json().dump();
+	std::cout << local_params_ad2[0].get_json().dump();
 
-			  outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
+	outlier.sync_param_test(&local_params_ad2); //add local to global in PS and return to AD
 
-        std::cout << "Global and local histograms after sync_param in AD 2" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
+	std::cout << "Global and local histograms after sync_param in AD 2" << std::endl;
+	std::cout << global_params_ps[0].get_json().dump();
+	std::cout << local_params_ad[0].get_json().dump();
+	std::cout << local_params_ad2[0].get_json().dump();
 
-			  glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
+	glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
 
 
-        Anomalies outliers;
-        nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+	Anomalies outliers;
+	nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
 
-        std::cout << "# outliers detected: " << nout << std::endl;
-        std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;
-        std::cout << global_params_ps[0].get_json().dump();
-        std::cout << local_params_ad[0].get_json().dump();
-        std::cout << local_params_ad2[0].get_json().dump();
+	std::cout << "# outliers detected: " << nout << std::endl;
+	std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;
+	std::cout << global_params_ps[0].get_json().dump();
+	std::cout << local_params_ad[0].get_json().dump();
+	std::cout << local_params_ad2[0].get_json().dump();
 
-			  std::cout << "AD thread terminating connection" << std::endl;
-			  net_client.disconnect_ps();
-			  std::cout << "AD thread waiting at barrier" << std::endl;
-			  barrier2.wait();
-			}catch(const std::exception &e){
-			  std::cerr << e.what() << std::endl;
-			}
+	std::cout << "AD thread terminating connection" << std::endl;
+	net_client.disconnect_ps();
+	std::cout << "AD thread waiting at barrier" << std::endl;
+	barrier2.wait();
+      }catch(const std::exception &e){
+	std::cerr << e.what() << std::endl;
+      }
 
-		      });
+    });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
   std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std::endl;}});

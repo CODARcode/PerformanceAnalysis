@@ -225,6 +225,11 @@ namespace chimbuko {
     ~ADOutlierHBOS();
 
     /**
+     * @brief Set the outlier detection threshold
+     */
+    void set_threshold(double to){ m_threshold = to; }
+
+    /**
      * @brief Set the alpha value
      *
      * @param regularizer alpha value
