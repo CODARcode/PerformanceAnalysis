@@ -186,7 +186,269 @@ void assignLabelsHistogram(std::vector<DataPoint> &data, double outlier_threshol
   }
   std::cout << "Labeled " << noutlier << " outliers using histogram method with threshold " << outlier_threshold << std::endl;
 }
+
+void evaluate(std::vector<std::pair<double,double> > &false_pos,
+	      std::vector<std::pair<double,double> > &false_neg,
+	      std::vector<std::pair<double,double> > &true_pos,
+	      std::vector<std::pair<double,double> > &true_neg,
+	      const CallList_t &call_list, const std::unordered_map<size_t, DataPoint const*> &data_idx_map){
+  int nfalse_positive = 0;
+  int nfalse_negative = 0;
+  int ntrue_positive = 0;
+  int ntrue_negative = 0;
+
+  //Also output the data in a form suitable for plotting 
+  for(auto const &d : call_list){
+    auto dpit = data_idx_map.find(d.get_id().idx);
+    if(dpit == data_idx_map.end()) assert(0 && "Could not find DataPoint matching index");
+    const DataPoint &dp = *dpit->second;
+    
+    if(d.get_label() == 0) assert(0 && "Encountered unlabeled data point");
+
+    bool ad_is_outlier = d.get_label() == -1;
+    bool is_actually_outlier =  dp.is_outlier;
+
+    std::string descr;
+    if(ad_is_outlier && is_actually_outlier){
+      descr = "true positive";
+      ++ntrue_positive;
+      true_pos.push_back({d.get_id().idx, dp.value});
+    }else if(ad_is_outlier && !is_actually_outlier){
+      descr = "FALSE positive";
+      ++nfalse_positive;
+      false_pos.push_back({d.get_id().idx, dp.value});
+    }else if(!ad_is_outlier && is_actually_outlier){
+      descr = "FALSE negative";
+      ++nfalse_negative;
+      false_neg.push_back({d.get_id().idx, dp.value});
+    }else if(!ad_is_outlier && !is_actually_outlier){
+      descr = "true negative";
+      ++ntrue_negative;
+      true_neg.push_back({d.get_id().idx, dp.value});
+    }
+    std::cout << dp << " ival " << d.get_runtime() << " " << descr << std::endl;
+  }
+
+  std::cout << "True positive: " << ntrue_positive << std::endl;
+  std::cout << "True negative: " << ntrue_negative << std::endl;
+  std::cout << "FALSE positive: " << nfalse_positive << std::endl;
+  std::cout << "FALSE negative: " << nfalse_negative << std::endl;
+}
+
+
+
+void evaluate(int &nfalse_positive, int &nfalse_negative, int &ntrue_positive, int &ntrue_negative,
+	      const CallList_t &call_list, const std::unordered_map<size_t, DataPoint const*> &data_idx_map,
+	      bool verbose = false){
+  nfalse_positive = 0;
+  nfalse_negative = 0;
+  ntrue_positive = 0;
+  ntrue_negative = 0;
+
+  for(auto const &d : call_list){
+    auto dpit = data_idx_map.find(d.get_id().idx);
+    if(dpit == data_idx_map.end()) assert(0 && "Could not find DataPoint matching index");
+    const DataPoint &dp = *dpit->second;
+    
+    if(d.get_label() == 0) assert(0 && "Encountered unlabeled data point");
+
+    bool ad_is_outlier = d.get_label() == -1;
+    bool is_actually_outlier =  dp.is_outlier;
+
+    std::string descr;
+    if(ad_is_outlier && is_actually_outlier){
+      descr = "true positive";
+      ++ntrue_positive;
+    }else if(ad_is_outlier && !is_actually_outlier){
+      descr = "FALSE positive";
+      ++nfalse_positive;
+    }else if(!ad_is_outlier && is_actually_outlier){
+      descr = "FALSE negative";
+      ++nfalse_negative;
+    }else if(!ad_is_outlier && !is_actually_outlier){
+      descr = "true negative";
+      ++ntrue_negative;
+    }
+    if(verbose) std::cout << dp << " ival " << d.get_runtime() << " " << descr << std::endl;
+  }
+
+  if(verbose){
+    std::cout << "True positive: " << ntrue_positive << std::endl;
+    std::cout << "True negative: " << ntrue_negative << std::endl;
+    std::cout << "FALSE positive: " << nfalse_positive << std::endl;
+    std::cout << "FALSE negative: " << nfalse_negative << std::endl;
+  }
+}
+
+
+
+void printFullDataHistogram(const CallList_t &call_list, const std::unordered_map<size_t, DataPoint const*> &data_idx_map, double shift){
+  std::vector<double> hdata(call_list.size());
+  size_t i=0;
+  for(auto v : call_list) hdata[i++] = v.get_runtime();
+  Histogram h(hdata);
+    
+  double hsum = h.totalCount();
+  std::vector<double> probs(h.Nbin());
+  double max_prob = 0;
+  for(int b=0;b<h.Nbin();b++){
+    probs[b] = h.binCount(b) / hsum;
+    max_prob = std::max(probs[b], max_prob);
+  }
+  std::vector<int> true_outlier_counts(h.Nbin(), 0);
+  for(auto v: call_list){
+    int bin = h.getBin(v.get_runtime());
+    auto dpit = data_idx_map.find(v.get_id().idx);
+    if(dpit == data_idx_map.end()) assert(0 && "Could not find DataPoint matching index");
+    const DataPoint &dp = *dpit->second;
       
+    if(dp.is_outlier) ++true_outlier_counts[bin];
+  }
+      
+  std::cout << "Full dataset histogram:" << std::endl;
+  for(int b=0;b<h.Nbin();b++){
+    double ledge = transform_from_internal(h.bin_edges()[b],shift);
+    double uedge = transform_from_internal(h.bin_edges()[b+1],shift);
+
+    std::cout << "Bin " << b << " edges (" << ledge << "," << uedge << ") count " << h.binCount(b) << " bin prob " << probs[b] << " prob relative to peak " << probs[b]/max_prob << " #true outliers " << true_outlier_counts[b] << std::endl;
+  }
+}
+
+void printEvaluations(const std::vector<std::pair<double,double> > &false_pos,
+		      const std::vector<std::pair<double,double> > &false_neg,
+		      const std::vector<std::pair<double,double> > &true_pos,
+		      const std::vector<std::pair<double,double> > &true_neg
+		      ){
+
+  std::ofstream f("results.dat");
+  for(auto const &v : true_neg) f << v.first << " " << v.second << std::endl;
+  f << std::endl;
+  for(auto const &v : true_pos) f << v.first << " " << v.second << std::endl;
+  f << std::endl;
+  for(auto const &v : false_neg) f << v.first << " " << v.second << std::endl;
+  f << std::endl;
+  for(auto const &v : false_pos) f << v.first << " " << v.second << std::endl;
+}
+
+      
+void printXMGrace(const std::vector<std::pair<double,double> > &false_pos,
+		  const std::vector<std::pair<double,double> > &false_neg,
+		  const std::vector<std::pair<double,double> > &true_pos,
+		  const std::vector<std::pair<double,double> > &true_neg
+		  ){
+
+  std::ofstream f("results.agr"); //XMGRACE format
+  f << R"(@    s0 hidden false
+@    s0 type xy
+@    s0 symbol 1
+@    s0 symbol size 0.030000
+@    s0 symbol color 1
+@    s0 symbol pattern 1
+@    s0 symbol fill color 1
+@    s0 symbol fill pattern 0
+@    s0 symbol linewidth 1.0
+@    s0 symbol linestyle 1
+@    s0 symbol char 65
+@    s0 symbol char font 0
+@    s0 symbol skip 0
+@    s0 line type 0
+@    s0 legend  "true neg"
+@target G0.S0
+@type xy
+)";
+  for(auto const &v : true_neg) f << v.first << " " << v.second << std::endl;
+  f << "&" << std::endl;
+  f << R"(@    s1 hidden false
+@    s1 type xy
+@    s1 symbol 1
+@    s1 symbol size 0.100000
+@    s1 symbol color 2
+@    s1 symbol pattern 1
+@    s1 symbol fill color 2
+@    s1 symbol fill pattern 0
+@    s1 symbol linewidth 1.0
+@    s1 symbol linestyle 1
+@    s1 symbol char 65
+@    s1 symbol char font 0
+@    s1 symbol skip 0
+@    s1 line type 0
+@    s1 legend  "true pos"
+@target G0.S1
+@type xy
+)";
+  for(auto const &v : true_pos) f << v.first << " " << v.second << std::endl;
+  f << "&" << std::endl;
+  f << R"(@    s2 hidden false
+@    s2 type xy
+@    s2 symbol 2
+@    s2 symbol size 0.100000
+@    s2 symbol color 4
+@    s2 symbol pattern 1
+@    s2 symbol fill color 4
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 legend  "false neg"
+@target G0.S2
+@type xy
+)";
+  for(auto const &v : false_neg) f << v.first << " " << v.second << std::endl;
+  f << "&" << std::endl;
+  f << R"(@    s3 hidden false
+@    s3 type xy
+@    s3 symbol 3
+@    s3 symbol size 0.100000
+@    s3 symbol color 4
+@    s3 symbol pattern 1
+@    s3 symbol fill color 4
+@    s3 symbol fill pattern 0
+@    s3 symbol linewidth 1.0
+@    s3 symbol linestyle 1
+@    s3 symbol char 65
+@    s3 symbol char font 0
+@    s3 symbol skip 0
+@    s3 line type 0
+@    s3 legend  "false pos"
+@target G0.S3
+@type xy
+)";
+  for(auto const &v : false_pos) f << v.first << " " << v.second << std::endl;
+  f << "&" << std::endl;
+}
+
+
+struct metrics{
+  double threshold;
+  double TPR; //true positive rate (aka sensitivity)
+  double TNR; //true negative rate (aka specificity)
+  double FPR; //false positive rate
+
+  metrics() = default;
+  metrics(double _threshold, int nfalse_positive, int nfalse_negative, int ntrue_positive, int ntrue_negative){ compute(threshold,nfalse_positive, nfalse_negative, ntrue_positive, ntrue_negative); }
+
+  void compute(double _threshold, int nfalse_positive, int nfalse_negative, int ntrue_positive, int ntrue_negative){
+    threshold = _threshold;
+    TPR = double(ntrue_positive)/( ntrue_positive + nfalse_negative );
+    TNR = double(ntrue_negative)/( ntrue_negative + nfalse_positive );
+    FPR = 1.-TNR;
+  }
+
+};
+
+double computeAUC(std::vector<metrics> m){
+  //Sort by FPR
+  std::sort(m.begin(),m.end(),[](const metrics &a, const metrics &b){ return a.FPR < b.FPR; });
+  double auc = 0;
+  for(size_t i=0;i<m.size()-1;i++)
+    auc += ( m[i+1].FPR - m[i].FPR ) * ( m[i+1].TPR + m[i].TPR ) / 2. ; //trapezoid rule
+  return auc;
+}
+
+
 
 struct Args{
   std::string filename; //filename of NAB .csv file
@@ -237,39 +499,7 @@ int main(int argc, char **argv){
   for(auto const &d : data) data_idx_map[d.idx] = &d;
 
   //Get the histogram of the whole data set for comparison
-  {
-    std::vector<double> hdata(call_list.size());
-    size_t i=0;
-    for(auto v : call_list) hdata[i++] = v.get_runtime();
-    Histogram h(hdata);
-    
-    double hsum = h.totalCount();
-    std::vector<double> probs(h.Nbin());
-    double max_prob = 0;
-    for(int b=0;b<h.Nbin();b++){
-      probs[b] = h.binCount(b) / hsum;
-      max_prob = std::max(probs[b], max_prob);
-    }
-    std::vector<int> true_outlier_counts(h.Nbin(), 0);
-    for(auto v: call_list){
-      int bin = h.getBin(v.get_runtime());
-      auto dpit = data_idx_map.find(v.get_id().idx);
-      if(dpit == data_idx_map.end()) assert(0 && "Could not find DataPoint matching index");
-      const DataPoint &dp = *dpit->second;
-      
-      if(dp.is_outlier) ++true_outlier_counts[bin];
-    }
-      
-    std::cout << "Full dataset histogram:" << std::endl;
-    for(int b=0;b<h.Nbin();b++){
-      double ledge = transform_from_internal(h.bin_edges()[b],shift);
-      double uedge = transform_from_internal(h.bin_edges()[b+1],shift);
-
-      std::cout << "Bin " << b << " edges (" << ledge << "," << uedge << ") count " << h.binCount(b) << " bin prob " << probs[b] << " prob relative to peak " << probs[b]/max_prob << " #true outliers " << true_outlier_counts[b] << std::endl;
-
-    }
-  }
-  
+  printFullDataHistogram(call_list, data_idx_map, shift);
 
   std::vector<ExecDataMap_t> batches = generateBatches(call_list, args.nbatch);
 
@@ -284,146 +514,41 @@ int main(int argc, char **argv){
   }
 
   //Check results
-  int nfalse_positive = 0;
-  int nfalse_negative = 0;
-  int ntrue_positive = 0;
-  int ntrue_negative = 0;
-
   //Also output the data in a form suitable for plotting
-  std::vector<std::pair<double,double> > true_pos;
-  std::vector<std::pair<double,double> > true_neg;
   std::vector<std::pair<double,double> > false_pos;
   std::vector<std::pair<double,double> > false_neg;
-  
-  for(auto const &d : call_list){
-    auto dpit = data_idx_map.find(d.get_id().idx);
-    if(dpit == data_idx_map.end()) assert(0 && "Could not find DataPoint matching index");
-    const DataPoint &dp = *dpit->second;
-    
-    if(d.get_label() == 0) assert(0 && "Encountered unlabeled data point");
+  std::vector<std::pair<double,double> > true_pos;
+  std::vector<std::pair<double,double> > true_neg;
+  evaluate(false_pos,false_neg,true_pos,true_neg,call_list,data_idx_map);
+  printEvaluations(false_pos,false_neg,true_pos,true_neg);
+  printXMGrace(false_pos,false_neg,true_pos,true_neg);
 
-    bool ad_is_outlier = d.get_label() == -1;
-    bool is_actually_outlier =  dp.is_outlier;
+  std::vector<metrics> ROC;
 
-    std::string descr;
-    if(ad_is_outlier && is_actually_outlier){
-      descr = "true positive";
-      ++ntrue_positive;
-      true_pos.push_back({d.get_id().idx, dp.value});
-    }else if(ad_is_outlier && !is_actually_outlier){
-      descr = "FALSE positive";
-      ++nfalse_positive;
-      false_pos.push_back({d.get_id().idx, dp.value});
-    }else if(!ad_is_outlier && is_actually_outlier){
-      descr = "FALSE negative";
-      ++nfalse_negative;
-      false_neg.push_back({d.get_id().idx, dp.value});
-    }else if(!ad_is_outlier && !is_actually_outlier){
-      descr = "true negative";
-      ++ntrue_negative;
-      true_neg.push_back({d.get_id().idx, dp.value});
+  std::cout << "Starting ROC analysis" << std::endl;
+  for(int i=0;i<100;i++){
+    for(ExecData_t &c: call_list) c.set_label(0);
+
+    double thres = i*0.01;
+    ad.set_threshold(i*0.01);
+
+    for(int b=0;b<args.nbatch;b++){
+      ad.linkExecDataMap(&batches[b]);
+      ad.run(b);
     }
-    std::cout << dp << " ival " << d.get_runtime() << " " << descr << std::endl;
-  }
+    
+    int nfalse_positive = 0;
+    int nfalse_negative = 0;
+    int ntrue_positive = 0;
+    int ntrue_negative = 0;
 
-  std::cout << "True positive: " << ntrue_positive << std::endl;
-  std::cout << "True negative: " << ntrue_negative << std::endl;
-  std::cout << "FALSE positive: " << nfalse_positive << std::endl;
-  std::cout << "FALSE negative: " << nfalse_negative << std::endl;
-
-  {
-    std::ofstream f("results.dat");
-    for(auto const &v : true_neg) f << v.first << " " << v.second << std::endl;
-    f << std::endl;
-    for(auto const &v : true_pos) f << v.first << " " << v.second << std::endl;
-    f << std::endl;
-    for(auto const &v : false_neg) f << v.first << " " << v.second << std::endl;
-    f << std::endl;
-    for(auto const &v : false_pos) f << v.first << " " << v.second << std::endl;
+    evaluate(nfalse_positive,nfalse_negative,ntrue_positive,ntrue_negative,call_list,data_idx_map);
+    
+    metrics m(thres, nfalse_positive, nfalse_negative, ntrue_positive, ntrue_negative);
+    std::cout << "thres=" << thres << " FP=" << nfalse_positive << " FN=" << nfalse_negative << " TP=" << ntrue_positive << " TN=" << ntrue_negative << " FPR " << m.FPR << " TPR " << m.TPR << std::endl;
+    ROC.push_back(m);
   }
-  {
-    std::ofstream f("results.agr"); //XMGRACE format
-    f << R"(@    s0 hidden false
-@    s0 type xy
-@    s0 symbol 1
-@    s0 symbol size 0.030000
-@    s0 symbol color 1
-@    s0 symbol pattern 1
-@    s0 symbol fill color 1
-@    s0 symbol fill pattern 0
-@    s0 symbol linewidth 1.0
-@    s0 symbol linestyle 1
-@    s0 symbol char 65
-@    s0 symbol char font 0
-@    s0 symbol skip 0
-@    s0 line type 0
-@    s0 legend  "true neg"
-@target G0.S0
-@type xy
-)";
-    for(auto const &v : true_neg) f << v.first << " " << v.second << std::endl;
-    f << "&" << std::endl;
-    f << R"(@    s1 hidden false
-@    s1 type xy
-@    s1 symbol 1
-@    s1 symbol size 0.100000
-@    s1 symbol color 2
-@    s1 symbol pattern 1
-@    s1 symbol fill color 2
-@    s1 symbol fill pattern 0
-@    s1 symbol linewidth 1.0
-@    s1 symbol linestyle 1
-@    s1 symbol char 65
-@    s1 symbol char font 0
-@    s1 symbol skip 0
-@    s1 line type 0
-@    s1 legend  "true pos"
-@target G0.S1
-@type xy
-)";
-    for(auto const &v : true_pos) f << v.first << " " << v.second << std::endl;
-    f << "&" << std::endl;
-    f << R"(@    s2 hidden false
-@    s2 type xy
-@    s2 symbol 2
-@    s2 symbol size 0.100000
-@    s2 symbol color 4
-@    s2 symbol pattern 1
-@    s2 symbol fill color 4
-@    s2 symbol fill pattern 0
-@    s2 symbol linewidth 1.0
-@    s2 symbol linestyle 1
-@    s2 symbol char 65
-@    s2 symbol char font 0
-@    s2 symbol skip 0
-@    s2 line type 0
-@    s2 legend  "false neg"
-@target G0.S2
-@type xy
-)";
-    for(auto const &v : false_neg) f << v.first << " " << v.second << std::endl;
-    f << "&" << std::endl;
-    f << R"(@    s3 hidden false
-@    s3 type xy
-@    s3 symbol 3
-@    s3 symbol size 0.100000
-@    s3 symbol color 4
-@    s3 symbol pattern 1
-@    s3 symbol fill color 4
-@    s3 symbol fill pattern 0
-@    s3 symbol linewidth 1.0
-@    s3 symbol linestyle 1
-@    s3 symbol char 65
-@    s3 symbol char font 0
-@    s3 symbol skip 0
-@    s3 line type 0
-@    s3 legend  "false pos"
-@target G0.S3
-@type xy
-)";
-    for(auto const &v : false_pos) f << v.first << " " << v.second << std::endl;
-    f << "&" << std::endl;
-  }
+  std::cout << "AUC: " << computeAUC(ROC) << std::endl;
 
   return 0;
 }
