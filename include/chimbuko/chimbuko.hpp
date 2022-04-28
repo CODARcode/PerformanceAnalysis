@@ -130,6 +130,19 @@ namespace chimbuko {
     int get_step() const { return m_parser->getCurrentStep(); }
 
     /**
+     * @brief Run the Chimbuko analysis for a single IO frame/step
+     * @param[out] n_func_events number of function events recorded (incremented)
+     * @param[out] n_comm_events number of comm events recorded (incremented)
+     * @param[out] n_counter_events number of counter events recorded (incremented)
+     * @param[out] n_outlier number of anomalous events recorded (incremented)
+     * @return True if an IO frame was read. A false value indicates the end of the stream. (The "get_status" method provides the same value)
+     */
+    bool runFrame(unsigned long long& n_func_events,
+		  unsigned long long& n_comm_events,
+		  unsigned long long& n_counter_events,
+		  unsigned long& n_outliers);
+
+    /**
      * @brief Run the main Chimbuko analysis loop
      * @param[out] n_func_events number of function events recorded
      * @param[out] n_comm_events number of comm events recorded
@@ -142,6 +155,7 @@ namespace chimbuko {
 	     unsigned long long& n_counter_events,
 	     unsigned long& n_outliers,
 	     unsigned long& frames);
+    
 
   private:
     //Initialize various components; called by initialize method
@@ -231,6 +245,18 @@ namespace chimbuko {
 
     ChimbukoParams m_params; /**< Parameters to setup the AD*/
     bool m_is_initialized; /**< Whether the AD has been initialized*/
+
+    //State of currently stored function executions
+    unsigned long m_execdata_first_event_ts; /**< earliest timestamp in current execution data */
+    unsigned long m_execdata_last_event_ts; /**< latest timestamp in current execution data */
+    bool m_execdata_first_event_ts_set; /**< False if the first event ts has not yet been set*/
+
+    //State of accumulated statistics
+    unsigned long long m_n_func_events_accum_prd; /**< Total number of function events since last write of periodic data*/
+    unsigned long long m_n_comm_events_accum_prd; /**< Total number of comm events since last write of periodic data*/
+    unsigned long long m_n_counter_events_accum_prd; /**< Total number of counter events since last write of periodic data*/
+    unsigned long m_n_outliers_accum_prd; /**< Total number of outiers detected since last write of periodic data*/
+    int m_n_steps_accum_prd; /**< Number of steps since last write of periodic data */
   };
 
 }

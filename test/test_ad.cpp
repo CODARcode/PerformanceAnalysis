@@ -45,6 +45,8 @@ TEST_F(ADTest, BpfileTest)
     using namespace chimbuko;
 
     const std::vector<int> N_STEPS{7, 7, 7, 7};
+
+    //Below indexed by [rank][step]  for 4 ranks
     const std::vector<std::vector<size_t>> N_FUNC{
         {57077, 51845, 60561, 63278, 64628, 66484, 42233},
         {41215, 51375, 56620, 57683, 58940, 61010, 41963},
@@ -186,6 +188,40 @@ TEST_F(ADTest, BpfileTest)
 	}
       }
     }
+
+    //Check an end-to-end run without breaking up into steps
+    driver.finalize();
+    params.only_one_frame = false;
+    driver.initialize(params); 
+    
+    n_func_events = 0;
+    n_comm_events = 0;
+    n_counter_events = 0;
+    n_outliers = 0;
+    frames = 0;
+
+    try{
+      driver.run(n_func_events,
+		 n_comm_events,
+		 n_counter_events,
+		 n_outliers,
+		 frames);
+    }catch(const std::exception &e){
+      std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
+      throw e;
+    }
+
+    EXPECT_EQ(N_STEPS[world_rank], frames);
+
+    unsigned long func_tot = 0, comm_tot=0, outlier_tot = 0;
+    for(int step=0;step<N_STEPS[world_rank];step++){
+      func_tot += N_FUNC[world_rank][step];
+      comm_tot += N_COMM[world_rank][step];
+      outlier_tot += N_OUTLIERS[world_rank][step];
+    }
+    EXPECT_EQ(func_tot, n_func_events);
+    EXPECT_EQ(comm_tot, n_comm_events);
+    EXPECT_EQ(outlier_tot, n_outliers);
 }
 
 TEST_F(ADTest, BpfileWithNetTest)

@@ -97,6 +97,21 @@ void Chimbuko::initialize(const ChimbukoParams &params){
     throw std::runtime_error("Provenance output dir is not set - no provenance data will be written!");
 #endif
 
+  //Reset state
+  m_execdata_first_event_ts = m_execdata_last_event_ts = 0;
+  m_execdata_first_event_ts_set = false;
+
+  m_n_func_events_accum_prd = m_n_comm_events_accum_prd = m_n_counter_events_accum_prd = 0;
+  m_n_outliers_accum_prd = 0; /**< Total number of outiers detected since last write of periodic data*/
+  m_n_steps_accum_prd = 0; /**< Number of steps since last write of periodic data */
+
+  //Setup perf output
+  std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
+  m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
+
+  std::string ad_perf_prd = stringize("ad_perf_prd.%d.%d.log", m_params.program_idx, m_params.rank);
+  m_perf_prd.setWriteLocation(m_params.perf_outputpath, ad_perf_prd);
+
   //Initialize error collection
   if(params.err_outputpath.size())
     set_error_output_file(m_params.rank, stringize("%s/ad_error.%d", params.err_outputpath.c_str(), m_params.program_idx));
@@ -240,6 +255,20 @@ void Chimbuko::finalize()
 {
   PerfTimer timer;
   if(!m_is_initialized) return;
+
+  //Always dump perf at end
+  m_perf.write();
+
+  //For debug purposes, write out any unmatched correlation ID events that we encountered as recoverable errors
+  if(m_event->getUnmatchCorrelationIDevents().size() > 0){
+    for(auto c: m_event->getUnmatchCorrelationIDevents()){
+      std::stringstream ss;
+      ss << "Unmatched correlation ID: " << c.first << " from event " << c.second->get_json().dump();
+      recoverable_error(ss.str());
+    }
+  }
+
+  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 
   if(m_net_client){
     m_net_client->disconnect_ps();
@@ -505,182 +534,155 @@ void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
   }
 }
 
+bool Chimbuko::runFrame(unsigned long long& n_func_events,
+			unsigned long long& n_comm_events,
+			unsigned long long& n_counter_events,
+			unsigned long& n_outliers){
+  if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
+
+  int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
+  PerfTimer step_timer, timer;
+  unsigned long io_step_first_event_ts, io_step_last_event_ts; //earliest and latest timestamps in io frame
+  unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
+
+  if(!parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step)) return false;
+  m_n_steps_accum_prd++;
+
+  //Increment total events
+  n_func_events += n_func_events_step;
+  n_comm_events += n_comm_events_step;
+  n_counter_events += n_counter_events_step;
+  
+  m_n_func_events_accum_prd += n_func_events_step;
+  m_n_comm_events_accum_prd += n_comm_events_step;
+  m_n_counter_events_accum_prd += n_counter_events_step;
+
+  //Decide whether to report step progress
+  bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
+  
+  if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting step " << step
+							<< ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
+							<< " counter=" << n_counter_events_step << std::endl; }
+  step_timer.start();
+  
+  //Extract counters and put into counter manager
+  timer.start();
+  extractCounters(m_params.rank, step);
+  m_perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
+  
+  //Extract parsed events into event manager
+  timer.start();
+  extractEvents(io_step_first_event_ts, io_step_last_event_ts, step);
+  m_perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
+    
+  //Update the timestamp bounds for the analysis
+  m_execdata_last_event_ts = io_step_last_event_ts;
+  if(!m_execdata_first_event_ts_set){
+    m_execdata_first_event_ts = io_step_first_event_ts;
+    m_execdata_first_event_ts_set = true;
+  }
+
+  //Are we running the analysis this step?
+  bool do_run_analysis = step % m_params.analysis_step_freq == 0;
+
+  if(do_run_analysis){
+    //Run the outlier detection algorithm on the events
+    timer.start();
+    Anomalies anomalies = m_outlier->run(step);
+    m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
+    m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
+
+    int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    int nnormal = anomalies.nEvents(Anomalies::EventType::Normal);
+    n_outliers += nout;
+    m_n_outliers_accum_prd += nout;
+
+    //Generate anomaly provenance for detected anomalies and send to DB
+    timer.start();
+    extractAndSendProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
+      
+    //Send any new metadata to the DB
+    timer.start();
+    sendNewMetadataToProvDB(step);
+    m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
+
+    //Gather and send statistics and data to the pserver
+    timer.start();
+    gatherAndSendPSdata(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
+
+    //Trim the call list
+    timer.start();
+    m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
+    m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
+
+    //Flush counters
+    timer.start();
+    delete m_counter->flushCounters();
+    m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
+
+    //Enable update of analysis time window bound on next step
+    m_execdata_first_event_ts_set = false;
+
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " event analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
+  }//if(do_run_analysis)
+
+  m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
+
+  //Record periodic performance data
+  if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0){
+    //Record the number of outstanding requests as a function of time, which can be used to gauge whether the throughput of the provDB is sufficient
+#ifdef ENABLE_PROVDB
+    m_perf_prd.add("provdb_incomplete_async_sends", m_provdb_client->getNoutstandingAsyncReqs());
+#endif
+    //Get the "data" memory usage (stack + heap)
+    size_t total, resident;
+    getMemUsage(total, resident);
+    m_perf_prd.add("ad_mem_usage_kB", resident);
+
+    m_perf_prd.add("io_steps", m_n_steps_accum_prd);
+
+    //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
+    m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
+    m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
+
+    //Write accumulated outlier count
+    m_perf_prd.add("outlier_count", m_n_outliers_accum_prd);
+
+    //Write accumulated event counts
+    m_perf_prd.add("event_count_func", m_n_func_events_accum_prd);
+    m_perf_prd.add("event_count_comm", m_n_comm_events_accum_prd);
+    m_perf_prd.add("event_count_counter", m_n_counter_events_accum_prd);
+
+    //Reset the counts
+    m_n_func_events_accum_prd = 0;
+    m_n_comm_events_accum_prd = 0;
+    m_n_counter_events_accum_prd = 0;
+    m_n_outliers_accum_prd = 0;
+    m_n_steps_accum_prd = 0;
+
+    //These only write if both filename and output path is set
+    m_perf_prd.write();
+    m_perf.write(); //periodically write out aggregated perf stats also
+  }
+
+  if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed step " << step << std::endl; }
+  return true;
+}
 
 void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long long& n_comm_events,
 		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,
 		   unsigned long& frames){
-  if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
-
-  int step = m_parser->getCurrentStep(); //gives -1 as initial value. step+1 is the expected value of step in parseInputStep and is used as a (non-fatal) check
-  unsigned long io_step_first_event_ts, io_step_last_event_ts; //earliest and latest timestamps in io frame
-  unsigned long execdata_first_event_ts, execdata_last_event_ts; //earliest and latest timestamps in current exec data (can differ from that of the io frame if we change the analysis frequency)
-  bool execdata_first_event_ts_set = false; //do we still need to set the analysis time window bound?
-
-  std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
-  m_perf.setWriteLocation(m_params.perf_outputpath, ad_perf);
-
-  std::string ad_perf_prd = stringize("ad_perf_prd.%d.%d.log", m_params.program_idx, m_params.rank);
-  m_perf_prd.setWriteLocation(m_params.perf_outputpath, ad_perf_prd);
-
-#if defined(_PERF_METRIC) && defined(ENABLE_PROVDB)
-
-  std::ofstream *perf_provdb_client_outstanding = nullptr;
-  if(m_params.rank == 0 && m_provdb_client->isConnected()) perf_provdb_client_outstanding = new std::ofstream(m_params.perf_outputpath + "/ad_provdb_outstandingreq.0.txt");
-#endif
-
-  PerfTimer step_timer, timer;
-
-  unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
-  unsigned long long n_func_events_accum_prd = 0, n_comm_events_accum_prd = 0, n_counter_events_accum_prd = 0; //accumulated event counts since last write of periodic data
-  unsigned long n_outliers_accum_prd = 0; //accumulated outliers detected since last write of periodic data
-  int n_steps_accum_prd = 0; //number of steps since last write of periodic data
-
-  //Loop until we lose connection with the application
-  while ( parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step) ) {
-    frames++;
-    n_steps_accum_prd++;
-
-    //Increment total events
-    n_func_events += n_func_events_step;
-    n_comm_events += n_comm_events_step;
-    n_counter_events += n_counter_events_step;
-
-    n_func_events_accum_prd += n_func_events_step;
-    n_comm_events_accum_prd += n_comm_events_step;
-    n_counter_events_accum_prd += n_counter_events_step;
-
-    //Decide whether to report step progress
-    bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
-
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " starting step " << step
-							  << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
-							  << " counter=" << n_counter_events_step << std::endl; }
-    step_timer.start();
-
-    //Extract counters and put into counter manager
-    timer.start();
-    extractCounters(m_params.rank, step);
-    m_perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
-
-    //Extract parsed events into event manager
-    timer.start();
-    extractEvents(io_step_first_event_ts, io_step_last_event_ts, step);
-    m_perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
+  while(runFrame(n_func_events,n_comm_events,n_counter_events,n_outliers)){
+    ++frames;
     
-    //Update the timestamp bounds for the analysis
-    execdata_last_event_ts = io_step_last_event_ts;
-    if(!execdata_first_event_ts_set){
-      execdata_first_event_ts = io_step_first_event_ts;
-      execdata_first_event_ts_set = true;
-    }
-
-    //Are we running the analysis this step?
-    bool do_run_analysis = step % m_params.analysis_step_freq == 0;
-
-    if(do_run_analysis){
-      //Run the outlier detection algorithm on the events
-      timer.start();
-      Anomalies anomalies = m_outlier->run(step);
-      m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
-      m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
-
-      int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
-      int nnormal = anomalies.nEvents(Anomalies::EventType::Normal);
-      n_outliers += nout;
-      n_outliers_accum_prd += nout;
-
-      //Generate anomaly provenance for detected anomalies and send to DB
-      timer.start();
-      extractAndSendProvenance(anomalies, step, execdata_first_event_ts, execdata_last_event_ts);
-      m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
-      
-      //Send any new metadata to the DB
-      timer.start();
-      sendNewMetadataToProvDB(step);
-      m_perf.add("ad_run_send_new_metadata_to_provdb_time_ms", timer.elapsed_ms());
-
-      //Gather and send statistics and data to the pserver
-      timer.start();
-      gatherAndSendPSdata(anomalies, step, execdata_first_event_ts, execdata_last_event_ts);
-      m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
-
-      //Trim the call list
-      timer.start();
-      m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
-      m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
-
-      //Flush counters
-      timer.start();
-      delete m_counter->flushCounters();
-      m_perf.add("ad_run_flush_counters_ms", timer.elapsed_ms());
-
-      //Enable update of analysis time window bound on next step
-      execdata_first_event_ts_set = false;
-
-      if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " event analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
-    }
-
-    m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
-
-    //Record periodic performance data
-    if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0){
-      //Record the number of outstanding requests as a function of time, which can be used to gauge whether the throughput of the provDB is sufficient
-#ifdef ENABLE_PROVDB
-      m_perf_prd.add("provdb_incomplete_async_sends", m_provdb_client->getNoutstandingAsyncReqs());
-#endif
-      //Get the "data" memory usage (stack + heap)
-      size_t total, resident;
-      getMemUsage(total, resident);
-      m_perf_prd.add("ad_mem_usage_kB", resident);
-
-      m_perf_prd.add("io_steps", n_steps_accum_prd);
-
-      //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
-      m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
-      m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
-
-      //Write accumulated outlier count
-      m_perf_prd.add("outlier_count", n_outliers_accum_prd);
-
-      //Write accumulated event counts
-      m_perf_prd.add("event_count_func", n_func_events_accum_prd);
-      m_perf_prd.add("event_count_comm", n_comm_events_accum_prd);
-      m_perf_prd.add("event_count_counter", n_counter_events_accum_prd);
-
-      //Reset the counts
-      n_func_events_accum_prd = 0;
-      n_comm_events_accum_prd = 0;
-      n_counter_events_accum_prd = 0;
-      n_outliers_accum_prd = 0;
-      n_steps_accum_prd = 0;
-
-      //These only write if both filename and output path is set
-      m_perf_prd.write();
-      m_perf.write(); //periodically write out aggregated perf stats also
-    }
-
     if (m_params.only_one_frame)
       break;
-
+    
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
-
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " completed step " << step << std::endl; }
-  } // end of parser while loop
-
-  //Always dump perf at end
-  m_perf.write();
-
-  //For debug purposes, write out any unmatched correlation ID events that we encountered as recoverable errors
-  if(m_event->getUnmatchCorrelationIDevents().size() > 0){
-    for(auto c: m_event->getUnmatchCorrelationIDevents()){
-      std::stringstream ss;
-      ss << "Unmatched correlation ID: " << c.first << " from event " << c.second->get_json().dump();
-      recoverable_error(ss.str());
-    }
   }
-
-  headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 }
