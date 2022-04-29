@@ -272,6 +272,7 @@ echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
 echo "Or equivalent"
 
 #For use in other scripts, output the AD cmdline options to file
+echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
 echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
 
 
