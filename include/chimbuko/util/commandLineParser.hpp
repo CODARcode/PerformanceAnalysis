@@ -12,6 +12,19 @@
 namespace chimbuko{
 
   /**
+     @brief Template wizardry to get class type of a member pointer
+  */
+  template<class T> struct get_member_ptr_class;
+  template<class T, class R> struct get_member_ptr_class<R T::*> { using type = T; };
+
+  /**
+     @brief Template wizardry to get data type of a member pointer
+  */
+  template<class T> struct get_member_ptr_data_type;
+  template<class T, class R> struct get_member_ptr_data_type<R T::*> { using type = R; };
+
+
+  /**
    * @brief Base class for optional arg parsing structs
    */
   template<typename ArgsStruct>
@@ -37,7 +50,7 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct
    */
-  template<typename ArgsStruct, typename T, T ArgsStruct::* P>
+  template<typename ArgsStruct, typename PtrType, PtrType P>
   class optionalCommandLineArg: public optionalCommandLineArgBase<ArgsStruct>{
   private:
     std::string m_arg; /**< The argument, format "-a" */
@@ -52,6 +65,7 @@ namespace chimbuko{
       if(arg == m_arg){
 	if(vals_size < 1) return -1;
 
+	typedef typename get_member_ptr_data_type<PtrType>::type T;
 	T v;
 	try{
 	  v = strToAny<T>(vals[0]);
@@ -71,7 +85,7 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct and sets a bool flag argument to true
    */
-  template<typename ArgsStruct, typename T, T ArgsStruct::* P, bool ArgsStruct::* Flag>
+  template<typename ArgsStruct, typename PtrType, PtrType P, bool ArgsStruct::* Flag>
   class optionalCommandLineArgWithFlag: public optionalCommandLineArgBase<ArgsStruct>{
   private:
     std::string m_arg; /**< The argument, format "-a" */
@@ -86,6 +100,7 @@ namespace chimbuko{
       if(arg == m_arg){
 	if(vals_size < 1) return -1;
 
+	typedef typename get_member_ptr_data_type<PtrType>::type T;
 	T v;
 	try{
 	  v = strToAny<T>(vals[0]);
@@ -107,10 +122,11 @@ namespace chimbuko{
   /**
    * @brief A class containing a member function pointer
    */
-  template<typename S, typename T, T S::* P>
+  template<typename PtrType, PtrType P>
   struct MemberPtrContainer{
-    typedef T type;
-    static constexpr T S::* value = P;
+    typedef typename get_member_ptr_class<PtrType>::type class_type;
+    typedef typename get_member_ptr_data_type<PtrType>::type type;
+    static constexpr PtrType value = P;
   };
 
   
@@ -195,7 +211,7 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct
    */
-  template<typename ArgsStruct, typename T, T ArgsStruct::* P>
+  template<typename ArgsStruct, typename PtrType, PtrType P>
   class mandatoryCommandLineArg: public mandatoryCommandLineArgBase<ArgsStruct>{
   private:
     std::string m_help_str; /**< The help string */
@@ -206,6 +222,7 @@ namespace chimbuko{
     mandatoryCommandLineArg(const std::string &help_str): m_help_str(help_str){}
     
     bool parse(ArgsStruct &into, const std::string &val) override{
+      typedef typename get_member_ptr_data_type<PtrType>::type T;
       T v;
       try{
 	v = strToAny<T>(val);
@@ -245,18 +262,18 @@ namespace chimbuko{
     /**
      * @brief Add an optional argument with the given type, member pointer (eg &ArgsStruct::a) with provided argument (eg "-a") and help string
      */
-    template<typename T, T ArgsStruct::* P>
+    template<typename PtrType, PtrType P>
     void addOptionalArg(const std::string &arg, const std::string &help_str){
-      m_opt_args.emplace_back(new optionalCommandLineArg<ArgsStruct,T,P>(arg, help_str));
+      m_opt_args.emplace_back(new optionalCommandLineArg<ArgsStruct,PtrType,P>(arg, help_str));
     }
 
 
     /**
      * @brief Add an optional argument with the given type, member pointer (eg &ArgsStruct::a), a bool flag member pointer (eg &ArgsStruct::got_value), with provided argument (eg "-a") and help string
      */
-    template<typename T, T ArgsStruct::* P, bool ArgsStruct::* Flag>
+    template<typename PtrType, PtrType P, bool ArgsStruct::* Flag>
     void addOptionalArgWithFlag(const std::string &arg, const std::string &help_str){
-      m_opt_args.emplace_back(new optionalCommandLineArgWithFlag<ArgsStruct,T,P,Flag>(arg, help_str));
+      m_opt_args.emplace_back(new optionalCommandLineArgWithFlag<ArgsStruct,PtrType,P,Flag>(arg, help_str));
     }
 
 
@@ -272,9 +289,9 @@ namespace chimbuko{
     /**
      * @brief Add an mandatory argument with the given type, member pointer (eg &ArgsStruct::a) and help string
      */
-    template<typename T, T ArgsStruct::* P>
+    template<typename PtrType, PtrType P>
     void addMandatoryArg(const std::string &help_str){
-      m_man_args.emplace_back(new mandatoryCommandLineArg<ArgsStruct,T,P>(help_str));
+      m_man_args.emplace_back(new mandatoryCommandLineArg<ArgsStruct,PtrType,P>(help_str));
     }
 
     /**
@@ -349,9 +366,10 @@ namespace chimbuko{
    */
 #define _GMP_GET_TYPE(T) std::decay<decltype(T)>::type::StructType
 #define _GMP_GET_MEMBER_TYPE(T, NAME) decltype( _GMP_GET_TYPE(T)::NAME )
+#define _GMP_GET_MEMBER_PTR_TYPE(T, NAME) decltype( &_GMP_GET_TYPE(T)::NAME )
 #define _GMP_GET_MEMBER_PTR(T, NAME) & _GMP_GET_TYPE(T)::NAME
 
-#define GET_MEMBER_PTR_CON(T, NAME) MemberPtrContainer< typename _GMP_GET_TYPE(T), _GMP_GET_MEMBER_TYPE(T,NAME), _GMP_GET_MEMBER_PTR(T,NAME) >
+#define GET_MEMBER_PTR_CON(T, NAME) MemberPtrContainer< _GMP_GET_MEMBER_PTR_TYPE(T,NAME), _GMP_GET_MEMBER_PTR(T,NAME) >
 
 #define _GMP_GE_0(T, NAME)
 #define _GMP_GE_1(T, NAME) GET_MEMBER_PTR_CON(T,NAME)
@@ -369,16 +387,12 @@ namespace chimbuko{
 
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-NAME" on command line */
-#define addOptionalCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addOptionalArg< decltype(std::decay<decltype(PARSER)>::type::StructType ::NAME) \
-										 , &std::decay<decltype(PARSER)>::type::StructType ::NAME>("-" #NAME, HELP_STR)
+#define addOptionalCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addOptionalArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>("-" #NAME, HELP_STR)
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and default help string "Provide the value for NAME" */
 #define addOptionalCommandLineArgDefaultHelpString(PARSER, NAME) addOptionalCommandLineArg(PARSER, NAME, "Provide the value for " #NAME)
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-NAME" on command line. A bool field FLAGNAME will be set to true if parsed */
-#define addOptionalCommandLineArgWithFlag(PARSER, NAME, FLAGNAME, HELP_STR) PARSER.addOptionalArgWithFlag< decltype(std::decay<decltype(PARSER)>::type::StructType ::NAME), \
-													   &std::decay<decltype(PARSER)>::type::StructType ::NAME, \
-													   &std::decay<decltype(PARSER)>::type::StructType ::FLAGNAME \
-													>("-" #NAME, HELP_STR)
+#define addOptionalCommandLineArgWithFlag(PARSER, NAME, FLAGNAME, HELP_STR) PARSER.addOptionalArgWithFlag< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,FLAGNAME)>("-" #NAME, HELP_STR)
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with argument name  -${ARG_NAME} which sets multiple variables
    *
@@ -391,8 +405,7 @@ namespace chimbuko{
 
 
   /**@brief Helper macro to add a mandatory command line arg to the parser PARSER with given name NAME and help string HELP_STR */
-#define addMandatoryCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addMandatoryArg< decltype(std::decay<decltype(PARSER)>::type::StructType ::NAME) \
-											   , &std::decay<decltype(PARSER)>::type::StructType ::NAME>(HELP_STR)
+#define addMandatoryCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addMandatoryArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>(HELP_STR)
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and default help string "Provide the value for NAME" */
 #define addMandatoryCommandLineArgDefaultHelpString(PARSER, NAME) addMandatoryCommandLineArg(PARSER, NAME, "Provide the value for " #NAME)
 

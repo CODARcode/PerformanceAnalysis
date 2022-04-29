@@ -23,11 +23,11 @@ TEST(commandLineParserTest, Works){
   };
   
   commandLineParser<test> parser;
-  parser.addMandatoryArg<double, &test::cman>("Provide the value for cman");
-  parser.addOptionalArg<int, &test::a>("-a", "Provide the value of a");
-  parser.addOptionalArg<std::string, &test::b>("-b", "Provide the value of b");
-  parser.addOptionalArgWithFlag<std::string, &test::d, &test::d_set>("-d", "Provide the value of d");
-  parser.addOptionalArgMultiValue<MemberPtrContainer<test,int, &test::e_val1>, MemberPtrContainer<test,float, &test::e_val2> >("-e", "Provide the value of e");  
+  parser.addMandatoryArg<double test::*, &test::cman>("Provide the value for cman");
+  parser.addOptionalArg<int test::*, &test::a>("-a", "Provide the value of a");
+  parser.addOptionalArg<std::string test::*, &test::b>("-b", "Provide the value of b");
+  parser.addOptionalArgWithFlag<std::string test::*, &test::d, &test::d_set>("-d", "Provide the value of d");
+  parser.addOptionalArgMultiValue<MemberPtrContainer<int test::*, &test::e_val1>, MemberPtrContainer<float test::*, &test::e_val2> >("-e", "Provide the value of e");  
 
   //Test the variadic macro
   addOptionalCommandLineArgMultiValue(parser, f, "Provide the value of f_val1 and f_val2", f_val1, f_val2);
@@ -53,13 +53,37 @@ TEST(commandLineParserTest, Works){
   EXPECT_EQ(t.f_val1, 876);
   EXPECT_EQ(t.f_val2, "evil macros");
 }
+TEST(commandLinkParserTest, DerivedClassWorks){
+  struct base{
+    int a;
+  };
+  struct derived: public base{
+    float b;
+  };
+  
+  commandLineParser<derived> parser;
+  parser.addOptionalArg<int base::*, &base::a>("-a", "Provide the value of a");
+  parser.addOptionalArg<float derived::*, &derived::b>("-b", "Provide the value of b");
+
+  int narg = 4;
+  const char* args[] = { "-a", "21", 
+			 "-b", "3.141"};
+  
+  derived t;
+  parser.parse(t, narg, args);
+  
+  EXPECT_EQ(t.a, 21);
+  EXPECT_FLOAT_EQ(t.b, 3.141);
+} 
+
+
 TEST(commandLineParserTest, FailsIfCannotParse){
   struct test{
     int a;
   };
   
   commandLineParser<test> parser;
-  parser.addOptionalArg<int, &test::a>("-a", "Provide the value of a");
+  parser.addOptionalArg<int test::*, &test::a>("-a", "Provide the value of a");
   
   int narg = 2;
   const char* args[] = { "-a", "NOTANUMBER" };
@@ -77,7 +101,7 @@ TEST(commandLineParserTest, FailsIfMandatorgArgNotProvided){
   };
   
   commandLineParser<test> parser;
-  parser.addMandatoryArg<int, &test::a>("Provide the value of a");
+  parser.addMandatoryArg<int test::*, &test::a>("Provide the value of a");
   
   int narg = 2;
   const char* args[] = { "-b", "I'm not a valid argument!" };
@@ -97,7 +121,7 @@ TEST(commandLineParserTest, FailsIfInvalidArg){
   };
   
   commandLineParser<test> parser;
-  parser.addOptionalArg<int, &test::a>("-a", "Provide the value of a");
+  parser.addOptionalArg<int test::*, &test::a>("-a", "Provide the value of a");
   
   int narg = 2;
   const char* args[] = { "-b", "I'm not a valid argument!" };
@@ -127,6 +151,30 @@ TEST(commandLineParserTest, WorksWithMacro){
   EXPECT_EQ(t.a, 21);
   EXPECT_EQ(t.b, "Hello World");
 }
+
+TEST(commandLinkParserTest, DerivedClassWorksWithMacro){
+  struct base{
+    int a;
+  };
+  struct derived: public base{
+    float b;
+  };
+  
+  commandLineParser<derived> parser;
+  addOptionalCommandLineArg(parser, a, "Provide the value of a");
+  addOptionalCommandLineArg(parser, b, "Provide the value of b");
+
+  int narg = 4;
+  const char* args[] = { "-a", "21", 
+			 "-b", "3.141"};
+  
+  derived t;
+  parser.parse(t, narg, args);
+  
+  EXPECT_EQ(t.a, 21);
+  EXPECT_FLOAT_EQ(t.b, 3.141);
+} 
+
 
 TEST(commandLineParserTest, HelpStringWorks){
   struct test{
