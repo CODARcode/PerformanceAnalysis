@@ -31,7 +31,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  err_outputpath(""), parser_beginstep_timeout(30), override_rank(false),
                                   outlier_statistic("exclusive_runtime"),
                                   step_report_freq(1),
-                                  analysis_step_freq(1)
+                                  analysis_step_freq(1),
+                                  read_ignored_corrid_funcs("")  
 {}
 
 void ChimbukoParams::print() const{
@@ -179,6 +180,19 @@ void Chimbuko::init_event(){
   m_event->linkEventType(m_parser->getEventType());
   m_event->linkCounterMap(m_parser->getCounterMap());
   m_event->linkGPUthreadMap(&m_metadata_parser->getGPUthreadMap());
+
+  //Setup ignored correlation IDs for given functions
+  if(m_params.read_ignored_corrid_funcs.size()){
+    std::ifstream in(m_params.read_ignored_corrid_funcs);
+    if(in.is_open()) {
+      std::string func;
+      while (std::getline(in, func)){
+	headProgressStream(m_params.rank) << "Ignoring correlation IDs for function \"" << func << "\"" << std::endl;
+	m_event->ignoreCorrelationIDsForFunction(func);
+      }
+      in.close();
+    }
+  }
 }
 
 void Chimbuko::init_net_client(){
@@ -584,6 +598,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
   //Are we running the analysis this step?
   bool do_run_analysis = step % m_params.analysis_step_freq == 0;
+  ADEvent::purgeReport purge_report;
 
   if(do_run_analysis){
     //Run the outlier detection algorithm on the events
@@ -614,7 +629,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     //Trim the call list
     timer.start();
-    m_event->purgeCallList(m_params.anom_win_size); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
+    m_event->purgeCallList(m_params.anom_win_size, &purge_report); //we keep the last $anom_win_size events for each thread so that we can extend the anomaly window capture into the previous io step
     m_perf.add("ad_run_purge_calllist_ms", timer.elapsed_ms());
 
     //Flush counters
@@ -644,7 +659,12 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     m_perf_prd.add("io_steps", m_n_steps_accum_prd);
 
     //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
-    m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
+    m_perf_prd.add("call_list_purged", purge_report.n_purged);
+    m_perf_prd.add("call_list_kept_protected", purge_report.n_kept_protected);
+    m_perf_prd.add("call_list_kept_incomplete", purge_report.n_kept_incomplete);
+    m_perf_prd.add("call_list_kept_window", purge_report.n_kept_window);
+    
+    //m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
     m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
 
     //Write accumulated outlier count

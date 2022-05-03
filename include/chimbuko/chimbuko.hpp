@@ -66,6 +66,8 @@ namespace chimbuko {
 
     int analysis_step_freq; /**< The frequency in IO steps at which we perform the anomaly detection. Events are retained between io steps if the analysis is not run. (default 1)*/
 
+    std::string read_ignored_corrid_funcs; /**< The path to a file containing functions for which the correlation ID counter should be ignored. If an empty string (default) no IDs will be ignored*/
+
     ChimbukoParams();
 
     void print() const;

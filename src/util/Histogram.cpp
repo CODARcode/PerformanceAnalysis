@@ -235,12 +235,12 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   double bin_width = bwspec.bin_width(g,l,min,max);
   if(bin_width < 0.) fatal_error("Suggested bin width " + std::to_string(bin_width) + " is invalid");
 
-  if(bin_width == 0. || ceil(max-min)/bin_width > 50000. ){ //Can occur when the standard deviation of the histogram data set is 0 within rounding errors. This should only happen when both histograms have just 1 bin containing data and with the same lower bin edge
+  if(bin_width == 0. || ceil((max-min)/bin_width) > 50000. ){ //Can occur when the standard deviation of the histogram data set is 0 within rounding errors. This should only happen when both histograms have just 1 bin containing data and with the same lower bin edge
     verboseStream << "Suggested bin width " << bin_width << " is too small, resulting in too many bins!" << std::endl;
 
     //Choose the smaller of the bin widths of the two inputs
     bin_width = std::min(g.bin_edges()[1]-g.bin_edges()[0], l.bin_edges()[1]-l.bin_edges()[0]);
-    if(bin_width == 0. || ceil(max-min)/bin_width > 50000. ) fatal_error("Failed to determine the appropriate bin width");
+    if(bin_width == 0. || ceil((max-min)/bin_width) > 50000. ) fatal_error("Failed to determine the appropriate bin width");
   }
 
   verboseStream << "Histogram::merge_histograms suggested bin width " << bin_width << std::endl;
@@ -249,9 +249,28 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   double range_end = max;
   verboseStream << "Histogram::merge_histograms determined range " << range_start << ":" << range_end << std::endl;
 
+  if(range_start == range_end){ 
+    //This can happen if min and max are the same and the suggested bin width is very small: the result is that the shift of range_start below min vanishes by a floating point error
+    //If this happens we adjust such that there is 1 bin
+    if(min == max){
+      range_start = min - bin_width;
+      if(range_start == range_end){
+	//If the bin width was too small that the range still evaluates to 0 we must modify the bin width too
+	if(min == 0.) bin_width = 1e-6;
+	else bin_width = 1e-6*min;
+	range_start = min - bin_width;
+	if(range_start == range_end) fatal_error("Unable to correct for 0 range!");
+      }
+    }else{
+      std::stringstream ss; ss << "Logic bomb: range_start and range_end are equal despite shift:" << range_start << ". min=" << min << " max=" << max << " bin width=" << bin_width <<  " vshift=" << getLowerBoundShiftMul() * bin_width << std::endl;
+      fatal_error(ss.str());
+    }
+  }
+
   //Adjust the bin width such that the upper edge is equal to the max value
   int nbin = int( ceil( (range_end - range_start)/bin_width ) );
   if(nbin < 0) fatal_error("Negative bin count encountered, possible integer overflow");
+  if(nbin == 0) fatal_error("Number of bins is 0!");
   verboseStream << "Histogram::merge_histograms number of bins " << nbin << std::endl; 
 
   bin_width = (range_end - range_start)/nbin;
@@ -265,32 +284,18 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
   std::vector<double> &comb_counts = combined.m_histogram.counts;
 
-  if (range_start == range_end) {
-    comb_binedges.resize(2);
-
-    comb_binedges[0] = range_start;
-    comb_binedges[1] = range_end;
-  }
-  else{
-    comb_binedges.resize(nbin+1);
-    for(int e=0;e<=nbin;e++) comb_binedges[e] = range_start + e*bin_width;
+  comb_binedges.resize(nbin+1);
+  for(int e=0;e<=nbin;e++) comb_binedges[e] = range_start + e*bin_width;
 	
-    if(comb_binedges.size() < 2) fatal_error("#Bin edges must be a minimum of 2!");
+  if(comb_binedges.size() < 2) fatal_error("#Bin edges must be a minimum of 2!");
     
-    double vshift = 1e-8*bin_width; //use a small shift to ensure that if a value is equal to a bin edge it is treated as belonging to the previous bin (lower edges are exclusive)
-    int bin_max = int(floor( (max - vshift - range_start)/bin_width ) );
-    if(bin_max != nbin-1){
-      std::stringstream ss; ss << "Logic bomb: bin of max value " << bin_max << " is not the last bin, " << nbin-1 << std::endl;
-      fatal_error(ss.str());
-    }
-    if(fabs(comb_binedges[nbin]-range_end) > 1e-12*bin_width){
-      std::stringstream ss; ss << "Logic bomb: upper bin edge " << comb_binedges[nbin] << "of merged histogram does not match expected range_end=" << range_end;
-      fatal_error(ss.str());
-    }
-    comb_binedges[nbin] = range_end; //correct for floating point errors
-
-    verboseStream << "Iterating between " << range_start << " and " << range_end << " in steps of " << bin_width << " resulted in " << comb_binedges.size() << " edges" << std::endl;
+  if(fabs(comb_binedges[nbin]-range_end) > 1e-12*bin_width){
+    std::stringstream ss; ss << "Logic bomb: upper bin edge " << comb_binedges[nbin] << "of merged histogram does not match expected range_end=" << range_end;
+    fatal_error(ss.str());
   }
+  comb_binedges[nbin] = range_end; //correct for floating point errors
+
+  verboseStream << "Iterating between " << range_start << " and " << range_end << " in steps of " << bin_width << " resulted in " << comb_binedges.size() << " edges" << std::endl;
    
   comb_counts.resize(comb_binedges.size() - 1, 0);
 
@@ -347,10 +352,7 @@ double Histogram::scottBinWidth(const std::vector<double> & global_counts, const
   verboseStream << "Mean in scottBinWidth: " << avgx << std::endl;
 
   double var = avgx2 - avgx*avgx;
-  if(var < 0){
-    if(fabs(var) < 1e-16*avgx) var = 0;
-    else fatal_error("Negative variance encountered!");
-  }
+  if(var < 0) var = 0; //can happen due to floating point errors
 
   double std = sqrt(var);
 

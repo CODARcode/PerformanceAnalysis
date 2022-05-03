@@ -9,7 +9,7 @@ using namespace chimbuko;
 
 ADEvent::ADEvent(bool verbose)
   : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_gpu_thread_Map(nullptr), m_verbose(verbose),
-    m_eidx_func_entry(-1), m_eidx_func_exit(-1), m_eidx_comm_send(-1), m_eidx_comm_recv(-1)
+    m_eidx_func_entry(-1), m_eidx_func_exit(-1), m_eidx_comm_send(-1), m_eidx_comm_recv(-1), m_cidx_corr_id(-1)
 {
 
 }
@@ -83,11 +83,18 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
 
 
 void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
+  if(m_ignoreCorrelationID.count(it->get_funcname()) ) return; //for dealing with GPU APIs that issue unpartnered correlation IDs for some functions
+
   //Check if the event has a correlation ID counter, if so try to match it to an outstanding unmatched
   //event with a correlation ID
   int n_cid = 0;
   for(auto const &c : it->get_counters()){
-    if(c.get_countername() == "Correlation ID"){
+    if(
+       (m_cidx_corr_id != -1 && c.get_counterid() == m_cidx_corr_id) ||
+       (m_cidx_corr_id == -1 && c.get_countername() == "Correlation ID")
+       ){
+      m_cidx_corr_id = c.get_counterid(); //avoid future string comparisons
+
       unsigned long cid = c.get_value();
       eventID current_event_id = it->get_id();
 
@@ -398,7 +405,9 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
 }
 
 
-void ADEvent::purgeCallList(int n_keep_thread) {
+void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
+  size_t n_purged=0, n_kept_protected=0, n_kept_incomplete=0, n_kept_window=0;
+
   //Remove completed entries from the call list
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {
@@ -406,8 +415,11 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 	CallList_t& cl = it_t.second;
 
 	//Are we keeping all events for this thread?
-	if(n_keep_thread >= cl.size())
+	if(n_keep_thread >= cl.size()){
+	  n_kept_window += cl.size();
 	  continue;
+	}
+	n_kept_window += n_keep_thread;
 
 	auto it = cl.begin();
 	auto one_past_last = std::prev(cl.end(),n_keep_thread);
@@ -418,14 +430,24 @@ void ADEvent::purgeCallList(int n_keep_thread) {
 	    m_callIDMap.erase(it->get_id());
 	    //Remove completed event from call list
 	    it = cl.erase(it);
+	    ++n_purged;
 	  }
 	  else {
+	    if(!it->can_delete()) ++n_kept_protected;
+	    else if(!it->get_runtime()) ++n_kept_incomplete;
 	    it++;
 	  }
 	}
       }
     }
   }
+  if(report != nullptr){
+    report->n_purged = n_purged;
+    report->n_kept_protected = n_kept_protected;
+    report->n_kept_incomplete = n_kept_incomplete;
+    report->n_kept_window = n_kept_window;
+  }
+
   m_execDataMap.clear();
 }
 

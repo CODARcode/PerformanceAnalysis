@@ -671,6 +671,64 @@ TEST(ADEvent, testCoridMatchChainUnlock){
 
 
 
+TEST(ADEvent, testIgnoreFunctionCorrelationID){
+  int pid = 1;
+  int rid = 2;
+  int tid_cpu = 3;
+  int tid_gpu = 4;
+  int counter_id = 13; //index of "Correlation ID" counter
+
+  //Have the CPU function execute 2 GPU kernels
+  ExecData_t c_cpu = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel", 100, 200); //100-200
+  c_cpu.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1995, 100, "Correlation ID"));
+
+  ExecData_t c_cpu_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 5, "gpu_kernel", 400, 100); //400-500
+  c_cpu_gpu1.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1995, 500, "Correlation ID"));
+
+  //Check without ignoring first
+  {
+    ADEvent event_man;
+    auto c_cpu_it = event_man.addCall(c_cpu);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+    
+    auto c_cpu_gpu1_it = event_man.addCall(c_cpu_gpu1);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
+  }
+  //Check with ignoring cpu func
+  {
+    ADEvent event_man;
+    event_man.ignoreCorrelationIDsForFunction("cpu_launch_kernel");
+    auto c_cpu_it = event_man.addCall(c_cpu);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
+    
+    auto c_cpu_gpu1_it = event_man.addCall(c_cpu_gpu1);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+  }
+
+  //Check with ignoring gpu func
+  {
+    ADEvent event_man;
+    event_man.ignoreCorrelationIDsForFunction("gpu_kernel");
+    auto c_cpu_it = event_man.addCall(c_cpu);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+    
+    auto c_cpu_gpu1_it = event_man.addCall(c_cpu_gpu1);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 );
+  }
+
+  //Check with ignoring both
+  {
+    ADEvent event_man;
+    event_man.ignoreCorrelationIDsForFunction("gpu_kernel");
+    event_man.ignoreCorrelationIDsForFunction("cpu_launch_kernel");
+
+    auto c_cpu_it = event_man.addCall(c_cpu);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
+    
+    auto c_cpu_gpu1_it = event_man.addCall(c_cpu_gpu1);
+    EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
+  }
+}
 
 
 TEST(ADEvent, testIteratorWindowDetermination){

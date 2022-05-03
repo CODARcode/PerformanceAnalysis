@@ -9,6 +9,7 @@
 #include <list>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <tuple>
 #include <sstream>
 
@@ -309,13 +310,26 @@ namespace chimbuko {
      */
     size_t getCallListSize() const;
 
+
+    /**
+     * @brief Structure for recording information about purged events
+     */
+    struct purgeReport{
+      size_t n_purged; /**< Number of function calls purged*/
+      size_t n_kept_protected; /**< Number of calls maintained because they have been protected*/
+      size_t n_kept_incomplete; /**< Number of calls maintained because they have not yet completed*/
+      size_t n_kept_window; /**< Number of calls maintained because they may be needed for provenance window capture on next io step*/
+    };
+
+
     /**
      * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
      * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
+     * @param report If non-null, information on the number of events purged/maintained will be recorded
      *
      * Functionality is the same as trimCallList only it doesn't return the trimmed function calls
      */
-    void purgeCallList(int n_keep_thread = 0);
+    void purgeCallList(int n_keep_thread = 0, purgeReport* report = nullptr);
 
     /**
      * @brief show current call stack tree status
@@ -329,6 +343,11 @@ namespace chimbuko {
      */
     const std::unordered_map<unsigned long, CallListIterator_t> & getUnmatchCorrelationIDevents() const{ return  m_unmatchedCorrelationID; }
 
+    /**
+     * @brief Set the event manager to ignore correlation ID counters for the given function
+     */
+    void ignoreCorrelationIDsForFunction(const std::string &func){ m_ignoreCorrelationID.insert(func); }
+    
   private:
     /**
      * @brief pointer to map of function index to function name
@@ -352,6 +371,7 @@ namespace chimbuko {
     int m_eidx_comm_send; /**< If previously seen, the eid corresponding to the comm send event (-1 otherwise)*/
     int m_eidx_comm_recv; /**< If previously seen, the eid corresponding to the comm recv event (-1 otherwise)*/
 
+    int m_cidx_corr_id; /**< If previously seen, the counter index corresponding to the Correlation ID counter (-1 otherwise)*/
 
     /**
      * @brief Optional: give the event manager knowledge of which threads are GPU threads, improves error checking
@@ -404,6 +424,11 @@ namespace chimbuko {
      * counters that allow us to match the CPU thread that launched them to the GPU kernel event
      */
     std::unordered_map<unsigned long, CallListIterator_t> m_unmatchedCorrelationID;
+
+    /**
+     * @brief List of function names for which correlation IDs are ignored
+     */
+    std::unordered_set<std::string> m_ignoreCorrelationID;
 
     /**
      * @brief verbose
