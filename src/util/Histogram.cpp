@@ -163,7 +163,7 @@ void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g
   if( fabs(new_total - ltotal - gtotal) > 1e-5*(ltotal+gtotal) ){
     std::stringstream ss;
     ss << "New histogram total count doesn't match sum of counts of inputs: combined total " << new_total << " l total " << ltotal << " g total " << gtotal << " l+g total " << ltotal + gtotal << " diff " << fabs(new_total - ltotal - gtotal);    
-    fatal_error(ss.str());
+    recoverable_error(ss.str());
   }
 }
 

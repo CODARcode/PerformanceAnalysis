@@ -646,7 +646,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
   m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
   //Record periodic performance data
-  if(m_params.perf_step > 0 && (step+1) % m_params.perf_step == 0){
+  if(m_params.perf_step > 0 && step % m_params.perf_step == 0){
     //Record the number of outstanding requests as a function of time, which can be used to gauge whether the throughput of the provDB is sufficient
 #ifdef ENABLE_PROVDB
     m_perf_prd.add("provdb_incomplete_async_sends", m_provdb_client->getNoutstandingAsyncReqs());
