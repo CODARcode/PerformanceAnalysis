@@ -244,6 +244,15 @@ namespace chimbuko {
      */
     Anomalies run(int step=0) override;
 
+    /**
+     * @brief Override the default threshold for a particular function
+     * @param func The function name
+     * @param threshold The new threshold
+     *
+     * Note: during the merge on the pserver, the merged threshold will be the larger of the values from the two inputs, hence the threshold should ideally be uniformly set for all ranks     
+     */
+    void overrideFuncThreshold(const std::string &func, const double threshold){ m_func_threshold_override[func] = threshold; }
+
   protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
@@ -263,9 +272,11 @@ namespace chimbuko {
 
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
-    double m_threshold; /**< Threshold used to filter anomalies in COPOD*/
+    double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
+    std::unordered_map<std::string, double> m_func_threshold_override; /**< Optionally override the threshold for specific functions*/
+
     bool m_use_global_threshold; /**< Flag to use global threshold*/
-    //double m_threshold; /**< Sync with global threshold */
+
     OutlierStatistic m_statistic; /**< Which statistic to use for outlier detection */
     int m_maxbins; /**< Maximum number of bin in the histograms */
   };

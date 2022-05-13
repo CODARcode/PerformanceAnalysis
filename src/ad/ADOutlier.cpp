@@ -243,13 +243,23 @@ Anomalies ADOutlierHBOS::run(int step) {
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     std::vector<double> runtimes;
+    std::string const* fname = nullptr;
     for (auto itt : it.second) { //loop over events for that function
+      if(fname == nullptr) fname = &itt->get_funcname();
+
       if (itt->get_label() == 0)
 	runtimes.push_back(this->getStatisticValue(*itt));
     }
     verboseStream << "Function " << func_id << " has " << runtimes.size() << " unlabeled data points of " << it.second.size() << std::endl;
 
-    param.generate_histogram(func_id, runtimes, &global_param);
+    double threshold = m_threshold; //default threshold
+    if(fname != nullptr){ //check to see if we have an override
+      auto it = m_func_threshold_override.find(*fname);
+      if(it != m_func_threshold_override.end())
+	threshold = it->second;
+    }
+
+    param.generate_histogram(func_id, runtimes, threshold, &global_param);
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -376,8 +386,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //p_i = Q p_max
   //2^-s_i -alpha = Q ( 2^-s_min - alpha )
   //s_i = -log2 [ Q 2^-s_min + (1-Q)alpha ]
-  if(m_threshold >= 1.0) fatal_error("Invalid threshold value");
-  double Q = 1-m_threshold;
+  double hbos_threshold = hist.get_threshold(); //per-function threshold
+
+  if(hbos_threshold >= 1.0) fatal_error("Invalid threshold value");
+  double Q = 1-hbos_threshold;
   double l_threshold = -log2( Q*pow(2,-min_score) + (1.-Q)*m_alpha );
   
   verboseStream << "Condition p_i/p_max <= " << Q << " maps to local threshold " << l_threshold << std::endl;

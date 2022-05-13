@@ -11,6 +11,7 @@ TEST(TestHbosParam, generateLocalHistograms){
   std::normal_distribution<double> dist(50.,10.);
   int N = 50;
   int fid = 123;
+  double threshold = 0.9991;
 
   double min = std::numeric_limits<double>::max(), max=std::numeric_limits<double>::lowest();
   std::vector<double> runtimes(N);
@@ -25,9 +26,10 @@ TEST(TestHbosParam, generateLocalHistograms){
   {    
     binWidthScott bw;
     Histogram expect(runtimes, bw);
+    expect.set_glob_threshold(threshold);
     
     HbosParam p;
-    p.generate_histogram(fid, runtimes);
+    p.generate_histogram(fid, runtimes, threshold);
 
     auto const &stats = p.get_hbosstats();
     auto it = stats.find(fid);
@@ -47,12 +49,13 @@ TEST(TestHbosParam, generateLocalHistograms){
 
     binWidthScottMaxNbin bw(maxbins);
     Histogram expect(runtimes, bw);
+    expect.set_glob_threshold(threshold);
     
     EXPECT_EQ(expect.Nbin(),maxbins);
 
     HbosParam p;
     p.setMaxBins(maxbins);
-    p.generate_histogram(fid, runtimes);
+    p.generate_histogram(fid, runtimes, threshold);
 
     auto const &stats = p.get_hbosstats();
     auto it = stats.find(fid);
@@ -72,6 +75,7 @@ TEST(TestHbosParam, syncLocalGlobal){
   int N = 50;
   int fid = 123;
   int maxbins = 2;  
+  double threshold = 0.9991;
 
   double min = std::numeric_limits<double>::max(), max=std::numeric_limits<double>::lowest();
   std::vector<double> runtimes(N);
@@ -102,10 +106,12 @@ TEST(TestHbosParam, syncLocalGlobal){
   
   HbosParam l;
   l.setMaxBins(maxbins);
-  l.generate_histogram(fid, runtimes);
+  l.generate_histogram(fid, runtimes, threshold);
 
   binWidthScottMaxNbin bw(maxbins);
   Histogram expect(runtimes, bw);
+  expect.set_glob_threshold(threshold);
+
   EXPECT_EQ(expect.Nbin(), maxbins);
 
   ASSERT_TRUE(l.find(fid));
@@ -124,10 +130,12 @@ TEST(TestHbosParam, syncLocalGlobal){
 
   //Make local model from second data set
   Histogram h2(runtimes2, bw);
+  h2.set_glob_threshold(threshold);
+  
   expect = Histogram::merge_histograms(expect, h2, bw);
   EXPECT_EQ(expect.Nbin(), maxbins);  
 
-  l.generate_histogram(fid, runtimes2);
+  l.generate_histogram(fid, runtimes2, threshold);
   ASSERT_TRUE(l.find(fid));
   EXPECT_EQ(l[fid], h2);
 

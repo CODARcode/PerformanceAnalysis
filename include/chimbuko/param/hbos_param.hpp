@@ -143,8 +143,9 @@ namespace chimbuko {
      * @param func_id The function index
      * @param runtimes The function runtimes
      * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
+     * @param hbos_threshold The threshold used for this function
      */
-    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, HbosParam const *global_param = nullptr);
+    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double hbos_threshold, HbosParam const *global_param = nullptr);
    
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats; /**< Map of func_id and corresponding Histogram*/

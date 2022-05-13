@@ -167,7 +167,7 @@ nlohmann::json HbosParam::get_algorithm_params(const std::unordered_map<unsigned
  bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
 
 
-void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, HbosParam const *global_param){
+void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double hbos_threshold, HbosParam const *global_param){
   if (runtimes.size() > 0) {
     verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
 
@@ -189,6 +189,8 @@ void HbosParam::generate_histogram(const unsigned long func_id, const std::vecto
       binWidthScottMaxNbin l_bwspec(m_maxbins);
       hist.create_histogram(runtimes, l_bwspec);
     }
+    hist.set_glob_threshold(hbos_threshold);
+
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;
   }

@@ -445,6 +445,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
   h.set_min_max(101,700);
+  h.set_glob_threshold(0.99);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
