@@ -84,6 +84,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
     addOptionalCommandLineArg(p, analysis_step_freq, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");      
     addOptionalCommandLineArg(p, read_ignored_corrid_funcs, "Set path to a file containing functions (one per line) for which the correlation ID counter should be ignored. If an empty string (default) no IDs will be ignored");
+    addOptionalCommandLineArg(p, max_frames, "Stop analyzing data once this number of IO frames have been read. A value < 0 (default) is unlimited");
 
     addOptionalCommandLineArg(p, nranks, "Set the number of ranks handled by this instance (default 1)");
 
@@ -226,15 +227,30 @@ int main(int argc, char ** argv){
       t1 = high_resolution_clock::now();
       
       int ncomplete = 0;
+      std::vector<unsigned long> rank_frames(params.nranks, 0); //frames completed by rank
+      std::vector<bool> rank_enable(params.nranks, true); //enable analysis for the given rank
+      for(int r=0;r<params.nranks;r++){
+	if(params.max_frames == 0){ rank_enable[r] = false; ++ncomplete; }
+      }
+
       while(ncomplete != params.nranks){
 	for(int r=0;r<params.nranks;r++){
-	  if(drivers[r].get_status()){
+	  if(rank_enable[r] && drivers[r].get_status()){
 	    bool did_frame = drivers[r].runFrame(n_func_events,
 						 n_comm_events,
 						 n_counter_events,
 						 n_outliers);
-	    if(did_frame) ++frames;
-	    else{
+	    if(did_frame){
+	      ++frames;
+	      ++rank_frames[r];
+
+	      //Disable processing for rank if it has reached the max number of frames
+	      if(params.max_frames > 0 && rank_frames[r] == params.max_frames){
+		rank_enable[r] = false;
+		++ncomplete;
+	      }
+
+	    }else{
 	      if(drivers[r].get_status() == true) fatal_error("Logic bomb: no frame parsed but driver instance still connected to stream");
 	      ++ncomplete;
 	    }

@@ -53,6 +53,8 @@ namespace chimbuko {
     bool verbose; /**< Enable verbose output. Typically one enables this only on a single node (eg verbose = (rank==0); ) */
     bool only_one_frame; /**< Force the AD to stop after a single IO frame */
     int interval_msec; /**< Force the AD to pause for this number of ms at the end of each IO step*/
+    int max_frames; /**< Stop analyzing data once this number of IO frames have been read. A value < 0 (default) is unlimited*/
+
     std::string err_outputpath; /**< Output path for error logs. If empty errors will be sent to std::cerr*/
     int parser_beginstep_timeout; /**< Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)*/
 

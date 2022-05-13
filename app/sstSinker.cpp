@@ -61,10 +61,18 @@ void extractRuntimes(std::map<unsigned long, std::vector<unsigned long> > &into,
   event_man.purgeCallList();
 }
 
-void dumpRuntimes(std::ostream &os, const std::map<unsigned long, std::vector<unsigned long> > &rtimes){
+void dumpRuntimes(std::ostream &os, const std::map<unsigned long, std::vector<unsigned long> > &rtimes, const std::unordered_map<int, std::string> &func_map){
   for(auto const &fe: rtimes){
+    auto it = func_map.find(fe.first);
+    if(it == func_map.end()) fatal_error("Function index not present in map");
+    const std::string &fname = it->second;
+    
+    os << "START '" << fname << "'" << std::endl;
+
     for(unsigned long t: fe.second)
-      os << fe.first << " " << t << std::endl;
+      os << t << std::endl;
+
+    os << "END '" << fname << "'" << std::endl;
   }
 }  
     
@@ -219,12 +227,12 @@ int main(int argc, char ** argv){
       // -----------------------------------------------------------------------
       // Finalize
       // -----------------------------------------------------------------------
-      delete parser;
       if(dump) delete dump;
       if(dump_runtimes){
-	dumpRuntimes(*dump_runtimes, fruntimes);
+	dumpRuntimes(*dump_runtimes, fruntimes, *parser->getFuncMap());
 	delete dump_runtimes;
       }
+      delete parser;
     }
   catch (std::invalid_argument &e)
     {

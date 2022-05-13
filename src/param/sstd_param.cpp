@@ -1,4 +1,5 @@
 #include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/util/error.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/unordered_map.hpp>
@@ -151,4 +152,19 @@ nlohmann::json SstdParam::get_algorithm_params(const unsigned long func_id) cons
   auto it = m_runstats.find(func_id);
   if(it == m_runstats.end()) throw std::runtime_error("Invalid function index in SstdParam::get_algorithm_params");
   return it->second.get_json();
+}
+
+nlohmann::json SstdParam::get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const{
+  nlohmann::json out = nlohmann::json::array();
+  for(auto const &r : m_runstats){
+    auto fit = func_id_map.find(r.first);
+    if(fit == func_id_map.end()) fatal_error("Could not find function in input map");
+    nlohmann::json entry = nlohmann::json::object();
+    entry["fid"] = r.first;
+    entry["pid"] = fit->second.first;
+    entry["func_name"] = fit->second.second;
+    entry["model"] = r.second.get_json();
+    out.push_back(std::move(entry));
+  }
+  return out;
 }

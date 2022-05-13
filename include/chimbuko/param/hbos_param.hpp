@@ -123,6 +123,12 @@ namespace chimbuko {
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
     /**
+     * @brief Get the algorithm parameters for all functions. 
+     * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
+     */
+    nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
+
+    /**
      * @brief Get the maximum number of bins
      */
     inline int getMaxBins() const{ return m_maxbins; }
@@ -139,7 +145,7 @@ namespace chimbuko {
      * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
      */
     void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, HbosParam const *global_param = nullptr);
-    
+   
   private:
     std::unordered_map<unsigned long, Histogram> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
     int m_maxbins; /**< Maximum number of bins to use in the histograms */

@@ -74,6 +74,13 @@ namespace chimbuko {
      */
     virtual nlohmann::json get_algorithm_params(const unsigned long func_id) const = 0;
 
+    /**
+     * @brief Get the algorithm parameters for all functions. 
+     * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
+     */
+    virtual nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const = 0;
+
+
   protected:
     mutable std::mutex m_mutex; // used to update parameters
   };

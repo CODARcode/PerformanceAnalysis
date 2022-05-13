@@ -32,7 +32,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   outlier_statistic("exclusive_runtime"),
                                   step_report_freq(1),
                                   analysis_step_freq(1),
-                                  read_ignored_corrid_funcs("")  
+                                  read_ignored_corrid_funcs(""),
+                                  max_frames(-1)
 {}
 
 void ChimbukoParams::print() const{
@@ -696,10 +697,15 @@ void Chimbuko::run(unsigned long long& n_func_events,
 		   unsigned long long& n_counter_events,
 		   unsigned long& n_outliers,
 		   unsigned long& frames){
+  if( m_params.max_frames == 0 ) return;
+
   while(runFrame(n_func_events,n_comm_events,n_counter_events,n_outliers)){
     ++frames;
     
     if (m_params.only_one_frame)
+      break;
+
+    if( m_params.max_frames > 0 && frames == m_params.max_frames )
       break;
     
     if (m_params.interval_msec)

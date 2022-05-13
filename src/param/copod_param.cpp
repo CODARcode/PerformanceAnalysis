@@ -1,5 +1,6 @@
 #include "chimbuko/param/copod_param.hpp"
 #include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/util/error.hpp"
 #include "chimbuko/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
@@ -141,3 +142,18 @@ void CopodParam::update(const CopodParam& other) {
    }
    return 1;
  }
+
+nlohmann::json CopodParam::get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const{
+  nlohmann::json out = nlohmann::json::array();
+  for(auto const &r : m_copodstats){
+    auto fit = func_id_map.find(r.first);
+    if(fit == func_id_map.end()) fatal_error("Could not find function in input map");
+    nlohmann::json entry = nlohmann::json::object();
+    entry["fid"] = r.first;
+    entry["pid"] = fit->second.first;
+    entry["func_name"] = fit->second.second;
+    entry["model"] = r.second.get_json();
+    out.push_back(std::move(entry));
+  }
+  return out;
+}

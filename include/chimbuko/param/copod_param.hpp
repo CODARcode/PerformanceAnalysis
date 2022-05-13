@@ -126,6 +126,12 @@ namespace chimbuko {
 
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
+    /**
+     * @brief Get the algorithm parameters for all functions. 
+     * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
+     */
+    nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
+
   private:
     std::unordered_map<unsigned long, Histogram> m_copodstats; /**< Map of func_id and corresponding Histogram*/
   };

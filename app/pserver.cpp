@@ -240,11 +240,17 @@ int main (int argc, char ** argv){
       tmp_fstats.get_profile_data(profile);
       tmp_metrics.get_profile_data(profile);
       nlohmann::json profile_j = profile.get_json();
+      
+      //Get the AD model
+      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
+      p->assign(param.getSerializedGlobalModel());
+      nlohmann::json ad_model_j = p->get_algorithm_params(global_func_index_map.getFunctionIndexMap());
 
       if(provdb_client.isConnected()){
 	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
 	provdb_client.sendMultipleData(profile_j, GlobalProvenanceDataType::FunctionStats);
 	provdb_client.sendMultipleData(global_counter_stats_j, GlobalProvenanceDataType::CounterStats);
+	provdb_client.sendMultipleData(ad_model_j, GlobalProvenanceDataType::ADModel);
 	progressStream << "Pserver: disconnecting from provDB" << std::endl;
 	provdb_client.disconnect();
       }
@@ -252,8 +258,10 @@ int main (int argc, char ** argv){
 	progressStream << "Pserver: writing final statistics to disk at path " << args.prov_outputpath << std::endl;
 	std::ofstream gf(args.prov_outputpath + "/global_func_stats.json");
 	std::ofstream gc(args.prov_outputpath + "/global_counter_stats.json");
+	std::ofstream ad(args.prov_outputpath + "/ad_model.json");
 	gf << profile_j.dump();
 	gc << global_counter_stats_j.dump();
+	ad << ad_model_j.dump();
       }
     }
 #endif

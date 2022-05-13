@@ -167,8 +167,6 @@ void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g
   }
 }
 
-
-
 void Histogram::merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l){
   std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
   std::vector<double> &comb_counts = combined.m_histogram.counts;

@@ -399,6 +399,7 @@ int main(int argc, char** argv) {
 	    glob_db.reset(new sonata::Database(client.open(addr, glob_provider_idx, glob_db_name)));
 	    glob_db->create("func_stats");
 	    glob_db->create("counter_stats");
+	    glob_db->create("ad_model");
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
 

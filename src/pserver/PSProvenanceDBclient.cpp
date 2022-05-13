@@ -18,6 +18,8 @@ sonata::Collection & PSProvenanceDBclient::getCollection(const GlobalProvenanceD
     return m_coll_funcstats;
   case GlobalProvenanceDataType::CounterStats:
     return m_coll_counterstats;
+  case GlobalProvenanceDataType::ADModel:
+    return m_coll_admodel;
   default:
     throw std::runtime_error("Invalid type");
   }
@@ -71,6 +73,9 @@ void PSProvenanceDBclient::connect(const std::string &addr, const int provider_i
     m_coll_funcstats = m_database.open("func_stats");
     verboseStream << "PSProvenanceDBclient opening counter stats collection" << std::endl;
     m_coll_counterstats = m_database.open("counter_stats");
+    verboseStream << "PSProvenanceDBclient opening AD model collection" << std::endl;
+    m_coll_admodel = m_database.open("ad_model");
+
     
     m_server = eng.lookup(addr);
 

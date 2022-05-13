@@ -49,6 +49,17 @@ void PSglobalFunctionIndexMap::deserialize(const nlohmann::json &fmap){
   m_idx = max+1;
 }
 
+
+std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > PSglobalFunctionIndexMap::getFunctionIndexMap() const{
+  std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > out;
+  for(auto const &p : m_fmap)
+    for(auto const &f : p.second)
+      out[f.second] = {p.first, f.first};
+  return out;
+}
+
+
+
 void NetPayloadGlobalFunctionIndexMap::action(Message &response, const Message &message){
   check(message);
   if(m_idxmap == nullptr) throw std::runtime_error("Cannot retrieve function index as map object has not been linked");
@@ -87,4 +98,5 @@ void NetPayloadGlobalFunctionIndexMapBatched::action(Message &response, const Me
     response.set_msg(ss.str(), false);
   }    
 }
+
 

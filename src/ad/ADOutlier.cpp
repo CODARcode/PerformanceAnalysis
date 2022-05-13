@@ -331,7 +331,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     double score = -1 * log2(prob + m_alpha);
     out_scores_i[i] = score;
     verboseStream << "Bin " << i << ", Range " << bin_edges[i] << "-" << bin_edges[i+1] << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
-    if(prob > 0) {
+    if(prob > 0 ) {
       min_score = std::min(min_score,score);
       max_score = std::max(max_score,score);
     }
@@ -344,6 +344,16 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 #if 0
   verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
   double l_threshold = min_score + (m_threshold * (max_score - min_score));
+
+  /*
+    l_threshold = min_score*(1-m_threshold) + m_threshold*max_score
+    min_score = -log2(p_max + m_alpha)
+    max_score = -log2(p_min + m_alpha)
+    l_threshold = -log2( [p_max + m_alpha]^[1-m_threshold] ) -log2( [p_min + m_alpha]^m_threshold )
+    l_threshold = log2( [p_max + m_alpha]^[m_threshold-1] ) +log2( [p_min + m_alpha]^-m_threshold )
+                = log2( [p_max + m_alpha]^-[1-m_threshold]  *  [p_min + m_alpha]^-m_threshold )
+  */
+
   verboseStream << "Local threshold " << l_threshold << std::endl;
   if(m_use_global_threshold) {
     if(l_threshold < hist.get_threshold()) {

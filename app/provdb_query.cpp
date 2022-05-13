@@ -32,7 +32,7 @@ void printUsageAndExit(){
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter-global: Apply a filter to a collection of global data.\n"
 	    << "Arguments: <collection> <query>\n"
-	    << "where collection = 'func_stats', 'counter_stats'\n"
+	    << "where collection = 'func_stats', 'counter_stats', 'ad_model'\n"
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << "query can also be set to 'DUMP', which will return all entries, equivalent to \"function(\\$a){ return true; }\"\n"
@@ -173,6 +173,7 @@ void filter_global(PSProvenanceDBclient &client,
   GlobalProvenanceDataType coll;
   if(coll_str == "func_stats") coll = GlobalProvenanceDataType::FunctionStats;
   else if(coll_str == "counter_stats") coll = GlobalProvenanceDataType::CounterStats;
+  else if(coll_str == "ad_model") coll = GlobalProvenanceDataType::ADModel;
   else throw std::runtime_error("Invalid collection");
 
   nlohmann::json result = nlohmann::json::array();
@@ -180,7 +181,8 @@ void filter_global(PSProvenanceDBclient &client,
   for(int i=0;i<str_results.size();i++)
     result.push_back( nlohmann::json::parse(str_results[i]) );
 
-  sort(result, { {"anomaly_metrics","severity","accumulate"}, {"anomaly_metrics","score","accumulate"} });
+  if(coll == GlobalProvenanceDataType::FunctionStats)
+    sort(result, { {"anomaly_metrics","severity","accumulate"}, {"anomaly_metrics","score","accumulate"} });
   
   std::cout << result.dump(4) << std::endl;
 }

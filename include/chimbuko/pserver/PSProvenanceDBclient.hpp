@@ -14,7 +14,7 @@ namespace chimbuko{
   /**
    * @brief The type of global provenance data
    */
-  enum class GlobalProvenanceDataType { FunctionStats, CounterStats };
+  enum class GlobalProvenanceDataType { FunctionStats, CounterStats, ADModel };
 
   /**
    * @Client for the pserver interaction with the provevance database
@@ -25,6 +25,7 @@ namespace chimbuko{
     sonata::Database m_database; /**< Sonata database */
     sonata::Collection m_coll_funcstats; /**< The function statistics collection */
     sonata::Collection m_coll_counterstats; /**< The counter statistics collection */
+    sonata::Collection m_coll_admodel; /**< The AD model collection */
     bool m_is_connected; /**< True if connection has been established to the provider */
     
     thallium::endpoint m_server; /**< Endpoint for provDB comms*/

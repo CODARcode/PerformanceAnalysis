@@ -147,6 +147,22 @@ HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
    return it->second.get_json();
  }
 
+nlohmann::json HbosParam::get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const{
+  nlohmann::json out = nlohmann::json::array();
+  for(auto const &r : m_hbosstats){
+    auto fit = func_id_map.find(r.first);
+    if(fit == func_id_map.end()) fatal_error("Could not find function in input map");
+    nlohmann::json entry = nlohmann::json::object();
+    entry["fid"] = r.first;
+    entry["pid"] = fit->second.first;
+    entry["func_name"] = fit->second.second;
+    entry["model"] = r.second.get_json();
+    out.push_back(std::move(entry));
+  }
+  return out;
+}
+
+
 
  bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
 
