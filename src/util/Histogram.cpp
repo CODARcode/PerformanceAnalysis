@@ -128,6 +128,8 @@ double Histogram::uniformCountInRange(double l, double u) const{
   }else{
     double lbinfrac = (lbinedges.second - l)/(lbinedges.second - lbinedges.first) * lbincount;
     double ubinfrac = (u - ubinedges.first)/(ubinedges.second - ubinedges.first) * ubincount;
+
+    assert(u>ubinedges.first && u<=ubinedges.second);
     
     assert(lbinfrac <= lbincount);
     assert(ubinfrac <= ubincount);
@@ -341,6 +343,7 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
 
   //merge_histograms_central_value(combined, g, l);
   merge_histograms_uniform(combined, g, l);
+  //merge_histograms_uniform_int(combined, g, l);
 
   //Decide new threshold as greater of the two
   combined.m_histogram.glob_threshold = std::max( l.get_threshold(),  g.get_threshold() );
@@ -506,20 +509,26 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
     m_histogram.bin_edges[b] = e;
     e += bin_width;
   }
+  if(fabs(m_histogram.bin_edges[nbin] - max) > 1e-8*bin_width) fatal_error("Unexpectedly large error in bin upper edge");
+  m_histogram.bin_edges[nbin] = max; //correct for rounding errors
 
-  double vshift = 1e-8*bin_width; //because lower bound is exclusive, a value lying exactly on a bin edge should be counted as part of the previous bin
-  
   m_histogram.counts = std::vector<double>(nbin,0.);
   for(double v: r_times){
-    int b = int(floor((v-vshift-first_edge)/bin_width) );
-    if(b<0 || b>=nbin) fatal_error("Data point falls outside histogram range!");
+    int b = getBin(v,0.);
+    if(b==LeftOfHistogram || b==RightOfHistogram){
+      std::ostringstream os; os << "Value " << v << " is outside of histogram with range " << first_edge << " " << m_histogram.bin_edges[nbin] << " diffs " << v-first_edge << " " << v-m_histogram.bin_edges[nbin];
+      fatal_error(os.str());
+    }
     m_histogram.counts[b] += 1.0;
   }
   
   //Check sum of counts is equal to the number of data points
   double count_sum = 0;
   for(double c: m_histogram.counts) count_sum += c;
-  if( fabs(count_sum - double(r_times.size())) > 1e-5) fatal_error("Histogram bin total count does not match number of data points");
+  if( fabs(count_sum - double(r_times.size())) > 1e-5){
+    std::ostringstream os; os << "Histogram bin total count " << count_sum << " does not match number of data points " << r_times.size();
+    fatal_error(os.str());
+  }
 
   //m_histogram.runtimes.clear();
   const double min_threshold = -1 * log2(1.00001);
@@ -591,6 +600,7 @@ nlohmann::json Histogram::get_json() const {
       {"Histogram Bin Edges", m_histogram.bin_edges}};
 }
 
+
 int Histogram::getBin(const double v, const double tol) const{
   if(Nbin() == 0) fatal_error("Histogram is empty");
   if(bin_edges().size() < 2) fatal_error("Histogram has <2 bin edges");
@@ -603,11 +613,20 @@ int Histogram::getBin(const double v, const double tol) const{
   else if(v > bin_edges()[nbin] + tol*bin_width) return RightOfHistogram;
   else if(v > bin_edges()[nbin]) return nbin-1; //within tolerance of last bin
   else{
-    double vshift = 1e-8*bin_width; //because lower bound is exclusive, a value lying exactly on a bin edge should be counted as part of the previous bin
-    return int(floor( (v - vshift - bin_edges()[0])/bin_width ));
+    int bin = int(floor( (v - bin_edges()[0])/bin_width ));
+    if(bin<0) fatal_error("Logic bomb: bin outside of histogram");
+    if(v <= bin_edges()[bin]){
+      --bin;  //because lower bound is exclusive, a value lying exactly on a bin edge should be counted as part of the previous bin. Also rounding errors can put the edge above the value
+      if(bin<0) fatal_error("Logic bomb: bin outside of histogram after edge adjustment");
+    }
+
+    if(v<=bin_edges()[bin] || v>bin_edges()[bin+1]){ //check we computed the correct bin
+      std::ostringstream ss; ss << "Error calculating bin for " << v << " obtained " << bin << " with edges " << bin_edges()[bin] << ":" << bin_edges()[bin+1] << " edge sep " << v-bin_edges()[bin] << " " << v-bin_edges()[bin+1];
+      fatal_error(ss.str());
+    }
+    return bin;
   }
 }
-
 
 double Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
   if(!set){
