@@ -574,13 +574,325 @@ TEST(TestHistogram, uniformCountInRange){
 
 }
 
+TEST(TestHistogramVBW, TestBasics){
+  Histogram h;
+  h.set_bin_edges({0,1,2,3});
+  h.set_counts({1,2,3});
+  h.set_min_max(1e-12, 3);
+  
+  HistogramVBW hv;
+  EXPECT_EQ(hv.Nbin(),0);
+  
+  hv.import(h);
+  
+  typedef HistogramVBW::Bin Bin;
+
+  Bin const* bins[3];
+
+  ASSERT_EQ(hv.Nbin(),3);
+  Bin const* b = hv.getBinByIndex(0);
+  ASSERT_NE(b,nullptr);
+  EXPECT_EQ(b->l, 0);
+  EXPECT_EQ(b->u, 1);
+  EXPECT_EQ(b->c, 1);
+  EXPECT_EQ(b->left, nullptr);
+
+  bins[0] = b;
+  Bin const* bp = b;
+  Bin const* bn = b->right;
+
+  b = hv.getBinByIndex(1);
+  ASSERT_NE(b,nullptr);
+  EXPECT_EQ(b, bn);
+  EXPECT_EQ(b->l, 1);
+  EXPECT_EQ(b->u, 2);
+  EXPECT_EQ(b->c, 2);
+  EXPECT_EQ(b->left, bp);
+ 
+  bins[1] = b;
+  bp = b;
+  bn = b->right;
+
+  b = hv.getBinByIndex(2);
+  ASSERT_NE(b,nullptr);
+  EXPECT_EQ(b, bn);
+  EXPECT_EQ(b->l, 2);
+  EXPECT_EQ(b->u, 3);
+  EXPECT_EQ(b->c, 3);
+  EXPECT_EQ(b->left, bp);
+  ASSERT_NE(b->right, nullptr);
+  EXPECT_TRUE(b->right->is_end);
+  
+  bins[2] = b;
+
+  //Test getBin
+  EXPECT_EQ(hv.getBin(0.5),bins[0]);
+  EXPECT_EQ(hv.getBin(1.5),bins[1]);
+  EXPECT_EQ(hv.getBin(2.5),bins[2]);
+
+  EXPECT_EQ(hv.getBin(0.0),nullptr);
+  EXPECT_EQ(hv.getBin(3.01),nullptr);
+
+
+  EXPECT_NEAR(hv.totalCount(),6.0,1e-8);
+
+}
+
+
+
+TEST(TestHistogramVBW, extractUniformCountInRangeInt){
+  typedef HistogramVBW::Bin Bin;
+
+  //Check for a normal histogram
+  {
+    Histogram h;
+    h.set_bin_edges({0,1,2,3});
+    h.set_counts({1,2,3});
+    h.set_min_max(1e-12, 3);
+    
+    //total sum
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(0,3),6.);
+      EXPECT_EQ(hcp.totalCount(), 0.);
+    }
+
+    //first bin
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(0,1),1.);
+      EXPECT_EQ(hcp.Nbin(),3);
+      EXPECT_EQ(hcp.getBinByIndex(0)->c, 0.);
+    }
+
+    //second bin
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(1,2),2.);
+      EXPECT_EQ(hcp.Nbin(),3);
+      EXPECT_EQ(hcp.getBinByIndex(1)->c, 0.);
+    }
+
+    //last bin
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(2,3),3.);
+      EXPECT_EQ(hcp.Nbin(),3);
+      EXPECT_EQ(hcp.getBinByIndex(2)->c, 0.);
+    }
+
+    //range left of histogram
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(-1,0),0.);
+      EXPECT_EQ(hcp.Nbin(),3);
+    }
+
+    //range right of histogram
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(3.01,4),0.);
+      EXPECT_EQ(hcp.Nbin(),3);
+    }
+
+    //range beyond but includes histogram
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(-1,4),6.);
+      EXPECT_EQ(hcp.totalCount(), 0.);
+    }
+
+    //lower bound matches upper edge of histogram
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(3,4),0.);
+      EXPECT_EQ(hcp.totalCount(), 6.);
+    }
+
+    //partial bin
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.Nbin(),3);	    
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(2.5,3),2.0);
+      ASSERT_EQ(hcp.Nbin(),4);
+
+      Bin const* lsplit = hcp.getBinByIndex(2);
+      EXPECT_EQ(lsplit->c, 1.0);
+      EXPECT_EQ(lsplit->l, 2.0);
+      EXPECT_EQ(lsplit->u, 2.5);
+
+      Bin const* rsplit = hcp.getBinByIndex(3);
+      EXPECT_EQ(rsplit->c, 0.0);
+      EXPECT_EQ(rsplit->l, 2.5);
+      EXPECT_EQ(rsplit->u, 3.0);
+
+      EXPECT_EQ(lsplit->right, rsplit);
+      EXPECT_EQ(rsplit->left, lsplit);
+    }
+    
+    //multiple partial bins
+    {
+      HistogramVBW hcp(h);	          
+      EXPECT_EQ(hcp.Nbin(),3);	    
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(0.5,2.5), 1+2+1);
+      ASSERT_EQ(hcp.Nbin(),5);
+
+      Bin const* lsplitl = hcp.getBinByIndex(0);
+      EXPECT_EQ(lsplitl->c, 0.0);
+      EXPECT_EQ(lsplitl->l, 0.0);
+      EXPECT_EQ(lsplitl->u, 0.5);
+
+      Bin const* lsplitr = hcp.getBinByIndex(1);
+      EXPECT_EQ(lsplitr->c, 0.0);
+      EXPECT_EQ(lsplitr->l, 0.5);
+      EXPECT_EQ(lsplitr->u, 1.0);
+      
+      EXPECT_EQ(lsplitl->right, lsplitr);
+      EXPECT_EQ(lsplitr->left, lsplitl);
+
+      Bin const* b = hcp.getBinByIndex(2);
+      EXPECT_EQ(b->c, 0.);
+
+      Bin const* rsplitl = hcp.getBinByIndex(3);
+      EXPECT_EQ(rsplitl->c, 0.0);
+      EXPECT_EQ(rsplitl->l, 2.0);
+      EXPECT_EQ(rsplitl->u, 2.5);
+
+      Bin const* rsplitr = hcp.getBinByIndex(4);
+      EXPECT_EQ(rsplitr->c, 2.0);
+      EXPECT_EQ(rsplitr->l, 2.5);
+      EXPECT_EQ(rsplitr->u, 3.0);
+
+      EXPECT_EQ(rsplitl->right, rsplitr);
+      EXPECT_EQ(rsplitr->left, rsplitl);
+    }
+      
+  }
+  //Check special treatment for a histogram with min=max
+  {
+    Histogram h;
+    h.set_bin_edges({0,1});
+    h.set_counts({3});
+    h.set_min_max(0.5, 0.5);
+
+    {
+      HistogramVBW hcp(h);	    
+      EXPECT_EQ(hcp.Nbin(),1);
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(0.499,0.5),3.);
+      EXPECT_EQ(hcp.Nbin(),1);
+      EXPECT_EQ(hcp.getBinByIndex(0)->c,0.);
+    }
+    {
+      HistogramVBW hcp(h);
+      EXPECT_EQ(hcp.Nbin(),1);	                
+      EXPECT_EQ(hcp.extractUniformCountInRangeInt(0.5,0.501),0.);
+      EXPECT_EQ(hcp.Nbin(),1);
+      EXPECT_EQ(hcp.getBinByIndex(0)->c,3.);
+    }
+  }
+
+}
+
 
 struct HistogramTest: public Histogram{
   using Histogram::merge_histograms_uniform;
-
+  using Histogram::merge_histograms_uniform_int;
 
 };
 
+TEST(TestHistogram, mergeUniformInt){
+  //Test merge when bin edges align
+  {
+    HistogramTest h;
+    h.set_bin_edges({0,1,2,3});
+    h.set_counts({0,0,0});
+    
+    HistogramTest l;
+    l.set_bin_edges({0,1,2,3});
+    l.set_counts({0,3,0});
+
+    HistogramTest g;
+    g.set_bin_edges({0,1,2,3});
+    g.set_counts({2,0,1});
+
+    HistogramTest::merge_histograms_uniform_int(h,l,g);
+
+    EXPECT_EQ(h.binCount(0),2);
+    EXPECT_EQ(h.binCount(1),3);
+    EXPECT_EQ(h.binCount(2),1);
+    std::cout << "Passed test when edges align" << std::endl;
+  }
+
+  //Test merge when bin edges don't align
+  {
+    HistogramTest h;
+    h.set_bin_edges({-1,0,1,2,3,4,5}); //target edges
+    h.set_counts({0,0,0,0,0,0});
+    
+    HistogramTest l;
+    l.set_bin_edges({-1,1,3,5});
+    l.set_counts({4,0,0});
+
+    HistogramTest g;
+    g.set_bin_edges({-1,1,2,3});
+    g.set_counts({6,0,0});
+
+
+    std::cout << "Merging l:\n" << l << std::endl;
+    std::cout << "Merging g:\n" << g << std::endl;
+    std::cout << "Into l:\n" << h << std::endl;
+
+    HistogramTest::merge_histograms_uniform_int(h,g,l);
+
+    EXPECT_EQ(h.binCount(0),5); //expect 1/2 of the first bin from each
+    EXPECT_EQ(h.binCount(1),5); //same for the second bin
+
+    for(int i=2;i<6;i++) EXPECT_EQ(h.binCount(i),0);
+    std::cout << "Passed test when edges don't align" << std::endl;
+
+    EXPECT_EQ(h.totalCount(),10.0);
+  }
+
+
+  //Test with fractional counts
+  {
+    HistogramTest h;
+    h.set_bin_edges({-1,-0.5,0,0.5,1,1.5,2.0,2.5,3.0});
+    h.set_counts({0,0,0,0,0,0,0,0});
+    
+    HistogramTest l;
+    l.set_bin_edges({-1,1,3});
+    l.set_counts({3,0});
+
+    HistogramTest g;
+    g.set_bin_edges({-1,1,3});
+    g.set_counts({0,2});
+
+    HistogramTest::merge_histograms_uniform_int(h,l,g);
+
+    EXPECT_EQ(h.totalCount(),5.0);
+
+    std::cout << "Merged: " << h << std::endl;
+
+    //-1:1 gets split into 4 parts
+    //For l,  first split  -1:1 to -1:-0.5  -0.5:1   ratio  1/4:3/4    initial counts 3/4:9/4 ,  rounded 1:2 no defecit
+    //        second split  -0.5:1  to  -0.5:0 and 0:1   ratio  1/3:2/3   initial counts 2/3,4/3  rounded 1:1 no defecit
+    //        third split   0:1 to 0:0.5  0.5:1   ratio 1/2:1/2  initial counts  1/2:1/2  rounded 1:1    0:1 after defecit
+    EXPECT_EQ(h.binCount(0),1);
+    EXPECT_EQ(h.binCount(1),1);
+    EXPECT_EQ(h.binCount(2),0);
+    EXPECT_EQ(h.binCount(3),1);
+
+    //1:3 gets split into 4 parts
+    //For g, first split 1:3 to 1:1.5 and 1.5:3  ratio 1/4:3/4  initial counts 2/4:6/4    rounded  1:2  1:1 after defecit
+    //       second split 1.5:3 to  1.5:2  and 2:3  ratio 1/3:2/3  initial counts 1/3:2/3  rounded 0:1 no defecit
+    //       third split  2:3 to 2:2.5 and  2.5:3 ratio 1/2:1/2  initial counts 1/2:1/2 rounded 1:1   0:1 after defecit
+    EXPECT_EQ(h.binCount(4),1);
+    EXPECT_EQ(h.binCount(5),0);
+    EXPECT_EQ(h.binCount(6),0);
+    EXPECT_EQ(h.binCount(7),1);
+  }
+}
 
 TEST(TestHistogram, mergeUniform){
   //Test merge when bin edges align
@@ -773,5 +1085,6 @@ TEST(TestHistogram, serialize){
  
 
 }
+
    
   

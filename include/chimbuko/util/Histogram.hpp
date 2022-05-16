@@ -89,7 +89,7 @@ namespace chimbuko{
 
 
   /**
-   * @brief Histogram Implementation
+   * @brief Fixed bin width histogram Implementation
    *
    * Note: lower bin edges are exclusive and upper edges inclusive,  i.e. for bin b with edges  (l,u), all data v in the bin have  l < v <= u
    */
@@ -445,6 +445,8 @@ namespace chimbuko{
      * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
      */
     static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
+    
+    static void merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l);
   
   };
 
@@ -452,4 +454,91 @@ namespace chimbuko{
   Histogram operator+(const Histogram& g, const Histogram& l);
 
   std::ostream & operator<<(std::ostream &os, const Histogram &h);
+
+
+  
+  //A histogram implementation with variable bin widths
+  class HistogramVBW{
+  public:
+    struct Bin{
+      double l; /**< Lower edge*/
+      double u; /**< Upper edge*/
+      double c; /**< Bin count*/
+      
+      Bin* left;
+      Bin* right;
+
+      bool is_end;
+      
+      Bin(double l, double u, double c): l(l), u(u), c(c), left(nullptr), right(nullptr), is_end(false){}
+  
+      static std::pair<Bin*,Bin*> insertFirst(Bin* toins);
+      static Bin* insertRight(Bin* of, Bin* toins);
+      static Bin* insertLeft(Bin* of, Bin* toins);
+      static void deleteChain(Bin* leftmost);
+      static Bin* getBin(Bin* leftmost, double v);    
+      static std::pair<Bin*,Bin*> split(Bin* bin, double about);
+      static size_t size(Bin* leftmost);
+    };
+
+    HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0){}
+
+    ~HistogramVBW();
+
+    void import(const Histogram &h);
+
+    /**
+     * @brief Construct from a fixed binwidth histogram
+     */
+    explicit HistogramVBW(const Histogram &h): HistogramVBW(){ import(h); }
+
+    /**
+     * @brief Get the bin containing value 'v'
+     * @param v The value
+     * @return Bin index if within the histogram, otherwise either Histogram::LeftOfHistogram or Histogram::RightOfHistogram
+     */
+    Bin const* getBin(const double v) const;
+
+    /**
+    * @brief Set the minimum and maximum values of data represented by the histogram
+    *
+    * both min and max values should be inside the histogram bounds!
+    */
+    void set_min_max(double min, double max);
+    
+    /**
+     * @brief Return the number of bins
+     */
+    size_t Nbin() const;
+
+    Bin const* getBinByIndex(const int idx) const;
+
+    /**
+     * @brief Return the sum of all the bin counts
+     */
+    double totalCount() const;
+
+    /**
+     * @brief Obtain the count of values falling between the given bounds assuming a uniform distribution of points within a bin. 
+     * The number is rounded to the nearest integer and returned. The data within the range in the histogram is zeroed, creating new edges appropriately
+     * @param l The lower bound
+     * @param h The upper bound
+     *
+     * Requires u>l
+     */
+    double extractUniformCountInRangeInt(double l, double u);
+
+    Bin const *getFirst() const{ return first; }
+    Bin const *getEnd() const{ return end; }
+  private:
+    Bin *first;
+    Bin *end;
+    double m_min;
+    double m_max;
+  };
+
+  std::ostream & operator<<(std::ostream &os, const HistogramVBW::Bin &b);
+  std::ostream & operator<<(std::ostream &os, const HistogramVBW &h);
+
+
 }
