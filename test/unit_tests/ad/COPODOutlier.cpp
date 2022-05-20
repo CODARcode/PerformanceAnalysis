@@ -37,7 +37,7 @@ TEST(COPODADOutlierTestSyncParamWithoutPS, Works){
 
   CopodParam local_params_ps_in;
   {
-    Histogram &h = local_params_ps_in[0];
+    Histogram &h = local_params_ps_in[0].getHistogram();
     std::vector<double> runtime;
     for(int i=0;i<N;i++) runtime.push_back(dist(gen));
     h.create_histogram(runtime);
@@ -69,7 +69,7 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   int N = 50;
   int func_id = 1234;
   CopodParam stats, stats2, stats3, stats4, stats5;
-  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id], &stats_r5 = stats5[func_id];
+  Histogram &stats_r = stats[func_id].getHistogram(), &stats_r2 = stats2[func_id].getHistogram(), &stats_r3 = stats3[func_id].getHistogram(), &stats_r4 = stats4[func_id].getHistogram(), &stats_r5 = stats5[func_id].getHistogram();
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
@@ -193,14 +193,14 @@ TEST(COPODADOutlierTestSyncParamWithPS, Works){
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
 
   {
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
@@ -209,8 +209,8 @@ TEST(COPODADOutlierTestSyncParamWithPS, Works){
   std::cout << local_params_ad[0].get_json().dump();
 
   CopodParam combined_params_ps; //what we expect
-  combined_params_ps.assign(global_params_ps.get_hbosstats());
-  combined_params_ps.update(local_params_ad.get_hbosstats());
+  combined_params_ps.assign(global_params_ps);
+  combined_params_ps.update(local_params_ad);
 
 
 #ifdef _USE_MPINET

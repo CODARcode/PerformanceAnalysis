@@ -487,7 +487,8 @@ Anomalies ADOutlierCOPOD::run(int step) {
   CopodParam param;
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
-    Histogram &hist = param[func_id];
+    CopodFuncParam &fparam = param[func_id];
+    Histogram &hist = fparam.getHistogram();
     std::vector<double> runtimes;
     for (auto itt : it.second) { //loop over events for that function
       if (itt->get_label() == 0)
@@ -574,7 +575,8 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   verboseStream << "data Size: " << data.size() << std::endl;
 
   CopodParam& param = *(CopodParam*)m_param;
-  Histogram &hist = param[func_id];
+  CopodFuncParam &fparam = param[func_id];
+  Histogram &hist = fparam.getHistogram();
 
   auto const & bin_counts = hist.counts();
   auto const & bin_edges = hist.bin_edges();

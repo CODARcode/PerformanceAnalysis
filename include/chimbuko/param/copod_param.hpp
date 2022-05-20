@@ -10,6 +10,39 @@
 
 namespace chimbuko {
 
+  /**
+   * @brief The algorithm parameters for a given function
+   */
+  class CopodFuncParam{
+  public:
+    CopodFuncParam();      
+
+    const Histogram &getHistogram() const{ return m_histogram; }
+    Histogram &getHistogram(){ return m_histogram; }
+    
+    /**
+     * @brief Merge another instance of HbosFuncParam into this one
+     * @param other The other instance
+     */
+    void merge(const CopodFuncParam &other);
+
+    nlohmann::json get_json() const;
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_histogram);
+    }
+
+    bool operator==(const CopodFuncParam &other) const{ return m_histogram == other.m_histogram; }
+    bool operator!=(const CopodFuncParam &other) const{ return !(*this == other); }
+
+  private:
+    Histogram m_histogram; /**< The function runtime histogram */
+  };
+
 
   /**
    * @@brief Implementation of ParamInterface for COPOD based anomaly detection
@@ -33,7 +66,12 @@ namespace chimbuko {
     /**
      * @brief Get the internal map between global function index and statistics
      */
-    const std::unordered_map<unsigned long, Histogram> & get_hbosstats() const{ return m_copodstats; }
+    const std::unordered_map<unsigned long, CopodFuncParam> & get_copodstats() const{ return m_copodstats; }
+
+    /**
+     * @brief Set the internal map between function index and statistics to the provided input
+     */
+    void set_copodstats(const std::unordered_map<unsigned long, CopodFuncParam> &to){ m_copodstats = to; }
 
     /**
      * @brief Get the number of functions for which statistics are being collected
@@ -63,44 +101,30 @@ namespace chimbuko {
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Set the internal Histogram to match those included in the input map. Overwrite performed only for those keys in input.
-     * @param copodstats The input map between global function index and Histogram
-     */
-    void assign(const std::unordered_map<unsigned long, Histogram>& copodstats);
-
-    /**
      * @brief Set the internal data to match those included in the input. Overwrite performed only for those keys in input.
      * @param params The input data
      */
     void assign(const CopodParam &other);
 
     /**
-     * @brief Convert a Histogram mapping into a Cereal portable binary representration
-     * @param copodstats The Histogram mapping
+     * @brief Convert a CopodParam into a Cereal portable binary representration
+     * @param param The CopodParam instance
      * @return Histogram in string format
      */
-    static std::string serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& copodstats);
+    static std::string serialize_cerealpb(const CopodParam &param);
 
     /**
      * @brief Get an element of the internal map
      * @param id The global function index
      */
-    Histogram& operator [](unsigned long id) { return m_copodstats[id]; }
+    CopodFuncParam& operator [](unsigned long id) { return m_copodstats[id]; }
 
     /**
-     * @brief Convert a Histogram Cereal portable binary representation string into a map
+     * @brief Deserialize a CopodParam instance
      * @param[in] parameters The parameter string
-     * @param[out] copodstats The map between global function index and histogram statistics
+     * @param[out] p The CopodParam instance
      */
-    static void deserialize_cerealpb(const std::string& parameters,
-			    std::unordered_map<unsigned long, Histogram>& copodstats);
-
-
-    /**
-     * @brief Update the internal histogram with those included in the input map
-     * @param[in] copodstats The map between global function index and histogram
-     */
-    void update(const std::unordered_map<unsigned long, Histogram>& copodstats);
+    static void deserialize_cerealpb(const std::string& parameters,  CopodParam &p);
 
     /**
      * @brief Update the internal Histogram with those included in another CopodParam instance.
@@ -118,16 +142,10 @@ namespace chimbuko {
     void update(const ParamInterface &other) override{ update(dynamic_cast<CopodParam const&>(other)); }
 
     /**
-     * @brief Update the internal histogram with those included in the input map. Input map is then updated to reflect new state.
-     * @param[in,out] copodstats The map between global function index and statistics
-     */
-    void update_and_return(std::unordered_map<unsigned long, Histogram>& copodstats);
-
-    /**
      * @brief Update the internal histogram with those included in another CopodParam instance. Other CopodParam is then updated to reflect new state.
      * @param[in,out] other The other CopodParam instance
      */
-    void update_and_return(CopodParam& other) { update_and_return(other.m_copodstats); }
+    void update_and_return(CopodParam& other);
 
 
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
@@ -139,7 +157,7 @@ namespace chimbuko {
     nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
 
   private:
-    std::unordered_map<unsigned long, Histogram> m_copodstats; /**< Map of func_id and corresponding Histogram*/
+    std::unordered_map<unsigned long, CopodFuncParam> m_copodstats; /**< Map of func_id and corresponding Histogram*/
   };
 
 

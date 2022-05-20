@@ -15,9 +15,20 @@
 
 using namespace chimbuko;
 
-/**
- * HBOS based implementation
- */
+CopodFuncParam::CopodFuncParam(){}
+
+
+nlohmann::json CopodFuncParam::get_json() const{
+  nlohmann::json entry = nlohmann::json::object();
+  entry["histogram"] = m_histogram.get_json();
+  return entry;
+}
+
+void CopodFuncParam::merge(const CopodFuncParam &other){
+  m_histogram = Histogram::merge_histograms(m_histogram, other.m_histogram);
+}
+
+
  CopodParam::CopodParam() {
    clear();
  }
@@ -45,14 +56,6 @@ using namespace chimbuko;
      os << std::endl;
  }
 
- void CopodParam::assign(const std::unordered_map<unsigned long, Histogram>& copodstats)
- {
-     std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: copodstats) {
-         m_copodstats[pair.first] = pair.second;
-     }
- }
-
  void CopodParam::assign(const CopodParam &other)
  {
    std::lock_guard<std::mutex> _(other.m_mutex);
@@ -65,78 +68,66 @@ using namespace chimbuko;
 
  void CopodParam::assign(const std::string& parameters)
  {
-     std::unordered_map<unsigned long, Histogram> copodstats;
-
-     deserialize_cerealpb(parameters, copodstats);
-     assign(copodstats);
+   CopodParam tmp;
+   deserialize_cerealpb(parameters, tmp);
+   assign(tmp);
  }
 
  std::string CopodParam::serialize() const
  {
-     std::lock_guard<std::mutex> _{m_mutex};
-
-     return serialize_cerealpb(m_copodstats);
+   std::lock_guard<std::mutex> _{m_mutex};   
+   return serialize_cerealpb(*this);
  }
 
- std::string CopodParam::serialize_cerealpb(const std::unordered_map<unsigned long, Histogram>& copodstats)
+ std::string CopodParam::serialize_cerealpb(const CopodParam &param)
  {
-   std::unordered_map<unsigned long, Histogram::Data> histdata;
-   for(auto const& e : copodstats)
-     histdata[e.first] = e.second.get_histogram();
    std::stringstream ss;
    {
      cereal::PortableBinaryOutputArchive wr(ss);
-     wr(histdata);
+     wr(param.m_copodstats);
    }
    return ss.str();
  }
 
- void CopodParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, Histogram>& copodstats)
+ void CopodParam::deserialize_cerealpb(const std::string& parameters,  CopodParam &p)
  {
+   p.clear();
    std::stringstream ss; ss << parameters;
-   std::unordered_map<unsigned long, Histogram::Data> histdata;
    {
      cereal::PortableBinaryInputArchive rd(ss);
-     rd(histdata);
+     rd(p.m_copodstats);
    }
-   for(auto const& e : histdata)
-     copodstats[e.first] = Histogram::from_hist_data(e.second);
  }
 
  std::string CopodParam::update(const std::string& parameters, bool return_update)
  {
-     std::unordered_map<unsigned long, Histogram> copodstats;
-     deserialize_cerealpb(parameters, copodstats);
-     if(return_update){
-       update_and_return(copodstats); //update copodstats to reflect changes
-       return serialize_cerealpb(copodstats);
-     }else{
-       update(copodstats);
-       return "";
-     }
+   CopodParam local_model;
+   deserialize_cerealpb(parameters, local_model);
+   if(return_update){
+     update_and_return(local_model); //update copodstats to reflect changes
+     return serialize_cerealpb(local_model);
+   }else{
+     update(local_model);
+     return "";
+   }
  }
 
- void CopodParam::update(const std::unordered_map<unsigned long, Histogram>& copodstats)
- {
-     std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: copodstats) {
-       m_copodstats[pair.first] = Histogram::merge_histograms(m_copodstats[pair.first], pair.second);
-     }
- }
-
- void CopodParam::update_and_return(std::unordered_map<unsigned long, Histogram>& copodstats)
- {
-    std::lock_guard<std::mutex> _(m_mutex);
-     for (auto& pair: copodstats) {
-       m_copodstats[pair.first] = Histogram::merge_histograms(m_copodstats[pair.first], pair.second);
-       pair.second = copodstats[pair.first];
-     }
-
- }
+void CopodParam::update_and_return(CopodParam &to_from){
+   std::lock_guard<std::mutex> _(m_mutex);
+   std::lock_guard<std::mutex> __(to_from.m_mutex);
+   
+   for (auto& pair: to_from.m_copodstats) {
+     m_copodstats[pair.first].merge(pair.second);
+     pair.second = m_copodstats[pair.first];
+   }  
+}
 
 void CopodParam::update(const CopodParam& other) { 
-  std::lock_guard<std::mutex> _(other.m_mutex);
-  update(other.m_copodstats); 
+  std::lock_guard<std::mutex> __(other.m_mutex);
+  std::lock_guard<std::mutex> _(m_mutex);
+  for (auto& pair: other.m_copodstats) {
+    m_copodstats[pair.first].merge(pair.second);
+  }
 }
 
 

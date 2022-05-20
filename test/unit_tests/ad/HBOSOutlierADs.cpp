@@ -31,6 +31,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   HbosParam global_params_ps; //parameters held in the parameter server
   HbosParam local_params_ad, local_params_ad2; //parameters collected by AD
 
+  //double threshold = 0.99; //suitable for score range method
+  double threshold = 0.98; //suitable for bin prob ratio method
+
   std::default_random_engine gen;
   std::normal_distribution<double> dist(50.,10.);
   int N = 50;
@@ -57,6 +60,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> local_bin_edges = r.bin_edges();
     std::cout << "Bin edges local:" << std::endl;
     for(int i=0; i < local_bin_edges.size(); i++) std::cout << local_bin_edges[i] << std::endl;
+    local_params_ad[0].setOutlierThreshold(threshold);
   }
 
   {
@@ -73,6 +77,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> local_bin_edges = r.bin_edges();
     std::cout << "Bin edges local:" << std::endl;
     for(int i=0; i < local_bin_edges.size(); i++) std::cout << local_bin_edges[i] << std::endl;
+    local_params_ad2[0].setOutlierThreshold(threshold);
   }
 
   std::cout << global_params_ps[0].get_json().dump();
@@ -180,7 +185,9 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	ADOutlierHBOSTest outlier;
-	outlier.set_threshold(0.98); //new merge strategy results in bin that doesn't quite go outside the outlier range by default
+
+	//Below is not used because the outlier instance doesn't generate its own parameters in this test, where the threshold is now passed
+	//outlier.set_threshold(0.98); //new merge strategy results in bin that doesn't quite go outside the outlier range by default
 	outlier.linkNetworkClient(&net_client);
 
 	std::cout << "Global and local histograms before sync_param in AD 2" << std::endl;

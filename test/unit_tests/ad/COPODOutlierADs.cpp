@@ -38,7 +38,7 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
@@ -47,7 +47,7 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
   {
     // First local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 10000 : double(dist(gen));
       unsigned long uval(val); //execdata truncates to unsigned long so we must do the same when generating the local histogram
@@ -64,7 +64,7 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
   {
     // Second local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad2[0];
+    Histogram &r = local_params_ad2[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 20000 : double(dist(gen));
       unsigned long uval(val);
@@ -83,12 +83,12 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
   std::cout << local_params_ad2[0].get_json().dump();
 
   CopodParam combined_params_ps, combined_params_ps2; //what we expect
-  combined_params_ps.assign(global_params_ps.get_hbosstats());
-  combined_params_ps.update(local_params_ad.get_hbosstats());
+  combined_params_ps.assign(global_params_ps);
+  combined_params_ps.update(local_params_ad);
 
-  combined_params_ps2.assign(global_params_ps.get_hbosstats());
-  combined_params_ps2.update(local_params_ad.get_hbosstats());
-  combined_params_ps2.update(local_params_ad2.get_hbosstats());
+  combined_params_ps2.assign(global_params_ps);
+  combined_params_ps2.update(local_params_ad);
+  combined_params_ps2.update(local_params_ad2);
 
 
 

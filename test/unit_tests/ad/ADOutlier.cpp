@@ -567,7 +567,8 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   
   //Generate a histogram
   std::vector<double> counts = {2,8,1,0,0,2};
-  Histogram h;
+  CopodFuncParam hp;
+  Histogram &h = hp.getHistogram();
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
   h.set_min_max(101,700);
@@ -577,11 +578,11 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   outlier.set_alpha(alpha); 
 
   int fid = 33;
-  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  std::unordered_map<unsigned long, CopodFuncParam> stats = { {fid, hp} }; 
   
   CopodParam p;
-  p.assign(stats);
-  EXPECT_EQ( p.get_hbosstats(), stats );
+  p.set_copodstats(stats);
+  EXPECT_EQ( p.get_copodstats(), stats );
 
   outlier.setParams(p);
 
@@ -648,7 +649,8 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  Histogram h;
+  CopodFuncParam hp;
+  Histogram &h = hp.getHistogram();
   h.set_counts({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2});
   h.set_bin_edges({100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400});
 
@@ -657,11 +659,11 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   outlier.set_alpha(alpha); 
 
   int fid = 33;
-  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  std::unordered_map<unsigned long, CopodFuncParam> stats = { {fid, hp} }; 
   
   CopodParam p;
-  p.assign(stats);
-  EXPECT_EQ( p.get_hbosstats(), stats );
+  p.set_copodstats(stats);
+  EXPECT_EQ( p.get_copodstats(), stats );
 
   outlier.setParams(p);
 
