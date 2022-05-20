@@ -647,11 +647,12 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   double l_threshold = (max_score < 0) ? (-1 * func_threshold * (max_score - min_score)) : min_score + (func_threshold * (max_score - min_score));
   verboseStream << "l_threshold computed: " << l_threshold << std::endl;
   if(m_use_global_threshold) {
-    verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
-    if(l_threshold < hist.get_threshold() && hist.get_threshold() > (-1 * log2(1.00001))) {
-      l_threshold = hist.get_threshold();
+    double g_threshold = fparam.getInternalGlobalThreshold();
+    verboseStream << "Global threshold before comparison with local threshold =  " << g_threshold << std::endl;
+    if(l_threshold < g_threshold && g_threshold > (-1 * log2(1.00001))) {
+      l_threshold = g_threshold;
     } else {
-      hist.set_glob_threshold(l_threshold);
+      fparam.setInternalGlobalThreshold(l_threshold);
     }
   }
 

@@ -15,17 +15,19 @@
 
 using namespace chimbuko;
 
-CopodFuncParam::CopodFuncParam(){}
+CopodFuncParam::CopodFuncParam():  m_internal_global_threshold(log2(1.00001)){}
 
 
 nlohmann::json CopodFuncParam::get_json() const{
   nlohmann::json entry = nlohmann::json::object();
   entry["histogram"] = m_histogram.get_json();
+  entry["internal_global_threshold"] = m_internal_global_threshold;
   return entry;
 }
 
 void CopodFuncParam::merge(const CopodFuncParam &other){
   m_histogram = Histogram::merge_histograms(m_histogram, other.m_histogram);
+  m_internal_global_threshold = std::max(m_internal_global_threshold, other.m_internal_global_threshold);
 }
 
 

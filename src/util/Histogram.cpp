@@ -51,7 +51,6 @@ double binWidthMaxNbinBase::correct_bin_width(double bin_width, const double min
   
 
 void Histogram::Data::clear() {
-  glob_threshold = log2(1.00001);
   counts.clear();
   bin_edges.clear();
   min = std::numeric_limits<double>::max();
@@ -345,9 +344,6 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   merge_histograms_uniform(combined, g, l);
   //merge_histograms_uniform_int(combined, g, l);
 
-  //Decide new threshold as greater of the two
-  combined.m_histogram.glob_threshold = std::max( l.get_threshold(),  g.get_threshold() );
-
   verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
 
   verboseStream << "Histogram::merge_histograms merged local histogram:\n" << l << "\nand global histogram:\n" << g << "\nobtained:\n" << combined << std::endl;
@@ -529,12 +525,6 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
     std::ostringstream os; os << "Histogram bin total count " << count_sum << " does not match number of data points " << r_times.size();
     fatal_error(os.str());
   }
-
-  //m_histogram.runtimes.clear();
-  const double min_threshold = -1 * log2(1.00001);
-  if (!(m_histogram.glob_threshold > min_threshold)) {
-    m_histogram.glob_threshold = min_threshold;
-  }
 }
 
 std::vector<double> Histogram::unpack() const{
@@ -590,7 +580,6 @@ Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<doub
     r_times.at(idx++) = runtimes.at(i);
 
   Histogram out(r_times,bwspec);
-  out.m_histogram.glob_threshold = g.get_threshold();
   return out;
 }
 

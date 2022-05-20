@@ -120,8 +120,6 @@ namespace chimbuko{
      * @brief Data structure that stores Histogram data ( bin counts, bin edges)
      */
     struct Data {
-
-      double glob_threshold; /**< global threshold used to filter anomalies*/
       std::vector<double> counts; /**< Bin counts in Histogram*/
       std::vector<double> bin_edges; /**< Bin edges in Histogram*/
       double min; /**< Minimum value ever encountered*/
@@ -136,11 +134,10 @@ namespace chimbuko{
 
       /**
        * @brief Initialize histogram data with existing histogram data
-       * @param g_threshold: Global Threshold
        * @param h_counts: a vector of histogram bin counts
        * @param h_bin_edges: a vector of histogram bin edges
        */
-      Data(const double& g_threshold, const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges, double min, double max): glob_threshold(g_threshold), counts(h_counts), bin_edges(h_bin_edges), min(min), max(max) {}
+      Data(const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges, double min, double max): counts(h_counts), bin_edges(h_bin_edges), min(min), max(max) {}
 
       /**
        * @brief Resets histogram data
@@ -152,13 +149,13 @@ namespace chimbuko{
        */
       template<class Archive>
       void serialize(Archive & archive){
-	archive(glob_threshold, counts, bin_edges, min, max);
+	archive(counts, bin_edges, min, max);
       }
 
       /**
        * @brief Comparison operator
        */
-      bool operator==(const Data &r) const{ return glob_threshold == r.glob_threshold && counts == r.counts && bin_edges == r.bin_edges && min == r.min && max == r.max; }
+      bool operator==(const Data &r) const{ return counts == r.counts && bin_edges == r.bin_edges && min == r.min && max == r.max; }
 
 
     };
@@ -220,11 +217,6 @@ namespace chimbuko{
      */
     static Histogram merge_histograms(const Histogram& g, const Histogram& l, const binWidthSpecifier &bwspec = binWidthScott());
 
-    /**
-     * @brief set global threshold for anomaly filtering
-     */
-    void set_glob_threshold(const double l) { m_histogram.glob_threshold = l;}
-
     /*
      * @brief set bin counts in Histogram
      * @param c: vector of bin counts
@@ -262,12 +254,6 @@ namespace chimbuko{
      * @param bin_edge: vector of bin edges of histogram
      */
     void add2binedges(const double bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
-
-    /*
-     * @brief get current value of global threshold from global histogram
-     * @return global threshold
-     */
-    double get_threshold() const {return m_histogram.glob_threshold;}
 
     /**
      * @brief Get current vector of bin counts of Histogram

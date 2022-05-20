@@ -19,6 +19,9 @@ namespace chimbuko {
 
     const Histogram &getHistogram() const{ return m_histogram; }
     Histogram &getHistogram(){ return m_histogram; }
+
+    double getInternalGlobalThreshold() const{ return m_internal_global_threshold; }
+    void setInternalGlobalThreshold(double to){ m_internal_global_threshold = to; }
     
     /**
      * @brief Merge another instance of HbosFuncParam into this one
@@ -33,14 +36,15 @@ namespace chimbuko {
      */
     template<class Archive>
     void serialize(Archive & archive){
-      archive(m_histogram);
+      archive(m_histogram, m_internal_global_threshold);
     }
 
-    bool operator==(const CopodFuncParam &other) const{ return m_histogram == other.m_histogram; }
+    bool operator==(const CopodFuncParam &other) const{ return m_histogram == other.m_histogram && m_internal_global_threshold == other.m_internal_global_threshold; }
     bool operator!=(const CopodFuncParam &other) const{ return !(*this == other); }
 
   private:
     Histogram m_histogram; /**< The function runtime histogram */
+    double m_internal_global_threshold; /**< An internal global threshold used by the algorithm*/
   };
 
 
