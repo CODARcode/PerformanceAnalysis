@@ -231,6 +231,16 @@ ADOutlierHBOS::~ADOutlierHBOS() {
     m_param->clear();
 }
 
+double ADOutlierHBOS::getFunctionThreshold(const std::string &fname) const{
+  double hbos_threshold = m_threshold; //default threshold
+  //check to see if we have an override
+  auto it = m_func_threshold_override.find(fname);
+  if(it != m_func_threshold_override.end())
+    hbos_threshold = it->second;
+  return hbos_threshold;
+}
+
+
 Anomalies ADOutlierHBOS::run(int step) {
   Anomalies outliers;
   if (m_execDataMap == nullptr) return outliers;
@@ -245,23 +255,13 @@ Anomalies ADOutlierHBOS::run(int step) {
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     std::vector<double> runtimes;
-    std::string const* fname = nullptr;
     for (auto itt : it.second) { //loop over events for that function
-      if(fname == nullptr) fname = &itt->get_funcname();
-
       if (itt->get_label() == 0)
 	runtimes.push_back(this->getStatisticValue(*itt));
     }
     verboseStream << "Function " << func_id << " has " << runtimes.size() << " unlabeled data points of " << it.second.size() << std::endl;
 
-    double threshold = m_threshold; //default threshold
-    if(fname != nullptr){ //check to see if we have an override
-      auto it = m_func_threshold_override.find(*fname);
-      if(it != m_func_threshold_override.end())
-	threshold = it->second;
-    }
-
-    param.generate_histogram(func_id, runtimes, threshold, max_possible_score, &global_param);
+    param.generate_histogram(func_id, runtimes, max_possible_score, &global_param);
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -299,7 +299,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //   verboseStream << "Function has no unlabeled events, skipping" << std::endl;
   //   return 0;
   // }
-
+  
+  if(data.size() == 0) return 0;
+  const std::string &fname = data.front()->get_funcname();
 
   HbosParam& param = *(HbosParam*)m_param;
   HbosFuncParam &fparam = param[func_id];
@@ -353,11 +355,14 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   verboseStream << "min_score = " << min_score << std::endl;
   verboseStream << "max_score = " << max_score << std::endl;
 
-  //Compute threshold as a fraction of the range of scores in the histogram
-#if 0
-  double range_threshold = fparam.getOutlierThreshold();
+  //Get the threshold appropriate to the function
+  double hbos_threshold = getFunctionThreshold(fname);
 
-  double l_threshold = min_score + (range_threshold * (max_score - min_score));
+#if 0
+  //Compute threshold as a fraction of the range of scores in the histogram
+
+  //Convert threshold into a score threshold
+  double l_threshold = min_score + (hbos_threshold * (max_score - min_score));
 
   /*
     l_threshold = min_score*(1-m_threshold) + m_threshold*max_score
@@ -393,8 +398,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //p_i = Q p_max
   //2^-s_i -alpha = Q ( 2^-s_min - alpha )
   //s_i = -log2 [ Q 2^-s_min + (1-Q)alpha ]
-  double hbos_threshold = fparam.getOutlierThreshold(); //per-function threshold
-
   if(hbos_threshold >= 1.0) fatal_error("Invalid threshold value");
   double Q = 1-hbos_threshold;
   double l_threshold = -log2( Q*pow(2,-min_score) + (1.-Q)*m_alpha );
@@ -478,6 +481,16 @@ ADOutlierCOPOD::~ADOutlierCOPOD() {
   if (m_param)
     m_param->clear();
 }
+
+double ADOutlierCOPOD::getFunctionThreshold(const std::string &fname) const{
+  double copod_threshold = m_threshold; //default threshold
+  //check to see if we have an override
+  auto it = m_func_threshold_override.find(fname);
+  if(it != m_func_threshold_override.end())
+    copod_threshold = it->second;
+  return copod_threshold;
+}
+
 
 Anomalies ADOutlierCOPOD::run(int step) {
   Anomalies outliers;
@@ -574,6 +587,9 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
   verboseStream << "data Size: " << data.size() << std::endl;
 
+  if(data.size() == 0) return 0;
+  const std::string &fname = data.front()->get_funcname();
+
   CopodParam& param = *(CopodParam*)m_param;
   CopodFuncParam &fparam = param[func_id];
   Histogram &hist = fparam.getHistogram();
@@ -625,10 +641,13 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   verboseStream << "max_score = " << max_score << std::endl;
 
   //Compute threshold
-  verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
-  double l_threshold = (max_score < 0) ? (-1 * m_threshold * (max_score - min_score)) : min_score + (m_threshold * (max_score - min_score));
+  //Get the threshold appropriate to the function
+  double func_threshold = getFunctionThreshold(fname); 
+
+  double l_threshold = (max_score < 0) ? (-1 * func_threshold * (max_score - min_score)) : min_score + (func_threshold * (max_score - min_score));
   verboseStream << "l_threshold computed: " << l_threshold << std::endl;
   if(m_use_global_threshold) {
+    verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
     if(l_threshold < hist.get_threshold() && hist.get_threshold() > (-1 * log2(1.00001))) {
       l_threshold = hist.get_threshold();
     } else {

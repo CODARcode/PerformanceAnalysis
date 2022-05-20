@@ -275,41 +275,13 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 }
 
 TEST(HBOSADOutlierTest, TestFunctionThresholdOverride){
-
   int func_id =101;
   int func_id2 = 202;
 
-  std::list<ExecData_t> call_list;  //aka CallList_t
-  std::unordered_map<unsigned long, std::vector<CallListIterator_t>> execdata;
-
-  for(int i=0;i<10;i++){
-    double val = i;
-    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
-
-    CallListIterator_t it = std::prev(call_list.end());
-    execdata[func_id].push_back(it);
-
-    call_list.push_back( createFuncExecData_t(0,0,0,  func_id2, "my_func2", 1000*(i+1),val) );
-
-    it = std::prev(call_list.end());
-    execdata[func_id2].push_back(it);
-  }
   double default_threshold = 0.99;
-
   ADOutlierHBOS ad(ADOutlier::ExclusiveRuntime, default_threshold);
-  ad.linkExecDataMap(&execdata);
   ad.overrideFuncThreshold("my_func",0.77);
 
-  ad.run();
-
-  HbosParam const* param = (HbosParam const*)ad.get_global_parameters();
-  const std::unordered_map<unsigned long, HbosFuncParam> &stats = param->get_hbosstats();
-  
-  auto it = stats.find(func_id);
-  ASSERT_NE(it, stats.end());
-  EXPECT_EQ(it->second.getOutlierThreshold(), 0.77);
-  
-  it = stats.find(func_id2);
-  ASSERT_NE(it, stats.end());
-  EXPECT_EQ(it->second.getOutlierThreshold(), default_threshold);
+  EXPECT_EQ(ad.getFunctionThreshold("my_func"), 0.77);
+  EXPECT_EQ(ad.getFunctionThreshold("my_other_func"), default_threshold);
 }

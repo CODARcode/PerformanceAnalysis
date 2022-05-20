@@ -11,7 +11,6 @@ TEST(TestHbosParam, generateLocalHistograms){
   std::normal_distribution<double> dist(50.,10.);
   int N = 50;
   int fid = 123;
-  double threshold = 0.9991;
   double init_global_threshold = 100;
 
   double min = std::numeric_limits<double>::max(), max=std::numeric_limits<double>::lowest();
@@ -27,12 +26,11 @@ TEST(TestHbosParam, generateLocalHistograms){
   {    
     binWidthScott bw;
     HbosFuncParam expect;
-    expect.setOutlierThreshold(threshold);
     expect.setInternalGlobalThreshold(init_global_threshold);
     expect.getHistogram() = Histogram(runtimes, bw);
     
     HbosParam p;
-    p.generate_histogram(fid, runtimes, threshold, init_global_threshold);
+    p.generate_histogram(fid, runtimes, init_global_threshold);
 
     auto const &stats = p.get_hbosstats();
     auto it = stats.find(fid);
@@ -52,7 +50,6 @@ TEST(TestHbosParam, generateLocalHistograms){
 
     binWidthScottMaxNbin bw(maxbins);
     HbosFuncParam expect;
-    expect.setOutlierThreshold(threshold);
     expect.setInternalGlobalThreshold(init_global_threshold);
     expect.getHistogram() = Histogram(runtimes, bw);
     
@@ -60,7 +57,7 @@ TEST(TestHbosParam, generateLocalHistograms){
 
     HbosParam p;
     p.setMaxBins(maxbins);
-    p.generate_histogram(fid, runtimes, threshold, init_global_threshold);
+    p.generate_histogram(fid, runtimes, init_global_threshold);
 
     auto const &stats = p.get_hbosstats();
     auto it = stats.find(fid);
@@ -80,7 +77,6 @@ TEST(TestHbosParam, syncLocalGlobal){
   int N = 50;
   int fid = 123;
   int maxbins = 2;  
-  double threshold = 0.9991;
   double init_global_threshold = 100;
 
   double min = std::numeric_limits<double>::max(), max=std::numeric_limits<double>::lowest();
@@ -112,11 +108,10 @@ TEST(TestHbosParam, syncLocalGlobal){
   
   HbosParam l;
   l.setMaxBins(maxbins);
-  l.generate_histogram(fid, runtimes, threshold, init_global_threshold);
+  l.generate_histogram(fid, runtimes, init_global_threshold);
 
   binWidthScottMaxNbin bw(maxbins);
   HbosFuncParam expect;
-  expect.setOutlierThreshold(threshold);
   expect.setInternalGlobalThreshold(init_global_threshold);
   expect.getHistogram() = Histogram(runtimes, bw);
 
@@ -142,14 +137,13 @@ TEST(TestHbosParam, syncLocalGlobal){
   expect.getHistogram() = Histogram::merge_histograms(expect.getHistogram(), h2, bw);
   EXPECT_EQ(expect.getHistogram().Nbin(), maxbins);  
 
-  l.generate_histogram(fid, runtimes2, threshold, init_global_threshold);
+  l.generate_histogram(fid, runtimes2, init_global_threshold);
   ASSERT_TRUE(l.find(fid));
   EXPECT_EQ(l[fid].getHistogram(), h2);
 
   g.update_and_return(l);
   
   std::cout << "Expect equal:" << std::endl << l[fid].get_json().dump(2) << std::endl << expect.get_json().dump(2) << std::endl;
-  std::cout << "Expect thresholds equal: " << l[fid].getHistogram().get_threshold() << " " << expect.getHistogram().get_threshold() << std::endl;
 
   EXPECT_EQ(l[fid], expect);
   ASSERT_TRUE(g.find(fid));

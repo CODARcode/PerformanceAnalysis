@@ -20,9 +20,6 @@ namespace chimbuko {
     const Histogram &getHistogram() const{ return m_histogram; }
     Histogram &getHistogram(){ return m_histogram; }
     
-    double getOutlierThreshold() const{ return m_outlier_threshold; }
-    void setOutlierThreshold(double to){ m_outlier_threshold = to; }
-    
     double getInternalGlobalThreshold() const{ return m_internal_global_threshold; }
     void setInternalGlobalThreshold(double to){ m_internal_global_threshold = to; }
 
@@ -40,15 +37,14 @@ namespace chimbuko {
      */
     template<class Archive>
     void serialize(Archive & archive){
-      archive(m_histogram, m_outlier_threshold, m_internal_global_threshold);
+      archive(m_histogram, m_internal_global_threshold);
     }
 
-    bool operator==(const HbosFuncParam &other) const{ return m_histogram == other.m_histogram && m_outlier_threshold == other.m_outlier_threshold && m_internal_global_threshold == other.m_internal_global_threshold; }
+    bool operator==(const HbosFuncParam &other) const{ return m_histogram == other.m_histogram && m_internal_global_threshold == other.m_internal_global_threshold; }
     bool operator!=(const HbosFuncParam &other) const{ return !(*this == other); }
 
   private:
     Histogram m_histogram; /**< The function runtime histogram */
-    double m_outlier_threshold; /**< The user-input threshold defining an outlier*/
     double m_internal_global_threshold; /**< An internal global threshold used by the algorithm*/
   };
 
@@ -186,10 +182,9 @@ namespace chimbuko {
      * @param func_id The function index
      * @param runtimes The function runtimes
      * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
-     * @param outlier_threshold The user-input threshold defining an outlier
      * @param global_threshold_init The initial value of the internal, global threshold
      */
-    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double outlier_threshold, double global_threshold_init,  HbosParam const *global_param = nullptr);
+    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init,  HbosParam const *global_param = nullptr);
    
   private:
     std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of func_id and corresponding Histogram*/

@@ -105,7 +105,6 @@ TEST(TestPSparamManager, ManualUpdate){
   //Some fake data
   std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
   HbosFuncParam hp1;
-  hp1.setOutlierThreshold(0.11);
   hp1.setInternalGlobalThreshold(3.141);
   hp1.getHistogram() = Histogram(d1);
   
@@ -177,7 +176,6 @@ TEST(TestPSparamManager, AutoUpdate){
   //Some fake data
   std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
   HbosFuncParam hp1;
-  hp1.setOutlierThreshold(0.11);
   hp1.setInternalGlobalThreshold(3.141);
   hp1.getHistogram() = Histogram(d1);
 

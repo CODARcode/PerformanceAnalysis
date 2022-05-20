@@ -253,6 +253,11 @@ namespace chimbuko {
      */
     void overrideFuncThreshold(const std::string &func, const double threshold){ m_func_threshold_override[func] = threshold; }
 
+    /**
+     * @brief Get the threshold used by the given function
+     */
+    double getFunctionThreshold(const std::string &fname) const;
+
   protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
@@ -269,7 +274,7 @@ namespace chimbuko {
      * @brief Scott's rule for bin_width estimation during histogram formation
      */
     double _scott_binWidth(std::vector<double>& vals);
-
+    
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in HBOS*/
@@ -321,6 +326,21 @@ namespace chimbuko {
      */
     Anomalies run(int step=0) override;
 
+    /**
+     * @brief Override the default threshold for a particular function
+     * @param func The function name
+     * @param threshold The new threshold
+     *
+     * Note: during the merge on the pserver, the merged threshold will be the larger of the values from the two inputs, hence the threshold should ideally be uniformly set for all ranks     
+     */
+    void overrideFuncThreshold(const std::string &func, const double threshold){ m_func_threshold_override[func] = threshold; }
+
+    /**
+     * @brief Get the threshold used by the given function
+     */
+    double getFunctionThreshold(const std::string &fname) const;
+
+
   protected:
     /**
      * @brief compute outliers (or anomalies) of the list of function calls
@@ -346,6 +366,8 @@ namespace chimbuko {
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
     double m_threshold; /**< Threshold used to filter anomalies in COPOD*/
+    std::unordered_map<std::string, double> m_func_threshold_override; /**< Optionally override the threshold for specific functions*/
+    
     bool m_use_global_threshold; /**< Flag to use global threshold*/
     //double m_threshold; /**< sync with global threshold */
     OutlierStatistic m_statistic; /**< Which statistic to use for outlier detection */

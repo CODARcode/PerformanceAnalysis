@@ -273,3 +273,15 @@ TEST(COPODADOutlierTestSyncParamWithPS, Works){
 #error "Requires compiling with MPI or ZMQ net"
 #endif
 }
+
+TEST(CopodADOutlierTest, TestFunctionThresholdOverride){
+  int func_id =101;
+  int func_id2 = 202;
+
+  double default_threshold = 0.99;
+  ADOutlierCOPOD ad(ADOutlier::ExclusiveRuntime, default_threshold);
+  ad.overrideFuncThreshold("my_func",0.77);
+
+  EXPECT_EQ(ad.getFunctionThreshold("my_func"), 0.77);
+  EXPECT_EQ(ad.getFunctionThreshold("my_other_func"), default_threshold);
+}
