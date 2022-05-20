@@ -245,14 +245,14 @@ TEST(HBOSADOutlierBPFileWithoutPServer, Works) {
         }
         if(runtimes.size() > 0) {
           if (!global_params_ad.find(func_id)) { // If func_id does not exist
-            local_params_ad[func_id].create_histogram(runtimes);
+            local_params_ad[func_id].getHistogram().create_histogram(runtimes);
           }
           else { //merge with exisiting func_id, not overwrite
 
-            local_params_ad[func_id] = Histogram::merge_histograms(global_params_ad[func_id], runtimes);
+            local_params_ad[func_id].getHistogram() = Histogram::merge_histograms(global_params_ad[func_id].getHistogram(), runtimes);
           }
 
-          n_tot_events += std::accumulate(local_params_ad[func_id].counts().begin(), local_params_ad[func_id].counts().end(), 0);
+          n_tot_events += std::accumulate(local_params_ad[func_id].getHistogram().counts().begin(), local_params_ad[func_id].getHistogram().counts().end(), 0);
 
           //prep to save data to json at the end of execution of a BPFile
           if(save_data.find(func_id) == save_data.end()){

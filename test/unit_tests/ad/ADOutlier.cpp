@@ -77,7 +77,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
   HbosParam local_params_ps_in;
   {
-    Histogram &h = local_params_ps_in[0];
+    Histogram &h = local_params_ps_in[0].getHistogram();
     std::vector<double> runtime;
     for(int i=0;i<N;i++) runtime.push_back(dist(gen));
     h.create_histogram(runtime);
@@ -102,8 +102,8 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   HbosParam const* g = (HbosParam const*)outlier.get_global_parameters();
   auto it = g->get_hbosstats().find(0);
   ASSERT_NE(it, g->get_hbosstats().end());
-  EXPECT_NE(it->second.getMax(), std::numeric_limits<double>::lowest());
-  EXPECT_NE(it->second.getMin(), std::numeric_limits<double>::max());
+  EXPECT_NE(it->second.getHistogram().getMax(), std::numeric_limits<double>::lowest());
+  EXPECT_NE(it->second.getHistogram().getMin(), std::numeric_limits<double>::max());
 
   EXPECT_EQ(local_params_ps.get_hbosstats(), g->get_hbosstats());
 }
@@ -441,11 +441,13 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   
   //Generate a histogram
   std::vector<double> counts = {2,8,1,0,0,2};
-  Histogram h;
+  HbosFuncParam fp;
+  Histogram &h = fp.getHistogram();
   h.set_counts(counts);
   h.set_bin_edges({100,200,300,400,500,600,700});
   h.set_min_max(101,700);
-  h.set_glob_threshold(0.99);
+  
+  fp.setOutlierThreshold(0.99);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -459,7 +461,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   }
 
   int fid = 33;
-  std::unordered_map<unsigned long, Histogram> stats = { {fid, h} }; 
+  std::unordered_map<unsigned long, HbosFuncParam> stats = { {fid, fp} }; 
   
   HbosParam p;
   p.set_hbosstats(stats);

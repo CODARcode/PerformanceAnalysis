@@ -37,7 +37,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
@@ -46,7 +46,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   {
     // First local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(dist(gen));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
@@ -62,7 +62,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
   {
     // Second local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad2[0];
+    Histogram &r = local_params_ad2[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(dist(gen));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );

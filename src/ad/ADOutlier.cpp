@@ -235,6 +235,8 @@ Anomalies ADOutlierHBOS::run(int step) {
   Anomalies outliers;
   if (m_execDataMap == nullptr) return outliers;
 
+  const double max_possible_score = -1 * log2(0.0 + m_alpha); //-log2(78.88e-32) ~ 100.0 by default (i.e. the theoretical max score)
+
   //Generate the statistics based on this IO step
   const HbosParam& global_param = *(HbosParam const*)m_param;
   HbosParam param;
@@ -259,7 +261,7 @@ Anomalies ADOutlierHBOS::run(int step) {
 	threshold = it->second;
     }
 
-    param.generate_histogram(func_id, runtimes, threshold, &global_param);
+    param.generate_histogram(func_id, runtimes, threshold, max_possible_score, &global_param);
   }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
@@ -300,7 +302,8 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
 
   HbosParam& param = *(HbosParam*)m_param;
-  Histogram &hist = param[func_id];
+  HbosFuncParam &fparam = param[func_id];
+  const Histogram &hist = fparam.getHistogram();
 
   unsigned long n_outliers = 0;
 
@@ -352,8 +355,9 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   //Compute threshold as a fraction of the range of scores in the histogram
 #if 0
-  verboseStream << "Global threshold before comparison with local threshold =  " << hist.get_threshold() << std::endl;
-  double l_threshold = min_score + (m_threshold * (max_score - min_score));
+  double range_threshold = fparam.getOutlierThreshold();
+
+  double l_threshold = min_score + (range_threshold * (max_score - min_score));
 
   /*
     l_threshold = min_score*(1-m_threshold) + m_threshold*max_score
@@ -366,12 +370,15 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
   verboseStream << "Local threshold " << l_threshold << std::endl;
   if(m_use_global_threshold) {
-    if(l_threshold < hist.get_threshold()) {
+    double g_threshold  = fparam.getInternalGlobalThreshold();
+    verboseStream << "Global threshold before comparison with local threshold =  " << g_threshold << std::endl;
+
+    if(l_threshold < g_threshold) {
       verboseStream << "Using global threshold as it is more stringent" << std::endl;
-      l_threshold = hist.get_threshold();
+      l_threshold = g_threshold;
     } else {
       verboseStream << "Using local threshold as it is more stringent" << std::endl;
-      hist.set_glob_threshold(l_threshold); 
+      fparam.setInternalGlobalThreshold(l_threshold);  //update the global score threshold to the new, more stringent test
     }
   }
 #else
@@ -386,7 +393,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   //p_i = Q p_max
   //2^-s_i -alpha = Q ( 2^-s_min - alpha )
   //s_i = -log2 [ Q 2^-s_min + (1-Q)alpha ]
-  double hbos_threshold = hist.get_threshold(); //per-function threshold
+  double hbos_threshold = fparam.getOutlierThreshold(); //per-function threshold
 
   if(hbos_threshold >= 1.0) fatal_error("Invalid threshold value");
   double Q = 1-hbos_threshold;

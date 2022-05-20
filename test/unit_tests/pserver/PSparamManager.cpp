@@ -104,9 +104,12 @@ TEST(TestPSparamManager, ManualUpdate){
   
   //Some fake data
   std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
-  Histogram h1(d1);
+  HbosFuncParam hp1;
+  hp1.setOutlierThreshold(0.11);
+  hp1.setInternalGlobalThreshold(3.141);
+  hp1.getHistogram() = Histogram(d1);
   
-  w1[fid] = h1;
+  w1[fid] = hp1;
 
   //Check update fails for invalid worker index
   bool fail = false;
@@ -142,7 +145,7 @@ TEST(TestPSparamManager, ManualUpdate){
     auto it = stats.find(fid);
     ASSERT_NE(it, stats.end());
     
-    EXPECT_EQ(it->second, h1);
+    EXPECT_EQ(it->second, hp1);
   }
 
   //Updating the global model again should give the same result
@@ -158,7 +161,7 @@ TEST(TestPSparamManager, ManualUpdate){
     auto it = stats.find(fid);
     ASSERT_NE(it, stats.end());
     
-    EXPECT_EQ(it->second, h1);
+    EXPECT_EQ(it->second, hp1);
   }
 
 
@@ -173,9 +176,12 @@ TEST(TestPSparamManager, AutoUpdate){
   
   //Some fake data
   std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
-  Histogram h1(d1);
-  
-  w1[fid] = h1;
+  HbosFuncParam hp1;
+  hp1.setOutlierThreshold(0.11);
+  hp1.setInternalGlobalThreshold(3.141);
+  hp1.getHistogram() = Histogram(d1);
+
+  w1[fid] = hp1;
 
   EXPECT_FALSE(man1.updaterThreadIsRunning());
 
@@ -206,7 +212,7 @@ TEST(TestPSparamManager, AutoUpdate){
       EXPECT_EQ(stats.size(), 1);
       auto it = stats.find(fid);
       ASSERT_NE(it, stats.end());      
-      EXPECT_EQ(it->second, h1);
+      EXPECT_EQ(it->second, hp1);
       good = true;
       break;
     }
@@ -272,13 +278,13 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   
   //Some fake data
   Histogram h1({1,2,3,4,5,6,7,8,9,10,11,12});
-  w1[fid] = h1;
+  w1[fid].getHistogram() = h1;
 
   Histogram h2({13,14,15,16,17,18});
-  w2[fid] = h2;
+  w2[fid].getHistogram() = h2;
 
   Histogram h3({19,20,21,22,23,24,25});
-  w3[fid] = h3;
+  w3[fid].getHistogram() = h3;
   
   //Data are distributed to worker threads in round-robin. Global model will then combine in order
   //NOTE: the first data is assigned to worker 1, not 0 because the handshake was given to worker 0!
@@ -329,8 +335,8 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   ASSERT_TRUE(combined.find(fid));
   ASSERT_TRUE(glob.find(fid));
 
-  Histogram const& glob_h = glob[fid];
-  Histogram const& expect_h = combined[fid];
+  Histogram const& glob_h = glob[fid].getHistogram();
+  Histogram const& expect_h = combined[fid].getHistogram();
   double gc = glob_h.totalCount();
   double ec = expect_h.totalCount();
   std::cout << "Global count " << gc << " expect " << ec << std::endl;

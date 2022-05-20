@@ -40,7 +40,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(std::round(dist_lognorm(gen)));
     r.create_histogram(runtimes);
   }
@@ -49,7 +49,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   {
     // First local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(std::round(dist_lognorm(gen)));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
@@ -65,7 +65,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
   {
     // Second local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad2[0];
+    Histogram &r = local_params_ad2[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 5000 : double(std::round(dist_lognorm(gen)));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
@@ -248,7 +248,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(std::round(dist_gamma(gen)));
     r.create_histogram(runtimes);
   }
@@ -257,7 +257,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
   {
     // First local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 1000 : double(std::round(dist_gamma(gen)));
       call_list.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
@@ -273,7 +273,7 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
   {
     // Second local AD instance
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad2[0];
+    Histogram &r = local_params_ad2[0].getHistogram();
     for(int i=0;i<N;i++) {
       double val = i==N-1 ? 5000 : double(std::round(dist_gamma(gen)));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );

@@ -69,6 +69,12 @@ namespace chimbuko {
     void assign(const std::unordered_map<unsigned long, Histogram>& copodstats);
 
     /**
+     * @brief Set the internal data to match those included in the input. Overwrite performed only for those keys in input.
+     * @param params The input data
+     */
+    void assign(const CopodParam &other);
+
+    /**
      * @brief Convert a Histogram mapping into a Cereal portable binary representration
      * @param copodstats The Histogram mapping
      * @return Histogram in string format

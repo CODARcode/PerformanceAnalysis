@@ -37,7 +37,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
 
   HbosParam local_params_ps_in;
   {
-    Histogram &h = local_params_ps_in[0];
+    Histogram &h = local_params_ps_in[0].getHistogram();
     std::vector<double> runtime;
     for(int i=0;i<N;i++) runtime.push_back(dist(gen));
     h.create_histogram(runtime);
@@ -69,7 +69,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   int N = 50;
   int func_id = 1234;
   HbosParam stats, stats2, stats3, stats4, stats5;
-  Histogram &stats_r = stats[func_id], &stats_r2 = stats2[func_id], &stats_r3 = stats3[func_id], &stats_r4 = stats4[func_id], &stats_r5 = stats5[func_id];
+  Histogram &stats_r = stats[func_id].getHistogram(), &stats_r2 = stats2[func_id].getHistogram(), &stats_r3 = stats3[func_id].getHistogram(), &stats_r4 = stats4[func_id].getHistogram(), &stats_r5 = stats5[func_id].getHistogram();
   std::vector<double> runtimes;
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
@@ -193,14 +193,14 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 
   {
     std::vector<double> runtimes;
-    Histogram &r = global_params_ps[0];
+    Histogram &r = global_params_ps[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
 
   {
     std::vector<double> runtimes;
-    Histogram &r = local_params_ad[0];
+    Histogram &r = local_params_ad[0].getHistogram();
     for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
     r.create_histogram(runtimes);
   }
@@ -303,13 +303,13 @@ TEST(HBOSADOutlierTest, TestFunctionThresholdOverride){
   ad.run();
 
   HbosParam const* param = (HbosParam const*)ad.get_global_parameters();
-  const std::unordered_map<unsigned long, Histogram> &stats = param->get_hbosstats();
+  const std::unordered_map<unsigned long, HbosFuncParam> &stats = param->get_hbosstats();
   
   auto it = stats.find(func_id);
   ASSERT_NE(it, stats.end());
-  EXPECT_EQ(it->second.get_threshold(), 0.77);
+  EXPECT_EQ(it->second.getOutlierThreshold(), 0.77);
   
   it = stats.find(func_id2);
   ASSERT_NE(it, stats.end());
-  EXPECT_EQ(it->second.get_threshold(), default_threshold);
+  EXPECT_EQ(it->second.getOutlierThreshold(), default_threshold);
 }

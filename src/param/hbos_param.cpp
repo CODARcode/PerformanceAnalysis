@@ -17,6 +17,23 @@ using namespace chimbuko;
 /**
  * HBOS based implementation
  */
+HbosFuncParam::HbosFuncParam():  m_internal_global_threshold(log2(1.00001)), m_outlier_threshold(0){} //initial outlier threshold on pserver 0 so it is overwritten by the first merge
+
+
+nlohmann::json HbosFuncParam::get_json() const{
+  nlohmann::json entry = nlohmann::json::object();
+  entry["outlier_threshold"] = m_outlier_threshold;
+  entry["internal_global_threshold"] = m_internal_global_threshold;
+  entry["histogram"] = m_histogram.get_json();
+  return entry;
+}
+
+void HbosFuncParam::merge(const HbosFuncParam &other, const binWidthSpecifier &bw){
+  m_histogram = Histogram::merge_histograms(m_histogram, other.m_histogram, bw);
+  m_internal_global_threshold = std::max(m_internal_global_threshold, other.m_internal_global_threshold);
+  m_outlier_threshold = std::max(m_outlier_threshold, other.m_outlier_threshold);
+}
+
 HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
    clear();
  }
@@ -121,7 +138,7 @@ HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
    
    for (auto& pair: from.m_hbosstats) {
      verboseStream << "Histogram merge (no response) of func " << pair.first << std::endl;
-     m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second, bwspec);
+     m_hbosstats[pair.first].merge(pair.second, bwspec);
    }
  }
 
@@ -134,7 +151,7 @@ HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
 
    for (auto& pair: to_from.m_hbosstats) {
      verboseStream << "Histogram merge (with response) of func " << pair.first << std::endl;
-     m_hbosstats[pair.first] = Histogram::merge_histograms(m_hbosstats[pair.first], pair.second, bwspec);
+     m_hbosstats[pair.first].merge(pair.second, bwspec);
      pair.second = m_hbosstats[pair.first];
    }
 
@@ -167,17 +184,18 @@ nlohmann::json HbosParam::get_algorithm_params(const std::unordered_map<unsigned
  bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
 
 
-void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double hbos_threshold, HbosParam const *global_param){
+void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double outlier_threshold, double global_threshold_init, HbosParam const *global_param){
   if (runtimes.size() > 0) {
     verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
 
     Histogram const* global_hist = nullptr;
     if(global_param != nullptr){
       auto hit = global_param->get_hbosstats().find(func_id);
-      if(hit != global_param->get_hbosstats().end()) global_hist = &hit->second;
+      if(hit != global_param->get_hbosstats().end()) global_hist = &hit->second.getHistogram();
     }
 
-    Histogram &hist = m_hbosstats[func_id];
+    HbosFuncParam &fparam = m_hbosstats[func_id];
+    Histogram &hist = fparam.getHistogram();
     if(global_hist != nullptr){
       //Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
       double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
@@ -189,7 +207,8 @@ void HbosParam::generate_histogram(const unsigned long func_id, const std::vecto
       binWidthScottMaxNbin l_bwspec(m_maxbins);
       hist.create_histogram(runtimes, l_bwspec);
     }
-    hist.set_glob_threshold(hbos_threshold);
+    fparam.setOutlierThreshold(outlier_threshold);
+    fparam.setInternalGlobalThreshold(global_threshold_init);
 
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;

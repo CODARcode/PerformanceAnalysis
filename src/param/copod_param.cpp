@@ -53,6 +53,16 @@ using namespace chimbuko;
      }
  }
 
+ void CopodParam::assign(const CopodParam &other)
+ {
+   std::lock_guard<std::mutex> _(other.m_mutex);
+   std::lock_guard<std::mutex> __(m_mutex);
+
+   for (auto& pair: other.m_copodstats) {
+     m_copodstats[pair.first] = pair.second;
+   }
+ }
+
  void CopodParam::assign(const std::string& parameters)
  {
      std::unordered_map<unsigned long, Histogram> copodstats;

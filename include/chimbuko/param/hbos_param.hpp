@@ -11,7 +11,50 @@
 namespace chimbuko {
 
   /**
-   * @@brief Implementation of ParamInterface for HBOS based anomaly detection
+   * @brief The algorithm parameters for a given function
+   */
+  class HbosFuncParam{
+  public:
+    HbosFuncParam();      
+
+    const Histogram &getHistogram() const{ return m_histogram; }
+    Histogram &getHistogram(){ return m_histogram; }
+    
+    double getOutlierThreshold() const{ return m_outlier_threshold; }
+    void setOutlierThreshold(double to){ m_outlier_threshold = to; }
+    
+    double getInternalGlobalThreshold() const{ return m_internal_global_threshold; }
+    void setInternalGlobalThreshold(double to){ m_internal_global_threshold = to; }
+
+    /**
+     * @brief Merge another instance of HbosFuncParam into this one
+     * @param other The other instance
+     * @param bw The specifier for the bin width used in the histogram merge
+     */
+    void merge(const HbosFuncParam &other, const binWidthSpecifier &bw);
+
+    nlohmann::json get_json() const;
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_histogram, m_outlier_threshold, m_internal_global_threshold);
+    }
+
+    bool operator==(const HbosFuncParam &other) const{ return m_histogram == other.m_histogram && m_outlier_threshold == other.m_outlier_threshold && m_internal_global_threshold == other.m_internal_global_threshold; }
+    bool operator!=(const HbosFuncParam &other) const{ return !(*this == other); }
+
+  private:
+    Histogram m_histogram; /**< The function runtime histogram */
+    double m_outlier_threshold; /**< The user-input threshold defining an outlier*/
+    double m_internal_global_threshold; /**< An internal global threshold used by the algorithm*/
+  };
+
+
+  /**
+   * @brief Implementation of ParamInterface for HBOS based anomaly detection
    */
   class HbosParam : public ParamInterface {
   public:
@@ -38,12 +81,12 @@ namespace chimbuko {
     /**
      * @brief Get the internal map between global function index and statistics
      */
-    const std::unordered_map<unsigned long, Histogram> & get_hbosstats() const{ return m_hbosstats; }
+    const std::unordered_map<unsigned long, HbosFuncParam> & get_hbosstats() const{ return m_hbosstats; }
 
     /**
      * @brief Set the internal map between function index and statistics to the provided input
      */
-    void set_hbosstats(const std::unordered_map<unsigned long, Histogram> &to){ m_hbosstats = to; }
+    void set_hbosstats(const std::unordered_map<unsigned long, HbosFuncParam> &to){ m_hbosstats = to; }
 
     /**
      * @brief Get the number of functions for which statistics are being collected
@@ -87,7 +130,7 @@ namespace chimbuko {
      * @brief Get an element of the internal map
      * @param id The global function index
      */
-    Histogram& operator [](unsigned long id) { return m_hbosstats[id]; }
+    HbosFuncParam& operator [](unsigned long id) { return m_hbosstats[id]; }
 
     /**
      * @brief Deserialize a serialized HbosParam object Histogram Cereal portable binary representation string into a map
@@ -143,12 +186,13 @@ namespace chimbuko {
      * @param func_id The function index
      * @param runtimes The function runtimes
      * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
-     * @param hbos_threshold The threshold used for this function
+     * @param outlier_threshold The user-input threshold defining an outlier
+     * @param global_threshold_init The initial value of the internal, global threshold
      */
-    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double hbos_threshold, HbosParam const *global_param = nullptr);
+    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double outlier_threshold, double global_threshold_init,  HbosParam const *global_param = nullptr);
    
   private:
-    std::unordered_map<unsigned long, Histogram> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
+    std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
     int m_maxbins; /**< Maximum number of bins to use in the histograms */
   };
 
