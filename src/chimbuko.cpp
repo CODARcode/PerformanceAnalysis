@@ -33,7 +33,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   step_report_freq(1),
                                   analysis_step_freq(1),
                                   read_ignored_corrid_funcs(""),
-                                  max_frames(-1)
+                                  max_frames(-1),
+                                  func_threshold_file("")
 {}
 
 void ChimbukoParams::print() const{
@@ -227,6 +228,7 @@ void Chimbuko::init_outlier(){
   params.glob_thres = m_params.hbos_use_global_threshold;
   params.sstd_sigma = m_params.outlier_sigma;
   params.hbos_max_bins = m_params.hbos_max_bins;
+  params.func_threshold_file = m_params.func_threshold_file;
 
   ADOutlier::OutlierStatistic stat;
   if(m_params.outlier_statistic == "exclusive_runtime") params.stat = ADOutlier::ExclusiveRuntime;

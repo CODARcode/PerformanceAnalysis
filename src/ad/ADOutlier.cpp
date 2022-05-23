@@ -13,7 +13,7 @@
 
 using namespace chimbuko;
 
-ADOutlier::AlgoParams::AlgoParams(): stat(ADOutlier::ExclusiveRuntime), sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200){}
+ADOutlier::AlgoParams::AlgoParams(): stat(ADOutlier::ExclusiveRuntime), sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200), func_threshold_file(""){}
 
 
 /* ---------------------------------------------------------------------------
@@ -30,15 +30,39 @@ ADOutlier::~ADOutlier() {
     }
 }
 
+
+template<typename ADOutlierType>
+void loadPerFunctionThresholds(ADOutlierType* into, const std::string &filename){
+  if(filename == "") return;
+  std::ifstream in(filename);
+  if(!in.good()) fatal_error("Could not open function threshold file: " + filename);
+  nlohmann::json j;
+  in >> j;
+  if(in.fail()) fatal_error("Error reading from function threshold file");    
+  if(!j.is_array()) fatal_error("Function threshold file should be a json array");
+  for(auto it = j.begin(); it != j.end(); it++){
+    if(!it->contains("fname") || !it->contains("threshold")) fatal_error("Function threshold file invalid format");
+    const std::string &fname = (*it)["fname"];
+    double thres = (*it)["threshold"];
+    progressStream << "Set per-function threshold: \"" << fname << "\" " << thres << std::endl;
+    into->overrideFuncThreshold(fname, thres);
+  }
+}
+
+
 ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoParams &params) {
   if (algorithm == "sstd" || algorithm == "SSTD") {
     return new ADOutlierSSTD(params.stat, params.sstd_sigma);
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
-    return new ADOutlierHBOS(params.stat, params.hbos_thres, params.glob_thres, params.hbos_max_bins);
+    ADOutlierHBOS* alg = new ADOutlierHBOS(params.stat, params.hbos_thres, params.glob_thres, params.hbos_max_bins);
+    loadPerFunctionThresholds(alg,params.func_threshold_file);
+    return alg;
   }
   else if (algorithm == "copod" || algorithm == "COPOD") {
-    return new ADOutlierCOPOD(params.stat, params.hbos_thres);
+    ADOutlierCOPOD* alg = new ADOutlierCOPOD(params.stat, params.hbos_thres);
+    loadPerFunctionThresholds(alg,params.func_threshold_file);
+    return alg;   
   }
   else{
     fatal_error("Invalid algorithm: " + algorithm);
@@ -302,6 +326,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   
   if(data.size() == 0) return 0;
   const std::string &fname = data.front()->get_funcname();
+  verboseStream << "Function name is \"" << fname << "\"" << std::endl;
 
   HbosParam& param = *(HbosParam*)m_param;
   HbosFuncParam &fparam = param[func_id];

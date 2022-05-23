@@ -24,6 +24,8 @@ namespace chimbuko {
     bool hbos_use_global_threshold; /**< Global threshold flag in HBOS*/
     int hbos_max_bins; /**< Maximum number of bins to use in HBOS algorithm histograms*/
 
+    std::string func_threshold_file; /**< A filename containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: "[ { "fname": <FUNC>, "threshold": <THRES> },... ]". Empty string (default) uses default threshold for all funcs*/ 
+
     //Parameters associated with communicating with the parameter server*/
     std::string pserver_addr; /**< The address of the parameter server.
 				 < If no parameter server is in use, this string should be empty (length zero)

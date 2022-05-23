@@ -36,6 +36,7 @@ namespace chimbuko {
     
       //HBOS/COPOD
       double hbos_thres; /**< The outlier threshold*/
+      std::string func_threshold_file; /**< Name of a file containing per-function overrides of the threshold*/
 
       //HBOS
       bool glob_thres; /**< Should the global threshold be used? */
