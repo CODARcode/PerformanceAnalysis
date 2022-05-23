@@ -1,6 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include<array>
+#include<unordered_set>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
 #include "chimbuko/util/RunStats.hpp"
@@ -102,6 +103,18 @@ namespace chimbuko {
      */
     ParamInterface const* get_global_parameters() const{ return m_param; }
 
+    /**
+     * @brief Return true if the specified function is being ignored
+     */
+    bool ignoringFunction(const std::string &func) const;
+
+    /**
+     * @brief Set a function to be ignored by the outlier detection.
+     *
+     * All such events are flagged as normal
+     */
+    void setIgnoreFunction(const std::string &func);
+
   protected:
     /**
      * @brief abstract method to compute outliers (or anomalies)
@@ -132,7 +145,7 @@ namespace chimbuko {
      * @brief Extract the appropriate statistic from an ExecData_t object
      */
     double getStatisticValue(const ExecData_t &e) const;
-
+    
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
@@ -146,6 +159,7 @@ namespace chimbuko {
     PerfStats *m_perf;
   private:
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
+    std::unordered_set<std::string> m_func_ignore; /**< A list of functions that are ignored by the anomaly detection (all flagged as normal events)*/
   };
 
   /**

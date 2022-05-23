@@ -66,7 +66,7 @@ public:
 };
 
 
-TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
+TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
 
 
@@ -108,7 +108,7 @@ TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
   EXPECT_EQ(local_params_ps.get_hbosstats(), g->get_hbosstats());
 }
 
-TEST(ADOutlierTestSyncParamWithoutPS, Works){
+TEST(ADOutlierSSTDTestSyncParamWithoutPS, Works){
   SstdParam local_params_ps;
 
   std::default_random_engine gen;
@@ -146,7 +146,7 @@ TEST(ADOutlierTestSyncParamWithoutPS, Works){
 
 
 
-TEST(ADOutlierTestSyncParamWithPS, Works){
+TEST(ADOutlierSSTDTestSyncParamWithPS, Works){
   SstdParam global_params_ps; //parameters held in the parameter server
   SstdParam local_params_ad; //parameters collected by AD
 
@@ -232,7 +232,7 @@ TEST(ADOutlierTestSyncParamWithPS, Works){
 }
 
 
-TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
+TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   //Generate statistics
   std::default_random_engine gen;
   std::normal_distribution<double> dist(420.,10.);
@@ -278,7 +278,7 @@ TEST(ADOutlierTestComputeOutliersWithoutPS, Works){
 }
 
 
-TEST(ADOutlierTestRunWithoutPS, Works){
+TEST(ADOutlierSSTDTestRunWithoutPS, Works){
   //Generate statistics
   std::default_random_engine gen;
   std::normal_distribution<double> dist(420.,10.);
@@ -325,9 +325,49 @@ TEST(ADOutlierTestRunWithoutPS, Works){
 }
 
 
+TEST(ADOutlierSSTDTestFuncIgnore, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+  int func_id2 = 5678;
+  std::string fname1 = "my_func", fname2 = "my_other_func";
+
+  ADOutlierSSTDTest outlier;
+
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, fname1, 1000*(i+1),val) );
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id2, fname2, 1000*(i+1),val) );
+  }
+  long ts_end = 1000*N + 800;
+
+  ExecDataMap_t data_map;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    data_map[it->get_fid()].push_back(it);
+
+  //run method generates statistics from input data map and merges with stored stats
+  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
+  outlier.linkExecDataMap(&data_map);
+  outlier.setIgnoreFunction(fname1);
+  EXPECT_TRUE(outlier.ignoringFunction(fname1));
+  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+
+  Anomalies anomalies = outlier.run(0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+
+  //Check all fname events are labeled normal
+  for(auto const &e : call_list)
+    if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
+}
 
 
-TEST(ADOutlierTestRunWithoutPS, OutlierStatisticSelection){
+
+
+TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
   //Generate statistics
   std::default_random_engine gen;
   std::normal_distribution<double> dist(420.,10.);
@@ -397,7 +437,7 @@ TEST(ADOutlierTestRunWithoutPS, OutlierStatisticSelection){
 }
 
 
-TEST(ADOutlierSSTtest, TestAnomalyScore){
+TEST(ADOutlierSSTDtest, TestAnomalyScore){
   ADOutlierSSTDTest outlier(ADOutlier::ExclusiveRuntime);
   
   int fid = 100;
@@ -559,6 +599,47 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   }
 }
 
+TEST(ADOutlierHBOSTestFuncIgnore, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+  int func_id2 = 5678;
+  std::string fname1 = "my_func", fname2 = "my_other_func";
+
+  ADOutlierHBOSTest outlier;
+
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, fname1, 1000*(i+1),val) );
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id2, fname2, 1000*(i+1),val) );
+  }
+  long ts_end = 1000*N + 800;
+
+  ExecDataMap_t data_map;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    data_map[it->get_fid()].push_back(it);
+
+  //run method generates statistics from input data map and merges with stored stats
+  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
+  outlier.linkExecDataMap(&data_map);
+  outlier.setIgnoreFunction(fname1);
+  EXPECT_TRUE(outlier.ignoringFunction(fname1));
+  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+
+  Anomalies anomalies = outlier.run(0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+
+  //Check all fname events are labeled normal
+  for(auto const &e : call_list)
+    if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
+}
+
+
+
 
 TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
@@ -683,4 +764,44 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
+}
+
+
+TEST(ADOutlierCOPODTestFuncIgnore, Works){
+  //Generate statistics
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(420.,10.);
+  int N = 50;
+  int func_id = 1234;
+  int func_id2 = 5678;
+  std::string fname1 = "my_func", fname2 = "my_other_func";
+
+  ADOutlierCOPODTest outlier;
+
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  for(int i=0;i<N;i++){
+    long val = i==N-1 ? 800 : long(dist(gen)); //outlier on N-1
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, fname1, 1000*(i+1),val) );
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id2, fname2, 1000*(i+1),val) );
+  }
+  long ts_end = 1000*N + 800;
+
+  ExecDataMap_t data_map;
+  for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
+    data_map[it->get_fid()].push_back(it);
+
+  //run method generates statistics from input data map and merges with stored stats
+  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
+  outlier.linkExecDataMap(&data_map);
+  outlier.setIgnoreFunction(fname1);
+  EXPECT_TRUE(outlier.ignoringFunction(fname1));
+  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+
+  Anomalies anomalies = outlier.run(0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+
+  //Check all fname events are labeled normal
+  for(auto const &e : call_list)
+    if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
 }

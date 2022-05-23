@@ -106,7 +106,13 @@ std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
 }
 
 
+bool ADOutlier::ignoringFunction(const std::string &func) const{
+  return m_func_ignore.count(func) != 0;
+}
 
+void ADOutlier::setIgnoreFunction(const std::string &func){
+  m_func_ignore.insert(func);
+}
 
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
@@ -136,7 +142,7 @@ Anomalies ADOutlierSSTD::run(int step) {
   for (auto it : *m_execDataMap) { //loop over functions (key is function index)
     unsigned long func_id = it.first;
     for (auto itt : it.second) { //loop over events for that function
-	if(itt->get_label() == 0){ //has not been analyzed previously
+      if(itt->get_label() == 0){ //has not been analyzed previously
 	//Update local counts of number of times encountered
 	std::array<unsigned long, 4> fkey({itt->get_pid(), itt->get_rid(), itt->get_tid(), func_id});
 	auto encounter_it = m_local_func_exec_count.find(fkey);
@@ -198,7 +204,20 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 					      std::vector<CallListIterator_t>& data){
   verboseStream << "Finding outliers in events for func " << func_id << std::endl;
 
+  if(data.size() == 0) return 0;
 
+  const std::string &fname = data.front()->get_funcname();
+
+  //Check whether we are ignoring this function
+  if(ignoringFunction(fname)){
+    verboseStream << "Ignoring function \"" << fname << "\"" << std::endl;
+    for (auto itt : data) {
+      if(itt->get_label() == 0)
+	itt->set_label(1); //label as normal event
+    }
+    return 0;
+  }
+  
   SstdParam& param = *(SstdParam*)m_param;
   if (param[func_id].count() < 2){
     verboseStream << "Less than 2 events in stats associated with that func, stats not complete" << std::endl;
@@ -325,6 +344,16 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   if(data.size() == 0) return 0;
   const std::string &fname = data.front()->get_funcname();
   verboseStream << "Function name is \"" << fname << "\"" << std::endl;
+
+  //Check whether we are ignoring this function
+  if(ignoringFunction(fname)){
+    verboseStream << "Ignoring function \"" << fname << "\"" << std::endl;
+    for (auto itt : data) {
+      if(itt->get_label() == 0)
+	itt->set_label(1); //label as normal event
+    }
+    return 0;
+  }
 
   HbosParam& param = *(HbosParam*)m_param;
   HbosFuncParam &fparam = param[func_id];
@@ -628,6 +657,16 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
 
   if(data.size() == 0) return 0;
   const std::string &fname = data.front()->get_funcname();
+
+  //Check whether we are ignoring this function
+  if(ignoringFunction(fname)){
+    verboseStream << "Ignoring function \"" << fname << "\"" << std::endl;
+    for (auto itt : data) {
+      if(itt->get_label() == 0)
+	itt->set_label(1); //label as normal event
+    }
+    return 0;
+  }
 
   CopodParam& param = *(CopodParam*)m_param;
   CopodFuncParam &fparam = param[func_id];
