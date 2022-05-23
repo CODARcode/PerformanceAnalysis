@@ -498,12 +498,12 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
      ){
     PerfTimer timer;
     std::vector<MetaData_t> const & new_metadata = m_parser->getNewMetaData();
-    std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
-    for(size_t i=0;i<new_metadata.size();i++)
-      new_metadata_j[i] = new_metadata[i].get_json();
-    m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_ms", timer.elapsed_ms());
+    if(new_metadata.size() > 0){
+      std::vector<nlohmann::json> new_metadata_j(new_metadata.size());
+      for(size_t i=0;i<new_metadata.size();i++)
+	new_metadata_j[i] = new_metadata[i].get_json();
+      m_perf.add("ad_send_new_metadata_to_provdb_metadata_gather_ms", timer.elapsed_ms());      
 
-    if(new_metadata_j.size() > 0){
       timer.start();
       m_io->writeJSON(new_metadata_j, step, "metadata");
       m_perf.add("ad_send_new_metadata_to_provdb_io_write_ms", timer.elapsed_ms());
@@ -511,6 +511,7 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
 #ifdef ENABLE_PROVDB
       timer.start();
       m_provdb_client->sendMultipleDataAsync(new_metadata_j, ProvenanceDataType::Metadata); //non-blocking send
+      m_perf.add("ad_send_new_metadata_to_provdb_metadata_count", new_metadata.size());
       m_perf.add("ad_send_new_metadata_to_provdb_send_async_ms", timer.elapsed_ms());
 #endif
     }

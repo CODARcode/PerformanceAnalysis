@@ -230,6 +230,8 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
   timer.start();
   anom_event_entries.resize(anomalies.nEvents(Anomalies::EventType::Outlier));
   size_t i=0;
+  std::unordered_set<unsigned long> normal_event_fids;
+
   for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
     timer2.start();
     ADAnomalyProvenance extract_prov(*anom_it, event_man, algo_params,
@@ -238,13 +240,17 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
     anom_event_entries[i++] = extract_prov.get_json();
     perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
 
-    //Get the associated normal event
-    //if normal event not available put into the list of outstanding requests
-    //if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
-    timer2.start();
-    auto nev = normal_event_manager.getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
-    if(nev.second) normal_event_entries.push_back(std::move(nev.first));
-    perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
+    //Get the associated normal event if one has not been recorded for this function on this step
+    if(!normal_event_fids.count(anom_it->get_fid())){
+      //if normal event not available put into the list of outstanding requests and it will be recorded next time a normal event for this function is obtained
+      //if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
+      timer2.start();
+      auto nev = normal_event_manager.getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
+      if(nev.second) normal_event_entries.push_back(std::move(nev.first));
+      normal_event_fids.insert(anom_it->get_fid());
+      perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
+    }
+
   }
 
 }

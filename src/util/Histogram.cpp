@@ -341,8 +341,8 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   comb_counts.resize(comb_binedges.size() - 1, 0);
 
   //merge_histograms_central_value(combined, g, l);
-  merge_histograms_uniform(combined, g, l);
-  //merge_histograms_uniform_int(combined, g, l);
+  //merge_histograms_uniform(combined, g, l);
+  merge_histograms_uniform_int(combined, g, l);
 
   verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
 

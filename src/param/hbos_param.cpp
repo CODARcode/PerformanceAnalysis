@@ -29,7 +29,7 @@ nlohmann::json HbosFuncParam::get_json() const{
 
 void HbosFuncParam::merge(const HbosFuncParam &other, const binWidthSpecifier &bw){
   m_histogram = Histogram::merge_histograms(m_histogram, other.m_histogram, bw);
-  m_internal_global_threshold = std::max(m_internal_global_threshold, other.m_internal_global_threshold);
+  m_internal_global_threshold = std::max(m_internal_global_threshold, other.m_internal_global_threshold); //choose the more stringent threshold
 }
 
 HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
