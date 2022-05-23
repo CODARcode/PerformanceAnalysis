@@ -34,7 +34,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   analysis_step_freq(1),
                                   read_ignored_corrid_funcs(""),
                                   max_frames(-1),
-                                  func_threshold_file("")
+                                  func_threshold_file(""),
+                                  ignored_func_file("")
 {}
 
 void ChimbukoParams::print() const{
@@ -193,7 +194,10 @@ void Chimbuko::init_event(){
 	m_event->ignoreCorrelationIDsForFunction(func);
       }
       in.close();
+    }else{
+      fatal_error("Failed to open ignored-corried-func file " + m_params.read_ignored_corrid_funcs);
     }
+
   }
 }
 
@@ -239,6 +243,23 @@ void Chimbuko::init_outlier(){
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
+
+  //Read ignored functions
+  if(m_params.ignored_func_file.size()){
+    std::ifstream in(m_params.ignored_func_file);
+    if(in.is_open()) {
+      std::string func;
+      while (std::getline(in, func)){
+	headProgressStream(m_params.rank) << "Skipping anomaly detection for function \"" << func << "\"" << std::endl;
+	m_outlier->setIgnoreFunction(func);
+      }
+      in.close();
+    }else{
+      fatal_error("Failed to open ignored-func file " + m_params.ignored_func_file);
+    }
+  }
+
+
 }
 
 void Chimbuko::init_counter(){
