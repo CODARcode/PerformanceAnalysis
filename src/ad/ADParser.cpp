@@ -119,7 +119,7 @@ void ADParser::update_attributes() {
   //Clear metadata even if only updating attributes once, otherwise it will never be cleared!
   m_new_metadata.clear(); //clear all previously seen metadata
 
-  if ( (m_engineType == "BPFile" || m_engineType == "BP4") && m_attr_once) return;
+  if ( m_engineType == "BPFile" && m_attr_once) return;
 
   const std::map<std::string, adios2::Params> attributes = m_io.AvailableAttributes(); //adios2::Params is an alias to std::map<std::string,std::string>
   verboseStream << "ADParser::update_attributes: rank " << m_rank << " got attributes" << std::endl;
