@@ -66,6 +66,8 @@ class provDBshard(provDBclientBase):
             sys.exit(1)
         return col
         
+    def listCollections(self):
+        return ['anomalies','normalexecs','metadata']
 
 
 class provDBglobal(provDBclientBase):
@@ -77,6 +79,7 @@ class provDBglobal(provDBclientBase):
         #Initialize collections
         self.func_stats = self._openCollection('func_stats',create=create)
         self.counter_stats = self._openCollection('counter_stats',create=create)
+        self.ad_model = self._openCollection('ad_model',create=create)
 
     def __del__(self):
         del self.func_stats
@@ -88,11 +91,15 @@ class provDBglobal(provDBclientBase):
             col = self.func_stats
         elif which_coll == "counter_stats":
             col = self.counter_stats
+        elif which_coll == "ad_model":
+            col = self.ad_model
         else:
             print("Invalid collection")
             sys.exit(1)
         return col
         
+    def listCollections(self):
+        return ['func_stats','counter_stats','ad_model']
 
         
 

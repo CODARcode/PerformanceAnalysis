@@ -178,6 +178,101 @@ def summarizeProfile(fprofile):
         print("(name='%s') (total excl. time=%es) (count=%d) (avg. excl. time=%es) (runtime fraction=%e)" % (f,finfo['excl_time_tot'],finfo['count'],finfo['excl_time_mean'],finfo['frac_time']) )
 
 
+def getKeys(interface, collection):
+    if(len(interface.getShards()) == 0):
+        return None
+    pvars = {'keys'}
+    pcode = """$keys = [];
+               $member = db_fetch('%s');
+               if($member != NULL){
+                  foreach ( $member as $key , $value){
+                    if(is_numeric($value) || is_string($value)){
+                      array_push($keys, $key);
+                    }
+                  }
+               }""" % collection
+    ret = json.loads(interface.getShard(0).execute(pcode,pvars)['keys'])
+    return ret
+
+
+def genFilterFunc(filter_list):
+    if(len(filter_list) == 0):
+        return None
+
+    filter_func = "function($f){return "
+    for f in filter_list:
+        if(isinstance(f,str)):
+            filter_func += " " + f + " "
+        elif(isinstance(f,tuple)):
+            if(len(f) != 3):
+                print("Expect filter to be a tuple containing a key, comparison operator and value")
+                sys.exit(1)
+            key = f[0]
+
+            v = f[2]        
+            if(isinstance(v,str)):
+                v = "\"%s\"" % v
+
+            op = f[1]
+            if(op == "contains"):
+                #Special function: string contains
+                filter_func += "substr_count($f[\"%s\"], %s) > 0" % (key,v)
+            else:
+                filter_func += "$f[\"%s\"] %s %s" % (key,op,v)
+
+    filter_func += "; }"
+    return filter_func
+
+def _listKeys(db,collection_name):
+    j = json.loads(db.getCollection(collection_name).fetch(0))
+    return j.keys()
+
+def listKeys(interface, collection_name):
+    if(interface.getNshards() == 0):
+        return []
+    return _listKeys(interface.getShard(0),collection_name)
+
+def listGlobalKeys(interface, collection_name):
+    return _listKeys(interface.getGlobalDB(),collection_name)
+    
+
+#filter_list :  a list of filters and logical operations    
+#Filters have a tuple form:  (key, comparison operator, value)
+#  comparison operator can be ==, !=, <, >
+#  special operator: "contains" for substring filtering
+#Logical operations between filters are input as strings, support "(", ")", "&&", "||"
+#Examples:
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ('__id','==',0) ]) #__id == 0
+#
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ('exit','==',1648661837676928), "&&", ("fid","==",490) ])
+#
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ '(' , ('fid','==', 490), "||", ("fid","==",491), ')' , '&&' , ("rid","==",0) ])
+#    
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ("func","contains","Kokkos") ])
+def filterDatabase(interface, collection_name, filter_list):
+    if(interface.getNshards() == 0):
+        return None
+
+    filter_func = genFilterFunc(filter_list)
+    
+    print("Filtering with function: %s" % filter_func)
+
+    results = []
+    for s in range(interface.getNshards()):
+        results += [ json.loads(x) for x in interface.getShard(s).filter(collection_name, filter_func) ]
+    return results
+
+def filterGlobalDatabase(interface, collection_name, filter_list):
+    filter_func = genFilterFunc(filter_list)
+    
+    print("Filtering with function: %s" % filter_func)
+
+    return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
+
+
+    
+    
+
     
 if __name__ == '__main__':
     argc = len(sys.argv)
