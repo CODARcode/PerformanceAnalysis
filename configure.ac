@@ -6,6 +6,32 @@ AC_PROG_CXX
 AM_PROG_AR
 LT_INIT
 
+#Enable pkg-config
+AC_ARG_WITH([pkg-config], AS_HELP_STRING([--with-pkg-config], [Use pkg-config to determine configuration of some dependencies]),[use_pkgconfig="yes"],[use_pkgconfig="no"])
+
+#Check if pkg-config is installed
+no_pkgconfig=1
+if test "x$use_pkgconfig" != "xno"; then
+    no_pkgconfig=$(echo $(pkg-config 2>&1) | grep -c "not found")
+    if [[ "${no_pkgconfig}" -eq 0 ]]; then
+	AC_MSG_NOTICE([pkg-config was detected])
+    fi
+fi
+
+#spdlog propagates its compile flags through cmake targets and pkg-config but doesn't for autotools
+#thus if pkg-config is available we try to get the flags there
+if [[ "${no_pkgconfig}" -eq 0 ]]; then
+   SPDLOG_CFLAGS=$(pkg-config --cflags spdlog 2>&1)
+   if [[ $(echo ${SPDLOG_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+       AC_MSG_FAILURE(["Cannot find spdlog configuration with pkg-config"])
+   fi
+   CXXFLAGS+="${SPDLOG_CFLAGS}"
+   SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
+   LDFLAGS+="${SPDLOG_LDFLAGS}" 
+   AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
+fi
+
+
 # Check if compiling to generate a coverage report using gcov
 # Once built, run the tests in the install/test directory, then from the build directory run
 #(pip3 install gcovr)
