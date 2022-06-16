@@ -25,11 +25,24 @@ if [[ "${no_pkgconfig}" -eq 0 ]]; then
    if [[ $(echo ${SPDLOG_CFLAGS} | grep -c "not found") -eq 1 ]]; then
        AC_MSG_FAILURE(["Cannot find spdlog configuration with pkg-config"])
    fi
-   CXXFLAGS+="${SPDLOG_CFLAGS}"
+   CXXFLAGS+=" ${SPDLOG_CFLAGS} "
    SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
-   LDFLAGS+="${SPDLOG_LDFLAGS}" 
+   LDFLAGS+=" ${SPDLOG_LDFLAGS} " 
    AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
 fi
+
+#on the IC the incorrect build of zmq is being used despite spack. Here we explicitly set the paths using pkg-config
+if [[ "${no_pkgconfig}" -eq 0 ]]; then
+   ZMQ_CFLAGS=$(pkg-config --cflags libzmq 2>&1)
+   if [[ $(echo ${ZMQ_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+       AC_MSG_FAILURE(["Cannot find libzmq configuration with pkg-config"])
+   fi
+   CXXFLAGS+=" ${ZMQ_CFLAGS} "
+   ZMQ_LDFLAGS=$(pkg-config --libs libzmq 2>&1)
+   LDFLAGS+=" ${ZMQ_LDFLAGS} " 
+   AC_MSG_NOTICE([Retrieved configuration for libzmq from pkg-config])
+fi
+
 
 
 # Check if compiling to generate a coverage report using gcov
@@ -197,7 +210,6 @@ if test "x$with_boost" != "x"; then
    LIBS+=" -L$with_boost/lib"
 fi
 AC_CHECK_HEADERS([boost/math/distributions/normal.hpp], [],    [AC_MSG_ERROR(Boost library is required)])
-
 
 AC_CONFIG_HEADERS([chimbuko_config.h])
 AC_SUBST([PS_FLAGS])
