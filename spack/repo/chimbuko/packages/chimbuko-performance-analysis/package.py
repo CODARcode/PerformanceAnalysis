@@ -18,7 +18,8 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
 
     variant('perf-metric', default=True, description='Build with performance monitoring')
     variant('mpi', default=True, description='Enable building Chimbuko with MPI. If disabled the user must manually provide the rank index to the OAD.')
-    
+    variant('pkg-config', default=True, description='Enable the configuration script to use pkg-config to aid in the configuration of dependencies')
+
     depends_on('mpi', when="+mpi")
     depends_on('cereal')
     depends_on('adios2')
@@ -32,6 +33,7 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('automake', type='build')
     depends_on('libtool',  type='build')
     depends_on('m4',       type='build')
+    depends_on('pkgconfig', when='+pkg-config', type='build')
 
 
     def setup_build_environment(self, env):
@@ -45,5 +47,8 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
                args.append('--with-perf-metric')
         if '+mpi' not in self.spec:
                args.append('--disable-mpi')
+        if '+pkg-config' in self.spec:
+               args.append('--with-pkg-config')
+
                
         return args
