@@ -34,6 +34,26 @@ class provDBclientBase:
     def store(self, which_coll, record):
         return self.getCollection(which_coll).store(record, commit=True)
 
+    def size(self, which_coll):
+        col = self.getCollection(which_coll)
+        try:
+            return col.size
+        except:
+            return 0
+
+
+    #Fetch a record with a specific index
+    #idx can be integer or an array of integers
+    def fetch(self, which_coll, idx):
+        if isinstance(idx, int):
+            entry = self.getCollection(which_coll).fetch(idx)
+            return json.loads(entry)
+        elif isinstance(idx, list):
+            return [ json.loads(x) for x in self.getCollection(which_coll).fetch_multi(idx) ]
+        else:
+            print("Error: Index must be integer or list")
+            sys.exit(1)
+
 
 #Sonata client connection to a database shard
 class provDBshard(provDBclientBase):

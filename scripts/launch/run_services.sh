@@ -158,27 +158,31 @@ fi
 
 #Visualization
 if (( ${use_viz} == 1 )); then
-    if (( ${use_pserver} != 1 )); then
-    	echo "Chimbuko Services: Error - cannot use viz without the pserver"
-    	exit 1
-    fi
-    if (( ${use_provdb} == 0 )); then
-	echo "Chimbuko Services: Error - cannot use viz without the provDB"
-	exit 1
-    fi
+    # Pserver is not needed when running the viz in offline simulation mode
+    # if (( ${use_pserver} != 1 )); then
+    # 	echo "Chimbuko Services: Error - cannot use viz without the pserver"
+    # 	exit 1
+    # fi
+    # if (( ${use_provdb} == 0 )); then
+    # 	echo "Chimbuko Services: Error - cannot use viz without the provDB"
+    # 	exit 1
+    # fi
 
     #Provide parameters for provenance database
     export PROVDB_NINSTANCE=${provdb_ninstances}
     export SHARDED_NUM=${provdb_nshards}
-    export PROVENANCE_DB=${provdb_writedir} #already an absolute path
+    export PROVENANCE_DB=${provdb_writedir}/ #already an absolute path
 
-    if (( ${provdb_ninstances} == 1 )); then
-	#Simpler instantiation if a single server
-	export PROVDB_ADDR=$(cat ${provdb_dir}/provider.address.0)
-	echo "Chimbuko Services: viz is connecting to provDB provider 0 on address" $PROVDB_ADDR
-    else
-	export PROVDB_ADDR_PATH=${provdb_addr_dir}
-	echo "Chimbuko Services: viz is obtaining provDB addresses from path" $PROVDB_ADDR_PATH
+    #If provdb server is used, tell the viz how to connect to it; otherwise it will use its own internal server
+    if (( ${use_provdb} )); then
+	if (( ${provdb_ninstances} == 1 )); then
+	    #Simpler instantiation if a single server
+	    export PROVDB_ADDR=$(cat ${provdb_dir}/provider.address.0)
+	    echo "Chimbuko Services: viz is connecting to provDB provider 0 on address" $PROVDB_ADDR
+	else
+	    export PROVDB_ADDR_PATH=${provdb_addr_dir}
+	    echo "Chimbuko Services: viz is obtaining provDB addresses from path" $PROVDB_ADDR_PATH
+	fi
     fi
 
     cd ${viz_dir}
@@ -217,13 +221,43 @@ if (( ${use_viz} == 1 )); then
     sleep 10
 
     echo "Chimbuko Services: run webserver ..."
-    python3 run_server.py $HOST $viz_port 2>&1 | tee "${log_dir}/webserver.log" &
+    #python3 run_server.py $HOST $viz_port 2>&1 | tee "${log_dir}/webserver.log" &
+    python3 manager.py runserver --host 0.0.0.0 --port ${viz_port} --debug | tee "${log_dir}/webserver.log" &
     sleep 2
 
     echo "Chimbuko Services: redis ping-pong ..."
     redis-cli -h $HOST -p ${viz_worker_port} ping
 
     cd ${base}
+
+    #Write a termination script for the viz that can be called either manually or automatically
+    cat <<EOF > ${viz_dir}/shutdown_webserver.sh
+
+    echo "Chimbuko Services: Terminating Chimbuko visualization"
+    cd ${viz_root}
+
+    echo "Chimbuko Services: redis ping-pong"
+    redis-cli -h $HOST -p ${viz_worker_port} ping
+
+    sleep 10
+
+    echo "Chimbuko Services: celery task inspect"
+    curl -X GET "http://${HOST}:${viz_port}/tasks/inspect"
+    sleep 5
+
+    echo "Chimbuko Services: shutdown webserver & celery workers!"
+    curl -X GET "http://${HOST}:${viz_port}/stop"
+    sleep 10
+
+    echo "Chimbuko Services: redis ping-pong"
+    redis-cli -h $HOST -p ${viz_worker_port} ping
+    sleep 1
+
+    echo "Chimbuko Services: shutdown redis server!"
+    redis-cli -h $HOST -p ${viz_worker_port} shutdown
+
+EOF
+    chmod u+x ${viz_dir}/shutdown_webserver.sh
 
     ws_addr="http://${HOST}:${viz_port}/api/anomalydata"
     ps_extra_args+=" -ws_addr ${ws_addr}"
@@ -283,30 +317,12 @@ if (( ${use_pserver} == 1 )); then
 fi
 
 if (( ${use_viz} == 1 )); then
-    echo "Chimbuko Services: Terminating Chimbuko visualization"
-    cd ${viz_root}
-
-    echo "Chimbuko Services: redis ping-pong"
-    redis-cli -h $HOST -p ${viz_worker_port} ping
-
-    sleep 10
-
-    echo "Chimbuko Services: celery task inspect"
-    curl -X GET "http://${HOST}:${viz_port}/tasks/inspect"
-    sleep 5
-
-    echo "Chimbuko Services: shutdown webserver & celery workers!"
-    curl -X GET "http://${HOST}:${viz_port}/stop"
-    sleep 10
-
-    echo "Chimbuko Services: redis ping-pong"
-    redis-cli -h $HOST -p ${viz_worker_port} ping
-    sleep 1
-
-    echo "Chimbuko Services: shutdown redis server!"
-    redis-cli -h $HOST -p ${viz_worker_port} shutdown
-
-    cd -
+    if (( ${use_pserver} == 1 )); then
+	${viz_dir}/shutdown_webserver.sh
+    else
+	echo "Chimbuko Services: Visualization was run without the pserver. It will remain active until the user executes script ${viz_dir}/shutdown_webserver.sh"
+	disown -ah
+    fi
 fi
 
 if (( ${use_provdb} == 1 )); then
@@ -316,3 +332,4 @@ fi
 
 
 echo "Chimbuko Services: Service script complete" $(date)
+
