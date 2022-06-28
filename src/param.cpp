@@ -25,3 +25,9 @@ ParamInterface *ParamInterface::set_AdParam(const std::string & ad_algorithm) {
     fatal_error("Invalid algorithm: \"" + ad_algorithm + "\". Available options: HBOS, SSTD, COPOD");
   }
 }
+
+void ParamInterface::update(const std::vector<ParamInterface*> &other){
+  for(auto p : other){
+    this->update(*p);
+  }
+}

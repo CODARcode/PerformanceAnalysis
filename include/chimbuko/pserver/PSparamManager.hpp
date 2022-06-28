@@ -86,6 +86,7 @@ namespace chimbuko{
     ParamType & getWorkerParams(const int i){ return dynamic_cast<ParamType&>(*m_worker_params[i]); }
 
   private:
+    std::string m_ad_algorithm; /**< The AD algorithm*/
     int m_agg_freq_ms; /**< The frequence in ms at which the global model is updated. Default 1000ms*/
     ParamInterface *m_global_params; /**< The global model*/
     std::string m_latest_global_params; /**< Cache of the serialized form the the latest global model*/
