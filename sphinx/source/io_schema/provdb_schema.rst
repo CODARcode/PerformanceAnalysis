@@ -186,49 +186,47 @@ Global database
 
 Below we describe the JSON schema for the **func_stats**, **counter_stats** and **ad_model** collections of the **global database** component of the provenance database.
 
+A common data structure **RunStats** is used extensively to represent statistics (mean, min/max, std. dev., etc) of some quantity. It has the following schema:
+
+|      {
+|        **'accumulate'**: *The sum of all values (same as mean \* count). In some cases this entry is not populated*,
+|        **'count'**: *The number of values*,
+|        **'kurtosis'**: *kurtosis of the distribution of values*,
+|        **'maximum'**: *maximum value*,
+|        **'mean'**: *average value*,
+|        **'minimum'**: *minimum value*,
+|        **'skewness'**: *skewness of distribution of values*,
+|        **'stddev'**: *standard deviation of distribution of values*
+|       }
+
+
 Function profile statistics schema
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**func_stats** contains aggregated profile information for all functions. The JSON schema is as follows:
+**func_stats** contains aggregated profile information and anomaly information for all functions. The JSON schema is as follows:
 
 | {
-|   **'app'**: *program index*,
-|   **'fid'**: *global function index*,
-|   **'name'**: *function name*,
-|   **'exclusive'**:  *Statistics of runtime exclusive of children*
-|          {
-|            **'accumulate'**: *unused*,
-|            **'count'**: *total function executions*,
-|            **'kurtosis'**: *kurtosis of function exclusive time distribution*,
-|            **'maximum'**: *maximum function exclusive time*,
-|            **'mean'**: *average function exclusive time*,
-|            **'minimum'**: *minimum function exclusive time*,
-|            **'skewness'**: *skewness of function exclusive time distribution*,
-|            **'stddev'**: *standard deviation of function exclusive time distribution*,
-|	   },
-|   **'inclusive'**: *Statistics of runtime inclusive of children*
-|	   {
-|            **'accumulate'**: *unused*,
-|            **'count'**: *total function executions*,
-|            **'kurtosis'**: *kurtosis of function inclusive time distribution*,
-|            **'maximum'**: *maximum function inclusive time*,
-|            **'mean'**: *average function inclusive time*,
-|            **'minimum'**: *minimum function inclusive time*,
-|            **'skewness'**: *skewness of function inclusive time distribution*,
-|            **'stddev'**: *standard deviation of function inclusive time distribution*,
-|	   },
-|   **'stats'**: *Statistics on function anomalies per timestep observed in run to-date*
-|	   {
-|	     **'accumulate'**: *total number of anomalies observed for this function*,
-|            **'count'**: *number of timesteps data colected for*,
-|            **'kurtosis'**: *kurtosis of distribution of anomalies/step*,
-|            **'maximum'**: *maximum anomalies/step*,
-|            **'mean'**: *average anomalies/step*,
-|            **'minimum'**: *minimum anomalies/step*,
-|            **'skewness'**: *skewness of distribution of anomalies/step*,
-|            **'stddev'**: *standard deviation distribution of anomalies/step*,
-|	   }
+|       **"__id"**: *record index*,
+|       **"app"**: *application/program index*,
+|       **"fid"**: *function index*,
+|       **"fname"**: *function name*,      
+|       **"anomaly_metrics"**: *statistics on anomalies for this function (object). Note this entry is null if no anomalies were detected*
+|       {
+|           **"anomaly_count"**: *statistics on the anomaly count for time steps in which anomalies were detected, as well as the total number of anomalies (RunStats)*
+|           **"first_io_step"**: *the first IO step in which an anomaly was detected*,
+|           **"last_io_step"**: *the last IO step in which an anomaly was detected*,
+|           **"max_timestamp"**: *the last anomaly's timestamp*,
+|           **"min_timestamp"**: *the first anomaly's timestamp*,
+|           **"score"**: *statistics on the scores for the anomalies (RunStats)*,
+|           **"severity"**: *statistics on the severity of the anomalies (RunStats)*,
+|       },
+|       **"runtime_profile"**: *statistics on function runtime (i.e. the function profile)  (object)*
+|	{
+|           **"exclusive_runtime"**: *statistics on the runtime excluding child function calls (RunStats)*,
+|           **"inclusive_runtime"**: *statistics on the runtime including child function calls (RunStats)*
+|       }
 | }
+
 
 Counter statistics schema
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -238,17 +236,7 @@ The **counter_stats** collection has the following schema:
 | {
 |   **'app'**: *Program index*,
 |   **'counter'**: *Counter description*,
-|   **'stats'**:   *Global aggregated statistics on counter values since start of run*,
-|          {
-|           **'accumulate'**: *Unused*,
-|           **'count'**: *Number of times counter appeared*,
-|           **'kurtosis'**: *kurtosis of distribution of value*,
-|           **'maximum'**: *maximum value*,
-|           **'mean'**: *average value*,
-|           **'minimum'**: *minimum value*,
-|           **'skewness'**: *skewness of distribution of values*,
-|           **'stddev'**: *standard deviation of distribution of values*
-|           }
+|   **'stats'**:   *Global aggregated statistics on counter values since start of run (RunStats)*
 | }
 
 AD model schema
