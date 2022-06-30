@@ -41,10 +41,10 @@ Advanced anomaly analysis
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 1. Histogram Based Outlier Score (HBOS) is a deterministic and non-parametric statistical anomaly detection algorithm. It is implemented as part of Chimbuko's anomaly analysis module. HBOS is an unsupervised anomaly detection algorithm which scores data in linear time. It supports dynamic bin widths which ensures long-tail distributions of function executions are captured and global anomalies are detected better. HBOS normalizes the histogram and calculates the anomaly scores by taking inverse of estimated densities of function executions. The score is a multiplication of the inverse of the estimated densities given by the following Equation
 
-.. math::
-    HBOS_{i} = \log_{2} (1 / density_{i})
+   .. math::
+      HBOS_{i} = \log_{2} (1 / density_{i} + \alpha)
 
-   where :math:`i` is a function execution and :math:`density_{i}` is function execution probability. HBOS works in :math:`O(nlogn)` using dynamic bin-width or in linear time :math:`O(n)` using fixed bin width. After scoring, the top 1% of scores are filtered as anomalous function executions. This filter value can be set at runtime to adjust the density of detected anomalies.
+   where :math:`i` is the index of a particular a function execution and :math:`density_{i}` is function execution probability. The offset :math:`\alpha` is chosen such that the scores lie in the range :math:`0\to 100`. HBOS works in :math:`O(nlogn)` using dynamic bin-width or in linear time :math:`O(n)` using fixed bin width. After scoring, the top 1% of scores are filtered as anomalous function executions. This filter value can be set at runtime to adjust the density of detected anomalies.
 
 2. Another algorithm is added into Chimbuko's advanced anomaly analysis called the COPula based Outlier Detection (COPOD), which is a deterministic, parameter-free anomaly detection algorithm. It computes empirical copulas for each sample in the dataset. A copula defines the dependence structure between random variables. For each sample in the dataset, COPOD algorithm computes left-tail empirical copula from left-tail empirical cumulative distribution function, right-tail copula from right-tail empirical cumulative distribution function, and a skewness-corrected empirical copula using a skewness coefficient calculated from left-tail and right-tail empirical cumulative distribution functions. These three computed values are interpreted as left-tail, right-tail, and skewness-corrected probabilities, respectively. Lowest probability value results in largest negative-log value, which is the score assigned to the sample in the dataset. Samples with the highest scores in the dataset are tagged as anomalous.
 

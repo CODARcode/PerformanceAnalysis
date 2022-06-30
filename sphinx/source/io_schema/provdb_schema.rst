@@ -5,7 +5,7 @@ Provenance Database Schema
 Main database
 -------------
 
-Below we describe the JSON schema for the **anomalies** and **normalexecs** collections of the **main database** component of the provenance database.
+Below we describe the JSON schema for the **anomalies**, **normalexecs** and **metadata** collections of the **main database** component of the provenance database.
 
 Function event schema
 ^^^^^^^^^^^^^^^^^^^^^
@@ -114,8 +114,12 @@ For the SSTD (original) algorithm, the **algo_params** field has the following f
 For the HBOS and COPOD algorithms, the **algo_params** field has the following format:
 
 |    {
-|        **"Histogram Bin Counts"** : *the height of the histogram bin*,
-|        **"Histogram Bin Edges"** : *the edges of the bins starting with the lower edge of bin 0 followed by the upper edges of bins 0..N*
+|        **"histogram"**: *the histogram*,
+|        {
+|            **"Histogram Bin Counts"** : *the height of the histogram bin (array)* ,
+|            **"Histogram Bin Edges"** : *the edges of the bins starting with the lower edge of bin 0 followed by the upper edges of bins 0..N (array)*
+|        },
+|        **"internal_global_threshold"** : *a score threshold for anomaly detection used internally*
 |    }
 
 
@@ -180,7 +184,7 @@ Note that the **tid** (thread index) for metadata is usually 0, apart from for m
 Global database
 ---------------
 
-Below we describe the JSON schema for the **func_stats** and **counter_stats** collections of the **global database** component of the provenance database.
+Below we describe the JSON schema for the **func_stats**, **counter_stats** and **ad_model** collections of the **global database** component of the provenance database.
 
 Function profile statistics schema
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -247,3 +251,17 @@ The **counter_stats** collection has the following schema:
 |           }
 | }
 
+AD model schema
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The **ad_model** collection contains the final AD model for each function. It has the following schema:
+
+| {
+|   **"__id"**: *A unique record index*,
+|   **"pid"**: *The program index*,
+|   **"fid"**: *The function index*,
+|   **"func_name"**: *The function name*,
+|   **"model"** : *The model for this function, form dependent on algorithm used (object)*
+| }
+
+The **"model"** entry has the same form as the **"algo_params"** entry of the main database, and is documented above. 

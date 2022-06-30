@@ -19,8 +19,9 @@ Design
 
 (**C**)lients (i.e. on-node AD modules) send requests with their locally-computed anomaly detection algorithm parameters to be aggregated with the global parameters and the updated parameters returned to the client. Network communication is performed using the `ZeroMQ <https://zeromq.org>`_ library and using `Cereal <https://uscilab.github.io/cereal/>`_ for data serialization.
 
-For handling requests from a large number of connected clients the parameter server uses a ROUTER-DEALER pattern whereby requests are sent to a **Frontend** router and distributed over thread (**W**)orkers
-via the **Backend** router in round-robin fashion. For the task of updating parameters, workers first acquire a global lock, and update the **in-mem DB**, and return the updated parameters (cf. :ref:`api/api_code:SstdParam`). Global statistics on anomalies and counters are compiled in a similar way using the data sent from the AD instances (cf. `global_anomaly_stats <../api/api_code.html#global-anomaly-stats>`__ and `global_counter_stats <../api/api_code.html#global-counter-stats>`__) and also stored in this database.
+For handling requests from a large number of connected clients the parameter server uses a ROUTER-DEALER pattern whereby requests are sent to a **Frontend** router and distributed over thread (**W**)orkers via the **Backend** router in round-robin fashion.
+
+For the task of updating parameters, scalability is ensured by having each worker write to a separate parameter object in the **In-Mem DB**. These are periodically aggregated by a background thread and the global model updated, typically once per second such that the AD instances receive the most up-to-date model as possible. Global statistics on anomalies and counters are compiled in a similar way using the data sent from the AD instances (cf. `global_anomaly_stats <../api/api_code.html#global-anomaly-stats>`__ and `global_counter_stats <../api/api_code.html#global-counter-stats>`__) and also stored in this database.
 
 A dedicated (**S**)treaming thread (cf. :ref:`api/api_code:PSstatSender`) is maintained that periodically sends the latest global statistics to the visualization server.
 

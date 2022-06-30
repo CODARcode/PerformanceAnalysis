@@ -123,7 +123,7 @@ nlohmann::json GlobalAnomalyStats::collect_stat_data(){
 	unsigned long rid = rp.first; //rank
 	
 	nlohmann::json object = rp.second.get_json(pid,rid);
-	rp.second.flush(); //flush the data
+	rp.second.flush(); //flush the data (doesn't reset the anomaly statistics, just the array of data packets collected since last flush)
 	if(!object.empty())
 	  jsonObjects.push_back(std::move(object));
       }
