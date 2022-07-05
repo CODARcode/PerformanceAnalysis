@@ -846,3 +846,24 @@ TEST(ADEventTest, DetectsCorrelationIDerrors){
     EXPECT_EQ(loc, std::string::npos);
   }
 }
+
+
+TEST(ADEventTest, TestCallStackExtraction){
+  ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theroot", 100, 0);  //0 runtime indicates it has yet to complete
+  ExecData_t exec1 = createFuncExecData_t(1,2,3, 55, "theparent", 1000, 100);
+  ExecData_t exec2 = createFuncExecData_t(1,2,3, 77, "thechild", 1050, 50); //going to be the anomalous one
+  exec2.set_parent(exec1.get_id());
+  exec1.set_parent(exec0.get_id());
+
+  ADEvent event_man;
+  event_man.addCall(exec0);
+  event_man.addCall(exec1);
+  event_man.addCall(exec2);
+  
+  std::vector<CallListIterator_t> cs = event_man.getCallStack(exec2.get_id());
+  
+  EXPECT_EQ(cs.size(),3);
+  EXPECT_EQ(cs[0]->get_id(), exec2.get_id());
+  EXPECT_EQ(cs[1]->get_id(), exec1.get_id());
+  EXPECT_EQ(cs[2]->get_id(), exec0.get_id());
+}

@@ -489,6 +489,23 @@ std::pair<CallListIterator_t, CallListIterator_t> ADEvent::getCallWindowStartEnd
   return {prev_n, next_n};
 }
 
+std::vector<CallListIterator_t> ADEvent::getCallStack(const eventID &event_id) const{
+  std::vector<CallListIterator_t> out;
+  eventID event = event_id;
+  while(event != eventID::root()){
+    CallListIterator_t call_it;
+    try{
+      call_it = getCallData(event);
+    }catch(const std::exception &e){
+      recoverable_error("Could not find parent " + event.toString() + " in call list due to : " + e.what());
+      break;
+    }
+
+    out.push_back(call_it);
+    event = call_it->get_parent();
+  }
+  return out;
+}
 
 
 

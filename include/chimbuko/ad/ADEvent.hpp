@@ -253,6 +253,13 @@ namespace chimbuko {
     std::pair<CallListIterator_t, CallListIterator_t> getCallWindowStartEnd(const eventID &event_id, const int win_size) const override;
 
     /**
+     * @brief Get the call stack for a specific function
+     * @param event_id The index of the event
+     * @return the call stack starting from the provided event (first entry) back to the root event (last entry)
+     */
+    std::vector<CallListIterator_t> getCallStack(const eventID &event_id) const;
+
+    /**
      * @brief Clear all data members
      *
      */
