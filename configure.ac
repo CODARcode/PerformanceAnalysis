@@ -23,24 +23,26 @@ fi
 if [[ "${no_pkgconfig}" -eq 0 ]]; then
    SPDLOG_CFLAGS=$(pkg-config --cflags spdlog 2>&1)
    if [[ $(echo ${SPDLOG_CFLAGS} | grep -c "not found") -eq 1 ]]; then
-       AC_MSG_FAILURE(["Cannot find spdlog configuration with pkg-config"])
+       AC_MSG_NOTICE(["Cannot find spdlog configuration with pkg-config; will attempt to build anyway"])
+   else
+       CXXFLAGS+=" ${SPDLOG_CFLAGS} "
+       SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
+       LDFLAGS+=" ${SPDLOG_LDFLAGS} " 
+       AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
    fi
-   CXXFLAGS+=" ${SPDLOG_CFLAGS} "
-   SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
-   LDFLAGS+=" ${SPDLOG_LDFLAGS} " 
-   AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
 fi
 
 #on the IC the incorrect build of zmq is being used despite spack. Here we explicitly set the paths using pkg-config
 if [[ "${no_pkgconfig}" -eq 0 ]]; then
    ZMQ_CFLAGS=$(pkg-config --cflags libzmq 2>&1)
    if [[ $(echo ${ZMQ_CFLAGS} | grep -c "not found") -eq 1 ]]; then
-       AC_MSG_FAILURE(["Cannot find libzmq configuration with pkg-config"])
+       AC_MSG_NOTICE(["Cannot find libzmq configuration with pkg-config; will attempt to build anyway"])
+   else
+       CXXFLAGS+=" ${ZMQ_CFLAGS} "
+       ZMQ_LDFLAGS=$(pkg-config --libs libzmq 2>&1)
+       LDFLAGS+=" ${ZMQ_LDFLAGS} " 
+       AC_MSG_NOTICE([Retrieved configuration for libzmq from pkg-config])
    fi
-   CXXFLAGS+=" ${ZMQ_CFLAGS} "
-   ZMQ_LDFLAGS=$(pkg-config --libs libzmq 2>&1)
-   LDFLAGS+=" ${ZMQ_LDFLAGS} " 
-   AC_MSG_NOTICE([Retrieved configuration for libzmq from pkg-config])
 fi
 
 
