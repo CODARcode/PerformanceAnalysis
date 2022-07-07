@@ -1,4 +1,5 @@
 #include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/util/serialize.hpp"
 #include "gtest/gtest.h"
 #include <cereal/archives/portable_binary.hpp>
 #include <sstream>
@@ -307,6 +308,13 @@ TEST(TestRunStats, serialize){
   RunStats stats_rd;
   stats_rd.net_deserialize(ser);
   
+  EXPECT_EQ(stats, stats_rd);
+
+  //Test cereal serialization
+  ser = cereal_serialize(stats);
+  stats_rd.clear();
+  cereal_deserialize(stats_rd, ser);
+
   EXPECT_EQ(stats, stats_rd);
 }
   

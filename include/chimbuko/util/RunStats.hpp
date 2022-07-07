@@ -216,6 +216,14 @@ namespace chimbuko {
     void net_deserialize(const std::string &s);
 
     /**
+     * @brief Serialize using cereal, for example as part of a compound object
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_state, m_do_accumulate);
+    }
+
+    /**
      * @brief Add a new value to be included in internal statistics
      */
     void push(double x);
