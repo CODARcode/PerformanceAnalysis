@@ -220,6 +220,11 @@ public:
     unsigned long tag() const{ return m_tag; }
 
     /**
+     * @brief Return the size of the communication in bytes
+     */
+    unsigned long bytes() const { return m_bytes; }
+
+    /**
      * @brief Set the execution key id (i.e. where this communication event occurs). This is equal to the "id" object associated with a parent ExecData_t object
      *
      * @param key execution id

@@ -316,6 +316,36 @@ TEST(TestRunStats, serialize){
   cereal_deserialize(stats_rd, ser);
 
   EXPECT_EQ(stats, stats_rd);
+
+  std::unordered_map<std::string, RunStats> cpd;
+  cpd["hello"] = stats;
+  ser = cereal_serialize(cpd);
+
+  std::unordered_map<std::string, RunStats> cpd_r;
+  cereal_deserialize(cpd_r, ser);
+  
+  EXPECT_EQ(cpd, cpd_r);
+
+
+  std::unordered_map<std::string, std::unordered_map<std::string,RunStats> > cpdd;
+  cpdd["hello"]["world"] = stats;
+  ser = cereal_serialize(cpdd);
+
+  std::unordered_map<std::string, std::unordered_map<std::string,RunStats> > cpdd_r;
+  cereal_deserialize(cpdd_r, ser);
+  
+  EXPECT_EQ(cpdd, cpdd_r);
+
+
+  typedef   std::unordered_map<unsigned long, std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, RunStats>>>> mapType;
+  mapType m;
+  m[1234]["up"]["down"]["left"] = stats;
+  ser = cereal_serialize(m);
+
+  mapType m_r;
+  cereal_deserialize(m_r, ser);
+  
+  EXPECT_EQ(m, m_r);
 }
   
   
