@@ -67,7 +67,7 @@ export TAU_ADIOS2_PERIOD=1000000  #period in us between ADIOS2 io steps
 export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TAU virtual threads
 export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 
-export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use <------------ ***SET ME***
+export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use. If using a TAU installation built by Spack, this variable is already set in the environment and can be commented out here <------------ ***SET ME***
 
 #Note: the following 2 variables are not used by the service script but are included here for use from the user's run script allowing the application to be launched with either "${TAU_EXEC} <app>" or "${TAU_PYTHON} <app>"
 #Note: the "binding" -T ... is used by Tau to find the appropriate configuration. It can typically be inferred from the name of the Makefile. If using a non-MPI job the 'mpi' should be changed to 'serial' and a non-MPI build of
@@ -77,7 +77,7 @@ TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace"   #how to execu
 TAU_PYTHON="tau_python -T papi,mpi,pthread,pdt,adios2 -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it
                                                                                                                            #to tee in realtime <--- SET ME (if !python3)
 
-export EXE_NAME=main  #the name of the executable (without path) <------------ ***SET ME***
+export EXE_NAME=main  #the name of the executable (without path). For multi-component workflows this argument also accepts a list, e.g. (main1 main2)  <------------ ***SET ME***
 
 TAU_ADIOS2_PATH=chimbuko/adios2  #path where the adios2 files are to be stored. Chimbuko services creates the directory chimbuko/adios2 in the working directory and this should be used by default
 TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp

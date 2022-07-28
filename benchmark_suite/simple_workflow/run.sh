@@ -17,17 +17,19 @@ if (( 1 )); then
     echo "Running services"
     ${chimbuko_services} 2>&1 | tee services.log &
     echo "Waiting"
-    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
-    ad_opts=$(cat chimbuko/vars/chimbuko_ad_opts.var)
+    while [ ! -f chimbuko/vars/chimbuko_ad_opts.var ]; do sleep 1; done
 fi
 
 #Instantiate the AD
 if (( 1 )); then
     echo "Instantiating AD"
-    #The two components should be differentiated adding a program index
-    #The program names are different (main1, main2) and thus have different tau trace files
-    mpirun --allow-run-as-root -n ${ranks} driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-main1 -program_idx 1 ${ad_opts} 2>&1 | tee chimbuko/logs/ad1.log &
-    mpirun --allow-run-as-root -n ${ranks} driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-main2 -program_idx 2 ${ad_opts} 2>&1 | tee chimbuko/logs/ad2.log &
+    for i in ${!EXE_NAME[@]}; do
+	exe=${EXE_NAME[$i]}
+	ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.${exe}.var)
+	run_cmd="mpirun --allow-run-as-root -n ${ranks} ${ad_cmd} &"
+	echo "Executing: $run_cmd"
+	eval "$run_cmd"
+    done	
     sleep 2
 fi
 

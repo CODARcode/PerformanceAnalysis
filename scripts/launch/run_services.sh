@@ -296,19 +296,40 @@ testit=${ad_outlier_hbos_threshold}
 ############################################
 #Generate the command to launch the AD module
 ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sstd_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg} -hbos_threshold ${ad_outlier_hbos_threshold}"
-ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
-echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
-echo "Command to launch AD module: " ${ad_cmd}
-echo "Please execute as:"
-echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmdline.var)"
-echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
-echo "Or equivalent"
+if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
+    echo "The user has specified a workflow comprising multiple components. Chimbuko will generate separate files containing pre-generated launch commands."
+    for i in ${!EXE_NAME[@]}; do
+	exe=${EXE_NAME[$i]}
+	ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i} ${ad_opts} 2>&1 | tee ${log_dir}/ad.${exe}.log"
+	echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.${exe}.var
 
-#For use in other scripts, output the AD cmdline options to file
-echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
-echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
+	echo "---------------------------"
+	echo "Command to launch AD module for program index ${i} with executable ${exe}: " ${ad_cmd}
+	echo "Please execute as:"
+	echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmdline.${exe}.var)"
+	echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
+	echo "Or equivalent"
 
+	#For use in other scripts, output the AD cmdline options to file
+	echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i}" > ${var_dir}/chimbuko_ad_args.${exe}.var
+    done
+    #AD option set is generic
+    echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var    
+else
+    ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
+    echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
+
+    echo "Command to launch AD module: " ${ad_cmd}
+    echo "Please execute as:"
+    echo "    ad_cmd=\$(cat ${var_dir}/chimbuko_ad_cmdline.var)"
+    echo "    eval \"mpirun -n \${TASKS} \${ad_cmd} &\""
+    echo "Or equivalent"
+
+    #For use in other scripts, output the AD cmdline options to file
+    echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
+    echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
+fi
 
 if (( ${use_pserver} == 1 )); then
     #Wait for pserver to exit, which means it's time to end the viz

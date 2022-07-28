@@ -77,7 +77,7 @@ TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace"   #how to execu
 TAU_PYTHON="tau_python -T papi,mpi,pthread,pdt,adios2 -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it
                                                                                                                            #to tee in realtime <--- SET ME (if !python3)
 
-export EXE_NAME=main  #the name of the executable (without path) <------------ ***SET ME***
+export EXE_NAME=(main1 main2)  #the name of the executable (without path) <------------ ***SET ME***
 
 TAU_ADIOS2_PATH=chimbuko/adios2  #path where the adios2 files are to be stored. Chimbuko services creates the directory chimbuko/adios2 in the working directory and this should be used by default
 TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp
