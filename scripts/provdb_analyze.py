@@ -194,7 +194,19 @@ def getKeys(interface, collection):
     ret = json.loads(interface.getShard(0).execute(pcode,pvars)['keys'])
     return ret
 
-
+#Internal: Generate a jx9 filter function using the provided formatted list
+#Filters have a tuple form:  (key, comparison operator, value)
+#  comparison operator can be ==, !=, <, >
+#  special operator: "contains" for substring filtering
+#Logical operations between filters are input as strings, support "(", ")", "&&", "||"
+#Examples:
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ('__id','==',0) ]) #__id == 0
+#
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ('exit','==',1648661837676928), "&&", ("fid","==",490) ])
+#
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ '(' , ('fid','==', 490), "||", ("fid","==",491), ')' , '&&' , ("rid","==",0) ])
+#    
+#    anom = anl.filterDatabase(pdb, 'anomalies', [ ("func","contains","Kokkos") ])
 def genFilterFunc(filter_list):
     if(len(filter_list) == 0):
         return None
@@ -223,19 +235,23 @@ def genFilterFunc(filter_list):
     filter_func += "; }"
     return filter_func
 
+#Internal: For a specific collection in the given database, return the list of keys available in any given entry
 def _listKeys(db,collection_name):
     j = json.loads(db.getCollection(collection_name).fetch(0))
     return j.keys()
 
+#For a specific collection in the main database, return the list of keys available in any given entry
 def listKeys(interface, collection_name):
     if(interface.getNshards() == 0):
         return []
     return _listKeys(interface.getShard(0),collection_name)
 
+#For a specific collection in the global database, return the list of keys available in any given entry
 def listGlobalKeys(interface, collection_name):
     return _listKeys(interface.getGlobalDB(),collection_name)
     
 
+#Filter the database against a list of filters
 #filter_list :  a list of filters and logical operations    
 #Filters have a tuple form:  (key, comparison operator, value)
 #  comparison operator can be ==, !=, <, >
