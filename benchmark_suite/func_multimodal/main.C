@@ -18,16 +18,42 @@ int round_to_nearest_100(int val){
   int nhundred = ( val + 50 ) / 100;
   return nhundred * 100;
 }
-void sleep_100ms(){
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-}
 
 //In order to make this function exhibit the anomaly and not just sleep_for, call sleep in units of 100ms
-void the_function(const int sleep_ms){
-  int nhundred = sleep_ms / 100;
-  for(int i=0;i<nhundred;i++)
-    sleep_100ms();
+void the_function(const int sleep_ms, double rate){
+  size_t cycles = size_t( double(sleep_ms)/1000 * rate );
+
+  double a = 1.34545;
+  auto start_time = std::chrono::high_resolution_clock::now();
+  for(size_t i=0; i<cycles; i++){
+    a += 3.14555;
+  }
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::cout << a << std::endl;
+  
+  double msecs = double(std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count())/1e6;
+
+  std::cout << "Target " << sleep_ms << "ms, actual " << msecs << " ms" << std::endl;
 }
+
+double get_rate(){
+  std::cout << "Determining spin rate" << std::endl;
+  size_t cycles = 100000000;
+  double a = 1.34545;
+  auto start_time = std::chrono::high_resolution_clock::now();
+  for(size_t i=0; i<cycles; i++){
+    a += 3.14555;
+  }
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::cout << a << std::endl;
+  
+  double secs = double(std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count())/1e9;
+  double rate = double(cycles) / secs;
+
+  std::cout << "Got " << rate << " cycles/second" << std::endl;
+  return rate;
+}
+
 
 int main(int argc, char **argv){
   if(argc < 5){
@@ -55,6 +81,12 @@ int main(int argc, char **argv){
 
   std::cout << "Anomaly time (rounded to nearest 100ms): " << anom_time << std::endl;
 
+  std::cout << "Computing cycle spin rate" << std::endl; //apparently it needs to be run a few times to get a stable number?
+  double rate;
+  for(int i=0;i<4;i++){
+    rate = get_rate();
+  }
+    
   std::mt19937 gen(1234);
   std::uniform_int_distribution<> dist(0, mode_times.size()-1);
 
@@ -68,8 +100,9 @@ int main(int argc, char **argv){
       time = mode_times[mode];
     }
     std::cout << i << " " << time << std::endl;
-    the_function(time);
+    the_function(time,rate);
   }
-  
+
   MPI_Finalize();
+  return 0;
 }
