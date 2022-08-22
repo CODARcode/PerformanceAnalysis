@@ -1,6 +1,6 @@
 #A Python module for offline analysis of the provenance database
 #Executed as a script it performs some rudimentary analysis
-import provdb_interact as pdb
+import provdb_python.provdb_interact as pdb
 import pymargo
 from pymargo.core import Engine
 import json
@@ -288,14 +288,11 @@ def filterGlobalDatabase(interface, collection_name, filter_list):
 
     
     
-
-    
-if __name__ == '__main__':
-    argc = len(sys.argv)
-    if(argc != 2):
-        print("Usage: python3.6 provdb_analyze.py <nshards>")
+def provdb_basic_analysis(args):
+    if(len(args) != 1):
+        print("Arguments: <nshards>")
         sys.exit(0)
-    nshards = int(sys.argv[1])
+    nshards = int(args[0])
 
     with Engine('na+sm', pymargo.server) as engine:
         db = pdb.provDBinterface(engine, r'provdb.%d.unqlite', nshards)

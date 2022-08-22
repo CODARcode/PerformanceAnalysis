@@ -205,14 +205,12 @@ class provDBinterface:
         del self.provider
 
 
-        
-
-if __name__ == '__main__':
-    argc = len(sys.argv)
-    if(argc != 4):
+def provdb_interact_filter(args):        
+    argc = len(args)
+    if(argc != 3):
         print("""Basic script usage is to apply a jx9 filter to the database
 --------------------------------------------------------
-Usage python3.7 provdb_interact.py $COLLECTION $QUERY $NSHARDS
+Arguments: $COLLECTION $QUERY $NSHARDS
 --------------------------------------------------------
 Where COLLECTION is 'anomalies', 'normalexecs' or 'metadata'
 and QUERY is a jx9 query
@@ -220,9 +218,9 @@ e.g. "function(\$entry) { return true; }"   will show all entries
         """)
         sys.exit(0)
     
-    col = sys.argv[1]
-    query = sys.argv[2]
-    nshards = int(sys.argv[3])
+    col = args[0]
+    query = args[1]
+    nshards = int(args[2])
 
     with Engine('na+sm', pymargo.server) as engine:
         db = provDBinterface(engine, 'provdb.%d.unqlite', nshards)
