@@ -12,6 +12,8 @@ from pysonata.provider import SonataProvider
 from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
+provider_idx_next=0
+
 #Base class for a Sonata client connection to a database
 class provDBclientBase:
     def _openCollection(self, coll_name, create=False):
@@ -54,13 +56,17 @@ class provDBclientBase:
             print("Error: Index must be integer or list")
             sys.exit(1)
 
+    #Get all records
+    def all(self, which_coll):
+        return [ json.loads(x) for x in self.getCollection(which_coll).all ]
+        
 
 #Sonata client connection to a database shard
 class provDBshard(provDBclientBase):
-    def __init__(self,client,address,db_name,create=False):
+    def __init__(self,client,address,db_name,provider_idx,create=False):
         #Open database as a client
         self.db_name = db_name
-        self.database = client.open(address, 0, db_name)
+        self.database = client.open(address, provider_idx, db_name)
 
         #Initialize collections
         self.anomalies = self._openCollection('anomalies',create=create)
@@ -91,10 +97,10 @@ class provDBshard(provDBclientBase):
 
 
 class provDBglobal(provDBclientBase):
-    def __init__(self,client,address,db_name,create=False):
+    def __init__(self,client,address,db_name,provider_idx,create=False):
         #Open database as a client
         self.db_name = db_name
-        self.database = client.open(address, 0, db_name)
+        self.database = client.open(address, provider_idx, db_name)
 
         #Initialize collections
         self.func_stats = self._openCollection('func_stats',create=create)
@@ -132,7 +138,12 @@ class provDBinterface:
             sys.exit(1)
 
         #Setup provider admin and client to manage database
-        self.provider = SonataProvider(engine, 0)
+        global provider_idx_next
+        self.provider_idx = provider_idx_next
+        provider_idx_next+=1 #ensure unique providers for each instance
+
+        print("Creating provider with index",self.provider_idx)
+        self.provider = SonataProvider(engine, self.provider_idx)
         self.address = str(engine.addr())
         self.admin = SonataAdmin(engine)
         self.client = SonataClient(engine)
@@ -147,15 +158,15 @@ class provDBinterface:
             if os.path.exists(db_file) == False:
                 if create == True:
                     print("Creating shard %d as %s from file %s" % (s,db_name,db_file))
-                    self.admin.create_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+                    self.admin.create_database(self.address, self.provider_idx, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
                 else:
                     print("Error: File '%s' does not exist!" % db_file)
                     sys.exit(1)                    
             else:
                 print("Attaching shard %d as %s from file %s" % (s,db_name,db_file))
-                self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+                self.admin.attach_database(self.address, self.provider_idx, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
 
-            self.db_shards.append( provDBshard(self.client, self.address, db_name, create=create) )
+            self.db_shards.append( provDBshard(self.client, self.address, db_name, self.provider_idx, create=create) )
 
         #Connect to global database if available
         db_name = "provdb.global"
@@ -164,17 +175,17 @@ class provDBinterface:
         if os.path.exists(db_file) == False:
             if create == True:
                 print("Creating global database as %s from file %s" % (db_name,db_file))
-                self.admin.create_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+                self.admin.create_database(self.address, self.provider_idx, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
                 self.use_global_db = True                                
             else:
                 self.use_global_db = False
         else:
             print("Attaching global database as %s from file %s" % (db_name,db_file))
-            self.admin.attach_database(self.address, 0, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
+            self.admin.attach_database(self.address, self.provider_idx, db_name, 'unqlite', "{ \"path\" : \"%s\" }" % db_file)
             self.use_global_db = True
 
         if self.use_global_db:
-            self.db_global = provDBglobal(self.client, self.address, db_name, create=create)
+            self.db_global = provDBglobal(self.client, self.address, db_name, self.provider_idx, create=create)
         else:
             self.db_global = None
             
@@ -194,11 +205,11 @@ class provDBinterface:
     def __del__(self):
         del self.db_shards        
         for n in self.db_names:
-            self.admin.detach_database(self.address, 0, n)
+            self.admin.detach_database(self.address, self.provider_idx, n)
             
         if self.use_global_db:
             del self.db_global
-            self.admin.detach_database(self.address, 0, self.db_global_name)
+            self.admin.detach_database(self.address, self.provider_idx, self.db_global_name)
 
         del self.client
         del self.admin
@@ -221,7 +232,7 @@ e.g. "function(\$entry) { return true; }"   will show all entries
     col = args[0]
     query = args[1]
     nshards = int(args[2])
-
+   
     with Engine('na+sm', pymargo.server) as engine:
         db = provDBinterface(engine, 'provdb.%d.unqlite', nshards)
 

@@ -284,9 +284,7 @@ def filterGlobalDatabase(interface, collection_name, filter_list):
     print("Filtering with function: %s" % filter_func)
 
     return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
-
-
-    
+   
     
 def provdb_basic_analysis(args):
     if(len(args) != 1):
