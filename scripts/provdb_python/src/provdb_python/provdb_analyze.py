@@ -271,8 +271,8 @@ def filterDatabase(interface, collection_name, filter_list):
 
     filter_func = genFilterFunc(filter_list)
     
-    print("Filtering with function: %s" % filter_func)
-
+    #print("Filtering with function: %s" % filter_func)
+    
     results = []
     for s in range(interface.getNshards()):
         results += [ json.loads(x) for x in interface.getShard(s).filter(collection_name, filter_func) ]
@@ -281,7 +281,7 @@ def filterDatabase(interface, collection_name, filter_list):
 def filterGlobalDatabase(interface, collection_name, filter_list):
     filter_func = genFilterFunc(filter_list)
     
-    print("Filtering with function: %s" % filter_func)
+    #print("Filtering with function: %s" % filter_func)
 
     return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
    

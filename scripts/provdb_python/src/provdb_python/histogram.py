@@ -9,9 +9,9 @@ def verbosePrint(*args):
 class HistogramVBW:
     class Bin:
         def __init__(self,l,u,c):
-            self.l = l #float
-            self.u = u #float
-            self.c = c #int
+            self.l = l #lower edge, float
+            self.u = u #upper edge, float
+            self.c = c #count, int
             self.left = None
             self.right = None
             self.is_end = False
@@ -160,7 +160,7 @@ class HistogramVBW:
                     in_cur = in_cur.right
         return out
 
-    def setup(self, edges, counts, minval, maxval):
+    def setup(self, edges, counts, minval=None, maxval=None):
         if len(edges) != len(counts) + 1:
             raise Exception("Invalid array sizes")
         Nbin = len(counts)
@@ -172,9 +172,16 @@ class HistogramVBW:
         hp = self.first
         for b in range(1,Nbin):            
             hp = self.Bin.insertRight(hp, self.Bin(edges[b],edges[b+1],counts[b]) )
-  
-        self.m_min = minval
-        self.m_max = maxval
+
+        if minval == None:
+            self.m_min = edges[0]
+        else:
+            self.m_min = minval
+
+        if maxval == None:
+            self.m_max = edges[-1]
+        else:
+            self.m_max = maxval
 
     def Nbin(self):
         return self.Bin.size(self.first)
@@ -285,10 +292,40 @@ class HistogramVBW:
             action.f(cur)
             cur = cur.right
 
+    #Return a tuple containing lists of the edges and counts
+    def getEdgesAndCounts(self):
+        class action:
+            def __init__(self):
+                self.edges = []
+                self.counts = []
+            def f(self, b):
+                if(len(self.edges) == 0):
+                    self.edges.append(b.l)
+                self.edges.append(b.u)
+                self.counts.append(b.c)
+        a = action()
+        self.binAction(a)
+        return (a.edges,a.counts)
+
+    #Return a histogram that has bin rebinned so that its edges match those provided
+    #counts outside of that range are ignored
+    def rebin(self, new_edges):
+        new_counts = []
+        cp = copy.deepcopy(self)
+        for i in range(1, len(new_edges)):
+            l = new_edges[i-1]
+            u = new_edges[i]        
+            new_counts.append( cp.extractUniformCountInRangeInt(l,u) )
+        out = HistogramVBW()
+        out.setup(new_edges,new_counts)
+        return out
+        
 
     #Difference of two histograms
+    #If return_rebinned == True the result will be a tuple of the rebinned histograms of a,b followed by the histogram of the diff
+    #Otherwise it will just return the diffed histogram
     @staticmethod
-    def diff(a,b):
+    def diff(a,b,return_rebinned=False):
         #Choose the range from the lowest low and highest high, and the bin width from the smallest
         class action:
             def __init__(self):
@@ -314,28 +351,30 @@ class HistogramVBW:
         bw = min(action_a.bw, action_b.bw)
         
         verbosePrint("Diff range",lowest,highest,"bin width",bw)
-
-        acp = copy.deepcopy(a)
-        bcp = copy.deepcopy(b)
         
+        #Get new edges
         edges = [lowest]
-        counts = []
         u = lowest
-        idx = 0
         while(u < highest):
             u += bw
             edges.append(u)
 
-            bin_l = edges[idx]
-            bin_u = edges[idx+1]
-            print("Bin",idx,"range",bin_l,bin_u)
-            
-            val = acp.extractUniformCountInRangeInt(bin_l,bin_u) - bcp.extractUniformCountInRangeInt(bin_l,bin_u)
-            counts.append(val)
-            
-            idx += 1
+        #Rebin both histograms onto the new range
+        arb = a.rebin(edges)
+        brb = b.rebin(edges)
+        ae,ac = arb.getEdgesAndCounts()
+        be,bc = brb.getEdgesAndCounts()
+        assert(len(ae) == len(edges))
+        assert(len(be) == len(edges))
+        for i in range(len(ac)):
+            ac[i] -= bc[i]
+        out = HistogramVBW()
+        out.setup(edges,ac)
 
-        return (edges, counts)
+        if(return_rebinned == True):
+            return (arb, brb, out)
+        else:
+            return out
 
 
 
@@ -393,6 +432,12 @@ def testHistogramVBW_Basics():
 
   assert( abs(hv.totalCount() - 6.0) < 1e-8 )
 
+  #Test revert to lists
+  e,c = hv.getEdgesAndCounts()
+  assert( e == [0,1,2,3] )
+  assert( c == [1,2,3] )
+
+  
 
   #Test copy
   #hv.setup([0,1,2,3], [1,2,3], 1e-12, 3);
@@ -544,6 +589,28 @@ def testHistogramVBW_extractUniformCountInRangeInt():
 
     print("extractUniformCountInRangeInt test passed")
 
+def testHistogramVBW_rebin():
+    hv = HistogramVBW()
+  
+    hv.setup([0,1,2,3], [4,2,6], 1e-12, 3);
+
+    #Check a slice that aligns with existing bin edges
+    hsliced = hv.rebin( [1,2] )
+    b = hsliced.getBinByIndex(0)
+    assert(b.l == 1)
+    assert(b.u == 2)
+    assert(b.c == 2)
+
+    #Check a slice that doesn't 
+    hsliced = hv.rebin( [0.5,2.5] )
+    b = hsliced.getBinByIndex(0)
+    assert(b.l == 0.5)
+    assert(b.u == 2.5)
+    assert(b.c == 7)
+
+    print("rebin test passed")
+  
+    
 def testHistogramVBW_Diff():
     #Histograms with same range
     g = HistogramVBW()
@@ -552,7 +619,7 @@ def testHistogramVBW_Diff():
     h = HistogramVBW()
     h.setup([0,1,2,3], [3,4,5], 1e-12, 3)
 
-    edges, counts = HistogramVBW.diff(g,h)
+    edges, counts = HistogramVBW.diff(g,h).getEdgesAndCounts()
     print(edges,counts)
     assert(len(counts) == 3)
     assert(len(edges) == 4)
@@ -566,7 +633,7 @@ def testHistogramVBW_Diff():
     h = HistogramVBW()
     h.setup([0,0.5,1,1.5,2,2.5,3], [1,1,3,3,2,2], 1e-12, 3)
 
-    edges, counts = HistogramVBW.diff(g,h)
+    edges, counts = HistogramVBW.diff(g,h).getEdgesAndCounts()
     print(edges,counts)
     assert(len(counts) == 6)
     assert(len(edges) == 7)
@@ -581,7 +648,7 @@ def testHistogramVBW_Diff():
     h = HistogramVBW()
     h.setup([0,0.5,1,1.5,2,2.5,3], [1,1,3,3,2,2], 1e-12, 3)
 
-    edges, counts = HistogramVBW.diff(g,h)
+    edges, counts = HistogramVBW.diff(g,h).getEdgesAndCounts()
     print(edges,counts)
     assert(edges == [-1.0,-0.5,0,0.5,1,1.5,2,2.5,3,3.5,4])
     assert(counts == [4,4,0,0,0,0,0,0,4,4])
@@ -597,7 +664,7 @@ def testHistogramVBW_Diff():
     
 if __name__ == '__main__':
     verbose = True
-    # testHistogramVBW_Basics()
-    # testHistogramVBW_extractUniformCountInRangeInt()
-
+    testHistogramVBW_Basics()
+    testHistogramVBW_extractUniformCountInRangeInt()
+    testHistogramVBW_rebin()
     testHistogramVBW_Diff()
