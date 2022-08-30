@@ -7,7 +7,7 @@ packages:
   libfabric:
     buildable: false
     externals:
-    - spec: libfabric@1.9.0
+    - spec: libfabric@1.15.1
       prefix: /opt/libfabric
   zlib:
     buildable: false
@@ -72,7 +72,7 @@ packages:
   cereal:
     buildable: false
     externals:
-    - spec: cereal@1.3.0
+    - spec: cereal@1.3.2
       prefix: /opt/cereal
   openblas:
     buildable: false

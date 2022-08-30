@@ -17,7 +17,7 @@ SHELL ["/bin/bash", "-c"]
 ENV CPATH=/opt/cereal/include:${CPATH}
 
 RUN source /spack/spack/share/spack/setup-env.sh && spack load boost mochi-sonata && \
-    CC=mpicc CXX=mpicxx ../Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --prefix=/opt/chimbuko/ad && \
+    CC=mpicc CXX=mpicxx /Downloads/PerformanceAnalysis/configure --with-adios2=/opt/adios2 --with-network=ZMQ --with-perf-metric --with-pkg-config --prefix=/opt/chimbuko/ad && \
     make -j 4 install && cd /opt/chimbuko/ad/test 
 
 #&& ./run_all.sh DOCKER_SETUP_MOCHI
@@ -28,6 +28,16 @@ RUN cd /Downloads/PerformanceAnalysis && git log | head -1 > /opt/chimbuko/ad/gi
 FROM build_base
 
 COPY --from=build /opt/chimbuko/ad /opt/chimbuko/ad
+
+###############
+#Install the python offline analysis tool
+
+WORKDIR /Downloads
+
+RUN source /spack/spack/share/spack/setup-env.sh && spack load py-mochi-sonata && \
+git clone -b ckelly_develop https://github.com/CODARcode/PerformanceAnalysis.git && \
+python3.6 -m pip install PerformanceAnalysis/scripts/provdb_python/ && \
+rm -rf PerformanceAnalysis
 
 RUN apt-get update && apt-get install -y gdb emacs-nox vim && apt autoremove -y && rm -rf /var/lib/apt/lists/* 
 

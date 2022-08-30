@@ -3,9 +3,9 @@ FROM chimbuko/base:ubuntu18.04 AS mochi-install
 SHELL ["/bin/bash", "-c"]
 
 ENV SPACK_ROOT=/spack/spack
-RUN echo FORCE_REDOWNLOAD_7_2_21_12_11 >> /dev/null && \
+RUN echo FORCE_REDOWNLOAD_8_25_22_13_08 >> /dev/null && \
     mkdir /spack && cd /spack && \
-    git clone https://github.com/spack/spack.git
+    git clone https://github.com/spack/spack.git --branch v0.18.1
 
 RUN source /spack/spack/share/spack/setup-env.sh && \
     mkdir /sds && cd /sds && \
@@ -15,13 +15,13 @@ RUN source /spack/spack/share/spack/setup-env.sh && \
 COPY modules.yaml packages.yaml /root/.spack/
 
 RUN pip3 install cython pkgconfig
-RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.9.0 ^py-numpy@1.19.5 ^argobots@main+stackunwind+tool ^mochi-margo@main ^mercury@2.0.1 ^mochi-sonata@main  && \
+RUN source /spack/spack/share/spack/setup-env.sh && spack install py-mochi-sonata ^python@3.6.0 ^libfabric@1.15.1 ^py-numpy@1.19.5 ^argobots@main+stackunwind+tool ^mochi-margo@main ^mercury@2.2.0 ^mochi-sonata@main ^mochi-thallium@0.10.1+cereal boost@1.79.0 && \
     spack gc -y && spack clean -a
 
-COPY fixup_spack_python.sh /root/.spack/
-RUN /root/.spack/fixup_spack_python.sh
+#COPY fixup_spack_python.sh /root/.spack/
+#RUN /root/.spack/fixup_spack_python.sh
 
-WORKDIR /
+#WORKDIR /
 
-ENTRYPOINT [ "/bin/bash" ]
+#ENTRYPOINT [ "/bin/bash" ]
 #To setup spack you need to run "source /spack/spack/share/spack/setup-env.sh" inside your image
