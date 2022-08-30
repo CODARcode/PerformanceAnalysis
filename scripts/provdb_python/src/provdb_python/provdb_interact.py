@@ -12,7 +12,7 @@ from pysonata.provider import SonataProvider
 from pysonata.client import SonataClient
 from pysonata.admin import SonataAdmin
 
-provider_idx_next=0
+provider_idx_next=1
 
 #Base class for a Sonata client connection to a database
 class provDBclientBase:
