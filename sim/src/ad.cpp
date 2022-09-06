@@ -278,9 +278,10 @@ void ADsim::step(const unsigned long step){
     eventIDmap evmap(m_all_execs, m_eventid_map);
       
     const ParamInterface &params = adAlgorithmParams().algorithm != "none" ? *m_outlier->get_global_parameters() : globalParams();
+    ADMonitoring mon; //todo: add sim interface for monitoring
     ADAnomalyProvenance::getProvenanceEntries(anomalous_events, normal_events, m_normal_events,
 					      anom, step, step_start_time, step_end_time, m_window_size,
-					      params, evmap, counters, m_metadata);
+					      params, evmap, counters, m_metadata, mon);
 #ifdef ENABLE_PROVDB
     //Send to provdb
     if(anomalous_events.size() > 0)

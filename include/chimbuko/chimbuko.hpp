@@ -180,6 +180,7 @@ namespace chimbuko {
 #endif
     void init_normalevent_prov();
     void init_metadata_parser();
+    void init_monitoring();
 
     /**
      * @brief Signal the parser to parse the adios2 timestep
@@ -212,6 +213,10 @@ namespace chimbuko {
      */
     void extractCounters(int rank, int step);
 
+    /**
+     * @brief Update the node state using information from TAU's monitoring plugin
+     */
+    void extractNodeState();
 
     /**
      * @brief Extract provenance information about anomalies and communicate to provenance DB
@@ -247,6 +252,7 @@ namespace chimbuko {
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif
     ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
+    ADMonitoring *m_monitoring; /**< maintain the node state by parsing counters from TAU's monitoring plugin*/
 
     mutable PerfStats m_perf; /**< Performance data */
     mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */

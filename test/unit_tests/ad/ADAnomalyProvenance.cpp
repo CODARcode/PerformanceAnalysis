@@ -40,6 +40,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
 
   ADCounter counter;
   ADMetadataParser metadata;
+  ADMonitoring monitoring;
 
   int step = 11;
   unsigned long step_start = 0;
@@ -48,7 +49,7 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata, 0,
+			   counter, metadata, monitoring, 0,
 			   step, step_start, step_end);
 
   nlohmann::json output = prov.get_json();
@@ -135,11 +136,12 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
     exec2.add_counter(*e);
 
   ADMetadataParser metadata;
+  ADMonitoring monitoring;
 
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata, 0,
+			   counter, metadata, monitoring, 0,
 			   11,900,1200);
 
   nlohmann::json output = prov.get_json();
@@ -212,11 +214,11 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_NE( pit, it->second.end() );
   EXPECT_EQ( pit->second, "Fake GPU" );
 
-
+  ADMonitoring monitoring;
   ADAnomalyProvenance prov_nongpu(*exec_cpu_it,
 				  event_man,
 				  param,
-				  counter, metadata, 0,
+				  counter, metadata, monitoring, 0,
 				  11,900,1200);
   {
     nlohmann::json output = prov_nongpu.get_json();
@@ -234,7 +236,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADAnomalyProvenance prov_gpu(*exec_gpu_it,
 			       event_man,
 			       param,
-			       counter, metadata, 0,
+			       counter, metadata, monitoring, 0,
 			       11,900,1200);
   {
     nlohmann::json output = prov_gpu.get_json();
@@ -270,6 +272,7 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
   param[11] = stats;
 
   ADCounter counter;
+  ADMonitoring monitoring;
 
   ADMetadataParser metadata;
   std::vector<MetaData_t> mdata = {
@@ -296,7 +299,7 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     ADAnomalyProvenance prov_gpu(*exec_gpu_it,
 				 event_man,
 				 param,
-				 counter, metadata, 0,
+				 counter, metadata, monitoring, 0,
 				 11,900,1200);
     {
       nlohmann::json output = prov_gpu.get_json();
@@ -338,7 +341,7 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     ADAnomalyProvenance prov_gpu(*exec_gpu_it,
 				 event_man,
 				 param,
-				 counter, metadata, 0,
+				 counter, metadata, monitoring, 0,
 				 11,900,1200);
     {
       nlohmann::json output = prov_gpu.get_json();
@@ -388,7 +391,7 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     ADAnomalyProvenance prov_gpu(*exec_gpu_it,
 				 event_man,
 				 param,
-				 counter, metadata, 0,
+				 counter, metadata, monitoring, 0,
 				 11,900,1200);
     {
       nlohmann::json output = prov_gpu.get_json();
@@ -455,11 +458,12 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
 
   ADCounter counter;
   ADMetadataParser metadata;
+  ADMonitoring monitoring;
 
   ADAnomalyProvenance prov(exec2,
 			   event_man,
 			   param,
-			   counter, metadata,
+			   counter, metadata, monitoring,
 			   2,
 			   8,800,1200);
 
@@ -480,4 +484,59 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
 
   for(int i=0;i<2;i++)
     EXPECT_EQ(cwin[i]["tag"], comms[i]->tag());
+}
+
+
+
+TEST(TestADAnomalyProvenance, extractsNodeState){
+  ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theparent", 800, 200);
+  ExecData_t exec1 = createFuncExecData_t(1,2,3, 33, "thefunc", 900, 100); 
+
+  exec1.set_label(-1);
+  exec1.set_parent(exec0.get_id());
+  exec0.inc_n_children();
+  exec0.update_exclusive(exec1.get_runtime());
+
+  ExecData_t* execs[] = {&exec0, &exec1};
+  ADEvent event_man;
+  event_man.addCall(exec0);
+  event_man.addCall(exec1);
+
+
+  RunStats stats; //doesn't matter
+  for(int i=0;i<50;i++)
+    stats.push(double(i));
+
+  SstdParam param;
+  param[33] = stats;
+
+  ADCounter counter;
+  ADMetadataParser metadata;
+
+  std::unordered_map<int, std::string> counter_map = { {0,"interesting counter"} };
+  ADMonitoring monitoring;
+  monitoring.linkCounterMap(&counter_map);
+  monitoring.addWatchedCounter("interesting counter", "my counter field 1");
+  std::list<CounterData_t> clist = { createCounterData_t(0,0,0,0,9876,950,"interesting counter") };
+  CountersByIndex_t clist_m;
+  for(auto it = clist.begin(); it != clist.end(); ++it)
+    clist_m[it->get_counterid()].push_back(it);
+
+  monitoring.extractCounters(clist_m);
+
+  ADAnomalyProvenance prov(exec1,
+			   event_man,
+			   param,
+			   counter, metadata, monitoring,
+			   2,
+			   8,800,1200);
+
+  nlohmann::json output = prov.get_json();
+  const nlohmann::json &state = output["node_state"];
+  EXPECT_EQ(state["timestamp"], 950);
+  
+  ASSERT_TRUE( state["data"].is_array() );
+  ASSERT_EQ( state["data"].size(), 1 );
+  EXPECT_EQ( state["data"][0]["field"], "my counter field 1" );
+  EXPECT_EQ( state["data"][0]["value"], 9876 );
 }

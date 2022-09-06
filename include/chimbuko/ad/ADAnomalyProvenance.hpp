@@ -5,6 +5,7 @@
 #include "chimbuko/ad/ADCounter.hpp"
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADNormalEventProvenance.hpp"
+#include "chimbuko/ad/ADMonitoring.hpp"
 #include "chimbuko/util/Anomalies.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 
@@ -22,6 +23,7 @@ namespace chimbuko{
      * @param algo_params The algorithm parameters that resulted in the event classification
      * @param counters The counter manager
      * @param metadata The metadata manager
+     * @param monitoring The state monitor
      * @param window_size The number of events (on this process/rank/thread) either side of the anomalous event that are captured in the window field
      * @param io_step Index of io step
      * @param io_step_tstart Timestamp of beginning of io frame
@@ -32,6 +34,7 @@ namespace chimbuko{
 			const ParamInterface &algo_params, //algorithm parameters
 			const ADCounter &counters, //for counters
 			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
+			const ADMonitoring &monitoring, //for node state
 			const int window_size,
 			const int io_step,
 			const unsigned long io_step_tstart, const unsigned long io_step_tend);
@@ -70,7 +73,8 @@ namespace chimbuko{
 				     const ParamInterface &algo_params,
 				     const ADEventIDmap &event_man,
 				     const ADCounter &counters,
-				     const ADMetadataParser &metadata);
+				     const ADMetadataParser &metadata,
+				     const ADMonitoring &monitoring);
 
     /**
      * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
@@ -99,11 +103,12 @@ namespace chimbuko{
 				     const ParamInterface &algo_params,
 				     const ADEventIDmap &event_man,
 				     const ADCounter &counters,
-				     const ADMetadataParser &metadata){
+				     const ADMetadataParser &metadata,
+				     const ADMonitoring &monitoring){
       PerfStats perf;
       getProvenanceEntries(anom_event_entries, normal_event_entries,
 			   normal_event_manager, perf, anomalies, step, first_event_ts, last_event_ts,
-			   anom_win_size, algo_params, event_man, counters, metadata);
+			   anom_win_size, algo_params, event_man, counters, metadata, monitoring);
     }
 
   private:
@@ -130,6 +135,10 @@ namespace chimbuko{
 			    const ADEventIDmap &event_man,
 			    const int window_size);
 
+    /**
+     * @brief Get the node state data
+     */
+    void getNodeState(const ADMonitoring &monitoring);
 
     ExecData_t m_call; /**< The anomalous event*/
     std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
@@ -139,6 +148,7 @@ namespace chimbuko{
     nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
     nlohmann::json m_gpu_event_parent_info; /**< If a GPU event, info related to CPU event spawned it (name, thread, callstack) */
     nlohmann::json m_exec_window; /**< Window of function executions and MPI commuinications around anomalous execution*/
+    nlohmann::json m_node_state; /**< The node state parsed from TAU's monitoring plugin*/
     int m_io_step; /**< IO step*/
     unsigned long m_io_step_tstart; /**< Timestamp of start of io step*/
     unsigned long m_io_step_tend; /**< Timestamp of end of io step*/

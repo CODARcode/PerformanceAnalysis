@@ -78,6 +78,7 @@ Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m
 #endif
 		      m_normalevent_prov(nullptr),
 		      m_metadata_parser(nullptr),
+		      m_monitoring(nullptr),
 		      m_is_initialized(false){}
 
 Chimbuko::~Chimbuko(){
@@ -146,6 +147,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   init_event(); //requires parser and metadata parser
   init_outlier(); //requires event
   init_counter(); //requires parser
+  init_monitoring(); //requires parser
 
   m_is_initialized = true;
 
@@ -289,6 +291,13 @@ void Chimbuko::init_metadata_parser(){
   m_metadata_parser = new ADMetadataParser;
 }
 
+void Chimbuko::init_monitoring(){
+  m_monitoring = new ADMonitoring;
+  m_monitoring->linkCounterMap(m_parser->getCounterMap());
+  m_monitoring->setDefaultWatchList();
+}
+
+
 void Chimbuko::finalize()
 {
   PerfTimer timer;
@@ -323,8 +332,8 @@ void Chimbuko::finalize()
 #endif
 
   if (m_normalevent_prov) delete m_normalevent_prov;
-
   if(m_metadata_parser) delete m_metadata_parser;
+  if(m_monitoring) delete m_monitoring;
 
   m_parser = nullptr;
   m_event = nullptr;
@@ -336,6 +345,7 @@ void Chimbuko::finalize()
   m_provdb_client = nullptr;
 #endif
   m_metadata_parser = nullptr;
+  m_monitoring = nullptr;
 
   m_is_initialized = false;
 
@@ -460,6 +470,17 @@ void Chimbuko::extractCounters(int rank, int step){
 }
 
 
+void Chimbuko::extractNodeState(){
+  if(!m_monitoring) throw std::runtime_error("Monitoring is not initialized");
+  if(!m_counter) throw std::runtime_error("Counter is not initialized");
+  PerfTimer timer;
+  m_monitoring->extractCounters(m_counter->getCountersByIndex());
+  m_perf.add("ad_extract_node_state_ms", timer.elapsed_ms());
+}
+
+
+
+
 void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
 					const int step,
 					const unsigned long first_event_ts,
@@ -479,7 +500,7 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
     std::vector<nlohmann::json> anomaly_prov, normalevent_prov;
     ADAnomalyProvenance::getProvenanceEntries(anomaly_prov, normalevent_prov, *m_normalevent_prov, m_perf,
 					      anomalies, step, first_event_ts, last_event_ts, m_params.anom_win_size,
-					      *m_outlier->get_global_parameters(), *m_event, *m_counter, *m_metadata_parser);
+					      *m_outlier->get_global_parameters(), *m_event, *m_counter, *m_metadata_parser, *m_monitoring);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
 
@@ -608,6 +629,9 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
   timer.start();
   extractCounters(m_params.rank, step);
   m_perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
+
+  //Extract the node state
+  extractNodeState();
   
   //Extract parsed events into event manager
   timer.start();

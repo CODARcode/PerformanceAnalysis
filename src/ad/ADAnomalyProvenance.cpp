@@ -133,11 +133,14 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
   }
 }
 
-
+void ADAnomalyProvenance::getNodeState(const ADMonitoring &monitoring){
+  m_node_state = monitoring.get_json();
+}
 
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEventIDmap &event_man, const ParamInterface &algo_params,
-					 const ADCounter &counters, const ADMetadataParser &metadata, const int window_size,
+					 const ADCounter &counters, const ADMetadataParser &metadata, const ADMonitoring &monitoring,
+					 const int window_size,
 					 const int io_step,
 					 const unsigned long io_step_tstart, const unsigned long io_step_tend):
   m_call(call), m_is_gpu_event(false),
@@ -148,6 +151,7 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEventID
   getWindowCounters(call); //counters in window
   getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
   getExecutionWindow(call, event_man, window_size);
+  getNodeState(monitoring);
 
   //Verbose output
   // if(Verbose::on()){
@@ -180,7 +184,8 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 					    {"io_step_tend", m_io_step_tend},
 					      {"outlier_score", m_call.get_outlier_score() },
 						{"outlier_severity", m_call.get_outlier_severity() },
-						  {"hostname", getHostname() }
+						  {"hostname", getHostname() },
+						    {"node_state", m_node_state }
   };
 }
 
@@ -200,7 +205,8 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
 					       const ParamInterface &algo_params,
 					       const ADEventIDmap &event_man,
 					       const ADCounter &counters,
-					       const ADMetadataParser &metadata){
+					       const ADMetadataParser &metadata,
+					       const ADMonitoring &monitoring){
 
   constexpr bool do_delete = true;
   constexpr bool add_outstanding = true;
@@ -212,7 +218,7 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
   for(auto norm_it : anomalies.allEvents(Anomalies::EventType::Normal)){
     timer2.start();
     ADAnomalyProvenance extract_prov(*norm_it, event_man, algo_params,
-				     counters, metadata, anom_win_size,
+				     counters, metadata, monitoring, anom_win_size,
 				     step, first_event_ts, last_event_ts);
     normal_event_manager.addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
     perf.add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
@@ -235,7 +241,7 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
   for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
     timer2.start();
     ADAnomalyProvenance extract_prov(*anom_it, event_man, algo_params,
-				     counters, metadata, anom_win_size,
+				     counters, metadata, monitoring, anom_win_size,
 				     step, first_event_ts, last_event_ts);
     anom_event_entries[i++] = extract_prov.get_json();
     perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());

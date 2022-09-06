@@ -40,10 +40,10 @@ void dumpEvents(std::ostream &os, const std::vector<Event_t> &events, ADParser* 
       auto eit = event_type_map.find(e.eid()); if(eit == event_type_map.end()) fatal_error("Could not find event type in map!");
       const std::string &etype = eit->second;
       auto fit = func_map.find(e.fid());  if(fit == func_map.end()) fatal_error("Could not find fid in map!");
-      os << e.tid() << " " << e.ts() << " FUNC " << etype << " " << fit->second << std::endl;
+      os << e.tid() << " " << e.ts() << " FUNC " << etype << " \"" << fit->second << "\"" << std::endl;
     }else if(e.type() == EventDataType::COUNT){
       auto cit = counter_map.find(e.counter_id());  if(cit == counter_map.end()) fatal_error("Could not find counter id in map!");
-      os << e.tid() << " " << e.ts() << " COUNT " << cit->second << " " << e.counter_value() << std::endl;
+      os << e.tid() << " " << e.ts() << " COUNT \"" << cit->second << "\" " << e.counter_value() << std::endl;
     }else if(e.type() == EventDataType::COMM){
       os << e.tid() << " " << e.ts() << " COMM " << e.partner() << " " << e.bytes() << std::endl;
     }
