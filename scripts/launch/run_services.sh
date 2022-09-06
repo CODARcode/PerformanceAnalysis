@@ -285,6 +285,77 @@ if (( ${use_pserver} == 1 )); then
     sleep 2
 fi
 
+######################################################################
+#Generate the default configuration file for the TAU monitoring plugin
+if [[ "${tau_monitoring_conf}" != "default" ]]; then
+    if [[ ! -f "${tau_monitoring_conf}" ]]; then
+	echo "Chimbuko Services: Error: TAU monitoring configuration file is not accessible"
+	exit 1
+    fi
+    to_file="${base}/tau_monitoring.json"
+    full_from=$(readlink -f ${tau_monitoring_conf})
+    full_to=$(readlink -f ${to_file})
+
+    if [[ "${full_from}" != "${full_to}" ]]; then
+	cp ${full_from} ${full_to}
+	echo "Chimbuko Services: copied tau_monitoring.json from ${tau_monitoring_conf}"
+    else
+	echo "Chimbuko Services: tau_monitoring.json source and destination files are the same"
+    fi
+
+else
+    to_file="${base}/tau_monitoring.json"
+
+    cat <<EOF > ${to_file}
+{
+  "periodic": false,
+  "node_data_from_all_ranks": true,
+  "monitor_counter_prefix": "",
+  "periodicity seconds": 1.0,
+  "PAPI metrics": [],
+  "/proc/stat": {
+    "disable": false,
+    "comment": "This will exclude all core-specific readings.",
+    "exclude": ["^cpu[0-9]+.*"]
+  },
+  "/proc/meminfo": {
+    "disable": false,
+    "comment": "This will include three readings.",
+    "include": [".*MemAvailable.*", ".*MemFree.*", ".*MemTotal.*"]
+  },
+  "/proc/net/dev": {
+    "disable": false,
+    "comment": "This will include only the first ethernet device.",
+    "include": [".*eno1.*"]
+  },
+  "/proc/self/net/dev": {
+    "disable": true,
+    "comment": "This will include only the first ethernet device (from network namespace of which process is a member).",
+    "include": [".*eno1.*"]
+  },
+  "lmsensors": {
+    "disable": true,
+    "comment": "This will include all power readings.",
+    "include": [".*power.*"]
+  },
+  "net": {
+    "disable": true,
+    "comment": "This will include only the first ethernet device.",
+    "include": [".*eno1.*"]
+  },
+  "nvml": {
+    "disable": true,
+    "comment": "This will include only the utilization metrics.",
+    "include": [".*utilization.*"]
+  }
+}
+EOF
+    echo "Chimbuko Services: generated default tau_monitoring.json"
+
+fi
+
+
+######################################################################
 #echo "Chimbuko Services: Processes are: " $(ps)
 
 #Check that the variables passed to the AD from the config file are defined

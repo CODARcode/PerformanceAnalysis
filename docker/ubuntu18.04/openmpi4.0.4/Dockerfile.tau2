@@ -37,7 +37,7 @@ RUN echo "FORCE REDOWNLOAD 8_25_22_16_38" > /dev/null && git clone https://githu
 WORKDIR /Downloads/tau2
 
 #Use known working version of tau2
-RUN git checkout 06cc0d1233c949189662165c5a78c0d2c1f63572
+RUN git checkout 5112e6779ce03fb2750300a928352f479f69b442
 
 #pthread+mpi
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
