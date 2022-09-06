@@ -35,7 +35,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   read_ignored_corrid_funcs(""),
                                   max_frames(-1),
                                   func_threshold_file(""),
-                                  ignored_func_file("")
+                                  ignored_func_file(""),
+                                  monitoring_watchlist_file("")
 {}
 
 void ChimbukoParams::print() const{
@@ -294,7 +295,10 @@ void Chimbuko::init_metadata_parser(){
 void Chimbuko::init_monitoring(){
   m_monitoring = new ADMonitoring;
   m_monitoring->linkCounterMap(m_parser->getCounterMap());
-  m_monitoring->setDefaultWatchList();
+  if(m_params.monitoring_watchlist_file.size())
+    m_monitoring->parseWatchListFile(m_params.monitoring_watchlist_file);
+  else
+    m_monitoring->setDefaultWatchList();
 }
 
 

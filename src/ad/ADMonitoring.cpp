@@ -1,5 +1,6 @@
 #include <chimbuko/ad/ADMonitoring.hpp>
 #include <chimbuko/util/error.hpp>
+#include <fstream>
 using namespace chimbuko;
 
 void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
@@ -93,4 +94,17 @@ void ADMonitoring::setDefaultWatchList(){
   addWatchedCounter("cpu: User %", "CPU Usage User (%)");
   addWatchedCounter("cpu: System %", "CPU Usage System (%)");
   addWatchedCounter("cpu: Idle %", "CPU Usage Idle (%)");
+}
+
+void ADMonitoring::parseWatchListFile(const std::string &file){
+  clearWatchList();
+  std::ifstream f(file.c_str());
+  if(f.fail()) fatal_error("Could not open watchlist file");
+  nlohmann::json j = nlohmann::json::parse(f);
+  if(!j.is_array()) fatal_error("Expect file to contain a JSON array");
+  for(int i=0;i<j.size();i++){
+    const nlohmann::json &j_i = j[i];
+    if(!j_i.is_array() || j_i.size() != 2) fatal_error("Expect array elements to be two-component arrays");
+    addWatchedCounter(j_i[0],j_i[1]);
+  }
 }

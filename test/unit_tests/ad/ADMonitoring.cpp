@@ -2,7 +2,7 @@
 #include<chimbuko/util/error.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
-
+#include <fstream>
 
 using namespace chimbuko;
 
@@ -87,4 +87,21 @@ TEST(ADMonitoringTest, Basics){
     ASSERT_NE( es.find("State entry exists but has not yet been assigned"), std::string::npos );
   }
 
+}
+
+TEST(ADMonitoringTest, parseUserInputs){
+  ADMonitoring mon;
+  mon.setDefaultWatchList(); //so we can check the list is flushed prior to reading
+
+  {
+    std::ofstream f("mon.json");
+    f << "[ [\"hello\",\"world\"] ]" << std::endl;
+  }
+  mon.parseWatchListFile("mon.json");
+  auto const & w = mon.getWatchList();
+
+  ASSERT_EQ( w.size(), 1 );
+  auto it = w.begin();
+  EXPECT_EQ(it->first, "hello");
+  EXPECT_EQ(it->second, "world");
 }

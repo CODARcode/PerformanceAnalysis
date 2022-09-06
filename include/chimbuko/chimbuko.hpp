@@ -28,6 +28,8 @@ namespace chimbuko {
 
     std::string ignored_func_file; /**< A filename containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events*/
 
+    std::string monitoring_watchlist_file; /**< A filename containing the counter watchlist for the integration with the monitoring plugin. Empty string uses the default subset.   
+
     //Parameters associated with communicating with the parameter server*/
     std::string pserver_addr; /**< The address of the parameter server.
 				 < If no parameter server is in use, this string should be empty (length zero)

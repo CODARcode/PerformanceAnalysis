@@ -70,6 +70,31 @@ namespace chimbuko {
      */
     bool stateIsSet() const{ return m_state_set; }
 
+    /**
+     * @brief Clear the counter watch list
+     */
+    void clearWatchList(){ m_counter_watchlist.clear(); }
+
+    /**
+     * @brief Set the watch list from the provided file
+     *
+     * File should be formated as JSON as an array where each element is a 2-element array containing
+     * the counter name followed by the field name
+     * e.g.
+     * [
+     *   ["my counter name", "its field name"],
+     *   ["my other counter name", "this one's field name"],
+     * ]
+     *
+     * Note: existing watch list will be cleared first
+     */
+    void parseWatchListFile(const std::string &file);
+
+    /**
+     * @brief Get the current watchlist
+     */
+    const std::unordered_map<std::string, std::string>& getWatchList() const{ return m_counter_watchlist; }
+
   private:
     bool m_state_set; /**< True if the state has been set at least once*/
     unsigned long m_timestamp; /**< The timestamp of the most recent update*/
