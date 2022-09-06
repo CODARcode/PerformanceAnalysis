@@ -16,6 +16,9 @@ CountersByIndex_t getIndexCounterMap(std::list<CounterData_t> &clist){
 TEST(ADMonitoringTest, Basics){
   std::unordered_map<int, std::string> counter_map = { {0,"uninteresting counter"}, {1,"interesting counter"} };
   ADMonitoring mon;
+
+  EXPECT_FALSE(mon.stateIsSet());
+  EXPECT_TRUE( mon.get_json().empty() );
   
   std::list<CounterData_t> clist = {
     createCounterData_t(0,0,1,0,1233,9999,"uninteresting counter"), //pid,rid,tid,cid,val,ts,cname
@@ -35,6 +38,7 @@ TEST(ADMonitoringTest, Basics){
   mon.addWatchedCounter("interesting counter", "my counter field 1");
   mon.extractCounters(getIndexCounterMap(clist));
 
+  ASSERT_TRUE( mon.stateIsSet() );
   ASSERT_TRUE( mon.hasState("my counter field 1") );
   ASSERT_FALSE( mon.hasState("my invalid counter field") );
 
@@ -70,5 +74,17 @@ TEST(ADMonitoringTest, Basics){
   EXPECT_EQ( j["data"][0]["field"], "my counter field 1" );
   EXPECT_EQ( j["data"][0]["value"], 555 );
 
+  //Check we don't output state for a valid counter that has not yet been assigned a value
+  counter_map[2] = "another interesting counter";
+  mon.addWatchedCounter("another interesting counter", "test field");
+  clist = {};
+  mon.extractCounters(getIndexCounterMap(clist));
+  //  should be an entry for this counter
+  try{
+    mon.getState("test field");
+  }catch(const std::exception &e){
+    std::string es = e.what();
+    ASSERT_NE( es.find("State entry exists but has not yet been assigned"), std::string::npos );
+  }
 
 }

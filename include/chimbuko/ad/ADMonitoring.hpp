@@ -9,7 +9,7 @@ namespace chimbuko {
    */
   class ADMonitoring{
   public:
-    ADMonitoring(): m_counterMap(nullptr), m_timestamp(0){}
+    ADMonitoring(): m_counterMap(nullptr), m_timestamp(0), m_state_set(false){}
 
     /**
      * @brief Parse the counters on this timestep and extract those associated with the monitoring plugin
@@ -65,7 +65,13 @@ namespace chimbuko {
      */
     unsigned long getTimeStamp() const{ return m_timestamp; }
 
+    /**
+     * @brief Check if the state has been set at least once
+     */
+    bool stateIsSet() const{ return m_state_set; }
+
   private:
+    bool m_state_set; /**< True if the state has been set at least once*/
     unsigned long m_timestamp; /**< The timestamp of the most recent update*/
     std::list<StateEntry> m_state; /**< A list of current state entries*/
     std::map<int, std::list<StateEntry>::iterator> m_cid_state_map; /**< A map of counter index to a state entry*/

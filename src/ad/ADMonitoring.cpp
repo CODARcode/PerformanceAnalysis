@@ -47,6 +47,7 @@ void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
       entry.value = cd.get_value();
       entry.assigned = true;
       m_timestamp = cd.get_ts(); //overwrite timestamp of update (all monitoring data in a dump should arrive at the same time)
+      m_state_set = true;
     }
   }
 
@@ -73,12 +74,15 @@ void ADMonitoring::addWatchedCounter(const std::string &counter_name, const std:
 }
   
 nlohmann::json ADMonitoring::get_json() const{
+  if(!m_state_set) return nlohmann::json();
+
   nlohmann::json out = nlohmann::json::object(); 
   out["timestamp"] = m_timestamp;
   out["data"] = nlohmann::json::array(); 
 
   for(auto const &e: m_state)
-    out["data"].push_back({ {"field", e.field_name} , {"value", e.value} });
+    if(e.assigned)
+      out["data"].push_back({ {"field", e.field_name} , {"value", e.value} });
   return out;
 }
 
