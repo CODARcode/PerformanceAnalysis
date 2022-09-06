@@ -28,6 +28,7 @@ set -o pipefail
 #./ad/SSTDOutlierTestBPFile ../data
 ./ad/COPODOutlier
 ./ad/COPODOutlierADs
+./ad/ADMonitoring
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

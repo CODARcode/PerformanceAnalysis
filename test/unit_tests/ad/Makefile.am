@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs
 
 testdir = $(prefix)/test/unit_tests/ad
-test_PROGRAMS = COPODOutlier COPODOutlierADs HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils AnomalyData ADcombinedPSdata FuncAnomalyMetrics ADLocalAnomalyMetrics
+test_PROGRAMS = COPODOutlier COPODOutlierADs HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils AnomalyData ADcombinedPSdata FuncAnomalyMetrics ADLocalAnomalyMetrics ADMonitoring
 
 HBOSOutlier_SOURCES = HBOSOutlier.cpp ../unit_test_main_mpi.cpp
 HBOSOutlier_LDADD = $(LDADD)
@@ -75,3 +75,6 @@ FuncAnomalyMetrics_LDADD = $(LDADD)
 
 ADLocalAnomalyMetrics_SOURCES = ADLocalAnomalyMetrics.cpp ../unit_test_main.cpp
 ADLocalAnomalyMetrics_LDADD = $(LDADD)
+
+ADMonitoring_SOURCES = ADMonitoring.cpp ../unit_test_main.cpp
+ADMonitoring_LDADD = $(LDADD)
