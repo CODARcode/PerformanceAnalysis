@@ -222,6 +222,30 @@ If increasing the number of shards is not sufficient, more provDB server instanc
 
 An example of running two different server instances on different nodes of Summit, for a run of our benchmark with 4032 ranks can be found in the *scripts/summit/provdb_multiinstance* subdirectory of the PerformanceAnalysis. The benchmark source can be found in the *benchmark_suite/benchmark_provdb* subdirectory.
 
+Integration with TAU's monitoring plugin
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chimbuko seamlessly integrates with `TAU's monitoring plugin <https://github.com/UO-OACISS/tau2/wiki/Using-the-Monitoring-Plugin>`_ which parses the information in the Linux /proc directories. These data provide information on the current state of a process / node, and are passed to Chimbuko as counters at a regular frequency. Chimbuko internally maintains a snapshot of the current state on each instance of the online AD, which is updated every time the data appears in the trace input. The state information is attached to each anomaly in the provenance database.
+
+Basic usage is very simple: the user simply has to instruct tau_exec to use the plugin. This can be achieved by adding :code:`-monitoring` the **TAU_EXEC** line in the job's *chimbuko_config.sh*, e.g.
+
+.. code:: bash
+
+TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,adios2 -adios2_trace -monitoring" 
+
+The monitoring plugin is configurable through the *tau_monitoring.json* file as described in the documentation linked above. By default the plugin will only provide data to one rank on any given node, hence for Chimbuko it is necessary to provide a *tau_monitoring.json* in which this option is disabled. This file also allows further configuration of which subsets of data are obtained from /proc. By default the Chimbuko services scripts will generate this file automatically; however if the user wishes to provide a file its path can be set as the value of **tau_monitoring_conf** in the *chimbuko_config.sh*. 
+
+With the default setup, Chimbuko will capture memory and CPU usage information. To add additional counters the user can provide the Chimbuko online AD driver component the optional argument :code:`-monitoring_watchlist_file <FILENAME>` where the file is JSON-formated in the following way: 
+
+| [
+|   [ "<Counter name>" , "<Field name>" ],
+|   ...
+| }
+
+where "<Counter name>" is a string indicating the name of the counter as it appears in the TAU data stream, and "<Field name>" is an arbitrary string defining how that counter will appear in the provenance output.
+
+In addition to or in place of the above, the user can provide a prefix that appears at the start of the counter name for the set of counters of interest via the :code:`-monitoring_counter_prefix <PREFIX>` option of the Chimbuko driver. All counters starting with this string will be captured and their field names in the provenance output will be set to the counter name with the prefix removed. A prefix can be added to all monitoring counters through the **"monitor_counter_prefix"** option in the *tau_monitoring.json* configuration file. In the default configuration file output by Chimbuko's services script, the prefix is set to "monitoring: ", hence with the default setup, all monitoring counters can be captured by providing the Chimbuko driver the argument :code:`-monitoring_counter_prefix "monitoring: "`.
+
 
 
 .. _non_mpi_run:

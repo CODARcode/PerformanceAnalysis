@@ -93,7 +93,19 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 |           },
 |           ...
 |       ]
-|    } *end of* **event_window** *object*      
+|    } *end of* **event_window** *object*
+|    **"node_state"**: *The state of the node provided by TAU's monitoring plugin. This is null if no state information is available. (object)*
+|    {
+|      **"data"**: *A list of fields and values (list)*
+|        [
+|          {
+|            **"field"**: *The field name, e.g. "Memory Available (MB)"*
+|            **"value"**: *The value*
+|          },
+|          ...
+|        ],
+|      **timestamp**: *The timestamp of the most recent state update*
+|    }
 | } *end of schema*
 
 ----------
