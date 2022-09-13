@@ -540,3 +540,43 @@ TEST(TestADAnomalyProvenance, extractsNodeState){
   EXPECT_EQ( state["data"][0]["field"], "my counter field 1" );
   EXPECT_EQ( state["data"][0]["value"], 9876 );
 }
+
+
+
+TEST(TestADAnomalyProvenance, extractsHostname){
+  ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theparent", 800, 200);
+  ExecData_t exec1 = createFuncExecData_t(1,2,3, 33, "thefunc", 900, 100); 
+
+  exec1.set_label(-1);
+  exec1.set_parent(exec0.get_id());
+  exec0.inc_n_children();
+  exec0.update_exclusive(exec1.get_runtime());
+
+  ExecData_t* execs[] = {&exec0, &exec1};
+  ADEvent event_man;
+  event_man.addCall(exec0);
+  event_man.addCall(exec1);
+
+  ADMonitoring monitoring;
+  RunStats stats; //doesn't matter
+  for(int i=0;i<50;i++)
+    stats.push(double(i));
+
+  SstdParam param;
+  param[33] = stats;
+
+  ADCounter counter;
+  ADMetadataParser metadata;
+  std::vector<MetaData_t> md = {  MetaData_t(0,0, 9, "Hostname", "TheHost") };
+  metadata.addData(md);
+
+  ADAnomalyProvenance prov(exec1,
+			   event_man,
+			   param,
+			   counter, metadata, monitoring,
+			   2,
+			   8,800,1200);
+
+  nlohmann::json output = prov.get_json();
+  EXPECT_EQ(output["hostname"], "TheHost");
+}

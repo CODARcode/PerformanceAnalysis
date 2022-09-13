@@ -28,6 +28,7 @@ namespace chimbuko{
   class ADMetadataParser{
     std::unordered_map<unsigned long, GPUvirtualThreadInfo> m_gpu_thread_map; /**< Map of tau's virtual thread index to CUDA device/context/stream*/
     std::unordered_map<int, std::unordered_map<std::string, std::string> > m_gpu_properties; /**< Properties of GPU device. Index is the CUDA device index */
+    std::string m_hostname; /**< The host name*/
 
     /**
      * @brief Parse an individual metadata entry
@@ -35,6 +36,8 @@ namespace chimbuko{
     void parseMetadata(const MetaData_t &m);
     
   public:
+    ADMetadataParser(): m_hostname("Unknown"){}
+    
     /**
      * @brief Add new metadata collected during this timeframe
      */
@@ -53,6 +56,8 @@ namespace chimbuko{
      * @brief Get the map of CUDA device index to a key/value pair of GPU properties
      */
     const std::unordered_map<int, std::unordered_map<std::string, std::string> > & getGPUproperties() const{ return m_gpu_properties; }
+
+    const std::string & getHostname() const{ return m_hostname; }
   };
 
 

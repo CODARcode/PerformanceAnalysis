@@ -43,3 +43,12 @@ TEST(ADMetadataParser, ParseGPUproperties){
   EXPECT_EQ( dit->second, "NVidia Deathstar");
 }
 
+TEST(ADMetadataParser, ParseHostname){
+  ADMetadataParser parser;
+  EXPECT_EQ( parser.getHostname(), "Unknown");
+
+  std::vector<MetaData_t> md = {  MetaData_t(0,0, 9, "Hostname", "TheHost") };
+  parser.addData(md);
+  
+  EXPECT_EQ( parser.getHostname(), "TheHost" );
+}

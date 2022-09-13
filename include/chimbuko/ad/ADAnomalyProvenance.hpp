@@ -152,6 +152,7 @@ namespace chimbuko{
     int m_io_step; /**< IO step*/
     unsigned long m_io_step_tstart; /**< Timestamp of start of io step*/
     unsigned long m_io_step_tend; /**< Timestamp of end of io step*/
+    std::string m_hostname; /**< The hostname*/
   };
 
 

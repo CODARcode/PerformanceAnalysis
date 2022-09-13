@@ -153,6 +153,7 @@ ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEventID
   getExecutionWindow(call, event_man, window_size);
   getNodeState(monitoring);
 
+  m_hostname = metadata.getHostname();
   //Verbose output
   // if(Verbose::on()){
   //   std::cout << "Anomaly:" << this->get_json() << std::endl;
@@ -184,7 +185,7 @@ nlohmann::json ADAnomalyProvenance::get_json() const{
 					    {"io_step_tend", m_io_step_tend},
 					      {"outlier_score", m_call.get_outlier_score() },
 						{"outlier_severity", m_call.get_outlier_severity() },
-						  {"hostname", getHostname() },
+						  {"hostname", m_hostname },
 						    {"node_state", m_node_state }
   };
 }

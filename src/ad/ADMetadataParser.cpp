@@ -15,7 +15,9 @@ GPUvirtualThreadInfo & getGPUthreadInfoStruct(const unsigned long virtual_thread
 
 void ADMetadataParser::parseMetadata(const MetaData_t &m){
   std::smatch match;
-  if(m.get_descr() == "CUDA Context"){
+  if(m.get_descr() == "Hostname"){
+    m_hostname = m.get_value(); //should be available on any linux machine
+  }else if(m.get_descr() == "CUDA Context"){
     unsigned long virtual_thread = m.get_tid();
     getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).context = strToAny<unsigned long>(m.get_value());
     verboseStream << "ADMetadataParser mapped thread " << m.get_tid() << " to CUDA context " << getGPUthreadInfoStruct(m.get_tid(), m_gpu_thread_map).context << std::endl;
