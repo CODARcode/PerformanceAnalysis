@@ -1,4 +1,1 @@
-libtoolize
-aclocal
-automake --add-missing --gnu
-autoreconf -f
+autoreconf -fvi
