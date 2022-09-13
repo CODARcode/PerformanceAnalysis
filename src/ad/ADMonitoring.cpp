@@ -3,6 +3,8 @@
 #include <fstream>
 using namespace chimbuko;
 
+  
+
 void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
   //First step is to check if new counters have appeared from the search list and mark them
   if(m_counterMap == nullptr){
@@ -14,19 +16,30 @@ void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
     const std::string &counter_name = e.second;
     if(!m_cid_seen.count(cid)){
       //Is this a counter we are looking for?...
+      std::string field_name;
+      bool do_add = false;
+      size_t pos;
+
       auto cwit = m_counter_watchlist.find(counter_name);
       if(cwit != m_counter_watchlist.end()){
-	//Create a new state entry
-	const std::string &field_name = cwit->second;
+	//Check the watchlist
+	field_name = cwit->second; do_add = true;
+      }else if(m_counter_prefix.size() != 0 && (pos=counter_name.find(m_counter_prefix)) == 0){ 
+	//Otherwise, if a prefix has been provided, check for counters with this prefix (prefix must be start of counter name)
+	field_name = counter_name.substr(m_counter_prefix.size(), std::string::npos); do_add = true;
+      }
+
+      //Create new state entry
+      if(do_add){
 	auto state_it = m_state.insert(m_state.end(), StateEntry(field_name));
 	
 	//Add to the lookup tables
 	m_cid_state_map[cid] = state_it;
-	m_fieldname_state_map[field_name] = state_it;
-	
-	//Register cid as seen before so we don't check it again
-	m_cid_seen.insert(cid);
+	m_fieldname_state_map[field_name] = state_it;	
       }
+
+      //Register cid as seen before so we don't check it again
+      m_cid_seen.insert(cid);
     }
   }
 
@@ -88,12 +101,12 @@ nlohmann::json ADMonitoring::get_json() const{
 }
 
 void ADMonitoring::setDefaultWatchList(){
-  addWatchedCounter("Memory Footprint (VmRSS) (KB)", "Memory Footprint (VmRSS) (KB)");
-  addWatchedCounter("meminfo:MemAvailable (MB)", "Memory Available (MB)");
-  addWatchedCounter("meminfo:MemFree (MB)", "Memory Free (MB)");
-  addWatchedCounter("cpu: User %", "CPU Usage User (%)");
-  addWatchedCounter("cpu: System %", "CPU Usage System (%)");
-  addWatchedCounter("cpu: Idle %", "CPU Usage Idle (%)");
+  addWatchedCounter("monitoring: Memory Footprint (VmRSS) (KB)", "Memory Footprint (VmRSS) (KB)");
+  addWatchedCounter("monitoring: meminfo:MemAvailable (MB)", "Memory Available (MB)");
+  addWatchedCounter("monitoring: meminfo:MemFree (MB)", "Memory Free (MB)");
+  addWatchedCounter("monitoring: cpu: User %", "CPU Usage User (%)");
+  addWatchedCounter("monitoring: cpu: System %", "CPU Usage System (%)");
+  addWatchedCounter("monitoring: cpu: Idle %", "CPU Usage Idle (%)");
 }
 
 void ADMonitoring::parseWatchListFile(const std::string &file){

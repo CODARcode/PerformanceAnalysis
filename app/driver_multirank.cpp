@@ -87,6 +87,8 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, analysis_step_freq, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");      
     addOptionalCommandLineArg(p, read_ignored_corrid_funcs, "Set path to a file containing functions (one per line) for which the correlation ID counter should be ignored. If an empty string (default) no IDs will be ignored");
     addOptionalCommandLineArg(p, monitoring_watchlist_file, "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");
+    addOptionalCommandLineArg(p, monitoring_counter_prefix, "Provide an optional prefix marking a set of monitoring plugin counters to be captured, on top of or superseding the watchlist. Empty string (default) is ignored.");
+
     addOptionalCommandLineArg(p, max_frames, "Stop analyzing data once this number of IO frames have been read. A value < 0 (default) is unlimited");
 
     addOptionalCommandLineArg(p, nranks, "Set the number of ranks handled by this instance (default 1)");

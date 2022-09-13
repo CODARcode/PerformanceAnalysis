@@ -310,7 +310,7 @@ else
 {
   "periodic": false,
   "node_data_from_all_ranks": true,
-  "monitor_counter_prefix": "",
+  "monitor_counter_prefix": "monitoring: ",
   "periodicity seconds": 1.0,
   "PAPI metrics": [],
   "/proc/stat": {

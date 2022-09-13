@@ -36,7 +36,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   max_frames(-1),
                                   func_threshold_file(""),
                                   ignored_func_file(""),
-                                  monitoring_watchlist_file("")
+                                  monitoring_watchlist_file(""),
+                                  monitoring_counter_prefix("")
 {}
 
 void ChimbukoParams::print() const{
@@ -299,6 +300,8 @@ void Chimbuko::init_monitoring(){
     m_monitoring->parseWatchListFile(m_params.monitoring_watchlist_file);
   else
     m_monitoring->setDefaultWatchList();
+  if(m_params.monitoring_counter_prefix.size())
+    m_monitoring->setCounterPrefix(m_params.monitoring_counter_prefix);
 }
 
 

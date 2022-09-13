@@ -9,7 +9,7 @@ namespace chimbuko {
    */
   class ADMonitoring{
   public:
-    ADMonitoring(): m_counterMap(nullptr), m_timestamp(0), m_state_set(false){}
+    ADMonitoring(): m_counterMap(nullptr), m_timestamp(0), m_state_set(false), m_counter_prefix(""){}
 
     /**
      * @brief Parse the counters on this timestep and extract those associated with the monitoring plugin
@@ -90,6 +90,19 @@ namespace chimbuko {
      */
     void parseWatchListFile(const std::string &file);
 
+    
+    /**
+     * @brief Set the counter prefix for string search matching
+     *
+     * By default ADMonitoring will only search for counters in the watch list. However the user can optionally provide a prefix
+     * and all counters containing this prefix *at the start of their name* will also be captured. 
+     *
+     * The field name of the resulting data will be the counter name with the prefix removed
+     *
+     * A zero length string for the filter will disable this filtering
+     */
+    void setCounterPrefix(const std::string &prefix){ m_counter_prefix = prefix; }
+
     /**
      * @brief Get the current watchlist
      */
@@ -104,6 +117,7 @@ namespace chimbuko {
 
     std::unordered_map<std::string, std::string> m_counter_watchlist; /**< A list of counters that we would like to capture and their associated field names in the output*/
     std::set<int> m_cid_seen; /**< A list of counter indices that have previously been checked*/
+    std::string m_counter_prefix; /**< If set, any counter with this prefix will also be recorded*/
 
     const std::unordered_map<int, std::string> *m_counterMap; /**< counter index -> counter name map */
   

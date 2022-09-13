@@ -105,3 +105,38 @@ TEST(ADMonitoringTest, parseUserInputs){
   EXPECT_EQ(it->first, "hello");
   EXPECT_EQ(it->second, "world");
 }
+
+
+
+TEST(ADMonitoringTest, FilterPrefix){
+  std::string prefix = "mon: ";
+  std::string cname1 = prefix + "interesting counter1";
+  std::string cname2 = prefix + "interesting counter2";
+  
+  std::unordered_map<int, std::string> counter_map = { {0,cname1}, {1,cname2} };
+  ADMonitoring mon;
+
+  std::list<CounterData_t> clist = {
+    createCounterData_t(0,0,0,0,1233,9999,cname1), //pid,rid,tid,cid,val,ts,cname
+    createCounterData_t(0,0,0,1,9876,10000,cname2) };
+
+  mon.linkCounterMap(&counter_map);
+
+  //Add the prefix
+  mon.setCounterPrefix(prefix);
+  mon.extractCounters(getIndexCounterMap(clist));
+
+  EXPECT_TRUE(mon.hasState("interesting counter1"));
+  EXPECT_TRUE(mon.hasState("interesting counter2"));
+  
+  //Check setting the watchlist overrides the filter auto field name
+  mon = ADMonitoring();
+  mon.linkCounterMap(&counter_map);
+  mon.setCounterPrefix(prefix);
+  mon.addWatchedCounter(cname1, "my counter field 1");
+  mon.extractCounters(getIndexCounterMap(clist));
+  EXPECT_FALSE(mon.hasState("interesting counter1"));
+  EXPECT_TRUE(mon.hasState("my counter field 1"));
+
+  EXPECT_TRUE(mon.hasState("interesting counter2")); //check the one not in the watch list is given the default name
+}
