@@ -67,7 +67,6 @@ TEST(ADTestWithProvDB, BpfileTest)
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
     assert( MPI_Allreduce(MPI_IN_PLACE, &n_outliers, 1, MPI_UNSIGNED_LONG , MPI_SUM, MPI_COMM_WORLD) == MPI_SUCCESS);
-#endif
 
     //When using multiple server instances the outliers will be distributed across servers/ shards and won't all be accessible by the head node.
     //Thus we need to aggregate
@@ -85,7 +84,6 @@ TEST(ADTestWithProvDB, BpfileTest)
 
     EXPECT_EQ(noutliers_pdb, n_outliers);
 
-#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
