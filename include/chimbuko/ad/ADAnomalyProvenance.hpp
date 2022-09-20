@@ -12,148 +12,131 @@
 namespace chimbuko{
 
   /**
-   * @brief A class that gathers provenance data associated with a detected anomaly
+   * @brief A class that gathers provenance data associated with a set of detected anomalies
    */
   class ADAnomalyProvenance{
   public:
-    /**
-     * @brief Extract the provenance information and store in internal JSON fields
-     * @param call The anomalous execution
-     * @param event_man The event manager
-     * @param algo_params The algorithm parameters that resulted in the event classification
-     * @param counters The counter manager
-     * @param metadata The metadata manager
-     * @param monitoring The state monitor
-     * @param window_size The number of events (on this process/rank/thread) either side of the anomalous event that are captured in the window field
-     * @param io_step Index of io step
-     * @param io_step_tstart Timestamp of beginning of io frame
-     * @param io_step_tend Timestamp of end of io frame
-     */
-    ADAnomalyProvenance(const ExecData_t &call,
-			const ADEventIDmap &event_man, //for stack trace
-			const ParamInterface &algo_params, //algorithm parameters
-			const ADCounter &counters, //for counters
-			const ADMetadataParser &metadata, //for env information including GPU context/device/stream
-			const ADMonitoring &monitoring, //for node state
-			const int window_size,
-			const int io_step,
-			const unsigned long io_step_tstart, const unsigned long io_step_tend);
-
-    /**
-     * @brief Serialize anomaly data into JSON construct
-     */
-    nlohmann::json get_json() const;
+    ADAnomalyProvenance(const ADEventIDmap &event_man);
 
     /**
      * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
      *
      * @param anom_event_entries The provDB entries for anomalous events
      * @param normal_event_entries The provDB entries for normal events
-     * @param normal_event_manager An instance of ADNormalEventProvenance that maintains normal events between calls
-     * @param perf Performance timing
      * @param anomalies The Anomalies object containing anomalies and select normal events for this io step
      * @param step The io step
      * @param first_event_ts The timestamp of the first event in the io step
      * @param last_event_ts The timestamp of the last event in the io step
-     * @param anom_win_size The window size of events to capture around each anomaly
-     * @param algo_params The outlier algorithm parameters
-     * @param event_man The event manager object
-     * @param counters The counter manager object
-     * @param metadata The metadata manager object
      */
-    static void getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
-				     std::vector<nlohmann::json> &normal_event_entries,
-				     ADNormalEventProvenance &normal_event_manager,
-				     PerfStats &perf,
-				     const Anomalies &anomalies,
-				     const int step,
-				     const unsigned long first_event_ts,
-				     const unsigned long last_event_ts,
-				     const unsigned int anom_win_size,
-				     const ParamInterface &algo_params,
-				     const ADEventIDmap &event_man,
-				     const ADCounter &counters,
-				     const ADMetadataParser &metadata,
-				     const ADMonitoring &monitoring);
+    void getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
+			      std::vector<nlohmann::json> &normal_event_entries,
+			      const Anomalies &anomalies,
+			      const int step,
+			      const unsigned long first_event_ts,
+			      const unsigned long last_event_ts);
 
     /**
-     * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
-     *
-     * @param anom_event_entries The provDB entries for anomalous events
-     * @param normal_event_entries The provDB entries for normal events
-     * @param normal_event_manager An instance of ADNormalEventProvenance that maintains normal events between calls
-     * @param anomalies The Anomalies object containing anomalies and select normal events for this io step
+     * @brief Extract the provenance information for a specific call
+     * @param call The call
      * @param step The io step
      * @param first_event_ts The timestamp of the first event in the io step
      * @param last_event_ts The timestamp of the last event in the io step
-     * @param anom_win_size The window size of events to capture around each anomaly
-     * @param algo_params The outlier algorithm parameters
-     * @param event_man The event manager object
-     * @param counters The counter manager object
-     * @param metadata The metadata manager object
      */
-    static void getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
-				     std::vector<nlohmann::json> &normal_event_entries,
-				     ADNormalEventProvenance &normal_event_manager,
-				     const Anomalies &anomalies,
-				     const int step,
-				     const unsigned long first_event_ts,
-				     const unsigned long last_event_ts,
-				     const unsigned int anom_win_size,
-				     const ParamInterface &algo_params,
-				     const ADEventIDmap &event_man,
-				     const ADCounter &counters,
-				     const ADMetadataParser &metadata,
-				     const ADMonitoring &monitoring){
-      PerfStats perf;
-      getProvenanceEntries(anom_event_entries, normal_event_entries,
-			   normal_event_manager, perf, anomalies, step, first_event_ts, last_event_ts,
-			   anom_win_size, algo_params, event_man, counters, metadata, monitoring);
-    }
+    nlohmann::json getEventProvenance(const ExecData_t &call,
+				      const int step,
+				      const unsigned long first_event_ts,
+				      const unsigned long last_event_ts) const;
 
+    /**
+     * @brief Set the number of events on either side of the anomaly to record in the window view (default 5)
+     */
+    void setWindowSize(const int sz){ m_window_size = sz; }
+
+    /**
+     * @brief If linked, performance information will be gathered
+     */
+    void linkPerf(PerfStats* perf){ m_perf = perf; }
+
+    /**
+     * @brief Link the algorithm parameters to have algorithm information included in the output
+     */
+    void linkAlgorithmParams(ParamInterface const *algo_params){ m_algo_params = algo_params; }
+
+    /**
+     * @brief Link the monitoring data to have node state information included in the output
+     */
+    void linkMonitoring(ADMonitoring const *monitoring){ m_monitoring = monitoring; }
+        
+    /**
+     * @brief Link the metadata owner to have metadata (GPU information, hostname, etc) included in the output
+     *
+     * This is also necessary to have Chimbuko track back the host-side parent of a GPU kernel
+     */
+    void linkMetadata(ADMetadataParser const* metadata){ m_metadata = metadata; }
+
+
+    /**
+     * @brief Link the event manager. The event manager pointer is set in the constructor but this function allows it to be changed
+     */
+    void linkEventManager(ADEventIDmap const *event_man){ m_event_man = event_man; }
+    
   private:
+
     /**
      * @brief Get the call stack
      */
-    void getStackInformation(const ExecData_t &call, const ADEventIDmap &event_man);
-
+    void getStackInformation(nlohmann::json &into, const ExecData_t &call) const;
+    
     /**
      * @brief Get counters in execution window
      */
-    void getWindowCounters(const ExecData_t &call);
+    void getWindowCounters(nlohmann::json &into, const ExecData_t &call) const;
+
 
     /**
      * @brief Determine if it is a GPU event, and if so get the context
+     *
+     * Requires metadata manager to be linked
      */
-    void getGPUeventInfo(const ExecData_t &call, const ADEventIDmap &event_man, const ADMetadataParser &metadata);
+    void getGPUeventInfo(nlohmann::json &into, const ExecData_t &call) const;
+
 
     /**
      * @brief Get the execution window
-     * @param window_size The number of events either side of the call that are captured
      */
-    void getExecutionWindow(const ExecData_t &call,
-			    const ADEventIDmap &event_man,
-			    const int window_size);
+    void getExecutionWindow(nlohmann::json &into, const ExecData_t &call) const;
 
     /**
      * @brief Get the node state data
+     *
+     * Requires the monitoring class to be linked
      */
-    void getNodeState(const ADMonitoring &monitoring);
+    void getNodeState(nlohmann::json &into) const;
 
-    ExecData_t m_call; /**< The anomalous event*/
-    std::vector<nlohmann::json> m_callstack; /**< Call stack from function back to root. Each entry is the function index and name */
-    nlohmann::json m_algo_params; /**< JSON object containing the algorithm parameters used to classify the anomaly*/
-    std::vector<nlohmann::json> m_counters; /**< A list of counter events that occurred during the execution of the anomalous function*/
-    bool m_is_gpu_event; /**< Is this an anomaly that occurred on a GPU? */
-    nlohmann::json m_gpu_location; /**< If it was a GPU event, which device/context/stream did it occur on */
-    nlohmann::json m_gpu_event_parent_info; /**< If a GPU event, info related to CPU event spawned it (name, thread, callstack) */
-    nlohmann::json m_exec_window; /**< Window of function executions and MPI commuinications around anomalous execution*/
-    nlohmann::json m_node_state; /**< The node state parsed from TAU's monitoring plugin*/
-    int m_io_step; /**< IO step*/
-    unsigned long m_io_step_tstart; /**< Timestamp of start of io step*/
-    unsigned long m_io_step_tend; /**< Timestamp of end of io step*/
-    std::string m_hostname; /**< The hostname*/
+    /**
+     * @brief Get the hostname metadata
+     *
+     * Requires metadata manager to be linked
+     */
+    void getHostname(nlohmann::json &into) const;
+
+    
+    /**
+     * @brief Get the algorithm parameters
+     *
+     * Requires the algorithm parameters manager to be linked
+     */
+    void getAlgorithmParams(nlohmann::json &into, const ExecData_t &call) const;
+
+
+    PerfStats *m_perf; /**< Maintain performance timings*/
+    ADEventIDmap const *m_event_man; /**< Contains the map between event index and event*/
+    ADMetadataParser const *m_metadata; /**< Contains metadata information*/
+    int m_window_size; /**< The number of events either side of the anomaly to capture in the window*/
+    ADMonitoring const *m_monitoring; /**< Node state information from TAU's monitoring plugin*/
+    ParamInterface const *m_algo_params; /**< The algorithm parameters*/
+
+    ADNormalEventProvenance m_normalevents; /**< Maintain information on a selection of normal events*/
   };
-
 
 };

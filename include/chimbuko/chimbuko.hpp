@@ -181,7 +181,7 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     void init_provdb();
 #endif
-    void init_normalevent_prov();
+    void init_provenance_gatherer();
     void init_metadata_parser();
     void init_monitoring();
 
@@ -254,7 +254,8 @@ namespace chimbuko {
 #ifdef ENABLE_PROVDB
     ADProvenanceDBclient *m_provdb_client; /**< provenance DB client*/
 #endif
-    ADNormalEventProvenance *m_normalevent_prov; /**< maintain provenance info of normal events*/
+    ADAnomalyProvenance  *m_anomaly_provenance; /**< provenance information gatherer*/ 
+
     ADMonitoring *m_monitoring; /**< maintain the node state by parsing counters from TAU's monitoring plugin*/
 
     mutable PerfStats m_perf; /**< Performance data */

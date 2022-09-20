@@ -5,45 +5,58 @@
 
 using namespace chimbuko;
 
+ADAnomalyProvenance::ADAnomalyProvenance(const ADEventIDmap &event_man): m_perf(nullptr), m_event_man(&event_man), m_monitoring(nullptr), m_metadata(nullptr), m_algo_params(nullptr), m_window_size(5){}
+
+
 inline nlohmann::json getCallStackEntry(const ExecData_t &call){
   return { {"fid",call.get_fid()}, {"func",call.get_funcname()}, {"entry",call.get_entry()}, {"exit", call.get_exit()}, {"event_id", call.get_id().toString()}, {"is_anomaly", call.get_label() == -1} };
 };
 
-void ADAnomalyProvenance::getStackInformation(const ExecData_t &call, const ADEventIDmap &event_man){
+void ADAnomalyProvenance::getStackInformation(nlohmann::json &into, const ExecData_t &call) const{
   //Get stack information
-  m_callstack.push_back(getCallStackEntry(call));
+  nlohmann::json &callstack = (into["call_stack"] = nlohmann::json::array());
+
+  callstack.push_back(getCallStackEntry(call));
   eventID parent = call.get_parent();
   while(parent != eventID::root()){
     CallListIterator_t call_it;
     try{
-      call_it = event_man.getCallData(parent);
+      call_it = m_event_man->getCallData(parent);
     }catch(const std::exception &e){
       recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
       break;
     }
 
-    m_callstack.push_back(getCallStackEntry(*call_it));
+    callstack.push_back(getCallStackEntry(*call_it));
     parent = call_it->get_parent();
   }
 }
 
-void ADAnomalyProvenance::getWindowCounters(const ExecData_t &call){
+void ADAnomalyProvenance::getWindowCounters(nlohmann::json &into, const ExecData_t &call) const{
   //Get the counters that appeared during the execution window on this p/r/t
   const std::deque<CounterData_t> &win_count = call.get_counters();
 
-  m_counters.resize(win_count.size());
-  size_t i=0;
+  nlohmann::json &counters = (into["counter_events"] = nlohmann::json::array());
   for(auto &e : win_count){
-    m_counters[i++] = e.get_json();
+    counters.push_back(e.get_json());
   }
 }
 
-void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEventIDmap &event_man, const ADMetadataParser &metadata){
- //Determine if it is a GPU event, and if so get the context
-  m_is_gpu_event = metadata.isGPUthread(call.get_tid());
-  if(m_is_gpu_event){
+
+void ADAnomalyProvenance::getGPUeventInfo(nlohmann::json &into, const ExecData_t &call) const{
+  if(m_metadata == nullptr) return;
+
+  //Initialize to empty
+  nlohmann::json &gpu_location = (into["gpu_location"] = nlohmann::json());
+  nlohmann::json &gpu_parent = (into["gpu_parent"] = nlohmann::json());
+  into["is_gpu_event"] = false;
+
+  //Determine if it is a GPU event, and if so get the context
+  if(m_metadata->isGPUthread(call.get_tid())){
+    into["is_gpu_event"] = true;
+
     verboseStream << "Call is a GPU event" << std::endl;
-    m_gpu_location = metadata.getGPUthreadInfo(call.get_tid()).get_json();
+    gpu_location = m_metadata->getGPUthreadInfo(call.get_tid()).get_json();
 
     //Find out information about the CPU event that spawned it
     if(call.has_GPU_correlationID_partner()){
@@ -52,25 +65,25 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEventI
 	std::stringstream ss; ss << "GPU event has multiple correlation ID partners?? Event details:" << std::endl << call.get_json(false,true).dump() << std::endl;
 	recoverable_error(ss.str());
 
-	m_gpu_event_parent_info = "Chimbuko error: Multiple host parent event correlation IDs found, likely due to trace corruption";
+	gpu_parent = "Chimbuko error: Multiple host parent event correlation IDs found, likely due to trace corruption";
       }else{
 	verboseStream << "Call has a GPU correlation ID partner: " <<  call.get_GPU_correlationID_partner(0).toString() << std::endl;
 
 	const eventID &gpu_event_parent = call.get_GPU_correlationID_partner(0);
-	m_gpu_event_parent_info["event_id"] = gpu_event_parent.toString();
+	gpu_parent["event_id"] = gpu_event_parent.toString();
 
 	//Get the parent event
 	CallListIterator_t pit;
 	bool got_parent = true;
 	try{
-	  pit = event_man.getCallData(gpu_event_parent);
+	  pit = m_event_man->getCallData(gpu_event_parent);
 	}catch(const std::exception &e){
 	  recoverable_error("Could not find GPU parent " + gpu_event_parent.toString() + " in call list due to : " + e.what());
 	  got_parent = false;
 	}
 
 	if(got_parent){
-	  m_gpu_event_parent_info["tid"] = pit->get_tid();
+	  gpu_parent["tid"] = pit->get_tid();
 
 	  //Generate the parent stack
 	  nlohmann::json gpu_event_parent_stack = nlohmann::json::array();
@@ -80,7 +93,7 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEventI
 	  while(parent != eventID::root()){
 	    CallListIterator_t call_it;
 	    try{
-	      call_it = event_man.getCallData(parent);
+	      call_it = m_event_man->getCallData(parent);
 	    }catch(const std::exception &e){
 	      recoverable_error("Could not find GPU stack event parent " + parent.toString() + " in call list due to : " + e.what());
 	      break;
@@ -88,38 +101,38 @@ void ADAnomalyProvenance::getGPUeventInfo(const ExecData_t &call, const ADEventI
 	    gpu_event_parent_stack.push_back(getCallStackEntry(*call_it));
 	    parent = call_it->get_parent();
 	  }
-	  m_gpu_event_parent_info["call_stack"] = std::move(gpu_event_parent_stack);
+	  gpu_parent["call_stack"] = std::move(gpu_event_parent_stack);
 	}else{
 	  //Could not get parent event
-	  m_gpu_event_parent_info = "Chimbuko error: Host parent event could not be reached";
+	  gpu_parent = "Chimbuko error: Host parent event could not be reached";
 	}
 
       }//have *one* correlation ID partner
     }else{ 
       //No correlation ID recorded
-      m_gpu_event_parent_info = "Chimbuko error: Correlation ID of host parent event was not recorded";
+      gpu_parent = "Chimbuko error: Correlation ID of host parent event was not recorded";
     }
+  }//is gpu event
 
-  }//m_is_gpu_event
 }
 
-void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
-					     const ADEventIDmap &event_man,
-					     const int window_size){
-  m_exec_window["exec_window"] = nlohmann::json::array();
-  m_exec_window["comm_window"] = nlohmann::json::array();
+
+void ADAnomalyProvenance::getExecutionWindow(nlohmann::json &into, const ExecData_t &call) const{
+  nlohmann::json &exec_window_head = into["event_window"];
+  nlohmann::json &exec_window = (exec_window_head["exec_window"] = nlohmann::json::array());
+  nlohmann::json &comm_window = (exec_window_head["comm_window"] = nlohmann::json::array());
 
   //Get the window
   std::pair<CallListIterator_t, CallListIterator_t> win;
   try{
-    win = event_man.getCallWindowStartEnd(call.get_id(), window_size);
+    win = m_event_man->getCallWindowStartEnd(call.get_id(), m_window_size);
   }catch(const std::exception &e){
     recoverable_error("Could not get call window for event " + call.get_id().toString());
     return;
   }
 
   for(auto it = win.first; it != win.second; it++){
-    m_exec_window["exec_window"].push_back( {
+    exec_window.push_back( {
 	{"fid", it->get_fid()},
 	  {"func", it->get_funcname() },
 	    {"event_id", it->get_id().toString()},
@@ -129,86 +142,66 @@ void ADAnomalyProvenance::getExecutionWindow(const ExecData_t &call,
 		    {"is_anomaly", it->get_label() == -1}
       });
     for(CommData_t const &comm : it->get_messages())
-      m_exec_window["comm_window"].push_back(comm.get_json());
+      comm_window.push_back(comm.get_json());
   }
 }
 
-void ADAnomalyProvenance::getNodeState(const ADMonitoring &monitoring){
-  m_node_state = monitoring.get_json();
+void ADAnomalyProvenance::getNodeState(nlohmann::json &into) const{
+  if(m_monitoring)
+    into["node_state"] = m_monitoring->get_json();
+}
+
+void ADAnomalyProvenance::getHostname(nlohmann::json &into) const{
+  if(m_metadata)
+    into["hostname"] = m_metadata->getHostname();
+}
+
+void ADAnomalyProvenance::getAlgorithmParams(nlohmann::json &into, const ExecData_t &call) const{
+  if(m_algo_params)
+    into["algo_params"] = m_algo_params->get_algorithm_params(call.get_fid());
 }
 
 
-ADAnomalyProvenance::ADAnomalyProvenance(const ExecData_t &call, const ADEventIDmap &event_man, const ParamInterface &algo_params,
-					 const ADCounter &counters, const ADMetadataParser &metadata, const ADMonitoring &monitoring,
-					 const int window_size,
-					 const int io_step,
-					 const unsigned long io_step_tstart, const unsigned long io_step_tend):
-  m_call(call), m_is_gpu_event(false),
-  m_io_step(io_step), m_io_step_tstart(io_step_tstart), m_io_step_tend(io_step_tend)
-{
-  getStackInformation(call, event_man); //get call stack
-  m_algo_params = algo_params.get_algorithm_params(call.get_fid());   //Get the algorithm parameters
-  getWindowCounters(call); //counters in window
-  getGPUeventInfo(call, event_man, metadata); //info of GPU event (if applicable)
-  getExecutionWindow(call, event_man, window_size);
-  getNodeState(monitoring);
-
-  m_hostname = metadata.getHostname();
-  //Verbose output
-  // if(Verbose::on()){
-  //   std::cout << "Anomaly:" << this->get_json() << std::endl;
-  // }
-}
-
-
-nlohmann::json ADAnomalyProvenance::get_json() const{
-  return {
-      {"pid", m_call.get_pid()},
-	{"rid", m_call.get_rid()},
-	  {"tid", m_call.get_tid()},
-	    {"event_id", m_call.get_id().toString()},
-	      {"fid", m_call.get_fid()},
-		{"func", m_call.get_funcname()},
-		  {"entry", m_call.get_entry()},
-		    {"exit", m_call.get_exit()},
-		      {"runtime_total", m_call.get_runtime()},
-			{"runtime_exclusive", m_call.get_exclusive()},
-			  {"call_stack", m_callstack},
-			    {"algo_params", m_algo_params},
-			      {"counter_events", m_counters},
-				{"is_gpu_event", m_is_gpu_event},
-				  {"gpu_location", m_is_gpu_event ? m_gpu_location : nlohmann::json() },
-				    {"gpu_parent", m_is_gpu_event ? m_gpu_event_parent_info : nlohmann::json() },
-				      {"event_window", m_exec_window},
-					{"io_step", m_io_step},
-					  {"io_step_tstart", m_io_step_tstart},
-					    {"io_step_tend", m_io_step_tend},
-					      {"outlier_score", m_call.get_outlier_score() },
-						{"outlier_severity", m_call.get_outlier_severity() },
-						  {"hostname", m_hostname },
-						    {"node_state", m_node_state }
+nlohmann::json ADAnomalyProvenance::getEventProvenance(const ExecData_t &call,
+							const int step,
+							const unsigned long first_event_ts,
+							const unsigned long last_event_ts) const{
+  nlohmann::json out = {
+      {"pid", call.get_pid()},
+      {"rid", call.get_rid()},
+      {"tid", call.get_tid()},
+      {"event_id", call.get_id().toString()},
+      {"fid", call.get_fid()},
+      {"func", call.get_funcname()},
+      {"entry", call.get_entry()},
+      {"exit", call.get_exit()},
+      {"runtime_total", call.get_runtime()},
+      {"runtime_exclusive", call.get_exclusive()},
+      {"io_step", step},
+      {"io_step_tstart", first_event_ts},
+      {"io_step_tend", last_event_ts},
+      {"outlier_score", call.get_outlier_score() },
+      {"outlier_severity", call.get_outlier_severity() },
   };
+
+  getHostname(out);
+  getStackInformation(out, call); //get call stack
+  getWindowCounters(out, call); //counters in window
+  getGPUeventInfo(out, call); //info of GPU event (if applicable)
+  getExecutionWindow(out, call);
+  getNodeState(out);
+  getAlgorithmParams(out,call);
+  return out;
 }
-
-
 
 
 
 void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
-					       std::vector<nlohmann::json> &normal_event_entries,
-					       ADNormalEventProvenance &normal_event_manager,
-					       PerfStats &perf,
-					       const Anomalies &anomalies,
-					       const int step,
-					       const unsigned long first_event_ts,
-					       const unsigned long last_event_ts,
-					       const unsigned int anom_win_size,
-					       const ParamInterface &algo_params,
-					       const ADEventIDmap &event_man,
-					       const ADCounter &counters,
-					       const ADMetadataParser &metadata,
-					       const ADMonitoring &monitoring){
-
+						std::vector<nlohmann::json> &normal_event_entries,
+						const Anomalies &anomalies,
+						const int step,
+						const unsigned long first_event_ts,
+						const unsigned long last_event_ts){
   constexpr bool do_delete = true;
   constexpr bool add_outstanding = true;
 
@@ -218,20 +211,17 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
   timer.start();
   for(auto norm_it : anomalies.allEvents(Anomalies::EventType::Normal)){
     timer2.start();
-    ADAnomalyProvenance extract_prov(*norm_it, event_man, algo_params,
-				     counters, metadata, monitoring, anom_win_size,
-				     step, first_event_ts, last_event_ts);
-    normal_event_manager.addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), extract_prov.get_json());
-    perf.add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
+    m_normalevents.addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), getEventProvenance(*norm_it, step, first_event_ts, last_event_ts));
+    if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
   }
-  perf.add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
+  if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
 
   //Get any outstanding normal events from previous timesteps that we couldn't previously provide
   timer.start();
 
-  normal_event_entries = normal_event_manager.getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
+  normal_event_entries = m_normalevents.getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
 
-  perf.add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
+  if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
 
   //Gather provenance of anomalies and for each one try to obtain a normal execution
   timer.start();
@@ -241,23 +231,25 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
 
   for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
     timer2.start();
-    ADAnomalyProvenance extract_prov(*anom_it, event_man, algo_params,
-				     counters, metadata, monitoring, anom_win_size,
-				     step, first_event_ts, last_event_ts);
-    anom_event_entries[i++] = extract_prov.get_json();
-    perf.add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
+    anom_event_entries[i++] = getEventProvenance(*anom_it, step, first_event_ts, last_event_ts);
+    if(m_perf) m_perf->add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
 
     //Get the associated normal event if one has not been recorded for this function on this step
     if(!normal_event_fids.count(anom_it->get_fid())){
       //if normal event not available put into the list of outstanding requests and it will be recorded next time a normal event for this function is obtained
       //if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
       timer2.start();
-      auto nev = normal_event_manager.getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
+      auto nev = m_normalevents.getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
       if(nev.second) normal_event_entries.push_back(std::move(nev.first));
       normal_event_fids.insert(anom_it->get_fid());
-      perf.add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
+      if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
     }
 
   }
-
 }
+
+
+
+
+
+

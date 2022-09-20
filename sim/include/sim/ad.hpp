@@ -3,6 +3,7 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/ad/ADMetadataParser.hpp>
 #include<chimbuko/ad/ADNormalEventProvenance.hpp>
+#include<chimbuko/ad/ADAnomalyProvenance.hpp>
 #include<chimbuko/ad/ADEvent.hpp>
 #include<chimbuko/ad/ADCounter.hpp>
 #include<chimbuko/ad/ADOutlier.hpp>
@@ -36,7 +37,6 @@ namespace chimbuko_sim{
     int m_window_size;
     int m_pid;
     int m_rid;
-    ADNormalEventProvenance m_normal_events;
     ADMetadataParser m_metadata;
 #ifdef ENABLE_PROVDB
     std::unique_ptr<ADProvenanceDBclient> m_pdb_client;
@@ -45,6 +45,7 @@ namespace chimbuko_sim{
 #endif
     ADThreadNetClient *m_net_client; /**< The local net client. Only activated if an AD algorithm is used */
     ADOutlier* m_outlier; /**< The local outlier algorithm instance, if used*/
+    std::unique_ptr<ADAnomalyProvenance> m_anomaly_provenance; /**< The provenance extractor*/
   public:
     /** 
      * @brief Initialize the AD simulator

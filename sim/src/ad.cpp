@@ -27,7 +27,7 @@ ADsim::ADsim(ADsim &&r):
   m_window_size(r.m_window_size),
   m_pid(r.m_pid),
   m_rid(r.m_rid),
-  m_normal_events(std::move(r.m_normal_events)),
+  m_anomaly_provenance(std::move(r.m_anomaly_provenance)),
   m_metadata(std::move(r.m_metadata)),
 #ifdef ENABLE_PROVDB
   m_pdb_client(std::move(r.m_pdb_client)),
@@ -81,6 +81,11 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
     m_net_client->connect_ps(m_rid);
     m_outlier->linkNetworkClient(m_net_client);
   }
+
+  ADEvent tmp;
+  m_anomaly_provenance.reset(new ADAnomalyProvenance(tmp)); //yes the event manager will be a dangling pointer but we will set it to a correct one later
+  m_anomaly_provenance->linkMetadata(&m_metadata);
+  m_anomaly_provenance->setWindowSize(m_window_size);
 }
 
 CallListIterator_t ADsim::addExec(const int thread,
@@ -278,10 +283,11 @@ void ADsim::step(const unsigned long step){
     eventIDmap evmap(m_all_execs, m_eventid_map);
       
     const ParamInterface &params = adAlgorithmParams().algorithm != "none" ? *m_outlier->get_global_parameters() : globalParams();
-    ADMonitoring mon; //todo: add sim interface for monitoring
-    ADAnomalyProvenance::getProvenanceEntries(anomalous_events, normal_events, m_normal_events,
-					      anom, step, step_start_time, step_end_time, m_window_size,
-					      params, evmap, counters, m_metadata, mon);
+
+    m_anomaly_provenance->linkEventManager(&evmap);
+    m_anomaly_provenance->linkAlgorithmParams(&params);
+    m_anomaly_provenance->getProvenanceEntries(anomalous_events, normal_events, anom, step, step_start_time, step_end_time);
+
 #ifdef ENABLE_PROVDB
     //Send to provdb
     if(anomalous_events.size() > 0)

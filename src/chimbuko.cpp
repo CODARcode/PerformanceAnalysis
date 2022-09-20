@@ -78,7 +78,7 @@ Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr), m_outlier(nullptr), m
 #ifdef ENABLE_PROVDB
 		      m_provdb_client(nullptr),
 #endif
-		      m_normalevent_prov(nullptr),
+		      m_anomaly_provenance(nullptr),
 		      m_metadata_parser(nullptr),
 		      m_monitoring(nullptr),
 		      m_is_initialized(false){}
@@ -132,7 +132,6 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   m_perf.add("ad_initialize_provdb_ms", timer.elapsed_ms());
 #endif
   init_io(); //will write provenance info if provDB not in use
-  init_normalevent_prov();
 
   //Connect to the parameter server
   timer.start();
@@ -150,6 +149,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   init_outlier(); //requires event
   init_counter(); //requires parser
   init_monitoring(); //requires parser
+  init_provenance_gatherer(); //requires most components
 
   m_is_initialized = true;
 
@@ -285,10 +285,6 @@ void Chimbuko::init_provdb(){
 }
 #endif
 
-void Chimbuko::init_normalevent_prov(){
-  m_normalevent_prov = new ADNormalEventProvenance;
-}
-
 void Chimbuko::init_metadata_parser(){
   m_metadata_parser = new ADMetadataParser;
 }
@@ -302,6 +298,15 @@ void Chimbuko::init_monitoring(){
     m_monitoring->setDefaultWatchList();
   if(m_params.monitoring_counter_prefix.size())
     m_monitoring->setCounterPrefix(m_params.monitoring_counter_prefix);
+}
+
+void Chimbuko::init_provenance_gatherer(){
+  m_anomaly_provenance = new ADAnomalyProvenance(*m_event);
+  m_anomaly_provenance->linkPerf(&m_perf);
+  m_anomaly_provenance->linkAlgorithmParams(m_outlier->get_global_parameters());
+  m_anomaly_provenance->linkMonitoring(m_monitoring);
+  m_anomaly_provenance->linkMetadata(m_metadata_parser);
+  m_anomaly_provenance->setWindowSize(m_params.anom_win_size);
 }
 
 
@@ -338,9 +343,9 @@ void Chimbuko::finalize()
   if (m_provdb_client) delete m_provdb_client;
 #endif
 
-  if (m_normalevent_prov) delete m_normalevent_prov;
-  if(m_metadata_parser) delete m_metadata_parser;
-  if(m_monitoring) delete m_monitoring;
+  if (m_metadata_parser) delete m_metadata_parser;
+  if (m_monitoring) delete m_monitoring;
+  if (m_anomaly_provenance) delete m_anomaly_provenance;
 
   m_parser = nullptr;
   m_event = nullptr;
@@ -353,6 +358,7 @@ void Chimbuko::finalize()
 #endif
   m_metadata_parser = nullptr;
   m_monitoring = nullptr;
+  m_anomaly_provenance = nullptr;
 
   m_is_initialized = false;
 
@@ -505,13 +511,11 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
     //Get the provenance data
     PerfTimer timer;
     std::vector<nlohmann::json> anomaly_prov, normalevent_prov;
-    ADAnomalyProvenance::getProvenanceEntries(anomaly_prov, normalevent_prov, *m_normalevent_prov, m_perf,
-					      anomalies, step, first_event_ts, last_event_ts, m_params.anom_win_size,
-					      *m_outlier->get_global_parameters(), *m_event, *m_counter, *m_metadata_parser, *m_monitoring);
+    m_anomaly_provenance->getProvenanceEntries(anomaly_prov, normalevent_prov, anomalies, step, first_event_ts, last_event_ts);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
 
-    //Write and send provenance dataX
+    //Write and send provenance data
     if(anomaly_prov.size() > 0){
       timer.start();
       m_io->writeJSON(anomaly_prov, step, "anomalies");

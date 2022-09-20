@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs
 
 testdir = $(prefix)/test/unit_tests/ad
-test_PROGRAMS = COPODOutlier COPODOutlierADs HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADAnomalyProvenance2 ADglobalFunctionIndexMap ADNormalEventProvenance utils AnomalyData ADcombinedPSdata FuncAnomalyMetrics ADLocalAnomalyMetrics ADMonitoring
+test_PROGRAMS = COPODOutlier COPODOutlierADs HBOSOutlier HBOSOutlierADs HBOSOutlierDistributions HBOSOutlierTestBPFile SSTDOutlierTestBPFile ADEvent ADio ADParser ADOutlier ADNetClient ADLocalFuncStatistics ADMetadataParser ADCounter ADLocalCounterStatistics ADAnomalyProvenance ADglobalFunctionIndexMap ADNormalEventProvenance utils AnomalyData ADcombinedPSdata FuncAnomalyMetrics ADLocalAnomalyMetrics ADMonitoring
 
 HBOSOutlier_SOURCES = HBOSOutlier.cpp ../unit_test_main_mpi.cpp
 HBOSOutlier_LDADD = $(LDADD)
@@ -54,9 +54,6 @@ ADLocalCounterStatistics_LDADD = $(LDADD)
 
 ADAnomalyProvenance_SOURCES = ADAnomalyProvenance.cpp ../unit_test_main.cpp
 ADAnomalyProvenance_LDADD = $(LDADD)
-
-ADAnomalyProvenance2_SOURCES = ADAnomalyProvenance2.cpp ../unit_test_main.cpp
-ADAnomalyProvenance2_LDADD = $(LDADD)
 
 ADglobalFunctionIndexMap_SOURCES = ADglobalFunctionIndexMap.cpp ../unit_test_main_mpi.cpp
 ADglobalFunctionIndexMap_LDADD = $(LDADD)

@@ -31,28 +31,13 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   event_man.addCall(exec1);
   event_man.addCall(exec2);
 
-  RunStats stats;
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[77] = stats;
-
-  ADCounter counter;
-  ADMetadataParser metadata;
-  ADMonitoring monitoring;
-
   int step = 11;
   unsigned long step_start = 0;
   unsigned long step_end = 2000;
 
-  ADAnomalyProvenance prov(exec2,
-			   event_man,
-			   param,
-			   counter, metadata, monitoring, 0,
-			   step, step_start, step_end);
+  ADAnomalyProvenance prov(event_man);
+  nlohmann::json output = prov.getEventProvenance(exec2, step, step_start, step_end);
 
-  nlohmann::json output = prov.get_json();
   //Test pid,rid,tid,runtime
   EXPECT_EQ(output["pid"], 1);
   EXPECT_EQ(output["rid"], 2);
@@ -80,10 +65,6 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   EXPECT_EQ(output["call_stack"][2]["exit"], 0);
   EXPECT_EQ(output["call_stack"][2]["is_anomaly"], false);
 
-
-  //Test statistics
-  EXPECT_EQ(output["algo_params"], stats.get_json());
-
   //Check step info
   EXPECT_EQ(output["io_step"], step);
   EXPECT_EQ(output["io_step_tstart"], step_start);
@@ -92,6 +73,50 @@ TEST(TestADAnomalyProvenance, extractsCallInformation){
   //Check outlier scoree
   EXPECT_EQ(output["outlier_score"], 3.14);
 }
+
+
+
+
+TEST(TestADAnomalyProvenance, extractsAlgorithmParameters){
+  ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theroot", 100, 0);  //0 runtime indicates it has yet to complete
+  ExecData_t exec1 = createFuncExecData_t(1,2,3, 55, "theparent", 1000, 100);
+  ExecData_t exec2 = createFuncExecData_t(1,2,3, 77, "thechild", 1050, 50); //going to be the anomalous one
+  exec2.set_parent(exec1.get_id());
+  exec1.inc_n_children();
+  exec1.update_exclusive(exec2.get_runtime());
+  exec1.set_parent(exec0.get_id());
+  exec0.inc_n_children();
+  exec0.update_exclusive(exec1.get_runtime());
+
+  exec2.set_label(-1); //tag it as an anomaly
+  exec2.set_outlier_score(3.14);
+
+  ADEvent event_man;
+  event_man.addCall(exec0);
+  event_man.addCall(exec1);
+  event_man.addCall(exec2);
+
+  RunStats stats;
+  for(int i=0;i<50;i++)
+    stats.push(double(i));
+
+  SstdParam param;
+  param[77] = stats;
+
+  int step = 11;
+  unsigned long step_start = 0;
+  unsigned long step_end = 2000;
+
+  ADAnomalyProvenance prov(event_man);
+  prov.linkAlgorithmParams(&param);
+
+  nlohmann::json output = prov.getEventProvenance(exec2, step, step_start, step_end);
+
+  //Test statistics
+  EXPECT_EQ(output["algo_params"], stats.get_json());
+}
+
+
 
 
 
@@ -105,13 +130,6 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   ADEvent event_man;
   event_man.addCall(exec1);
   event_man.addCall(exec2);
-
-  RunStats stats;
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[77] = stats;
 
   std::unordered_map<int, std::string> counters = {  {44, "counter1"}, {55, "counter2"} };
 
@@ -135,18 +153,8 @@ TEST(TestADAnomalyProvenance, findsAssociatedCounters){
   for(auto const &e : exec2_counters)
     exec2.add_counter(*e);
 
-  ADMetadataParser metadata;
-  ADMonitoring monitoring;
-
-  ADAnomalyProvenance prov(exec2,
-			   event_man,
-			   param,
-			   counter, metadata, monitoring, 0,
-			   11,900,1200);
-
-  nlohmann::json output = prov.get_json();
-
-
+  ADAnomalyProvenance prov(event_man);
+  nlohmann::json output = prov.getEventProvenance(exec2, 11, 900, 1200);
 
   EXPECT_EQ(output["counter_events"].size(), 4);
   for(int i=0;i<4;i++){
@@ -184,17 +192,6 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_EQ(calls_p_r_t_cpu.size(), 2);
 
   //Populate all the other stuff required to generate anomaly data
-  RunStats stats;
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[44] = stats;
-  param[55] = stats;
-  param[11] = stats;
-
-  ADCounter counter;
-
   ADMetadataParser metadata;
   std::vector<MetaData_t> mdata = {
     MetaData_t(0,0, gpu_thr, "CUDA Context", "8"),
@@ -214,14 +211,11 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   EXPECT_NE( pit, it->second.end() );
   EXPECT_EQ( pit->second, "Fake GPU" );
 
-  ADMonitoring monitoring;
-  ADAnomalyProvenance prov_nongpu(*exec_cpu_it,
-				  event_man,
-				  param,
-				  counter, metadata, monitoring, 0,
-				  11,900,1200);
+  ADAnomalyProvenance prov(event_man);
+  prov.linkMetadata(&metadata); //required for GPU stuff
+
   {
-    nlohmann::json output = prov_nongpu.get_json();
+    nlohmann::json output = prov.getEventProvenance(*exec_cpu_it, 11,900,1200);
     std::cout << "For CPU event, got: " << output.dump() << std::endl;
     EXPECT_EQ(output["is_gpu_event"], false);
     EXPECT_EQ(output["call_stack"].size(), 2);
@@ -233,13 +227,8 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
 
   CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
 
-  ADAnomalyProvenance prov_gpu(*exec_gpu_it,
-			       event_man,
-			       param,
-			       counter, metadata, monitoring, 0,
-			       11,900,1200);
   {
-    nlohmann::json output = prov_gpu.get_json();
+    nlohmann::json output = prov.getEventProvenance(*exec_gpu_it, 11,900,1200);
     std::cout << "For GPU event, got: " << output.dump() << std::endl;
 
     EXPECT_EQ(output["is_gpu_event"], true);
@@ -261,19 +250,6 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
   
   ADEvent event_man;
 
-  //Populate all the other stuff required to generate anomaly data
-  RunStats stats;
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[44] = stats;
-  param[55] = stats;
-  param[11] = stats;
-
-  ADCounter counter;
-  ADMonitoring monitoring;
-
   ADMetadataParser metadata;
   std::vector<MetaData_t> mdata = {
     MetaData_t(0,0, gpu_thr, "CUDA Context", "8"),
@@ -282,6 +258,9 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     MetaData_t(0,0, gpu_thr, "GPU[7] Device Name", "Fake GPU")
   };
   metadata.addData(mdata);
+
+  ADAnomalyProvenance prov(event_man);
+  prov.linkMetadata(&metadata); //required for GPU stuff
   
   {
     std::cout <<  "Testing failure due to missing correlation ID" << std::endl;
@@ -296,13 +275,8 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);    
     CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
     
-    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
-				 event_man,
-				 param,
-				 counter, metadata, monitoring, 0,
-				 11,900,1200);
     {
-      nlohmann::json output = prov_gpu.get_json();
+      nlohmann::json output = prov.getEventProvenance(*exec_gpu_it,11,900,1200);
       std::cout << "For GPU event, got: " << output.dump() << std::endl;
     
       EXPECT_EQ(output["is_gpu_event"], true);
@@ -338,13 +312,8 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     
     CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
 
-    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
-				 event_man,
-				 param,
-				 counter, metadata, monitoring, 0,
-				 11,900,1200);
     {
-      nlohmann::json output = prov_gpu.get_json();
+      nlohmann::json output = prov.getEventProvenance(*exec_gpu_it,11,900,1200);
       std::cout << "For GPU event, got: " << output.dump() << std::endl;
 
       EXPECT_EQ(output["is_gpu_event"], true);
@@ -387,14 +356,8 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     ASSERT_EQ(event_man.getCallListSize(),1);
     std::cout << "Trimmed out event " << exec_cpu.get_id().toString() << std::endl;
     	
-    std::cout << "Creating ADAnomalyProvenance" << std::endl;
-    ADAnomalyProvenance prov_gpu(*exec_gpu_it,
-				 event_man,
-				 param,
-				 counter, metadata, monitoring, 0,
-				 11,900,1200);
     {
-      nlohmann::json output = prov_gpu.get_json();
+      nlohmann::json output = prov.getEventProvenance(*exec_gpu_it,11,900,1200);
       std::cout << "For GPU event, got: " << output.dump() << std::endl;
     
       EXPECT_EQ(output["is_gpu_event"], true);
@@ -449,26 +412,10 @@ TEST(TestADAnomalyProvenance, extractsExecWindow){
   event_man.addCall(exec2);
   event_man.addCall(exec3);
 
-  RunStats stats; //doesn't matter
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[77] = stats;
-
-  ADCounter counter;
-  ADMetadataParser metadata;
-  ADMonitoring monitoring;
-
-  ADAnomalyProvenance prov(exec2,
-			   event_man,
-			   param,
-			   counter, metadata, monitoring,
-			   2,
-			   8,800,1200);
-
-  nlohmann::json output = prov.get_json();
-
+  ADAnomalyProvenance prov(event_man);
+  prov.setWindowSize(2);
+  nlohmann::json output = prov.getEventProvenance(exec2,8,800,1200);  
+  
   const nlohmann::json &win = output["event_window"];
   const nlohmann::json &ewin = win["exec_window"];
   const nlohmann::json &cwin = win["comm_window"];
@@ -502,17 +449,6 @@ TEST(TestADAnomalyProvenance, extractsNodeState){
   event_man.addCall(exec0);
   event_man.addCall(exec1);
 
-
-  RunStats stats; //doesn't matter
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[33] = stats;
-
-  ADCounter counter;
-  ADMetadataParser metadata;
-
   std::unordered_map<int, std::string> counter_map = { {0,"interesting counter"} };
   ADMonitoring monitoring;
   monitoring.linkCounterMap(&counter_map);
@@ -524,14 +460,10 @@ TEST(TestADAnomalyProvenance, extractsNodeState){
 
   monitoring.extractCounters(clist_m);
 
-  ADAnomalyProvenance prov(exec1,
-			   event_man,
-			   param,
-			   counter, metadata, monitoring,
-			   2,
-			   8,800,1200);
+  ADAnomalyProvenance prov(event_man);
+  prov.linkMonitoring(&monitoring);
 
-  nlohmann::json output = prov.get_json();
+  nlohmann::json output = prov.getEventProvenance(exec1,8,800,1200);  
   const nlohmann::json &state = output["node_state"];
   EXPECT_EQ(state["timestamp"], 950);
   
@@ -557,26 +489,13 @@ TEST(TestADAnomalyProvenance, extractsHostname){
   event_man.addCall(exec0);
   event_man.addCall(exec1);
 
-  ADMonitoring monitoring;
-  RunStats stats; //doesn't matter
-  for(int i=0;i<50;i++)
-    stats.push(double(i));
-
-  SstdParam param;
-  param[33] = stats;
-
-  ADCounter counter;
   ADMetadataParser metadata;
   std::vector<MetaData_t> md = {  MetaData_t(0,0, 9, "Hostname", "TheHost") };
   metadata.addData(md);
 
-  ADAnomalyProvenance prov(exec1,
-			   event_man,
-			   param,
-			   counter, metadata, monitoring,
-			   2,
-			   8,800,1200);
+  ADAnomalyProvenance prov(event_man);
+  prov.linkMetadata(&metadata);
 
-  nlohmann::json output = prov.get_json();
+  nlohmann::json output = prov.getEventProvenance(exec1,8,800,1200);  
   EXPECT_EQ(output["hostname"], "TheHost");
 }
