@@ -37,7 +37,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   func_threshold_file(""),
                                   ignored_func_file(""),
                                   monitoring_watchlist_file(""),
-                                  monitoring_counter_prefix("")
+                                  monitoring_counter_prefix(""),
+                                  prov_min_anom_time(0)
 {}
 
 void ChimbukoParams::print() const{
@@ -316,6 +317,7 @@ void Chimbuko::init_provenance_gatherer(){
   m_anomaly_provenance->linkMonitoring(m_monitoring);
   m_anomaly_provenance->linkMetadata(m_metadata_parser);
   m_anomaly_provenance->setWindowSize(m_params.anom_win_size);
+  m_anomaly_provenance->setMinimumAnomalyTime(m_params.prov_min_anom_time);
   m_ptr_registry.registerPointer(m_anomaly_provenance);
 }
 

@@ -48,6 +48,7 @@ namespace chimbuko {
 #endif
     int prov_record_startstep; /**< If != -1, the IO step on which to start recording provenance information for anomalies */
     int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */
+    unsigned long prov_min_anom_time; /**< The minimum exclusive runtime (in microseconds) for anomalies recorded in the provenance output (default 0) */
 
     unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
 

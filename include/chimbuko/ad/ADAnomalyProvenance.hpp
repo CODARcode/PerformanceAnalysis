@@ -41,6 +41,8 @@ namespace chimbuko{
      * @param step The io step
      * @param first_event_ts The timestamp of the first event in the io step
      * @param last_event_ts The timestamp of the last event in the io step
+     *
+     * Note the minimum anomaly time for recorded data does not apply to this call
      */
     nlohmann::json getEventProvenance(const ExecData_t &call,
 				      const int step,
@@ -51,6 +53,13 @@ namespace chimbuko{
      * @brief Set the number of events on either side of the anomaly to record in the window view (default 5)
      */
     void setWindowSize(const int sz){ m_window_size = sz; }
+
+    /**
+     * @brief Set the minimum exclusive runtime (in microseconds) for recorded anomalies (default 0) 
+     *
+     * Anomalies with exclusive runtime less than this will not have their data recorded
+     */
+    void setMinimumAnomalyTime(const unsigned long to){ m_min_anom_time = to; }
 
     /**
      * @brief If linked, performance information will be gathered
@@ -135,6 +144,7 @@ namespace chimbuko{
     int m_window_size; /**< The number of events either side of the anomaly to capture in the window*/
     ADMonitoring const *m_monitoring; /**< Node state information from TAU's monitoring plugin*/
     ParamInterface const *m_algo_params; /**< The algorithm parameters*/
+    unsigned long m_min_anom_time; /**< Anomalies with exclusive runtime less than this will not have their data recorded*/
 
     ADNormalEventProvenance m_normalevents; /**< Maintain information on a selection of normal events*/
   };

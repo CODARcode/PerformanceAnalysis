@@ -499,3 +499,105 @@ TEST(TestADAnomalyProvenance, extractsHostname){
   nlohmann::json output = prov.getEventProvenance(exec1,8,800,1200);  
   EXPECT_EQ(output["hostname"], "TheHost");
 }
+
+
+template<typename T>
+T & listEntry(std::list<T> &l, int i){
+  auto it = std::next(l.begin(),i);
+  return *it;
+}
+
+TEST(TestADAnomalyProvenance, getProvenanceEntries){
+  std::vector<ExecData_t> events = {
+    createFuncExecData_t(1,2,3, 55, "theparent", 800, 200),
+    createFuncExecData_t(1,2,3, 33, "thefunc", 900, 100),
+    createFuncExecData_t(1,2,4, 11, "theotherparent", 1100, 200),
+    createFuncExecData_t(1,2,4, 22, "theotherfunc", 1150, 50)
+  };
+  bindParentChild(events[0],events[1]);
+  bindParentChild(events[2],events[3]);
+  events[1].set_label(-1);
+  events[3].set_label(-1);
+  
+  ADEvent event_man;
+  std::vector<CallListIterator_t> event_its;
+  for(auto &e :  events) event_its.push_back(event_man.addCall(e));
+
+  Anomalies anoms;
+  anoms.insert(event_its[1],Anomalies::EventType::Outlier);
+  anoms.insert(event_its[3],Anomalies::EventType::Outlier);
+  
+  std::vector<nlohmann::json> anom_entries, normal_entries;
+  {
+    ADAnomalyProvenance prov(event_man);
+    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
+  }
+
+  ASSERT_EQ(anom_entries.size(),2);
+  ASSERT_EQ(normal_entries.size(),0); //didn't put in normal events
+
+  std::string got, expect;
+  
+  got = anom_entries[0]["event_id"]; expect = event_its[1]->get_id().toString();
+  EXPECT_EQ(got,expect);  
+  got = anom_entries[1]["event_id"]; expect = event_its[3]->get_id().toString();
+  EXPECT_EQ(got,expect);
+
+  //Repeat but add normal events for both
+  events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 50) );
+  events.push_back( createFuncExecData_t(1,2,4, 22, "theotherfunc", 400, 25) );
+  event_its.push_back(event_man.addCall(events[4]));
+  event_its.push_back(event_man.addCall(events[5]));
+  anoms.insert(event_its[4],Anomalies::EventType::Normal);
+  anoms.insert(event_its[5],Anomalies::EventType::Normal);
+
+  anom_entries.clear();
+  normal_entries.clear();
+
+  { //create prov anew to ensure normal event logic works as expected
+    ADAnomalyProvenance prov(event_man);
+    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
+  }
+  ASSERT_EQ(anom_entries.size(),2);
+  ASSERT_EQ(normal_entries.size(),2);
+
+  got = normal_entries[0]["event_id"]; expect = event_its[4]->get_id().toString();
+  EXPECT_EQ(got,expect);
+
+  got = normal_entries[1]["event_id"]; expect = event_its[5]->get_id().toString();
+  EXPECT_EQ(got,expect);
+
+  //Test the minimum runtime
+  anom_entries.clear();
+  normal_entries.clear();
+
+  { //create prov anew to ensure normal event logic works as expected
+    ADAnomalyProvenance prov(event_man);
+    prov.setMinimumAnomalyTime(60); //exclude second anomaly
+    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
+  }
+
+  ASSERT_EQ(anom_entries.size(),1);
+  ASSERT_EQ(normal_entries.size(),1);
+  
+  got = anom_entries[0]["event_id"]; expect = event_its[1]->get_id().toString();
+  EXPECT_EQ(got,expect);  
+  got = normal_entries[0]["event_id"]; expect = event_its[4]->get_id().toString();
+  EXPECT_EQ(got,expect);  
+
+
+  //Check that if we have multiple anomalies for the same function we only get one normal event
+  events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 75) );
+  event_its.push_back(event_man.addCall(events.back()));
+  anoms.insert(event_its.back(),Anomalies::EventType::Outlier);
+
+  anom_entries.clear();
+  normal_entries.clear();
+  
+  {
+    ADAnomalyProvenance prov(event_man);
+    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
+  }
+  ASSERT_EQ(anom_entries.size(),3);
+  ASSERT_EQ(normal_entries.size(),2);
+}
