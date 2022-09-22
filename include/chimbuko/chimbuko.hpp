@@ -1,6 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include "chimbuko/AD.hpp"
+#include "chimbuko/util/pointerRegistry.hpp"
 
 namespace chimbuko {
 
@@ -257,6 +258,8 @@ namespace chimbuko {
     ADAnomalyProvenance  *m_anomaly_provenance; /**< provenance information gatherer*/ 
 
     ADMonitoring *m_monitoring; /**< maintain the node state by parsing counters from TAU's monitoring plugin*/
+
+    PointerRegistry m_ptr_registry; /**< Managers pointers to components ensuring they are erased in the correct order*/
 
     mutable PerfStats m_perf; /**< Performance data */
     mutable PerfPeriodic m_perf_prd; /**<Performance temporal logging */

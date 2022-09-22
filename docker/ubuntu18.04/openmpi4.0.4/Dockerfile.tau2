@@ -33,11 +33,11 @@ WORKDIR /Downloads
 
 #Download and install tau from git
 #Change the tag below to force docker build not to use cache
-RUN echo "FORCE REDOWNLOAD 8_25_22_16_38" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
+RUN echo "FORCE REDOWNLOAD 9_22_22_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
 #Use known working version of tau2
-RUN git checkout 5112e6779ce03fb2750300a928352f479f69b442
+RUN git checkout 74190e57caacddf2bde3f2afb68ee12405117e16
 
 #pthread+mpi
 RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \

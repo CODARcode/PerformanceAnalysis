@@ -165,6 +165,7 @@ void Chimbuko::init_io(){
 
   if(m_params.prov_outputpath.size())
     m_io->setOutputPath(m_params.prov_outputpath);
+  m_ptr_registry.registerPointer(m_io);
 }
 
 void Chimbuko::init_parser(){
@@ -176,6 +177,7 @@ void Chimbuko::init_parser(){
   m_parser->setBeginStepTimeout(m_params.parser_beginstep_timeout);
   m_parser->setDataRankOverride(m_params.override_rank);
   m_parser->linkNetClient(m_net_client); //allow the parser to talk to the pserver to obtain global function indices
+  m_ptr_registry.registerPointer(m_parser);
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to application trace stream" << std::endl;
 }
 
@@ -187,6 +189,7 @@ void Chimbuko::init_event(){
   m_event->linkEventType(m_parser->getEventType());
   m_event->linkCounterMap(m_parser->getCounterMap());
   m_event->linkGPUthreadMap(&m_metadata_parser->getGPUthreadMap());
+  m_ptr_registry.registerPointer(m_event);
 
   //Setup ignored correlation IDs for given functions
   if(m_params.read_ignored_corrid_funcs.size()){
@@ -222,6 +225,7 @@ void Chimbuko::init_net_client(){
     m_net_client->setRecvTimeout(m_params.net_recv_timeout);
     m_net_client->connect_ps(m_params.rank, 0, m_params.pserver_addr);
     if(!m_net_client->use_ps()) fatal_error("Could not connect to parameter server");
+    m_ptr_registry.registerPointer(m_net_client);
 
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " successfully connected to parameter server" << std::endl;
   }
@@ -247,6 +251,7 @@ void Chimbuko::init_outlier(){
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
+  m_ptr_registry.registerPointer(m_outlier);
 
   //Read ignored functions
   if(m_params.ignored_func_file.size()){
@@ -270,6 +275,7 @@ void Chimbuko::init_counter(){
   if(!m_parser) throw std::runtime_error("Parser must be initialized before calling init_counter");
   m_counter = new ADCounter();
   m_counter->linkCounterMap(m_parser->getCounterMap());
+  m_ptr_registry.registerPointer(m_counter);
 }
 
 #ifdef ENABLE_PROVDB
@@ -282,11 +288,13 @@ void Chimbuko::init_provdb(){
   }
 
   m_provdb_client->linkPerf(&m_perf);
+  m_ptr_registry.registerPointer(m_provdb_client);
 }
 #endif
 
 void Chimbuko::init_metadata_parser(){
   m_metadata_parser = new ADMetadataParser;
+  m_ptr_registry.registerPointer(m_metadata_parser);
 }
 
 void Chimbuko::init_monitoring(){
@@ -298,6 +306,7 @@ void Chimbuko::init_monitoring(){
     m_monitoring->setDefaultWatchList();
   if(m_params.monitoring_counter_prefix.size())
     m_monitoring->setCounterPrefix(m_params.monitoring_counter_prefix);
+  m_ptr_registry.registerPointer(m_monitoring);
 }
 
 void Chimbuko::init_provenance_gatherer(){
@@ -307,6 +316,7 @@ void Chimbuko::init_provenance_gatherer(){
   m_anomaly_provenance->linkMonitoring(m_monitoring);
   m_anomaly_provenance->linkMetadata(m_metadata_parser);
   m_anomaly_provenance->setWindowSize(m_params.anom_win_size);
+  m_ptr_registry.registerPointer(m_anomaly_provenance);
 }
 
 
@@ -329,37 +339,11 @@ void Chimbuko::finalize()
 
   headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " run complete" << std::endl;
 
-  if(m_net_client){
-    m_net_client->disconnect_ps();
-    delete m_net_client;
-  }
-  if (m_parser) delete m_parser;
-  if (m_event) delete m_event;
-  if (m_outlier) delete m_outlier;
-  if (m_io) delete m_io;
-  if (m_counter) delete m_counter;
+  if(m_net_client) m_net_client->disconnect_ps();
 
-#ifdef ENABLE_PROVDB
-  if (m_provdb_client) delete m_provdb_client;
-#endif
-
-  if (m_metadata_parser) delete m_metadata_parser;
-  if (m_monitoring) delete m_monitoring;
-  if (m_anomaly_provenance) delete m_anomaly_provenance;
-
-  m_parser = nullptr;
-  m_event = nullptr;
-  m_outlier = nullptr;
-  m_io = nullptr;
-  m_net_client = nullptr;
-  m_counter = nullptr;
-#ifdef ENABLE_PROVDB
-  m_provdb_client = nullptr;
-#endif
-  m_metadata_parser = nullptr;
-  m_monitoring = nullptr;
-  m_anomaly_provenance = nullptr;
-
+  m_ptr_registry.resetPointers(); //delete all pointers in reverse order to which they were instantiated
+  m_ptr_registry.deregisterPointers(); //allow them to be re-registered if init is called again
+  
   m_is_initialized = false;
 
   m_perf.add("ad_finalize_total_ms", timer.elapsed_ms());
