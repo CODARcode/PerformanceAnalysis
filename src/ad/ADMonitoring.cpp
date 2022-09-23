@@ -101,12 +101,7 @@ nlohmann::json ADMonitoring::get_json() const{
 }
 
 void ADMonitoring::setDefaultWatchList(){
-  addWatchedCounter("monitoring: Memory Footprint (VmRSS) (KB)", "Memory Footprint (VmRSS) (KB)");
-  addWatchedCounter("monitoring: meminfo:MemAvailable (MB)", "Memory Available (MB)");
-  addWatchedCounter("monitoring: meminfo:MemFree (MB)", "Memory Free (MB)");
-  addWatchedCounter("monitoring: cpu: User %", "CPU Usage User (%)");
-  addWatchedCounter("monitoring: cpu: System %", "CPU Usage System (%)");
-  addWatchedCounter("monitoring: cpu: Idle %", "CPU Usage Idle (%)");
+  setCounterPrefix("monitoring: "); //get all counters prefixed by "monitoring: " ; this prefix is set in the default tau_monitoring.json config file
 }
 
 void ADMonitoring::parseWatchListFile(const std::string &file){
@@ -120,4 +115,12 @@ void ADMonitoring::parseWatchListFile(const std::string &file){
     if(!j_i.is_array() || j_i.size() != 2) fatal_error("Expect array elements to be two-component arrays");
     addWatchedCounter(j_i[0],j_i[1]);
   }
+}
+
+std::vector<int> ADMonitoring::getMonitoringCounterIndices() const{
+  std::vector<int> out(m_cid_state_map.size());
+  size_t i=0;
+  for(auto const &e : m_cid_state_map)
+    out[i++] = e.first;
+  return out; 
 }

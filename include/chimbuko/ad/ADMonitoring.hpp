@@ -108,6 +108,11 @@ namespace chimbuko {
      */
     const std::unordered_map<std::string, std::string>& getWatchList() const{ return m_counter_watchlist; }
 
+    /**
+     * @brief Get the indices of the counters associated with the monitoring plugin
+     */
+    std::vector<int> getMonitoringCounterIndices() const;
+
   private:
     bool m_state_set; /**< True if the state has been set at least once*/
     unsigned long m_timestamp; /**< The timestamp of the most recent update*/

@@ -345,6 +345,8 @@ void Chimbuko::finalize()
 
   m_ptr_registry.resetPointers(); //delete all pointers in reverse order to which they were instantiated
   m_ptr_registry.deregisterPointers(); //allow them to be re-registered if init is called again
+
+  m_exec_ignore_counters.clear(); //reset the ignored counters list
   
   m_is_initialized = false;
 
@@ -439,8 +441,11 @@ void Chimbuko::extractEvents(unsigned long &first_event_ts,
   std::vector<Event_t> events = m_parser->getEvents();
   m_perf.add("ad_extract_events_get_events_ms", timer.elapsed_ms());
   timer.start();
-  for(auto &e : events)
-    m_event->addEvent(e);
+  for(auto &e : events){
+    if(e.type() != EventDataType::COUNT || !m_exec_ignore_counters.count(e.counter_id()) ){
+      m_event->addEvent(e);
+    }
+  }
   m_perf.add("ad_extract_events_register_ms", timer.elapsed_ms());
   m_perf.add("ad_extract_events_event_count", events.size());
   if(events.size()){
@@ -474,6 +479,13 @@ void Chimbuko::extractNodeState(){
   if(!m_counter) throw std::runtime_error("Counter is not initialized");
   PerfTimer timer;
   m_monitoring->extractCounters(m_counter->getCountersByIndex());
+
+  //Get the counters that monitoring is watching and tell the event manager to ignore them so they don't get attached to any function execution
+  std::vector<int> cidx_mon_ignore = m_monitoring->getMonitoringCounterIndices();
+  for(int i: cidx_mon_ignore){
+    m_exec_ignore_counters.insert(i);
+  }
+  
   m_perf.add("ad_extract_node_state_ms", timer.elapsed_ms());
 }
 

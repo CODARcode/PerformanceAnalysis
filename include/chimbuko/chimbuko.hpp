@@ -279,6 +279,8 @@ namespace chimbuko {
     unsigned long long m_n_counter_events_accum_prd; /**< Total number of counter events since last write of periodic data*/
     unsigned long m_n_outliers_accum_prd; /**< Total number of outiers detected since last write of periodic data*/
     int m_n_steps_accum_prd; /**< Number of steps since last write of periodic data */
+
+    std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
   };
 
 }

@@ -140,3 +140,22 @@ TEST(ADMonitoringTest, FilterPrefix){
 
   EXPECT_TRUE(mon.hasState("interesting counter2")); //check the one not in the watch list is given the default name
 }
+
+TEST(ADMonitoringTest, CounterIndices){
+  std::unordered_map<int, std::string> counter_map = { {104,"interesting counter 1"}, {99,"interesting counter 2"} };
+  ADMonitoring mon;
+
+  mon.linkCounterMap(&counter_map);
+
+  mon.addWatchedCounter("interesting counter 1", "my counter field 1");
+  mon.addWatchedCounter("interesting counter 2", "my counter field 2");
+
+  CountersByIndex_t data; //don't actually need any observations of the counter for this but we do need to run extractCounters to setup the state buffer
+
+  mon.extractCounters(data);
+
+  std::vector<int> cidx = mon.getMonitoringCounterIndices();
+  ASSERT_EQ(cidx.size(), 2); 
+  EXPECT_EQ(cidx[0], 99); //output will be ordered
+  EXPECT_EQ(cidx[1], 104);
+}
