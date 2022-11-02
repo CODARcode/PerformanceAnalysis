@@ -83,7 +83,7 @@ sed -i 's/coord 0/coord 1/' ethanol_md.nw
 sed -i 's/scoor 0/scoor 1/' ethanol_md.nw
 sed -i 's/step 0.001/step 0.001/' ethanol_md.nw
 sed -i '21s|set|#set|' ethanol_md.nw
-sed -i '22s|#set|set|' ethanol_md.nw
+sed -i '17s|#set|set|' ethanol_md.nw
 sed -i "s|data 1000|data ${DATA_STEPS}|" ethanol_md.nw
 
 if (( 1 )); then
@@ -94,7 +94,7 @@ if (( 1 )); then
     ad_cmd=$(cat chimbuko/vars/chimbuko_ad_cmdline.var)
 fi
 
-if [ "$ADIOS_MODE" == "SST" ]
+if [[ "$ADIOS_MODE" == "SST" || "$ADIOS_MODE" == "BP4" ]]
 then
     echo "Launch Application with anomaly detectors"
     eval "mpirun --allow-run-as-root -n ${NMPIS} ${ad_cmd} &"   
