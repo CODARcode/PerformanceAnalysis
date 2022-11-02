@@ -202,7 +202,8 @@ if (( ${use_viz} == 1 )); then
     sed -i "s|^pidfile /var/run/redis_6379.pid|pidfile ${viz_dir}/redis.pid|" redis.conf
     sed -i "s|^logfile "\"\""|logfile ${log_dir}/redis.log|" redis.conf
     sed -i "s|.*syslog-enabled no|syslog-enabled yes|" redis.conf
-
+    sed -i "s|^protected-mode yes|protected-mode no|" redis.conf
+    
     echo "==========================================="
     echo "Chimbuko Services: Launch Chimbuko visualization server"
     echo "==========================================="
