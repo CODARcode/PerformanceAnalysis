@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y gdb emacs-nox vim
 
 WORKDIR /
 
-RUN echo "INVALIDATE_3" > /dev/null
+RUN echo "INVALIDATE_5" > /dev/null
 COPY run_nwchem_chimbuko.sh /
 COPY sos_filter.txt /
 COPY chimbuko_config.templ /
