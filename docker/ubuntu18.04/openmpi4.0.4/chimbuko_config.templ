@@ -49,7 +49,7 @@ pserver_nt=2 #number of worker threads
 ####################################
 #Options for the AD module
 ####################################
-ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1 -interval_msec <AD_INTERVAL>" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
+ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1 -interval_msec <AD_INTERVAL> -prov_min_anom_time 5000" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
 ad_win_size=<AD_WIN_SIZE>  #number of events around an anomaly to store; provDB entry size is proportional to this so keep it small!
 ad_alg="hbos" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
 ad_outlier_hbos_threshold=0.99  #the percentile of events outside of which are considered anomalies by the HBOS algorithm
