@@ -97,16 +97,16 @@ fi
 if [[ "$ADIOS_MODE" == "SST" || "$ADIOS_MODE" == "BP4" ]]
 then
     echo "Launch Application with anomaly detectors"
-    eval "mpirun --allow-run-as-root -n ${NMPIS} ${ad_cmd} &"   
+    eval "mpirun --oversubscribe --allow-run-as-root -n ${NMPIS} ${ad_cmd} &"   
     sleep 5
 
-    mpirun --allow-run-as-root -n $NMPIS ${TAU_EXEC} nwchem ethanol_md.nw 2>&1 | tee chimbuko/logs/nwchem.log
+    mpirun --oversubscribe --allow-run-as-root -n $NMPIS ${TAU_EXEC} nwchem ethanol_md.nw 2>&1 | tee chimbuko/logs/nwchem.log
 else
     echo "Use BP mode"
     if ! $HAS_BPFILE
     then
         echo "Run NWChem"
-        mpirun --allow-run-as-root -n $NMPIS ${TAU_EXEC} nwchem ethanol_md.nw 2>&1 | tee  logs/nwchem.log 
+        mpirun --oversubscribe --allow-run-as-root -n $NMPIS ${TAU_EXEC} nwchem ethanol_md.nw 2>&1 | tee  logs/nwchem.log 
     fi
     echo "Run anomaly detectors"
     eval "mpirun --allow-run-as-root -n ${NMPIS} ${ad_cmd} &"   
