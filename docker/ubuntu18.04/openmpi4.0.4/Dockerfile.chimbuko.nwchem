@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y gdb emacs-nox vim
 
 WORKDIR /
 
-RUN echo "INVALIDATE_7" > /dev/null
+RUN echo "INVALIDATE_10" > /dev/null
 COPY run_nwchem_chimbuko.sh /
 COPY sos_filter.txt /
 COPY chimbuko_config.templ /
@@ -31,4 +31,4 @@ COPY chimbuko_config.templ /
 EXPOSE 5000
 
 ENTRYPOINT [ "./run_nwchem_chimbuko.sh" ]
-CMD [ "5", "50000", "SST", "false", "12", "10", "1000", "/test" ]
+CMD [ "5", "50000", "SST", "false", "12", "10", "1000", "/test", "chimbuko/provdb" ]

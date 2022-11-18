@@ -29,6 +29,7 @@ AD_SIGMA=${5:-6}
 AD_WINSZ=${6:-10}
 AD_INTERVAL=${7:-1000}
 BATCH_DIR=${8:-/test}
+PROVDB_WRITEDIR=${9:-chimbuko/provdb}
 
 echo "============================"
 echo "NMPIS: ${NMPIS}"
@@ -39,6 +40,7 @@ echo "AD SIGMA: ${AD_SIGMA}"
 echo "AD WINSZ: ${AD_WINSZ}"
 echo "AD INTERVAL: ${AD_INTERVAL} msec"
 echo "BATCH DIR: ${BATCH_DIR}"
+echo "PROVDB WRITEDIR : ${PROVDB_WRITEDIR}"
 echo "============================"
 sleep 1
 
@@ -63,7 +65,7 @@ cd $BATCH_DIR
 rm -rf *
 
 # #Override config script with user options
-cat /chimbuko_config.templ | sed "s/<TAU_ADIOS2_ENGINE>/${ADIOS_MODE}/" | sed "s/<AD_WIN_SIZE>/${AD_WINSZ}/" | sed "s/<AD_SIGMA>/${AD_SIGMA}/" | sed "s/<AD_INTERVAL>/${AD_INTERVAL}/" | sed "s|<VIZ_ROOT>|${VIZ_ROOT}|" > chimbuko_config.sh
+cat /chimbuko_config.templ | sed "s/<TAU_ADIOS2_ENGINE>/${ADIOS_MODE}/" | sed "s/<AD_WIN_SIZE>/${AD_WINSZ}/" | sed "s/<AD_SIGMA>/${AD_SIGMA}/" | sed "s/<AD_INTERVAL>/${AD_INTERVAL}/" | sed "s|<VIZ_ROOT>|${VIZ_ROOT}|" | sed "s|<PROVDB_WRITEDIR>|${PROVDB_WRITEDIR}|" > chimbuko_config.sh
 export CHIMBUKO_CONFIG=chimbuko_config.sh
 source ${CHIMBUKO_CONFIG}
 
@@ -113,4 +115,7 @@ else
 fi
 
 wait
+echo "Setting ownership of provdb data"
+chown `stat -c "%u:%g" ${PROVDB_WRITEDIR}` ${PROVDB_WRITEDIR}/provdb*
+
 echo "Bye~~!!"
