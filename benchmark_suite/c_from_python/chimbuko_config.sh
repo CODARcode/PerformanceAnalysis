@@ -28,7 +28,7 @@ provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
 provdb_ninstances=1 #number of database server instances. Shards are distributed over instances
 provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
-provdb_port=5000 #the port of the provenance database
+provdb_port=5000 #the port of the provenance database. For >1 instance the port of instance i will be provdb_port+i 
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
 
@@ -52,15 +52,18 @@ pserver_nt=2 #number of worker threads
 ####################################
 ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
 ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this so keep it small!
-ad_alg="sstd" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
+ad_alg="hbos" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
 ad_outlier_hbos_threshold=0.99  #the percentile of events outside of which are considered anomalies by the HBOS algorithm
 ad_outlier_sstd_sigma=12 #number of standard deviations that defines an outlier in the SSTD algorithm
 
 ####################################
 #Options for TAU
+#Note: Only the TAU_ADIOS2_PATH, TAU_ADIOS2_FILE_PREFIX, EXE_NAME, TAU_ADIOS2_ENGINE and tau_monitoring_conf variables are used by the Chimbuko services script and there only to generate the suggested
+#      command to launch the AD (output to chimbuko/vars/chimbuko_ad_cmdline.var); they can be overridden by the run script if desired providing the appropriate modifications
+#      are made to the AD launch command. The remainder of the variables are used only by TAU and can be freely overridden.
 ####################################
 export TAU_ADIOS2_ENGINE=SST    #online communication engine (alternative BP4 although this goes through the disk system and may be slower unless the BPfiles are stored on a burst disk)
-export TAU_ADIOS2_ONE_FILE=FALSE  #a different connetion file for each rank
+export TAU_ADIOS2_ONE_FILE=FALSE  #a different connection file for each rank
 export TAU_ADIOS2_PERIODIC=1   #enable/disable ADIOS2 periodic output
 export TAU_ADIOS2_PERIOD=1000000  #period in us between ADIOS2 io steps
 export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TAU virtual threads
@@ -70,10 +73,12 @@ export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-pytho
 TAU_EXEC="tau_exec -T papi,mpi,pthread,pdt,python,adios2 -adios2_trace"   #how to execute tau_exec; the -T arguments should mirror the makefile name  <------------ ***SET ME***
 TAU_PYTHON="tau_python -tau-python-interpreter=python3 -adios2_trace  -tau-python-args=-u"  #how to execute tau_python. Note that passing -u to python forces it to not buffer stdout so we can pipe it to tee in realtime
 
+tau_monitoring_conf="default" #Provide a configuration file for the TAU monitoring plugin. It will be copied to the work directory as "tau_monitoring.json" (unless it is already there!). If set to default, Chimbuko will generate one automatically
+
 export EXE_NAME=python3.6  #the name of the executable (without path) <------------ ***SET ME***
 
 TAU_ADIOS2_PATH=chimbuko/adios2  #path where the adios2 files are to be stored. Chimbuko services creates the directory chimbuko/adios2 in the working directory and this should be used by default
-TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp  
+TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filename is ${TAU_ADIOS2_PREFIX}-${EXE_NAME}-${RANK}.bp
 
 
 
@@ -94,6 +99,11 @@ TAU_ADIOS2_FILE_PREFIX=tau-metrics  #the prefix of tau adios2 files; full filena
 export TAU_ADIOS2_FILENAME="${TAU_ADIOS2_PATH}/${TAU_ADIOS2_FILE_PREFIX}"
 
 if [[ ${backend_root} == "infer" ]]; then
+    if [[ $(which provdb_admin) == "" ]]; then
+	echo "When inferring the backend root directory, could not find provdb_admin in PATH. Please add your Chimbuko bin directory to PATH"
+	exit 1
+    fi
+    
     backend_root=$( readlink -f $(which provdb_admin | sed 's/provdb_admin//')/../ )
 fi
 

@@ -133,7 +133,7 @@ namespace chimbuko {
      *
      * Assumes ownership of the NetPayloadBase object and deletes in constructor
      * worker_idx:
-     *     ZMQNet - use 0 always
+     *     ZMQNet - worker_idx corresponds to the worker thread. Payloads must be assigned to each thread
      *     MPINet - use 0 always
      *     ZMQMENet - worker_idx corresponds to the endpoint thread
      */

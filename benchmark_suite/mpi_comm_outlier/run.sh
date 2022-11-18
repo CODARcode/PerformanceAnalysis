@@ -1,7 +1,7 @@
 #!/bin/bash
 ##################### USER INPUTS #############################
 ranks=3   #MPI ranks
-cycles=10000   #how many loop cycles
+cycles=1000   #how many loop cycles
 base_MB=10   #default size of comm in MB
 anom_rank=1   #which rank has the anomaly
 anom_mult=50  #how much larger the data packet is for the anomaly
