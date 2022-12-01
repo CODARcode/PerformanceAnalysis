@@ -167,6 +167,7 @@ nlohmann::json ADAnomalyProvenance::getEventProvenance(const ExecData_t &call,
 							const unsigned long first_event_ts,
 							const unsigned long last_event_ts) const{
   nlohmann::json out = {
+      {"version", 2},
       {"pid", call.get_pid()},
       {"rid", call.get_rid()},
       {"tid", call.get_tid()},

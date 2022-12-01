@@ -18,6 +18,7 @@ Function execution "events" in Chimbuko are labeled by a unique (for each proces
 
 | { *start of schema*
 |    **"__id"**: *Record index assigned by Sonata*,
+|    **"version"**: *The schema version*,
 |    **"call_stack"**:    *Function execution call stack (starting with anomalous function execution)*,
 |    [
 |        {
