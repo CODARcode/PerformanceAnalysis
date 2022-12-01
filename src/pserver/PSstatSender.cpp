@@ -6,6 +6,10 @@
 
 using namespace chimbuko;
 
+void PSstatSenderCreatedAtTimestampPayload::add_json(nlohmann::json &into) const{
+  into["created_at"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch() ).count();
+}
 
 PSstatSender::PSstatSender(size_t send_freq) 
   : m_stat_sender(nullptr), m_stop_sender(false), m_bad(false), m_send_freq(send_freq)

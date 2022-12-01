@@ -30,6 +30,7 @@ The full parameter server data packet JSON object has the following schema:
 ---------------------
 
 | {
+|    **'created_at'**: *UNIX timestamp given in milliseconds relative to epoch*
 |    **'anomaly_stats'**: *Statistics of anomalies  (object with schema given below). This field will not appear if no data has been received from the AD instances since the last send*
 |    **'anomaly_metrics'** : *Statistics of anomaly metrics by pid/rid/fid (array of objects with schema below).* 
 |    **'counter_stats'**: *Statistics of counter values aggregated over all ranks (array). This field will not appear if no counters were ever collected*
@@ -52,7 +53,7 @@ The schema for the **'anomaly_stats'** object is as follows:
 ---------------------
 
 | {
-|  **'created_at'**: *timestamp given in milliseconds relative to epoch*,
+|  **'created_at'**: *UNIX timestamp given in milliseconds relative to epoch*,
 |  **'anomaly'**:   *Statistics on anomalies by process/rank (array)*
 |       [
 |         {

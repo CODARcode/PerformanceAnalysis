@@ -36,6 +36,16 @@ namespace chimbuko{
   };
 
 
+  /**
+   * @brief A payload to insert a "created_at" timestamp entry into the record
+   */
+  struct PSstatSenderCreatedAtTimestampPayload: public PSstatSenderPayloadBase{
+    /**
+     * @brief Add the timestamp into the 'into'
+     */
+    void add_json(nlohmann::json &into) const override;
+  };
+
   
   /**
    * @brief A class that periodically sends aggregate statistics to the visualization module via curl using a background thread
