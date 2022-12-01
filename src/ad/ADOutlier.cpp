@@ -242,8 +242,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
-  	std::vector<double> sstd_stats{thr_hi, thr_lo, mean, std};
-	outliers.insert(itt, Anomalies::EventType::Outlier, sstd_stats); //insert into data structure containing captured anomalies
+	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
       }else{
 	//Capture maximum of one normal execution per io step
 	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
@@ -509,7 +508,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       if (ad_score >= l_threshold) {
 	itt->set_label(-1);
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
-	outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
 	n_outliers += 1;
       }else {
         //Capture maximum of one normal execution per io step
@@ -750,7 +749,7 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
       if (ad_score >= l_threshold) {
 	itt->set_label(-1);
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-	outliers.insert(itt, Anomalies::EventType::Outlier, runtime_i, ad_score, l_threshold); //insert into data structure containing captured anomalies
+	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
 	++n_outliers;
       }
       else {

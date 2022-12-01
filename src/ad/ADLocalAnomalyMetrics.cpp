@@ -62,7 +62,7 @@ std::pair<size_t, size_t> ADLocalAnomalyMetrics::send(ADNetClient &net_client) c
   if (!net_client.use_ps())
     return std::make_pair(0, 0);
 
-  if(net_client.get_client_rank() != m_rank) fatal_error("Rank mismatch");
+  if(net_client.get_client_rank() != m_rank) fatal_error("Rank mismatch: net client reported rank " + std::to_string(net_client.get_client_rank()) + " but recorded rank is " + std::to_string(m_rank) );
   
   Message msg;
   msg.set_info(m_rank, net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_METRICS, m_step);

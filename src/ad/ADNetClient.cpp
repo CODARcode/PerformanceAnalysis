@@ -241,6 +241,8 @@ std::string ADMPINetClient::send_and_receive(const Message &msg){
 void ADLocalNetClient::connect_ps(int rank, int srank, std::string sname){
   if(LocalNet::globalInstance() == nullptr) fatal_error("No LocalNet instance exists");
   m_use_ps = true;
+  m_srank = 0;
+  m_rank = rank;
 }
 
 

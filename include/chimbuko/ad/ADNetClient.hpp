@@ -218,7 +218,7 @@ namespace chimbuko{
     /**
      * @brief connect to the parameter server
      * 
-     * @param rank Ignored
+     * @param rank Stored as internal rank index
      * @param srank Ignored
      * @param sname Ignored
      */
