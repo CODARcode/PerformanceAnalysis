@@ -140,6 +140,8 @@ int main (int argc, char ** argv){
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsPayload(&global_func_stats[0]));
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsPayload(&global_counter_stats[0]));
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsPayload(&global_anom_metrics[0]));
+    stat_sender.add_payload(new PSstatSenderCreatedAtTimestampPayload); //add 'created_at' timestamp
+    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'created_at' timestamp
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Start communicating with the AD instances

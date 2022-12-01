@@ -205,6 +205,7 @@ int main (int argc, char ** argv){
     stat_sender.add_payload(new PSstatSenderGlobalCounterStatsCombinePayload(global_counter_stats));
     stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsCombinePayload(global_anom_metrics));
     stat_sender.add_payload(new PSstatSenderCreatedAtTimestampPayload); //add 'created_at' timestamp
+    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'created_at' timestamp
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully

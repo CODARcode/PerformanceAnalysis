@@ -11,6 +11,10 @@ void PSstatSenderCreatedAtTimestampPayload::add_json(nlohmann::json &into) const
         std::chrono::system_clock::now().time_since_epoch() ).count();
 }
 
+void PSstatSenderVersionPayload::add_json(nlohmann::json &into) const{
+  into["version"] = 2;
+}
+
 PSstatSender::PSstatSender(size_t send_freq) 
   : m_stat_sender(nullptr), m_stop_sender(false), m_bad(false), m_send_freq(send_freq)
 {

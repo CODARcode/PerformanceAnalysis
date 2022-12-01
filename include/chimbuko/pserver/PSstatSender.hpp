@@ -46,6 +46,16 @@ namespace chimbuko{
     void add_json(nlohmann::json &into) const override;
   };
 
+  /**
+   * @brief A payload to insert a "version" entry into the record
+   */
+  struct PSstatSenderVersionPayload: public PSstatSenderPayloadBase{
+    /**
+     * @brief Add the version number into the 'into'
+     */
+    void add_json(nlohmann::json &into) const override;
+  };
+
   
   /**
    * @brief A class that periodically sends aggregate statistics to the visualization module via curl using a background thread
