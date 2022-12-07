@@ -18,3 +18,4 @@ class PyFlaskSqlalchemy(PythonPackage):
     depends_on('py-setuptools', type='build')
     depends_on('py-flask@1.0.4:', type=('build', 'run'))
     depends_on('py-sqlalchemy@1.2:', type=('build', 'run'))
+    depends_on('py-pdm-pep517', type='build')
