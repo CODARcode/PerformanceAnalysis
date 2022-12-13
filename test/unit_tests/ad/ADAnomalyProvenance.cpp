@@ -524,8 +524,8 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
   for(auto &e :  events) event_its.push_back(event_man.addCall(e));
 
   Anomalies anoms;
-  anoms.insert(event_its[1],Anomalies::EventType::Outlier);
-  anoms.insert(event_its[3],Anomalies::EventType::Outlier);
+  anoms.recordAnomaly(event_its[1]);
+  anoms.recordAnomaly(event_its[3]);
   
   std::vector<nlohmann::json> anom_entries, normal_entries;
   {
@@ -545,11 +545,13 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
 
   //Repeat but add normal events for both
   events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 50) );
+  events.rbegin()->set_label(1);
   events.push_back( createFuncExecData_t(1,2,4, 22, "theotherfunc", 400, 25) );
+  events.rbegin()->set_label(1);
   event_its.push_back(event_man.addCall(events[4]));
   event_its.push_back(event_man.addCall(events[5]));
-  anoms.insert(event_its[4],Anomalies::EventType::Normal);
-  anoms.insert(event_its[5],Anomalies::EventType::Normal);
+  anoms.recordNormalEventConditional(event_its[4]);
+  anoms.recordNormalEventConditional(event_its[5]);
 
   anom_entries.clear();
   normal_entries.clear();
@@ -588,8 +590,9 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
 
   //Check that if we have multiple anomalies for the same function we only get one normal event
   events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 75) );
+  events.rbegin()->set_label(-1);
   event_its.push_back(event_man.addCall(events.back()));
-  anoms.insert(event_its.back(),Anomalies::EventType::Outlier);
+  anoms.recordAnomaly(event_its.back());
 
   anom_entries.clear();
   normal_entries.clear();

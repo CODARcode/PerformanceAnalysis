@@ -210,7 +210,7 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
 
   //Put new normal event provenance into m_normalevent_prov
   timer.start();
-  for(auto norm_it : anomalies.allEvents(Anomalies::EventType::Normal)){
+  for(auto norm_it : anomalies.allEventsRecorded(Anomalies::EventType::Normal)){
     timer2.start();
     m_normalevents.addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), getEventProvenance(*norm_it, step, first_event_ts, last_event_ts));
     if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
@@ -228,7 +228,7 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
   timer.start();
   std::unordered_set<unsigned long> normal_event_fids;
 
-  for(auto anom_it : anomalies.allEvents(Anomalies::EventType::Outlier)){
+  for(auto anom_it : anomalies.allEventsRecorded(Anomalies::EventType::Outlier)){
     timer2.start();
     if(anom_it->get_exclusive() < m_min_anom_time) continue; //skip executions with too short runtimes to avoid filling the database with irrelevant anomalies
 

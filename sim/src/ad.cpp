@@ -265,14 +265,14 @@ void ADsim::step(const unsigned long step){
     m_outlier->linkExecDataMap(&this_step_func_execs);
     anom = m_outlier->run(step);
   }else{
-    //Collect outliers and 1 normal event/func into Anomalies object
+    //Collect outliers and 1 normal event/func into Anomalies object (Anomalies object decides which to keep)
     for(const auto &exec_it : this_step_execs){
-      if(exec_it->get_label() == -1) anom.insert(exec_it, Anomalies::EventType::Outlier);
-      else if(anom.nFuncEvents(exec_it->get_fid(), Anomalies::EventType::Normal) == 0) anom.insert(exec_it, Anomalies::EventType::Normal);
+      if(exec_it->get_label() == -1) anom.recordAnomaly(exec_it);
+      else anom.recordNormalEventConditional(exec_it);
     }
   }
-  int nanom = anom.nEvents(Anomalies::EventType::Outlier);
-  int nnorm = anom.nEvents(Anomalies::EventType::Normal);
+  int nanom = anom.nEventsRecorded(Anomalies::EventType::Outlier);
+  int nnorm = anom.nEventsRecorded(Anomalies::EventType::Normal);
   std::cout << "Step " << step << " rank " << m_rid << " Anomalies object contains : " << nanom << " anomalies and " << nnorm << " normal events (max 1)" << std::endl;
 
   //Extract provenance data and send to the provDB

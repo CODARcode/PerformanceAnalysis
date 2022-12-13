@@ -39,8 +39,8 @@ TEST(ADLocalAnomalyMetricsTest, TestGenerateAndState){
   calllist.push_back(e2);
   
   Anomalies anom;
-  anom.insert(calllist.begin(),Anomalies::EventType::Outlier);
-  anom.insert(std::next(calllist.begin(),1),Anomalies::EventType::Outlier);
+  anom.recordAnomaly(calllist.begin());
+  anom.recordAnomaly(std::next(calllist.begin(),1));
 
   unsigned long first_ts = 100, last_ts = 999;
   

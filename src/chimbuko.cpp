@@ -663,10 +663,11 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     timer.start();
     Anomalies anomalies = m_outlier->run(step);
     m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
-    m_perf.add("ad_run_anomaly_count", anomalies.nEvents(Anomalies::EventType::Outlier));
+    m_perf.add("ad_run_anomaly_count", anomalies.nEventsRecorded(Anomalies::EventType::Outlier));
+    m_perf.add("ad_run_n_exec_analyzed", anomalies.nEvents());
 
-    int nout = anomalies.nEvents(Anomalies::EventType::Outlier);
-    int nnormal = anomalies.nEvents(Anomalies::EventType::Normal);
+    int nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
+    int nnormal = anomalies.nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
     n_outliers += nout;
     m_n_outliers_accum_prd += nout;
 
@@ -698,7 +699,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     //Enable update of analysis time window bound on next step
     m_execdata_first_event_ts_set = false;
 
-    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " event analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
+    if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " function execution analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
   }//if(do_run_analysis)
 
   m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());

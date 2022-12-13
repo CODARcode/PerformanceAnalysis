@@ -34,8 +34,9 @@ struct TestSetup{
 
 	if(j<nanomalies_per_func){
 	  it->set_outlier_score(score);
+	  it->set_label(-1); //label as outlier
 	  outlier_scores.push(score);	
-	  anomalies.insert(it, Anomalies::EventType::Outlier);
+	  anomalies.recordAnomaly(it);
 	}
 
       }

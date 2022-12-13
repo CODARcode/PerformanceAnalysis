@@ -59,18 +59,15 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
 }
 
 void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
-  //Loop over functions and get the number of anomalies
-  for(auto &fstats: m_funcstats){
-    unsigned long func_id = fstats.second.id;
-    fstats.second.n_anomaly += anom.nFuncEvents(func_id, Anomalies::EventType::Outlier);
-  }
-
   //Gather information on the number of anomalies and stats on their scores
-  const std::vector<CallListIterator_t> &anomalies = anom.allEvents(Anomalies::EventType::Outlier);
+  const std::vector<CallListIterator_t> &anomalies = anom.allEventsRecorded(Anomalies::EventType::Outlier);
   m_anom_data.incr_n_anomalies(anomalies.size());
   
-  for(auto const &it : anomalies)
+  for(auto const &it : anomalies){
     m_anom_data.add_outlier_score(it->get_outlier_score());
+    ++m_funcstats[it->get_fid()].n_anomaly; //increment func anomalies count
+  }
+
 }
 
 ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{

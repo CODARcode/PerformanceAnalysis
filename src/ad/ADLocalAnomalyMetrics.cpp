@@ -15,7 +15,7 @@ ADLocalAnomalyMetrics::State::State(const ADLocalAnomalyMetrics &parent){
 
 ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const Anomalies &anom): 
   m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
-  const std::vector<CallListIterator_t> & outliers = anom.allEvents(Anomalies::EventType::Outlier);
+  const std::vector<CallListIterator_t> & outliers = anom.allEventsRecorded(Anomalies::EventType::Outlier);
   for(auto const &cit: outliers){
     int fid = cit->get_fid();
     auto fit = m_func_anom_metrics.find(fid);

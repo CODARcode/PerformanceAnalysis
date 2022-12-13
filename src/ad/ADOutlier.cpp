@@ -242,16 +242,11 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
 		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
 	n_outliers += 1;
-	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
-      }else{
-	//Capture maximum of one normal execution per io step
-	if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0){
-	  verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
-			<< " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
-
-	  outliers.insert(itt, Anomalies::EventType::Normal);
-	}
-      }
+	outliers.recordAnomaly(itt); //insert into data structure containing captured anomalies
+      }else if(outliers.recordNormalEventConditional(itt)){  
+	verboseStream << "Recorded normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid()
+		      << " runtime " << runtime << " mean " << mean << " std " << std << std::endl;
+      }	  
     }
   }
 
@@ -460,11 +455,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
   verboseStream << "Bin width: " << bin_width << std::endl;
 
-  //Maintain the normal execution with the lowest score (most likely)
-  bool lowest_score_set = false;
-  double lowest_score_val = std::numeric_limits<double>::max();
-  CallListIterator_t lowest_score_it;
-
   int top_out = 0;
   for (auto itt : data) {
     if (itt->get_label() == 0) {
@@ -508,30 +498,17 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       if (ad_score >= l_threshold) {
 	itt->set_label(-1);
 	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
-	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
+	outliers.recordAnomaly(itt); //insert into data structure containing captured anomalies
 	n_outliers += 1;
       }else {
-        //Capture maximum of one normal execution per io step
         itt->set_label(1);
-
-	//Record the normal event with the lowest score (most likely)
-	if(ad_score < lowest_score_val){
-	  lowest_score_val = ad_score;
-	  lowest_score_it = itt;
-	  lowest_score_set = true;
+	if(outliers.recordNormalEventConditional(itt)){  
+	  verboseStream << "Recorded normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << this->getStatisticValue(*itt) << " score " << itt->get_outlier_score() << " (threshold " << l_threshold << ")" << std::endl;
 	}
-
       }
 
     }//if unlabeled point
   } //loop over data points
-
-  //Record only the normal event with the lowest score
-  if(lowest_score_set){
-    auto itt = lowest_score_it;
-    verboseStream << "Recorded normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << this->getStatisticValue(*itt) << " score " << itt->get_outlier_score() << " (threshold " << l_threshold << ")" << std::endl;
-    outliers.insert(itt, Anomalies::EventType::Normal);
-  }
 
   return n_outliers;
 }
@@ -745,23 +722,19 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
       itt->set_outlier_score(ad_score);
       verboseStream << "runtime: " << runtime_i << " ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
 
-      //Compare the ad_score with the threshold
       if (ad_score >= l_threshold) {
 	itt->set_label(-1);
-	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-	outliers.insert(itt, Anomalies::EventType::Outlier); //insert into data structure containing captured anomalies
-	++n_outliers;
-      }
-      else {
-        //Capture maximum of one normal execution per io step
+	verboseStream << "!!!!!!!Detected outlier on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
+	outliers.recordAnomaly(itt); //insert into data structure containing captured anomalies
+	n_outliers += 1;
+      }else {
         itt->set_label(1);
-        if(outliers.nFuncEvents(func_id, Anomalies::EventType::Normal) == 0) {
-      	   verboseStream << "Detected normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << runtime_i << std::endl;
-      	   outliers.insert(itt, Anomalies::EventType::Normal);
-        }
+	if(outliers.recordNormalEventConditional(itt)){  
+	  verboseStream << "Recorded normal event on func id " << func_id << " (" << itt->get_funcname() << ") on thread " << itt->get_tid() << " runtime " << this->getStatisticValue(*itt) << " score " << itt->get_outlier_score() << " (threshold " << l_threshold << ")" << std::endl;
+	}
       }
-    }
-  }
+    }//unlabeled point
+  }//data loop
 
   return n_outliers;
 }

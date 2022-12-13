@@ -57,7 +57,7 @@ void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
 
       CounterDataListIterator_t cdi = *vit->second.rbegin();
       const CounterData_t &cd = *cdi;
-      if(cd.get_tid() != 0) recoverable_error("Expected counter to be on thread 0!");
+      //if(cd.get_tid() != 0) recoverable_error("Expected counter to be on thread 0! Info: "+ cd.get_json().dump());    //This doesn't seem to be true any more because Kevin made changes to the monitoring plugin
       entry.value = cd.get_value();
       entry.assigned = true;
       m_timestamp = cd.get_ts(); //overwrite timestamp of update (all monitoring data in a dump should arrive at the same time)

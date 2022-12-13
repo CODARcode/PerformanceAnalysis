@@ -270,7 +270,7 @@ TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   std::cout << "# outliers detected: " << nout << std::endl;
 
   EXPECT_EQ(nout, 1);
-  EXPECT_EQ( (unsigned long)outliers.nEvents(Anomalies::EventType::Outlier), nout);
+  EXPECT_EQ( (unsigned long)outliers.nEventsRecorded(Anomalies::EventType::Outlier), nout);
 
   //Check that running again on the same data does not report new outliers
   nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
@@ -308,20 +308,32 @@ TEST(ADOutlierSSTDTestRunWithoutPS, Works){
   outlier.linkExecDataMap(&data_map);
   Anomalies anomalies = outlier.run(0);
 
-  size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+  size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
   std::cout << "# outliers detected: " << nout << std::endl;
   EXPECT_EQ(nout, 1);
-  size_t nout_func = anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier);
+  size_t nout_func = anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier);
   EXPECT_EQ(nout_func, 1);
-  EXPECT_EQ( anomalies.allEvents(Anomalies::EventType::Outlier)[0], std::next(call_list.begin(), N-1) ); //last event
+  EXPECT_EQ( anomalies.allEventsRecorded(Anomalies::EventType::Outlier)[0], std::next(call_list.begin(), N-1) ); //last event
 
   //It should also have captured exactly one normal event for comparison (we don't capture all normal events as that would defeat the purpose!)
-  size_t nnorm = anomalies.nEvents(Anomalies::EventType::Normal);
+  //This should be the event with the lowest score
+  size_t nnorm = anomalies.nEventsRecorded(Anomalies::EventType::Normal);
   std::cout << "# normal events recorded: " << nnorm << std::endl;
   EXPECT_EQ(nnorm, 1);
-  size_t nnorm_func = anomalies.nFuncEvents(func_id, Anomalies::EventType::Normal);
+  size_t nnorm_func = anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Normal);
   EXPECT_EQ(nnorm_func, 1);
-  EXPECT_EQ( anomalies.allEvents(Anomalies::EventType::Normal)[0], std::next(call_list.begin(), 0) ); //first event
+
+  //Find event with lowest score
+  double lscore = 1e32;
+  std::list<ExecData_t>::iterator eit = call_list.end();
+  for(auto e = call_list.begin(); e != call_list.end(); e++){
+    if(e->get_outlier_score() < lscore){
+      eit = e;
+      lscore = e->get_outlier_score();
+    }
+  }
+ 
+  EXPECT_EQ( anomalies.allEventsRecorded(Anomalies::EventType::Normal)[0], eit );
 }
 
 
@@ -356,8 +368,8 @@ TEST(ADOutlierSSTDTestFuncIgnore, Works){
   EXPECT_FALSE(outlier.ignoringFunction(fname2));
 
   Anomalies anomalies = outlier.run(0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
@@ -404,12 +416,12 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
     outlier.linkExecDataMap(&data_map);
     Anomalies anomalies = outlier.run(0);
 
-    size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
     EXPECT_EQ(nout, 1);
-    size_t nout_par = anomalies.nFuncEvents(func_id_par, Anomalies::EventType::Outlier);
+    size_t nout_par = anomalies.nFuncEventsRecorded(func_id_par, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_par, 0);
-    size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
+    size_t nout_child = anomalies.nFuncEventsRecorded(func_id_child, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_child, 1);
   }
 
@@ -426,12 +438,12 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
     outlier.linkExecDataMap(&data_map);
     Anomalies anomalies = outlier.run(0);
 
-    size_t nout = anomalies.nEvents(Anomalies::EventType::Outlier);
+    size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
     EXPECT_EQ(nout, 2);
-    size_t nout_par = anomalies.nFuncEvents(func_id_par, Anomalies::EventType::Outlier);
+    size_t nout_par = anomalies.nFuncEventsRecorded(func_id_par, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_par, 1);
-    size_t nout_child = anomalies.nFuncEvents(func_id_child, Anomalies::EventType::Outlier);
+    size_t nout_child = anomalies.nFuncEventsRecorded(func_id_child, Anomalies::EventType::Outlier);
     EXPECT_EQ(nout_child, 1);
   }
 }
@@ -515,10 +527,10 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
-    EXPECT_EQ(data[0]->get_label(),1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    EXPECT_EQ(data[0]->get_label(),1); 
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[1], 1e-3);
   }
   //Check data point in the last bin is not an outlier
@@ -528,9 +540,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
   }
@@ -541,9 +553,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[0], 1e-3);
   }
@@ -553,9 +565,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
   }
@@ -566,9 +578,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
@@ -578,9 +590,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
@@ -591,9 +603,9 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
@@ -630,8 +642,8 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   EXPECT_FALSE(outlier.ignoringFunction(fname2));
 
   Anomalies anomalies = outlier.run(0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
@@ -674,9 +686,9 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
@@ -687,9 +699,9 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
@@ -700,9 +712,9 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
   }
   //Check data point lying on top of the min value is not an outlier despite the naive CDF being 0
@@ -712,9 +724,9 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
   }
 
@@ -758,9 +770,9 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
     Anomalies anom;
     unsigned long n = outlier.compute_outliers_test(anom, fid, data);
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEvents(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEvents(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
+    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
+    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
@@ -798,8 +810,8 @@ TEST(ADOutlierCOPODTestFuncIgnore, Works){
   EXPECT_FALSE(outlier.ignoringFunction(fname2));
 
   Anomalies anomalies = outlier.run(0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEvents(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
+  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
