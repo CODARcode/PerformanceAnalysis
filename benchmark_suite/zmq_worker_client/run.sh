@@ -6,25 +6,36 @@ rm -rf chimbuko
 export CHIMBUKO_CONFIG=chimbuko_config.sh
 source ${CHIMBUKO_CONFIG}
 
-if (( 1 )); then
+log_dir=chimbuko/logs
+
+use_chimbuko=1
+use_tau=1
+
+#Launch Chimbuko services
+if (( ${use_chimbuko} == 1 )); then
     echo "Running services"
     ${chimbuko_services} 2>&1 | tee services.log &
     echo "Waiting"
-    while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+    while [ ! -f chimbuko/vars/chimbuko_ad_opts.var ]; do sleep 1; done
     ad_opts=$(cat chimbuko/vars/chimbuko_ad_opts.var)
 else
-    mkdir -p chimbuko/logs chimbuko/adios2   
+    mkdir -p chimbuko/logs chimbuko/adios2
 fi
 
-log_dir=chimbuko/logs
+if (( ${use_tau} == 0 )); then
+    TAU_EXEC=
+fi
 
-if (( 1 )); then
-    ad_run_server="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-server -program_idx 0 ${ad_opts} 2>&1 | tee ${log_dir}/ad_server.log"
+#Launch AD on server
+if (( ${use_chimbuko} == 1 )); then
+    ad_run_server=$(cat chimbuko/vars/chimbuko_ad_cmdline.server.var)
     echo "Running AD for server with command:"
     echo ${ad_run_server}
     eval "${ad_run_server} &"
 fi
 
+#Launch server
+export TAU_VERBOSE=0
 ${TAU_EXEC} ./server 9876  2>&1 | tee chimbuko/logs/server.log &
 spid=$!
 
@@ -38,12 +49,15 @@ cycle_time=50 #ms
 anom_freq=30 
 anom_mult=20
 
-if (( 1 )); then
-    ad_run_client="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-client -program_idx 1 ${ad_opts} 2>&1 | tee ${log_dir}/ad_client.log"
+#Launch AD on client
+if (( ${use_chimbuko} == 1 )); then
+    ad_run_client=$(cat chimbuko/vars/chimbuko_ad_cmdline.client.var)
     echo "Running AD for client"
     eval "${ad_run_client} &"
 fi
 
-export TAU_VERBOSE=1
-
+#Launch client
+export TAU_VERBOSE=0
 ${TAU_EXEC} ./client ${ip_port} ${cycles} ${cycle_time} ${anom_freq} ${anom_mult} 2>&1 | tee chimbuko/logs/client.log
+
+wait

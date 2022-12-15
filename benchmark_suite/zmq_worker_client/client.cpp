@@ -23,30 +23,32 @@ void rpcWaitAndRespond(ADThreadNetClient &client, int wait_ms){
   client.send_and_receive(recv,send); //ignore return
 }
 
-int main(int argc, char** argv){ 
-  assert(argc >= 6);
+int main(int argc, char** argv){
+  {
+    assert(argc >= 6);
   
-  std::string server_addr = argv[1];
-  int cycles = std::stoi(argv[2]);
-  int cycle_time = std::stoi(argv[3]); //ms
-  int anom_freq =  std::stoi(argv[4]);
-  int anom_mult = std::stoi(argv[5]); //time multiplier for anomalies
-  Log << "Client executing with parameters:  cycles=" << cycles << " cycle_time=" << cycle_time << "ms anom_freq=" << anom_freq << " anom_mult=" << anom_mult << std::endl;
+    std::string server_addr = argv[1];
+    int cycles = std::stoi(argv[2]);
+    int cycle_time = std::stoi(argv[3]); //ms
+    int anom_freq =  std::stoi(argv[4]);
+    int anom_mult = std::stoi(argv[5]); //time multiplier for anomalies
+    Log << "executing with parameters:  cycles=" << cycles << " cycle_time=" << cycle_time << "ms anom_freq=" << anom_freq << " anom_mult=" << anom_mult << std::endl;
 
-  Log << "connecting to server with address " << server_addr << std::endl;
-  ADThreadNetClient client;
-  client.connect_ps(0,0,server_addr);
+    Log << "connecting to server with address " << server_addr << std::endl;
+    ADThreadNetClient client;
+    client.connect_ps(0,0,server_addr);
 
-  for(int i=0;i<cycles;i++){
-    int ctime = cycle_time;
-    if(i>0 && i % anom_freq == 0) ctime *= anom_mult;
+    for(int i=0;i<cycles;i++){
+      int ctime = cycle_time;
+      if(i>0 && i % anom_freq == 0) ctime *= anom_mult;
 
-    //Client waits for same time as server
-    clientWait(ctime);
+      //Client waits for same time as server
+      clientWait(ctime);
 
-    Log << "calling RPC" << std::endl;
-    rpcWaitAndRespond(client, ctime);
+      Log << "calling RPC" << std::endl;
+      rpcWaitAndRespond(client, ctime);
+    }
   }
-
+  Log << "finished" << std::endl; 
   return 0;
 }

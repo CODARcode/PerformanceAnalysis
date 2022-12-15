@@ -38,29 +38,31 @@ public:
 
 
 int main (int argc, char ** argv){
-  if(argc != 2){ std::cout << "Usage: <binary> <port>" << std::endl; return 0; }
+  {
+    if(argc != 2){ std::cout << "Usage: <binary> <port>" << std::endl; return 0; }
 
-  int port = std::stoi(argv[1]);
-  int threads = 4;
+    int port = std::stoi(argv[1]);
+    int threads = 4;
 
-  ZMQNet net;
-  net.setPort(port);
-  net.setAutoShutdown(true);
+    ZMQNet net;
+    net.setPort(port);
+    net.setAutoShutdown(true);
 
-  Log << "run parameter server on port " << port << std::endl;
+    Log << "run parameter server on port " << port << std::endl;
 
-  net.add_payload(new NetPayloadBounce);
-  net.init(nullptr, nullptr, threads);
+    for(int t=0;t<threads;t++)
+      net.add_payload(new NetPayloadBounce,t);
+    net.init(nullptr, nullptr, threads);
 
-  signal(SIGTERM, termSignalHandler);
+    signal(SIGTERM, termSignalHandler);
 
-  net.run();
+    net.run();
 
-  signal(SIGTERM, SIG_DFL); //restore default signal handling
+    signal(SIGTERM, SIG_DFL); //restore default signal handling
 
-  Log << "shutdown parameter server ..." << std::endl;
-  net.finalize();
-
+    Log << "shutdown parameter server ..." << std::endl;
+    net.finalize();
+  }
   Log << "finished" << std::endl;
   return 0;
 }
