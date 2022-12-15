@@ -223,7 +223,7 @@ if (( ${use_viz} == 1 )); then
 
     echo "Chimbuko Services: run webserver ..."
     #python3 run_server.py $HOST $viz_port 2>&1 | tee "${log_dir}/webserver.log" &
-    python3 manager.py runserver --host 0.0.0.0 --port ${viz_port} --debug | tee "${log_dir}/webserver.log" &
+    python3 manager.py runserver --host 0.0.0.0 --port ${viz_port} --debug 2>&1 | tee "${log_dir}/webserver.log" &
     sleep 2
 
     echo "Chimbuko Services: redis ping-pong ..."

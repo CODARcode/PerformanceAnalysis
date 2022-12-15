@@ -33,21 +33,21 @@ WORKDIR /Downloads
 
 #Download and install tau from git
 #Change the tag below to force docker build not to use cache
-RUN echo "FORCE REDOWNLOAD 9_22_22_09_20" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
+RUN echo "FORCE REDOWNLOAD 12_15_22_10_38" > /dev/null && git clone https://github.com/UO-OACISS/tau2.git
 WORKDIR /Downloads/tau2
 
 #Use known working version of tau2
-RUN git checkout 74190e57caacddf2bde3f2afb68ee12405117e16
+RUN git checkout 39b2d014c6bd67ff62f993cfca30e62081caa64d
 
 #pthread+mpi
-RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+RUN ./configure -cc=mpicc -c++=mpicxx -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -papi=/opt/papi \
  && make -j$JOBS install
 
 #pthread+python+mpi
-RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+RUN ./configure -cc=mpicc -c++=mpicxx -fortran=gfortran -mpi \
     -pthread -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -python  -pythoninc=/usr/include/python3.6m -pythonlib=/usr/lib/x86_64-linux-gnu/ \
@@ -63,7 +63,7 @@ RUN ./configure -cc=gcc -c++=g++ -fortran=gfortran \
  && make -j$JOBS install
 
 #openmp+mpi
-RUN ./configure -cc=mpicc -c++=mpic++ -fortran=gfortran -mpi \
+RUN ./configure -cc=mpicc -c++=mpicxx -fortran=gfortran -mpi \
     -openmp -bfd=download -unwind=download -pdt=/opt/pdt \
     -pdt_c++=g++ -prefix=/opt/tau2 -adios=/opt/adios2 \
     -papi=/opt/papi \
