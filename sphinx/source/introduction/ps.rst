@@ -29,10 +29,12 @@ Anomaly ranking metrics
 -----------------------
 
 Two metrics are developed that are assigned to each outlier that allow the user to focus on the subset of anomalies that are most important:
-the anomaly score reflects how unlikely an anomaly is, and the anomaly severity reflects how important the anomaly is to the runtime of the application.
-PS includes these values in the provenance information and allow for the convenient sorting and filtering
-of the anomalies in post-analysis. We have tested to present the individual choice of these metrics in the
-online visualization module.
+
+1. The **anomaly score** reflects how unlikely an anomaly is. The interpretation is algorithm-dependent but generally a larger number indicates a lower likelihood.
+   
+2. The **anomaly severity** reflects how important the anomaly is to the runtime of the application. Currently we base this off of the exclusive runtime of the function execution, in microseconds.
+   
+The PS includes these values in the provenance information and allows for the convenient sorting and filtering of the anomalies in post-analysis. We are working to present these metrics directly in the online visualization module.
 
 ..
   While testing has demonstratedThis simple parameter server becomes a bottleneck as the number of requests (or clients) are increasing.
