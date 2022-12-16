@@ -2,9 +2,9 @@
 Installation
 ************
 
-For x86 systems we provide pre-built docker images users can quickly start with their own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_). Otherwise, we recommend that Chimbuko be installed via the `Spack package manager <https://spack.io/>`_. Below we provide instructions for installing Chimbuko on a typical Ubuntu desktop and also on the Summit computer. Some details on installing Chimbuko in absence of Spack can be found in the :ref:`Appendix <manual_installation_of_chimbuko>`. 
+For x86 systems we provide pre-built docker images users can quickly start with their own TAU instrumented applications (See `Chimbuko docker <https://codarcode.github.io/Chimbuko/installation/docker.html>`_). Otherwise, we recommend that Chimbuko be installed via the `Spack package manager <https://spack.io/>`_. Below we provide instructions for installing Chimbuko on a typical Ubuntu desktop and also on the Summit and Crusher computers. Some details on installing Chimbuko in absence of Spack can be found in the :ref:`Appendix <manual_installation_of_chimbuko>`. 
 
-In all cases, the first step is to download and install Spack following the instructions `here <https://github.com/spack/spack>`_ . Note that installing Spack requires Python.
+The first step is to download and install Spack following the instructions `here <https://github.com/spack/spack>`_ . Note that installing Spack requires Python.
 
 We require Spack repositories for Chimbuko and for the Mochi stack:
 
@@ -24,9 +24,10 @@ A basic installation of Chimbuko can be achieved very easily:
 
 .. code:: bash
 
-	  spack install chimbuko^py-setuptools-scm+toml
+	  spack install chimbuko
 
-Note that the dependency on :code:`py-setuptools-scm+toml` resolves a dependency conflict likely resulting from a bug in Spack's current dependency resolution.
+..
+ ^py-setuptools-scm+toml  Note that the dependency on :code:`py-setuptools-scm+toml` resolves a dependency conflict likely resulting from a bug in Spack's current dependency resolution.
 
 A Dockerfile (instructions for building a Docker image) that installs Chimbuko on top of a basic Ubuntu 18.04 image following the above steps can be found `here <https://github.com/CODARcode/PerformanceAnalysis/blob/master/docker/ubuntu18.04/openmpi4.0.4/Dockerfile.chimbuko.spack>`_ .
 
@@ -71,7 +72,10 @@ Chimbuko can be built without MPI by disabling the **mpi** Spack variant as foll
 
 .. code:: bash
 
-	  spack install chimbuko~mpi ^py-setuptools-scm+toml
+	  spack install chimbuko~mpi
+
+..
+ ^py-setuptools-scm+toml
 
 When used in this mode the user is responsible for manually assigning a "rank" index to each instance of the online AD module, and also for ensuring that an instance of this module is created alongside each instance or rank of the target application (e.g. using a wrapper script that is launched via mpirun). We discuss how this can be achieved :ref:`here <non_mpi_run>`. 
 
@@ -117,10 +121,10 @@ Once installed, simply
 after loading the modules above.	  
 
 
-Spock
+Crusher
 ~~~~~~
 
-In the PerformanceAnalysis source we also provide a Spack environment yaml for use on Spock, :code:`spack/environments/spock.yaml`. This environment is designed for the AMD compiler suite with Rocm 4.3.0. Installation instructions follow:
+In the PerformanceAnalysis source we also provide a Spack environment yaml for use on Crusher, :code:`spack/environments/crusher_rocm5.2_PrgEnv-amd.yaml`. This environment is designed for the AMD programming environment with Rocm 5.2.0. Installation instructions follow:
 
 First download the Chimbuko and Mochi repositories:
 
@@ -129,7 +133,7 @@ First download the Chimbuko and Mochi repositories:
 	  git clone https://github.com/mochi-hpc/mochi-spack-packages.git
 	  git clone https://github.com/CODARcode/PerformanceAnalysis.git
 
-Copy the file :code:`spack/environments/spock.yaml` from the PerformanceAnalysis git repository to a convenient location and edit the paths in the :code:`repos` section to point to the paths at which you downloaded the repositories:
+Copy the file :code:`spack/environments/crusher_rocm5.2_PrgEnv-amd.yaml` from the PerformanceAnalysis git repository to a convenient location and edit the paths in the :code:`repos` section to point to the paths at which you downloaded the repositories:
 
 .. code:: yaml
 
@@ -141,10 +145,18 @@ This environment uses the following modules, which must be loaded prior to insta
 
 .. code:: bash
 
-	  module reset
-	  module load PrgEnv-amd/8.2.0
-	  module load rocm/4.3.0
-	  module load cray-python/3.9.4.1
+          module reset
+          module load PrgEnv-amd/8.3.3
+          module swap amd amd/5.2.0
+          module load cray-python/3.9.12.1
+          module load cray-mpich/8.1.17
+          module load gmp
+          module load craype-accel-amd-gfx90a
+          export LD_LIBRARY_PATH=/opt/gcc/mpfr/3.1.4/lib:$LD_LIBRARY_PATH
+
+          # For some reason not set by the cray-mpich module?
+          export PATH=${CRAY_MPICH_PREFIX}/bin:${PATH}
+          export PATH=${ROCM_COMPILER_PATH}/bin:${PATH}
 
 To install the environment:
 
@@ -154,16 +166,13 @@ To install the environment:
 	  spack env activate my_chimbuko_env
 	  spack install
 
-Unfortunately at present there are a few issues with Spack on Spock that require workarounds when loading the environment: 	 
+To load the environment:
 
 .. code:: bash
 
 	  #Looks like spack doesn't pick up cray-xpmem pkg-config loc, put at end so only use as last resort
 	  export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/usr/lib64/pkgconfig
 
-          #Looks like spack misses an rpath for Chimbuko
-          export LD_LIBRARY_PATH=/opt/cray/pe/libsci/21.08.1.2/AMD/4.0/x86_64/lib:${LD_LIBRARY_PATH}
-	  
 	  spack env activate my_chimbuko_env
 	  spack load tau chimbuko-performance-analysis chimbuko-visualization2
 
