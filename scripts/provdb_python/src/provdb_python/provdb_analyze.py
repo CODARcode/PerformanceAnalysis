@@ -346,14 +346,15 @@ class InteractiveAnalysis(Cmd):
             entry['accum_sev'] = f['anomaly_metrics']['severity']['accumulate']
             entry['exec_count'] = f['runtime_profile']['exclusive_runtime']['count']
             entry['avg_sev'] = f['anomaly_metrics']['severity']['mean']
+            entry['anom_freq'] = float(entry['anom_count'])/entry['exec_count']
             self.table.append(entry)
 
         #The columns we will show (can be user-manipulated)
         self.col_show = {'pid','fid','fname','accum_sev','anom_count'}
         #The list of all columns in the order that they will be displayed (assuming they are enabled by the show list)
-        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','fname']
+        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','fname']
         #Headers for the columns above
-        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Name']
+        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Name']
 
         #Default sort order, can be changed by 'order'
         self.sort_order = 'Descending'
@@ -363,7 +364,7 @@ class InteractiveAnalysis(Cmd):
         #Number of entries to display (-1 for unbounded)
         self.top = 10
 
-    def do_list_coltags(self,ignored):
+    def do_lscol(self,ignored):
         '''Display the valid column tags and a description'''
         print("""pid: The program index
 fid: The function index (not guaranteed to be the same for different runs)
@@ -371,10 +372,11 @@ accum_sev: The accumulated severity of anomalies
 avg_sev: The average severity of anomalies
 anom_count: The number of anomalies
 exec_count: The number of times the function was executed
+anom_freq: The frequency of anomalies        
 fname: The function name""")        
         
     def do_addcol(self,coltag):
-        '''Add a column to the output table by column tag. For allowed tags, call \'list_coltags\'. If called without an argument it will print the current set.'''
+        '''Add a column to the output table by column tag. For allowed tags, call \'lscol\'. If called without an argument it will print the current set.'''
         if coltag == '':
             pass
         elif coltag not in self.all_cols:
@@ -384,7 +386,7 @@ fname: The function name""")
         print(self.col_show)
 
     def do_rmcol(self,coltag):
-        '''Remove a column to the output table by column tag. For allowed tags, call \'list_coltags\''''
+        '''Remove a column to the output table by column tag. For allowed tags, call \'lscol\''''
         if coltag not in self.all_cols:
             print("Invalid tag")
         else:
@@ -445,14 +447,21 @@ fname: The function name""")
             row = []
             for tag in self.all_cols:
                 if tag in self.col_show:
-                    row.append( str(v[tag]) )
+                    sv = str(v[tag])                            
+                    if tag == 'avg_sev':
+                        sv = "%.1f" % v[tag]
+                    elif tag == 'anom_freq':
+                        sv = "%.3f" % v[tag]
+                        
+                    row.append( sv )
+                    
             tab.append(row)
         printTable(hdr,tab)
     
     def do_sort(self, sort_by):
         '''Sort the global database func_stats by the column tag provided and output the result.
         If no tag is provided, the tag used for the last sort will be reused. If no sort has been performed previously, the default will be used.
-        For allowed tags, call \'list_coltags\''''
+        For allowed tags, call \'lscol\''''
 
         if(sort_by == ''):
             sort_by = self.sort_by
@@ -476,16 +485,20 @@ fname: The function name""")
             
 
 def provdb_basic_analysis(args):
-    if(len(args) != 1):
-        print("Arguments: <nshards>")
-        sys.exit(0)
-    nshards = int(args[0])
-
+    # if(len(args) != 1):
+    #     print("Arguments: <nshards>")
+    #     sys.exit(0)
+    # nshards = int(args[0])
+    nshards = 0 #currently need only to connect to the global database
+    
     with Engine('na+sm', pymargo.server) as engine:
         db = pdb.provDBinterface(engine, r'provdb.%d.unqlite', nshards)
-        ian = InteractiveAnalysis(db)
-        ian.cmdloop()
-
-        del ian
+        if db.getGlobalDB() != None:
+            ian = InteractiveAnalysis(db)
+            ian.cmdloop()
+            del ian
+        else:
+            print("Could not connect to global database")
+            
         del db
         engine.finalize()
