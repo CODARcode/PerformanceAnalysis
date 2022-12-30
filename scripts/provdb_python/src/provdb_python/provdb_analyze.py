@@ -6,6 +6,7 @@ from pymargo.core import Engine
 import json
 import sys
 import copy
+from cmd import Cmd
 
 #Terminology:
 #The database comprises multiple *shards* each of which contains a number of records (*events*)
@@ -285,7 +286,114 @@ def filterGlobalDatabase(interface, collection_name, filter_list):
 
     return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
    
-    
+
+#Get a map of (pid, function name) to its func stats for those functions that had anomalies
+#Note we don't use function index as it may differ between runs. We assume the program index is the same as it is assigned manually
+def getFuncStatsMap(db):
+    func_stats = db.getGlobalDB().all('func_stats')
+    out = {}
+    for f in func_stats:
+        if(f['anomaly_metrics'] != None):
+            fname = f['fname']
+            pid = f['app']
+            out[(pid,fname)] = f
+    return out
+
+
+#Interactive component for detailed analysis
+class InteractiveAnalysis(Cmd):
+    prompt = '> '
+    intro = "Type ? to list commands"
+
+    def __init__(self, db):
+        Cmd.__init__(self)
+        self.fstats = getFuncStatsMap(db)
+        self.db = db
+
+    def emptyline(self):
+        return
+        
+    def do_exit(self, inp):
+        '''Exit the application.'''
+        print("Exiting")
+        return True
+
+    def do_sort(self, arg):
+        '''Arguments: 'sort_by' 'top' 'order'
+Description: Sort the global database func_stats by 'sort_by' in 'order' order, displaying the top 'top' values against the corresponding pid, function name
+   top=-1 indicates all results; 10 is the default
+   order can be 'Ascending' or 'Descending' (default)
+   sort_by can be: 'anom_count' - total anomaly count,
+                   'accum_sev' - accumulated anomaly severity (default),
+                   'avg_sev'   - average anomaly severity,
+                   'exec_count' (total #times function was executed)'''
+
+        sort_by = 'accum_sev'
+        top=10
+        order='Descending'
+        
+        #Parse arguments
+        args = arg.split()
+        if len(args) > 0:
+            sort_by = args[0]
+        if len(args) > 1:
+            if args[1].isdigit() == False:
+                raise Exception("Invalid 'top' argument: '%s'" % args[1])            
+            top = int(args[1])
+        if len(args) > 2:
+            order = args[2]
+                        
+        if top < -1:
+            raise Exception("Invalid 'top' argument: '%d'" % top)            
+            
+        reverse=None
+        if order == 'Ascending':
+            reverse = False
+        elif order == 'Descending':
+            reverse = True
+        else:
+            raise Exception("Invalid 'order' argument: '%s'" % order)
+
+        if sort_by == 'anom_count':
+            print("Sorting by anomaly count")
+        elif sort_by == 'accum_sev':
+            print("Sorting by accumulated severity")
+        elif sort_by == 'exec_count':
+            print("Sorting by execution count")
+        elif sort_by == 'avg_sev':
+            print("Sorting by average severity")
+        else:
+            raise Exception("Invalid 'sort_by' argument: '%s'" % sort_by)
+        
+        data = []
+        for f in self.fstats.values():
+            fname = f['fname']
+            pid= f['app']
+            v=None
+            if sort_by == 'anom_count':
+                v=f['anomaly_metrics']['anomaly_count']['accumulate']
+            elif sort_by == 'accum_sev':
+                v=f['anomaly_metrics']['severity']['accumulate']
+            elif sort_by == 'exec_count':
+                v=f['runtime_profile']['exclusive_runtime']['count']
+            elif sort_by == 'avg_sev':
+                v=f['anomaly_metrics']['severity']['mean']               
+            else:
+                raise Exception("Invalid 'sort_by' argument")
+            data.append( (pid,fname,v) )
+            
+
+        data.sort(key=lambda v: v[2], reverse=reverse)
+        n=top
+        if top == -1:
+            n = len(data)
+        print("pid fname value")
+        for v in range(n):
+            print("%lu '%s' %lu" % (data[v][0],data[v][1],data[v][2]))
+
+
+            
+
 def provdb_basic_analysis(args):
     if(len(args) != 1):
         print("Arguments: <nshards>")
@@ -294,42 +402,9 @@ def provdb_basic_analysis(args):
 
     with Engine('na+sm', pymargo.server) as engine:
         db = pdb.provDBinterface(engine, r'provdb.%d.unqlite', nshards)
+        ian = InteractiveAnalysis(db)
+        ian.cmdloop()
 
-        print("Generating index")
-        anom_index = generateIndex(db, ['func','rid'], 'anomalies')
-        print("Getting function names")
-        func_names = getValuesUsingIndex(anom_index, 'func')
-
-        #Sort functions by total anomalous event time (sum of anomaly times)
-        print("Computing total anomalous event time")
-        anom_times = {}
-        for func in func_names:
-            events =  getRecordsByKeyValue(db, anom_index, 'func', func)
-            time = 0
-            for e in events:
-                time += e['runtime_exclusive']                
-            anom_times[func] = time
-        
-        func_names.sort(key=lambda x: anom_times[x], reverse=True)
-        print("Functions ordered by total anomalous event time (name #anomalies time):")
-        for func in func_names:
-            print("{} {} {}s".format(func, len(getRecordIDsByKeyValue(anom_index, 'func', func)), float(anom_times[func])/1e6 ))
-                
-
-        print("Summary of top 10 events for each anomalous function with <100 anomalies")
-        for func in func_names:
-            nanom = len(getRecordIDsByKeyValue(anom_index, 'func', func))
-            if nanom < 100:
-                print("%s (%d anomalies):" % (func, nanom  )    )
-                events = getRecordsByKeyValue(db, anom_index, 'func', func)
-                events.sort(key=lambda x: x['runtime_exclusive'], reverse=True)
-                n = 0
-                for e in events:
-                    print(summarizeEvent(e))
-                    n+=1
-                    if n > 10:
-                        break
-
-
+        del ian
         del db
         engine.finalize()
