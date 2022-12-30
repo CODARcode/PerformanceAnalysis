@@ -398,10 +398,17 @@ fname: The function name""")
         if val == '':
             pass
         else:
+            top = None
             try:
-                self.top = int(val)
+                top = int(val)
             except:
                 print("Expect an integer")
+
+            if top < -1:
+                print("Value must be >= -1")
+            else:
+                self.top = top
+
         print(self.top)
 
     def do_order(self, order):
