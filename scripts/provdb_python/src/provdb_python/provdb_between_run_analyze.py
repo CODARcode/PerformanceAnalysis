@@ -39,29 +39,6 @@ def secondsStr(t):
         return "%.2f" % secs
 
 
-def stringRowPadded(row, widths):
-    assert(len(row) == len(widths))
-    s = ""
-    for i in range(len(row)-1):
-        s = "%s%s | " % (s, row[i].ljust(widths[i]) )
-    s = "%s%s" % (s, row[-1])
-    return s
-
-#Print a table width padding
-def printTable(labels, table):
-    ncol = len(labels)
-    maxwidths = [len(l) for l in labels]
-    for r in table:
-        assert(len(r) == ncol)
-        for i in range(ncol):
-            maxwidths[i] = max( len(r[i]), maxwidths[i] )
-    h = stringRowPadded(labels, maxwidths)
-    print(h)
-    h = "-" * len(h)
-    print(h)
-    for r in table:
-        print(stringRowPadded(r, maxwidths))
-
 #Interactive component for detailed analysis
 class InteractiveAnalysis(Cmd):
     prompt = '> '
@@ -140,7 +117,7 @@ class InteractiveAnalysis(Cmd):
             
             tab.append( [l,u,str(h1rbc[i]),str(h2rbc[i]),str(dc[i]),reldiffstr] )
             
-        printTable(header, tab)
+        pa.printTable(header, tab)
         
     
         
@@ -211,7 +188,7 @@ def provdb_between_run_analysis(args):
             
             tab.append( [str(i+1),tcomp, counts, freq, reltime, str(pid), fname ] )
 
-        printTable(header, tab)
+        pa.printTable(header, tab)
 
         print("")
 

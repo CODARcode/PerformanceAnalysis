@@ -285,7 +285,32 @@ def filterGlobalDatabase(interface, collection_name, filter_list):
     #print("Filtering with function: %s" % filter_func)
 
     return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
-   
+
+
+def stringRowPadded(row, widths):
+    assert(len(row) == len(widths))
+    s = ""
+    for i in range(len(row)-1):
+        s = "%s%s | " % (s, row[i].ljust(widths[i]) )
+    s = "%s%s" % (s, row[-1])
+    return s
+
+#Print a table width padding
+def printTable(labels, table):
+    ncol = len(labels)
+    maxwidths = [len(l) for l in labels]
+    for r in table:
+        assert(len(r) == ncol)
+        for i in range(ncol):
+            maxwidths[i] = max( len(r[i]), maxwidths[i] )
+    h = stringRowPadded(labels, maxwidths)
+    print(h)
+    h = "-" * len(h)
+    print(h)
+    for r in table:
+        print(stringRowPadded(r, maxwidths))
+
+
 
 #Get a map of (pid, function name) to its func stats for those functions that had anomalies
 #Note we don't use function index as it may differ between runs. We assume the program index is the same as it is assigned manually
@@ -310,6 +335,83 @@ class InteractiveAnalysis(Cmd):
         self.fstats = getFuncStatsMap(db)
         self.db = db
 
+        #Generate the table
+        self.table = []
+        for f in self.fstats.values():
+            entry = {}
+            entry['fname'] = f['fname']
+            entry['fid'] = f['fid']
+            entry['pid'] = f['app']
+            entry['anom_count'] = f['anomaly_metrics']['anomaly_count']['accumulate']
+            entry['accum_sev'] = f['anomaly_metrics']['severity']['accumulate']
+            entry['exec_count'] = f['runtime_profile']['exclusive_runtime']['count']
+            entry['avg_sev'] = f['anomaly_metrics']['severity']['mean']
+            self.table.append(entry)
+
+        #The columns we will show (can be user-manipulated)
+        self.col_show = {'pid','fid','fname','accum_sev','anom_count'}
+        #The list of all columns in the order that they will be displayed (assuming they are enabled by the show list)
+        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','fname']
+        #Headers for the columns above
+        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Name']
+
+        #Default sort order, can be changed by 'order'
+        self.sort_order = 'Descending'
+        #Default sorted-by, will be overridden when the user calls 'sort'
+        self.sort_by = None
+
+        #Number of entries to display (-1 for unbounded)
+        self.top = 10
+
+    def do_list_coltags(self,ignored):
+        '''Display the valid column tags and a description'''
+        print("""pid: The program index
+fid: The function index (not guaranteed to be the same for different runs)
+accum_sev: The accumulated severity of anomalies
+avg_sev: The average severity of anomalies
+anom_count: The number of anomalies
+exec_count: The number of times the function was executed
+fname: The function name""")        
+        
+    def do_addcol(self,coltag):
+        '''Add a column to the output table by column tag. For allowed tags, call \'list_coltags\'. If called without an argument it will print the current set.'''
+        if coltag == '':
+            pass
+        elif coltag not in self.all_cols:
+            print("Invalid tag")
+        else:            
+            self.col_show.add(coltag)
+        print(self.col_show)
+
+    def do_rmcol(self,coltag):
+        '''Remove a column to the output table by column tag. For allowed tags, call \'list_coltags\''''
+        if coltag not in self.all_cols:
+            print("Invalid tag")
+        else:
+            self.col_show.remove(coltag)
+        print(self.col_show)
+
+    def do_top(self,val):
+        '''Set the number of entries to display. -1 is unbounded. Default 10. If called without an argument it will print the current value.'''
+        if val == '':
+            pass
+        else:
+            try:
+                self.top = int(val)
+            except:
+                print("Expect an integer")
+        print(self.top)
+
+    def do_order(self, order):
+        '''Set the sort order. Allowed values are 'Ascending', 'Descending' (default). If called without an argument it will print the current order.'''
+        if order == '':
+            pass
+        elif order != "Ascending" and order != "Descending":
+            print("Invalid sort order")
+        else:
+            self.sort_order = order
+        print(self.sort_order)
+        
     def emptyline(self):
         return
         
@@ -318,79 +420,58 @@ class InteractiveAnalysis(Cmd):
         print("Exiting")
         return True
 
-    def do_sort(self, arg):
-        '''Arguments: 'sort_by' 'top' 'order'
-Description: Sort the global database func_stats by 'sort_by' in 'order' order, displaying the top 'top' values against the corresponding pid, function name
-   top=-1 indicates all results; 10 is the default
-   order can be 'Ascending' or 'Descending' (default)
-   sort_by can be: 'anom_count' - total anomaly count,
-                   'accum_sev' - accumulated anomaly severity (default),
-                   'avg_sev'   - average anomaly severity,
-                   'exec_count' (total #times function was executed)'''
 
-        sort_by = 'accum_sev'
-        top=10
-        order='Descending'
-        
-        #Parse arguments
-        args = arg.split()
-        if len(args) > 0:
-            sort_by = args[0]
-        if len(args) > 1:
-            if args[1].isdigit() == False:
-                raise Exception("Invalid 'top' argument: '%s'" % args[1])            
-            top = int(args[1])
-        if len(args) > 2:
-            order = args[2]
-                        
-        if top < -1:
-            raise Exception("Invalid 'top' argument: '%d'" % top)            
+    def do_show(self, ignored):
+        '''Show the current table'''
+        hdr = []
+        tab = []
+
+        #Generate headers, highlight sorted-by in bold
+        for c in range(len(self.all_cols)):
+            tag = self.all_cols[c]
+            if tag in self.col_show:
+                h = self.all_cols_headers[c]
+                if tag == self.sort_by:
+                    h = '((' + h + '))'
+                hdr.append(h)
+        #Generate the table
+        top = self.top
+        if top == -1:
+            top = len(self.table)
+        top = min(top,len(self.table))
             
+        for i in range(top):
+            v = self.table[i]
+            row = []
+            for tag in self.all_cols:
+                if tag in self.col_show:
+                    row.append( str(v[tag]) )
+            tab.append(row)
+        printTable(hdr,tab)
+    
+    def do_sort(self, sort_by):
+        '''Sort the global database func_stats by the column tag provided and output the result.
+        If no tag is provided, the tag used for the last sort will be reused. If no sort has been performed previously, the default will be used.
+        For allowed tags, call \'list_coltags\''''
+
+        if(sort_by == ''):
+            sort_by = self.sort_by
+
+        if sort_by not in self.all_cols:
+            print("Invalid tag")
+            return
+        
         reverse=None
-        if order == 'Ascending':
+        if self.sort_order == 'Ascending':
             reverse = False
-        elif order == 'Descending':
+        elif self.sort_order == 'Descending':
             reverse = True
         else:
-            raise Exception("Invalid 'order' argument: '%s'" % order)
+            raise Exception("Invalid 'order' argument: '%s'" % self.sort_order)
 
-        if sort_by == 'anom_count':
-            print("Sorting by anomaly count")
-        elif sort_by == 'accum_sev':
-            print("Sorting by accumulated severity")
-        elif sort_by == 'exec_count':
-            print("Sorting by execution count")
-        elif sort_by == 'avg_sev':
-            print("Sorting by average severity")
-        else:
-            raise Exception("Invalid 'sort_by' argument: '%s'" % sort_by)
-        
-        data = []
-        for f in self.fstats.values():
-            fname = f['fname']
-            pid= f['app']
-            v=None
-            if sort_by == 'anom_count':
-                v=f['anomaly_metrics']['anomaly_count']['accumulate']
-            elif sort_by == 'accum_sev':
-                v=f['anomaly_metrics']['severity']['accumulate']
-            elif sort_by == 'exec_count':
-                v=f['runtime_profile']['exclusive_runtime']['count']
-            elif sort_by == 'avg_sev':
-                v=f['anomaly_metrics']['severity']['mean']               
-            else:
-                raise Exception("Invalid 'sort_by' argument")
-            data.append( (pid,fname,v) )
-            
-
-        data.sort(key=lambda v: v[2], reverse=reverse)
-        n=top
-        if top == -1:
-            n = len(data)
-        print("pid fname value")
-        for v in range(n):
-            print("%lu '%s' %lu" % (data[v][0],data[v][1],data[v][2]))
-
+        self.table.sort(key=lambda v: v[sort_by], reverse=reverse)
+        self.sort_by = sort_by
+        self.do_show('')
 
             
 
