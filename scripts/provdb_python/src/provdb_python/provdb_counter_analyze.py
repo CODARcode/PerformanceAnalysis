@@ -152,6 +152,10 @@ name: The counter name
         if sort_by not in self.all_cols:
             print("Invalid tag")
             return
+
+        #Add the column to the show list if not already
+        if sort_by not in self.col_show:
+            self.do_addcol(sort_by)
         
         reverse=None
         if self.sort_order == 'Ascending':

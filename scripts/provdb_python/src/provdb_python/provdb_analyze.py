@@ -347,14 +347,16 @@ class InteractiveAnalysis(Cmd):
             entry['exec_count'] = f['runtime_profile']['exclusive_runtime']['count']
             entry['avg_sev'] = f['anomaly_metrics']['severity']['mean']
             entry['anom_freq'] = float(entry['anom_count'])/entry['exec_count']
+            entry['runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['accumulate'])/1e6
+            entry['runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['accumulate'])/1e6
             self.table.append(entry)
 
         #The columns we will show (can be user-manipulated)
         self.col_show = {'pid','fid','fname','accum_sev','anom_count'}
         #The list of all columns in the order that they will be displayed (assuming they are enabled by the show list)
-        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','fname']
+        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','runtime_excl','runtime_incl','fname']
         #Headers for the columns above
-        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Name']
+        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Excl.Runtime (s)','Incl.Runtime (s)', 'Name']
 
         #Default sort order, can be changed by 'order'
         self.sort_order = 'Descending'
@@ -372,7 +374,9 @@ accum_sev: The accumulated severity of anomalies
 avg_sev: The average severity of anomalies
 anom_count: The number of anomalies
 exec_count: The number of times the function was executed
-anom_freq: The frequency of anomalies        
+anom_freq: The frequency of anomalies
+runtime_excl : The total running time of the function in seconds over all executions, excluding child function calls
+runtime_incl : The total running time of the function in seconds over all executions, including child function calls        
 fname: The function name""")        
         
     def do_addcol(self,coltag):
@@ -476,6 +480,10 @@ fname: The function name""")
         if sort_by not in self.all_cols:
             print("Invalid tag")
             return
+
+        #Add the column to the show list if not already
+        if sort_by not in self.col_show:
+            self.do_addcol(sort_by)
         
         reverse=None
         if self.sort_order == 'Ascending':
