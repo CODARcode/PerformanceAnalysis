@@ -12,6 +12,7 @@
 #include<chimbuko/ad/ADLocalCounterStatistics.hpp>
 #include<chimbuko/ad/ADLocalAnomalyMetrics.hpp>
 #include<chimbuko/ad/ADcombinedPSdata.hpp>
+#include<chimbuko/ad/ADglobalFunctionIndexMap.hpp>
 #include<chimbuko/verbose.hpp>
 #include "gtest/gtest.h"
 #include<unit_test_common.hpp>
@@ -109,12 +110,35 @@ int main(int argc, char **argv){
         
     net_client.linkPerf(&stats);  
 
+    //We need to correctly treat the function indices and use the global index appropriately
+    ADglobalFunctionIndexMap lidx_gidx_map(0, &net_client);
+    std::unordered_map<unsigned long,std::string> lidx_fname_map;
+
+    {
+      std::vector<unsigned long> lidx(args.nfuncs);
+      std::vector<std::string> fnames(args.nfuncs);
+      
+      for(int i=0;i<args.nfuncs;i++){
+	std::string fname = "func"+anyToStr(i);
+	fnames.push_back(fname);
+	lidx.push_back(i);
+	lidx_fname_map[i] = fname;
+      }
+      lidx_gidx_map.lookup(lidx,fnames); //get the global indices from the pserver
+
+      if(rank == 0){
+	std::cout << "Rank 0 lfid->gfid mapping:" <<std::endl;
+	for(unsigned long i=0;i<args.nfuncs;i++)
+	  std::cout << i << " " << lidx_gidx_map.lookup(i) << std::endl;
+      }
+    }
+
     //Set up a params object with the required number of params
     ParamInterface *params;
     if(args.algorithm == "sstd"){
       SstdParam *p = new SstdParam;
       for(int i=0;i<args.nfuncs;i++){
-	RunStats &r = (*p)[i];
+	RunStats &r = (*p)[lidx_gidx_map.lookup(i)];
 	for(int j=0;j<100;j++)
 	  r.push(double(j));
       }
@@ -127,14 +151,15 @@ int main(int argc, char **argv){
       for(int i=0;i<args.hbos_bins+1;i++) d.bin_edges[i] = i;
       Histogram hd;
       hd.set_hist_data(d);
+      hd.set_min_max(0.0001, args.hbos_bins-0.0001);
 
       if(args.algorithm == "hbos"){
 	HbosParam *p = new HbosParam;
-	for(int i=0;i<args.nfuncs;i++) (*p)[i] = hd;
+	for(int i=0;i<args.nfuncs;i++) (*p)[lidx_gidx_map.lookup(i)].getHistogram() = hd;
 	params = p;
       }else{
 	CopodParam *p = new CopodParam;
-	for(int i=0;i<args.nfuncs;i++) (*p)[i] = hd;
+	for(int i=0;i<args.nfuncs;i++) (*p)[lidx_gidx_map.lookup(i)].getHistogram() = hd;
 	params = p;
       }
     }else{
@@ -146,22 +171,25 @@ int main(int argc, char **argv){
     if(nevent < args.nanomalies_per_func) nevent = args.nanomalies_per_func;
   
     //Create the fake function statistics and anomalies
+    //Note the actual values here are not expected to influence the data packet size, only the number of functions and counters
     std::cout << "Rank " << rank << " generating fake function stats and anomalies" << std::endl;
     CallList_t fake_execs;
     ExecDataMap_t fake_exec_map;
     Anomalies anomalies;
 
     for(int i=0;i<args.nfuncs;i++){
+      unsigned long gfid = lidx_gidx_map.lookup(i);
+
       for(int j=0;j<nevent;j++){
 	ExecData_t e = createFuncExecData_t(0, rank, 0,
-					    i, "func"+anyToStr(i),
+					    gfid, lidx_fname_map[i],
 					    100*i, 100);
 	auto it = fake_execs.insert(fake_execs.end(),e);
-	fake_exec_map[i].push_back(it);
+	fake_exec_map[gfid].push_back(it);
 
 	if(j<args.nanomalies_per_func){
 	  it->set_label(-1);
-	  anomalies.insert(it, Anomalies::EventType::Outlier);
+	  anomalies.recordAnomaly(it);
 	}else{
 	  it->set_label(1);
 	}

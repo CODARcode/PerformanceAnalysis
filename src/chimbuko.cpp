@@ -597,7 +597,7 @@ void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
 
     //Send the data in a single communication
     timer.start();
-    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics);
+    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics, &m_perf);
     comb_stats.send(*m_net_client);
     m_perf.add("ad_gather_send_ps_data_gather_send_all_stats_to_ps_time_ms", timer.elapsed_ms());
   }
