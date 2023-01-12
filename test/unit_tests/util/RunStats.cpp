@@ -105,28 +105,35 @@ bool compare(const statsTest &a, const statsTest &b, const double tol = 1e-12){
 #undef COM
 }
 
+class RunStatsAcc: public RunStats{
+public:
+  RunStatsAcc(const RunStats &r): RunStats(r){}
+
+  bool compare(const statsTest &a, const double tol = 1e-12){
+    // double eta; /**< mean */
+    // double rho; /**< = M2 = \sum_i (x_i - \bar x)^2 */
+    // double tau; /**< = M3 = \sum_i (x_i - \bar x)^3 */
+    // double phi; /**< = M4 = \sum_i (x_i - \bar x)^4 */
+    
+    bool ret = true;
+#define COM(A,B) if(					    \
+		    (fabs(a. A)<=tol && fabs(this->m_##B)>tol) ||		\
+		    (fabs(this->m_##B)<=tol && fabs(a. A)>tol) ||		\
+		    (fabs(a. A)>tol && fabs(this->m_##B) > tol && 2.*fabs( a. A - this->m_##B )/(a. A  + this->m_##B) > tol) \
+							    ){ std::cout << #A << " " << a. A << " " << #B << " " << this-> m_##B << std::endl; ret = false; }
+    COM(n,count);
+    COM(mu,eta);
+    COM(M2,rho);
+    COM(M3,tau);
+    COM(M4,phi);
+    return ret;
+#undef COM
+  }
+};
 
 bool compare(const statsTest &a, const RunStats &b, const double tol = 1e-12){
-  const RunStats::State &sb = b.get_state();
-
-  // double eta; /**< mean */
-  // double rho; /**< = M2 = \sum_i (x_i - \bar x)^2 */
-  // double tau; /**< = M3 = \sum_i (x_i - \bar x)^3 */
-  // double phi; /**< = M4 = \sum_i (x_i - \bar x)^4 */
-
-  bool ret = true;
-#define COM(A,B) if( \
-		    (fabs(a. A)<=tol && fabs(sb. B)>tol) || \
-		    (fabs(sb. B)<=tol && fabs(a. A)>tol) ||		\
-		    (fabs(a. A)>tol && fabs(sb. B) > tol && 2.*fabs( a. A - sb. B )/(a. A  + sb. B) > tol) \
-		     ){ std::cout << #A << " " << a. A << " " << #B << " " << sb. B << std::endl; ret = false; }
-  COM(n,count);
-  COM(mu,eta);
-  COM(M2,rho);
-  COM(M3,tau);
-  COM(M4,phi);
-  return ret;
-#undef COM
+  RunStatsAcc sb(b);
+  return sb.compare(a,tol);
 }
 
 
@@ -262,42 +269,6 @@ TEST(TestRunStats, TestSumCombine){
   }
 }
  
-
-TEST(TestRunStats, TestStateToFromJSON){
-  RunStats stats;
-  for(int i=0;i<100;i++) stats.push(i);
-  RunStats::State stats_state = stats.get_state();
-  
-  nlohmann::json json_state = stats_state.get_json();
-  
-  EXPECT_EQ(stats_state.count, json_state["count"]);
-  EXPECT_EQ(stats_state.eta, json_state["eta"]);
-  EXPECT_EQ(stats_state.rho, json_state["rho"]);
-  EXPECT_EQ(stats_state.tau , json_state["tau"]);
-  EXPECT_EQ(stats_state.phi , json_state["phi"]);
-  EXPECT_EQ(stats_state.min , json_state["min"]);
-  EXPECT_EQ(stats_state.max , json_state["max"]);
-  EXPECT_EQ(stats_state.acc , json_state["acc"]);
-
-
-  RunStats stats2;
-  for(int i=0;i<100;i++) stats2.push(2*i);
-  RunStats::State stats2_state = stats2.get_state();
-  
-  json_state["count"] = stats2_state.count;
-  json_state["eta"] = stats2_state.eta;
-  json_state["rho"] = stats2_state.rho;
-  json_state["tau"] = stats2_state.tau;
-  json_state["phi"] = stats2_state.phi;
-  json_state["min"] = stats2_state.min;
-  json_state["max"] = stats2_state.max;
-  json_state["acc"] = stats2_state.acc;
-
-  RunStats::State stats_state_tmp;
-  stats_state_tmp.set_json(json_state);
-
-  EXPECT_EQ(stats_state_tmp, stats2_state);
-}
 
 
 TEST(TestRunStats, serialize){

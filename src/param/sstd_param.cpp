@@ -23,54 +23,24 @@ SstdParam::~SstdParam()
 std::string SstdParam::serialize() const
 {
     std::lock_guard<std::mutex> _{m_mutex};
-
     return serialize_cerealpb(m_runstats);
 }
 
-std::string SstdParam::serialize_json(const std::unordered_map<unsigned long, RunStats>& runstats)
-{
-    nlohmann::json j;
-    for (auto& pair: runstats)
-    {
-        j[std::to_string(pair.first)] = pair.second.get_json_state();
-    }
-    return j.dump();
-}
-
-void SstdParam::deserialize_json(
-    const std::string& parameters,
-    std::unordered_map<unsigned long, RunStats>& runstats)
-{
-    nlohmann::json j = nlohmann::json::parse(parameters);
-
-    for (auto it = j.begin(); it != j.end(); it++)
-    {
-        unsigned long key = std::stoul(it.key());
-        runstats[key] = RunStats::from_strstate(it.value().dump());
-    }
-}
-
 std::string SstdParam::serialize_cerealpb(const std::unordered_map<unsigned long, RunStats>& runstats){
-  std::unordered_map<unsigned long, RunStats::State> state;
-  for(auto const& e : runstats)
-    state[e.first] = e.second.get_state();
   std::stringstream ss;
   {
     cereal::PortableBinaryOutputArchive wr(ss);
-    wr(state);
+    wr(runstats);
   }
   return ss.str();
 }
 
 void SstdParam::deserialize_cerealpb(const std::string& parameters,  std::unordered_map<unsigned long, RunStats>& runstats){
   std::stringstream ss; ss << parameters;
-  std::unordered_map<unsigned long, RunStats::State> state;
   {
     cereal::PortableBinaryInputArchive rd(ss);
-    rd(state);
+    rd(runstats);
   }
-  for(auto const& e : state)
-    runstats[e.first] = RunStats::from_state(e.second);
 }
 
 

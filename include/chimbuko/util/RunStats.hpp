@@ -22,82 +22,6 @@ namespace chimbuko {
   class RunStats {
   public:
     /**
-     * @brief Internal state of RunStats object
-     *
-     * Note the variables in https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance are M2,M3,M4. The mappings are provided in the comments below.
-     */
-    struct State {
-      double count; /**< count of instances */
-      double eta; /**< mean */
-      double rho; /**< = M2 = \sum_i (x_i - \bar x)^2 */
-      double tau; /**< = M3 = \sum_i (x_i - \bar x)^3 */
-      double phi; /**< = M4 = \sum_i (x_i - \bar x)^4 */
-      double min; /**< minimum */
-      double max; /**< maximum */
-      double acc; /**< sum */
-      State()
-      {
-	clear();
-      }
-      State(
-            double _count,
-            double _eta, double _rho, double _tau, double _phi,
-            double _min, double _max, double _acc)
-        : count(_count),
-          eta(_eta), rho(_rho), tau(_tau), phi(_phi),
-          min(_min), max(_max), acc(_acc)
-      {
-
-      }
-      /**
-       * @brief Reset state
-       */
-      void clear()
-      {
-	count = eta = rho = tau = phi = acc = 0.0;
-	min = std::numeric_limits<double>::max();
-	max = std::numeric_limits<double>::min();
-      }
-
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(count, eta, rho, tau, phi, min, max, acc);
-      }
-
-      /**
-       * @brief Equivalence operator
-       */
-      bool operator==(const State &r) const{
-	return count == r.count && eta == r.eta && rho == r.rho && tau == r.tau  && phi == r.phi && min == r.min && max == r.max && acc == r.acc;
-      }
-
-      /**
-       * @brief Get this object as a JSON instance
-       */
-      nlohmann::json get_json() const;
-      
-      /**
-       * @brief Set this object to the values stored in the JSON instance
-       */
-      void set_json(const nlohmann::json &to);
-
-
-      /**
-       * Serialize into Cereal portable binary format
-       */
-      std::string serialize_cerealpb() const;
-      
-      /**
-       * Serialize from Cereal portable binary format
-       */     
-      void deserialize_cerealpb(const std::string &strstate);
-
-    };
-
-    /**
      * @brief A serializable object containing the stats values
      *
      */
@@ -142,69 +66,23 @@ namespace chimbuko {
     void clear();
 
     /**
-     * @brief Return the current set of internal variables (state) as an instance of State
+     * @brief Serialize using cereal, for example as part of a compound object
      */
-    const State &get_state() const{ return m_state; }
-
-    /**
-     * @brief Set the internal variables from an instance of State
-     */
-    void set_state(const State& s);
-
-    /**
-     * @brief Create an instance of this class from a State instance
-     */
-    static RunStats from_state(const State& s) {
-      RunStats stats;
-      stats.set_state(s);
-      return stats;
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_count, m_eta, m_rho, m_tau, m_phi, m_min, m_max, m_acc, m_do_accumulate);
     }
 
     /**
-     * @brief Create a RunStats instance from the current state
+     * Serialize into Cereal portable binary format
      */
-    RunStats copy() {
-      return from_state(get_state());
-    }
-
+    std::string serialize_cerealpb() const;
+    
     /**
-     * @brief Return the current set of internal variables (state) as a JSON object
-     */
-    nlohmann::json get_json_state() const;
-
-    /**
-     * @brief Set the internal variables from a JSON object
-     */
-    void set_json_state(const nlohmann::json& s);
-
-    /**
-     * @brief Create a RunStats instance from a JSON object
-     */
-    static RunStats from_json_state(const nlohmann::json& s) {
-      RunStats stats;
-      stats.set_json_state(s);
-      return stats;
-    }
-
-    /**
-     * @brief Get the current set of internal variables (state) as a JSON-formatted string
-     */
-    std::string get_strstate();
-
-    /**
-     * @brief Set the state from a JSON-formatted string
-     */
-    void set_strstate(const std::string& s);
-
-    /**
-     * @brief Create an instance of RunStats from a JSON-formatted string
-     */
-    static RunStats from_strstate(const std::string& s) {
-      RunStats stats;
-      stats.set_strstate(s);
-      return stats;
-    }
-
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
+    
     /**
      * @brief Serialize this class for communication over the network
      */
@@ -214,14 +92,6 @@ namespace chimbuko {
      * @brief Unserialize this class after communication over the network
      */
     void net_deserialize(const std::string &s);
-
-    /**
-     * @brief Serialize using cereal, for example as part of a compound object
-     */
-    template<class Archive>
-    void serialize(Archive & archive){
-      archive(m_state, m_do_accumulate);
-    }
 
     /**
      * @brief Add a new value to be included in internal statistics
@@ -292,9 +162,35 @@ namespace chimbuko {
      * @brief Negative comparison operator
      */
     friend bool operator!=(const RunStats& a, const RunStats& b);
+    
+    /**
+     * @brief Test for equivalence up to a fixed tolerance allowing for finite-precision errors
+     */
+    bool equiv(const RunStats &b) const;
 
-  private:
-    State m_state; /**< The internal variables */
+    /**
+     * @brief Set the eta parameter
+     */
+    void set_eta(double to){ m_eta = to; }
+    /**
+     * @brief Set the rho parameter
+     */
+    void set_rho(double to){ m_rho = to; }
+    /**
+     * @brief Set the count parameter
+     */
+    void set_count(double to){ m_count = to; }
+
+  protected:
+    /* Note the variables in https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance are M2,M3,M4. The mappings are provided in the comments below.*/
+    double m_count; /**< count of instances */
+    double m_eta; /**< mean */
+    double m_rho; /**< = M2 = \sum_i (x_i - \bar x)^2 */
+    double m_tau; /**< = M3 = \sum_i (x_i - \bar x)^3 */
+    double m_phi; /**< = M4 = \sum_i (x_i - \bar x)^4 */
+    double m_min; /**< minimum */
+    double m_max; /**< maximum */
+    double m_acc; /**< sum */
     bool m_do_accumulate; /**< True if the sum of the input values are maintained */
   };
 

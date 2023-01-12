@@ -49,22 +49,6 @@ namespace chimbuko {
     void show(std::ostream& os) const override;
 
     /**
-     * @brief Convert a run statistics mapping into a JSON string
-     * @param The map between global function index and statistics
-     * @return Run statistics in string format
-     */
-    static std::string serialize_json(const std::unordered_map<unsigned long, RunStats>& runstats);
-
-    /**
-     * @brief Convert a run statistics JSON string into a map
-     * @param[in] parameters The parameter string
-     * @param[out] runstats The map between global function index and statistics
-     */
-    static void deserialize_json(const std::string& parameters,
-			    std::unordered_map<unsigned long, RunStats>& runstats);
-
-
-    /**
      * @brief Convert a run statistics mapping into a Cereal portable binary representration
      * @param The run stats mapping
      * @return Run statistics in string format
@@ -78,7 +62,6 @@ namespace chimbuko {
      */
     static void deserialize_cerealpb(const std::string& parameters,
 			    std::unordered_map<unsigned long, RunStats>& runstats);
-
 
     /**
      * @brief Update the internal run statistics with those included in the input map
