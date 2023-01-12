@@ -72,23 +72,27 @@ void ADLocalCounterStatistics::set_state(const ADLocalCounterStatistics::State &
   }
 }
 
+std::string ADLocalCounterStatistics::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void ADLocalCounterStatistics::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
 std::string ADLocalCounterStatistics::net_serialize() const{
-  return get_state().serialize_cerealpb();
+  return serialize_cerealpb();
 }
 
 void ADLocalCounterStatistics::net_deserialize(const std::string &s){
-  State state;
-  state.deserialize_cerealpb(s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 
 std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThreadNetClient &net_client) const{
-  //nlohmann::json state = get_json_state();
-  State state = get_state();
   PerfTimer timer;
   timer.start();
-  auto msgsz = updateGlobalStatistics(net_client, state.serialize_cerealpb(), m_step);
+  auto msgsz = updateGlobalStatistics(net_client, net_serialize(), m_step);
   
   if(m_perf != nullptr){
     m_perf->add("counter_stats_stream_update_ms", timer.elapsed_ms());

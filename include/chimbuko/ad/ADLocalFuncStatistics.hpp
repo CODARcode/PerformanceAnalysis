@@ -101,12 +101,34 @@ namespace chimbuko{
      * @brief Access the AnomalyData instance
      */
     const AnomalyData & getAnomalyData() const{ return m_anom_data; }
-    
+
+    /**
+     * @brief Set the AnomalyData member
+     */
+    void setAnomalyData(const AnomalyData &to){ m_anom_data = to; }   
 
     /**
      * @brief Access the function profile statistics
      */
     const std::unordered_map<unsigned long, FuncStats> & getFuncStats() const{ return m_funcstats; }
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_funcstats , m_anom_data);
+    }
+
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
+      
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
 
     /**

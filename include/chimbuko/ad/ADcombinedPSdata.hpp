@@ -68,6 +68,24 @@ namespace chimbuko{
 
 
     /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_func_stats , m_counter_stats, m_anom_metrics);
+    }
+
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
+      
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
+
+    /**
      * @brief Serialize this class for communication over the network
      */
     std::string net_serialize() const;

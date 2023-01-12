@@ -98,14 +98,21 @@ nlohmann::json ADLocalFuncStatistics::get_json_state() const{
 }
 
 
+std::string ADLocalFuncStatistics::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void ADLocalFuncStatistics::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
+
 std::string ADLocalFuncStatistics::net_serialize() const{
-  return get_state().serialize_cerealpb();
+  return serialize_cerealpb();
 }
 
 void ADLocalFuncStatistics::net_deserialize(const std::string &s){
-  State state;
-  state.deserialize_cerealpb(s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 

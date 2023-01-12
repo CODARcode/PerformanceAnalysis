@@ -27,14 +27,20 @@ void ADcombinedPSdata::set_state(const ADcombinedPSdata::State &s){
 }
 
 
+std::string ADcombinedPSdata::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void ADcombinedPSdata::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
 std::string ADcombinedPSdata::net_serialize() const{
-  return get_state().serialize_cerealpb();
+  return serialize_cerealpb();
 }
 
 void ADcombinedPSdata::net_deserialize(const std::string &s){
-  State state;
-  state.deserialize_cerealpb(s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 std::pair<size_t, size_t> ADcombinedPSdata::send(ADNetClient &net_client) const{

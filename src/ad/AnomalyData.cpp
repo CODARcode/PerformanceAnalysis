@@ -111,15 +111,20 @@ void AnomalyData::set_state(const State &state){
   m_outlier_scores.set_state(state.outlier_scores);
 }
 
+std::string AnomalyData::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void AnomalyData::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
 
 std::string AnomalyData::net_serialize() const{
-  return get_state().serialize_cerealpb();
+  return serialize_cerealpb();
 }
 
 void AnomalyData::net_deserialize(const std::string &s){
-  State state;
-  state.deserialize_cerealpb(s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 

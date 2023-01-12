@@ -43,14 +43,21 @@ void ADLocalAnomalyMetrics::set_state(const ADLocalAnomalyMetrics::State &s){
 }
 
 
+std::string ADLocalAnomalyMetrics::serialize_cerealpb() const{
+  return cereal_serialize(*this);
+}
+
+void ADLocalAnomalyMetrics::deserialize_cerealpb(const std::string &strstate){
+  cereal_deserialize(*this, strstate);
+}
+
+
 std::string ADLocalAnomalyMetrics::net_serialize() const{
-  return cereal_serialize(get_state());
+  return serialize_cerealpb();
 }
 
 void ADLocalAnomalyMetrics::net_deserialize(const std::string &s){
-  State state;
-  cereal_deserialize(state, s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 

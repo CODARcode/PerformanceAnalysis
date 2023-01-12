@@ -61,6 +61,24 @@ namespace chimbuko{
     void set_state(const State &s);
 
 
+    /*
+     * @brief Serialize this instance in Cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_app, m_rank, m_step, m_first_event_ts, m_last_event_ts, m_func_anom_metrics);
+    }
+
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
+      
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
+
     /**
      * @brief Serialize this class for communication over the network
      */

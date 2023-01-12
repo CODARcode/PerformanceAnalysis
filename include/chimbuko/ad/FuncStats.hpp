@@ -67,6 +67,14 @@ namespace chimbuko{
     }
 
     /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(pid,id,name,n_anomaly,inclusive,exclusive);
+    }
+
+    /**
      * @brief Inequalityoperator
      */
     inline bool operator!=(const FuncStats &r) const{ return !(*this == r); }

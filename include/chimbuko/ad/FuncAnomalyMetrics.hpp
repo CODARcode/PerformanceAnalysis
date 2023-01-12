@@ -37,6 +37,15 @@ namespace chimbuko{
     FuncAnomalyMetrics(): m_count(0), m_score(true), m_severity(true), m_fid(-1){}
     FuncAnomalyMetrics(const int fid, const std::string &func): m_fid(fid), m_func(func), m_count(0), m_score(true), m_severity(true){}
 
+    /*
+     * @brief Serialize this instance in Cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_score,m_severity,m_count,m_fid,m_func);
+    }
+
+
     /**
      * @brief Get the current state as a state object
      *

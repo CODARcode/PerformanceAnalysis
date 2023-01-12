@@ -184,7 +184,24 @@ namespace chimbuko {
      * @brief Set the member variables according to the state in JSON format
      */
     void set_json_state(const nlohmann::json &j){ set_state(State(j)); }
+
+    /*
+     * @brief Serialize this instance in Cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_app, m_rank, m_step, m_min_timestamp, m_max_timestamp, m_n_anomalies, m_outlier_scores);
+    }    
+
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
     
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
     /**
      * @brief Serialize this class for communication over the network
