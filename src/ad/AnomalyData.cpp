@@ -27,48 +27,6 @@ void AnomalyData::set(
     m_n_anomalies = n_anomalies;
 }
 
-nlohmann::json AnomalyData::State::get_json() const
-{
-    return {
-      {"app", app},
-      {"rank", rank},
-      {"step", step},
-      {"min_timestamp", min_timestamp},
-      {"max_timestamp", max_timestamp},
-      {"n_anomalies", n_anomalies},
-      {"outlier_scores",  outlier_scores.get_json() } 
-    };
-}
-
-void AnomalyData::State::set_json(const nlohmann::json &j){
-  app = j["app"];
-  rank = j["rank"];
-  step = j["step"];
-  min_timestamp = j["min_timestamp"];
-  max_timestamp = j["max_timestamp"];
-  n_anomalies = j["n_anomalies"];
-  outlier_scores.set_json(j["outlier_scores"]);
-}
-
-AnomalyData::State::State(const AnomalyData &p): app(p.m_app), rank(p.m_rank), step(p.m_step), min_timestamp(p.m_min_timestamp),
-						 max_timestamp(p.m_max_timestamp), n_anomalies(p.m_n_anomalies), outlier_scores(p.m_outlier_scores.get_state()){}
-
-
-AnomalyData::State::State(const nlohmann::json &j): State(){ set_json(j); }
-
-
-
-std::string AnomalyData::State::serialize_cerealpb() const{
-  return cereal_serialize(*this);
-}
-
-void AnomalyData::State::deserialize_cerealpb(const std::string &strstate){
-  cereal_deserialize(*this, strstate);
-}
-
-
-
-
 nlohmann::json AnomalyData::get_json() const
 {
     return {
@@ -81,9 +39,6 @@ nlohmann::json AnomalyData::get_json() const
       {"outlier_scores",  m_outlier_scores.get_json() } 
     };
 }
-
-
-
 
 bool chimbuko::operator==(const AnomalyData& a, const AnomalyData& b){
     return 
@@ -98,17 +53,6 @@ bool chimbuko::operator==(const AnomalyData& a, const AnomalyData& b){
 
 bool chimbuko::operator!=(const AnomalyData& a, const AnomalyData& b){
   return !(a == b);
-}
-
-
-void AnomalyData::set_state(const State &state){
-  m_app = state.app;
-  m_rank = state.rank;
-  m_step = state.step;
-  m_min_timestamp = state.min_timestamp;
-  m_max_timestamp = state.max_timestamp;
-  m_n_anomalies = state.n_anomalies;
-  m_outlier_scores.set_state(state.outlier_scores);
 }
 
 std::string AnomalyData::serialize_cerealpb() const{

@@ -7,26 +7,6 @@
 
 using namespace chimbuko;
 
-nlohmann::json ADLocalFuncStatistics::State::get_json() const{
-  nlohmann::json g_info;
-  g_info["func"] = nlohmann::json::array();
-  for(const auto &e : func){
-    g_info["func"].push_back(e.get_json());
-  }
-  g_info["anomaly"] = anomaly.get_json();
-  return g_info;
-}
-
-
-
-std::string ADLocalFuncStatistics::State::serialize_cerealpb() const{
-  return cereal_serialize(*this);
-}
-
-void ADLocalFuncStatistics::State::deserialize_cerealpb(const std::string &strstate){
-  cereal_deserialize(*this, strstate);
-}
-
 ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
   m_perf(nullptr), m_anom_data(program_idx, rank, step, 0,0,0){}
 
@@ -70,31 +50,14 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
 
 }
 
-ADLocalFuncStatistics::State ADLocalFuncStatistics::get_state() const{
-  // func id --> (name, # anomaly, inclusive run stats, exclusive run stats)
-  State g_info;
-  for (auto const &fstats : m_funcstats) { //loop over function index
-    g_info.func.push_back(fstats.second.get_state());
+nlohmann::json ADLocalFuncStatistics::get_json() const{
+  nlohmann::json g_info;
+  g_info["func"] = nlohmann::json::array();
+  for(const auto &e : m_funcstats){
+    g_info["func"].push_back(e.second.get_json());
   }
-
-  g_info.anomaly = m_anom_data.get_state();
+  g_info["anomaly"] = m_anom_data.get_json();
   return g_info;
-}
-
-
-void ADLocalFuncStatistics::set_state(const ADLocalFuncStatistics::State &s){
-  m_funcstats.clear();
-  for(auto const &fstats_s : s.func)
-    m_funcstats[fstats_s.id].set_state(fstats_s);
-  
-  m_anom_data.set_state(s.anomaly);
-}
-
-
-
-
-nlohmann::json ADLocalFuncStatistics::get_json_state() const{
-  return get_state().get_json();
 }
 
 

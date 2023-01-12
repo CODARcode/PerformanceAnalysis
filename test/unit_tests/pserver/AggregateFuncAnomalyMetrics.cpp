@@ -107,37 +107,28 @@ TEST(AggregateFuncAnomalyMetrics, Combination){
   int count1=122,count2=999;
 
   //fid1 data 1
-  FuncAnomalyMetrics::State fstate_fid1_1;
-  fstate_fid1_1.score = stats1.get_state();
-  fstate_fid1_1.severity = stats2.get_state();
-  fstate_fid1_1.count = count1;
-  fstate_fid1_1.fid = fid1;
-  fstate_fid1_1.func = fname1;
-  
   FuncAnomalyMetrics fdata_fid1_1;
-  fdata_fid1_1.set_state(fstate_fid1_1);
+  fdata_fid1_1.set_score(stats1);
+  fdata_fid1_1.set_severity(stats2);
+  fdata_fid1_1.set_count(count1);
+  fdata_fid1_1.set_fid(fid1);
+  fdata_fid1_1.set_func(fname1);
 
   //fid1 data 2
-  FuncAnomalyMetrics::State fstate_fid1_2;
-  fstate_fid1_2.score = stats3.get_state();
-  fstate_fid1_2.severity = stats4.get_state();
-  fstate_fid1_2.count = count2;
-  fstate_fid1_2.fid = fid1;
-  fstate_fid1_2.func = fname1;
-  
   FuncAnomalyMetrics fdata_fid1_2;
-  fdata_fid1_2.set_state(fstate_fid1_2);
+  fdata_fid1_2.set_score(stats3);
+  fdata_fid1_2.set_severity(stats4);
+  fdata_fid1_2.set_count(count2);
+  fdata_fid1_2.set_fid(fid1);
+  fdata_fid1_2.set_func(fname1);
 
   //fid2 data 1
-  FuncAnomalyMetrics::State fstate_fid2_1;
-  fstate_fid2_1.score = stats3.get_state();
-  fstate_fid2_1.severity = stats4.get_state();
-  fstate_fid2_1.count = count1;
-  fstate_fid2_1.fid = fid2;
-  fstate_fid2_1.func = fname2;
-  
   FuncAnomalyMetrics fdata_fid2_1;
-  fdata_fid2_1.set_state(fstate_fid2_1);
+  fdata_fid2_1.set_score(stats3);
+  fdata_fid2_1.set_severity(stats4);
+  fdata_fid2_1.set_count(count1);
+  fdata_fid2_1.set_fid(fid2);
+  fdata_fid2_1.set_func(fname2);
 
   int rid1=22, rid2=77;
   int step1=34, step2=98, step3=101, step4=200;

@@ -164,28 +164,28 @@ TEST(GlobalAnomalyMetricsTest, TestCombination){
   int count1=122,count2=999;
 
   //fid1 data 1
-  FuncAnomalyMetrics::State fstate_fid1_1;
-  fstate_fid1_1.score = stats1.get_state();
-  fstate_fid1_1.severity = stats2.get_state();
-  fstate_fid1_1.count = count1;
-  fstate_fid1_1.fid = fid1;
-  fstate_fid1_1.func = fname1;
+  FuncAnomalyMetrics fstate_fid1_1;
+  fstate_fid1_1.set_score(stats1);
+  fstate_fid1_1.set_severity(stats2);
+  fstate_fid1_1.set_count(count1);
+  fstate_fid1_1.set_fid(fid1);
+  fstate_fid1_1.set_func(fname1);
 
   //fid1 data 2
-  FuncAnomalyMetrics::State fstate_fid1_2;
-  fstate_fid1_2.score = stats3.get_state();
-  fstate_fid1_2.severity = stats4.get_state();
-  fstate_fid1_2.count = count2;
-  fstate_fid1_2.fid = fid1;
-  fstate_fid1_2.func = fname1;
+  FuncAnomalyMetrics fstate_fid1_2;
+  fstate_fid1_2.set_score(stats3);
+  fstate_fid1_2.set_severity(stats4);
+  fstate_fid1_2.set_count(count2);
+  fstate_fid1_2.set_fid(fid1);
+  fstate_fid1_2.set_func(fname1);
   
   //fid2 data 1
-  FuncAnomalyMetrics::State fstate_fid2_1;
-  fstate_fid2_1.score = stats3.get_state();
-  fstate_fid2_1.severity = stats4.get_state();
-  fstate_fid2_1.count = count1;
-  fstate_fid2_1.fid = fid2;
-  fstate_fid2_1.func = fname2;
+  FuncAnomalyMetrics fstate_fid2_1;
+  fstate_fid2_1.set_score(stats3);
+  fstate_fid2_1.set_severity(stats4);
+  fstate_fid2_1.set_count(count1);
+  fstate_fid2_1.set_fid(fid2);
+  fstate_fid2_1.set_func(fname2);
   
   int rid1=22, rid2=77;
   int step1=34, step2=98, step3=101, step4=200;
@@ -193,53 +193,40 @@ TEST(GlobalAnomalyMetricsTest, TestCombination){
   int last1 = 2888, last2=3004, last3=4000, last4=4232;
 
   //2 datasets with fid1 and rid1
-  ADLocalAnomalyMetrics::State lstate_fid1_rid1_1;
-  lstate_fid1_rid1_1.app = pid;
-  lstate_fid1_rid1_1.rank = rid1;
-  lstate_fid1_rid1_1.step = step1;
-  lstate_fid1_rid1_1.first_event_ts = first1;
-  lstate_fid1_rid1_1.last_event_ts = last1;
-  lstate_fid1_rid1_1.func_anom_metrics = { {fid1, fstate_fid1_1} };
-
   ADLocalAnomalyMetrics ldata_fid1_rid1_1;
-  ldata_fid1_rid1_1.set_state(lstate_fid1_rid1_1);
-
-  ADLocalAnomalyMetrics::State lstate_fid1_rid1_2;
-  lstate_fid1_rid1_2.app = pid;
-  lstate_fid1_rid1_2.rank = rid1;
-  lstate_fid1_rid1_2.step = step2;
-  lstate_fid1_rid1_2.first_event_ts = first2;
-  lstate_fid1_rid1_2.last_event_ts = last2;
-  lstate_fid1_rid1_2.func_anom_metrics = { {fid1, fstate_fid1_2} };
+  ldata_fid1_rid1_1.set_pid(pid);
+  ldata_fid1_rid1_1.set_rid(rid1);
+  ldata_fid1_rid1_1.set_step(step1);
+  ldata_fid1_rid1_1.set_first_event_ts(first1); 
+  ldata_fid1_rid1_1.set_last_event_ts(last1);
+  ldata_fid1_rid1_1.set_metrics({ {fid1, fstate_fid1_1} });
 
   ADLocalAnomalyMetrics ldata_fid1_rid1_2;
-  ldata_fid1_rid1_2.set_state(lstate_fid1_rid1_2);
+  ldata_fid1_rid1_2.set_pid(pid);
+  ldata_fid1_rid1_2.set_rid(rid1);
+  ldata_fid1_rid1_2.set_step(step2);
+  ldata_fid1_rid1_2.set_first_event_ts(first2);
+  ldata_fid1_rid1_2.set_last_event_ts(last2);
+  ldata_fid1_rid1_2.set_metrics({ {fid1, fstate_fid1_2} });
 
   //1 dataset with fid2 and rid1
-  ADLocalAnomalyMetrics::State lstate_fid2_rid1_1;
-  lstate_fid2_rid1_1.app = pid;
-  lstate_fid2_rid1_1.rank = rid1;
-  lstate_fid2_rid1_1.step = step3;
-  lstate_fid2_rid1_1.first_event_ts = first3;
-  lstate_fid2_rid1_1.last_event_ts = last3;
-  lstate_fid2_rid1_1.func_anom_metrics = { {fid2, fstate_fid2_1} };
-
   ADLocalAnomalyMetrics ldata_fid2_rid1_1;
-  ldata_fid2_rid1_1.set_state(lstate_fid2_rid1_1);
+  ldata_fid2_rid1_1.set_pid(pid);
+  ldata_fid2_rid1_1.set_rid(rid1);
+  ldata_fid2_rid1_1.set_step(step3);
+  ldata_fid2_rid1_1.set_first_event_ts(first3);
+  ldata_fid2_rid1_1.set_last_event_ts(last3);
+  ldata_fid2_rid1_1.set_metrics({ {fid2, fstate_fid2_1} });
 
   //1 dataset with fid1 and rid2
-  ADLocalAnomalyMetrics::State lstate_fid1_rid2_1;
-  lstate_fid1_rid2_1.app = pid;
-  lstate_fid1_rid2_1.rank = rid2;
-  lstate_fid1_rid2_1.step = step4;
-  lstate_fid1_rid2_1.first_event_ts = first4;
-  lstate_fid1_rid2_1.last_event_ts = last4;
-  lstate_fid1_rid2_1.func_anom_metrics = { {fid1, fstate_fid1_2} };
-
   ADLocalAnomalyMetrics ldata_fid1_rid2_1;
-  ldata_fid1_rid2_1.set_state(lstate_fid1_rid2_1);
+  ldata_fid1_rid2_1.set_pid(pid);
+  ldata_fid1_rid2_1.set_rid(rid2);
+  ldata_fid1_rid2_1.set_step(step4);
+  ldata_fid1_rid2_1.set_first_event_ts(first4);
+  ldata_fid1_rid2_1.set_last_event_ts(last4);
+  ldata_fid1_rid2_1.set_metrics({ {fid1, fstate_fid1_2} });
 
-  
   {
     //Data with same fid, different rid
     GlobalAnomalyMetrics g1;

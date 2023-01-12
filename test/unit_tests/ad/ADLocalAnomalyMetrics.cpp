@@ -59,12 +59,5 @@ TEST(ADLocalAnomalyMetricsTest, TestGenerateAndState){
   EXPECT_EQ( met.get_metrics().begin()->second.get_score().get_json().dump(4), expect_score.get_json().dump(4) );
   EXPECT_EQ( met.get_metrics().begin()->second.get_severity().get_json().dump(4), expect_sev.get_json().dump(4) );
   EXPECT_EQ( met.get_metrics().begin()->second.get_count() , 2);  
-
-  ADLocalAnomalyMetrics::State s = met.get_state();
-  
-  ADLocalAnomalyMetrics met_recon;
-  met_recon.set_state(s);
-
-  EXPECT_EQ(met_recon, met);
 }
 

@@ -12,24 +12,6 @@
 
 using namespace chimbuko;
 
-TEST(ADLocalCounterStatisticsTest, TestToFromState){
-  RunStats a,b, c;
-  for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
-
-  ADLocalCounterStatistics cs(33, 77, nullptr);
-  cs.setStats("counter1", a);
-  cs.setStats("counter2", b);
-  cs.setStats("counter3", c);
-
-  ADLocalCounterStatistics::State state = cs.get_state();
-  ADLocalCounterStatistics cs2(0, 0, nullptr);
-  cs2.set_state(state);
-
-  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
-  EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
-  EXPECT_EQ(cs.getStats(), cs2.getStats());
-}
-
 TEST(ADLocalCounterStatisticsTest, TestJSONstate){
   RunStats a,b, c;
   for(int i=0;i<100;i++){ a.push(double(i)); b.push(double(i)*3./2); c.push(double(i)*M_PI);  }
@@ -39,7 +21,7 @@ TEST(ADLocalCounterStatisticsTest, TestJSONstate){
   cs.setStats("counter2", b);
   cs.setStats("counter3", c);
 
-  nlohmann::json state = cs.get_json_state();
+  nlohmann::json state = cs.get_json();
 
   EXPECT_EQ(state["step"], 77);
   EXPECT_EQ(state["counters"].size(), 3);
@@ -50,15 +32,15 @@ TEST(ADLocalCounterStatisticsTest, TestJSONstate){
     if(state["counters"][i]["name"] == "counter1"){
       got_a = true;
       EXPECT_EQ( state["counters"][i]["pid"], 33 );
-      EXPECT_EQ( state["counters"][i]["stats"].dump(), a.get_json_state().dump());
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), a.get_json().dump());
     }else if(state["counters"][i]["name"] == "counter2"){
       got_b = true;
       EXPECT_EQ( state["counters"][i]["pid"], 33 );
-      EXPECT_EQ( state["counters"][i]["stats"].dump(), b.get_json_state().dump());
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), b.get_json().dump());
     }else if(state["counters"][i]["name"] == "counter3"){
       got_c = true;
       EXPECT_EQ( state["counters"][i]["pid"], 33 );
-      EXPECT_EQ( state["counters"][i]["stats"].dump(), c.get_json_state().dump());
+      EXPECT_EQ( state["counters"][i]["stats"].dump(), c.get_json().dump());
     }
   }
   EXPECT_EQ(got_a,true);
@@ -79,7 +61,7 @@ TEST(ADLocalCounterStatisticsTest, TestSerialize){
   ADLocalCounterStatistics cs2(0, 0, nullptr);
   cs2.net_deserialize(ser);
 
-  EXPECT_EQ(cs.getProgramIdex(), cs2.getProgramIdex());
+  EXPECT_EQ(cs.getProgramIndex(), cs2.getProgramIndex());
   EXPECT_EQ(cs.getIOstep(), cs2.getIOstep());
   EXPECT_EQ(cs.getStats(), cs2.getStats());
 }

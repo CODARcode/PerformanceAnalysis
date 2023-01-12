@@ -10,7 +10,7 @@ GlobalCounterStats::GlobalCounterStats(const GlobalCounterStats &r){
 
 void GlobalCounterStats::add_counter_data(const ADLocalCounterStatistics &loc){
   std::lock_guard<std::mutex> _(m_mutex);
-  auto & pid_stats = m_counter_stats[loc.getProgramIdex()];
+  auto & pid_stats = m_counter_stats[loc.getProgramIndex()];
   for(auto const &c: loc.getStats())
     pid_stats[c.first] += c.second;
 }

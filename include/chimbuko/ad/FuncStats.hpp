@@ -21,43 +21,10 @@ namespace chimbuko{
      */
     FuncStats(const unsigned long pid, const unsigned long id, const std::string &name): pid(pid), id(id), name(name), n_anomaly(0){}
                 
-    struct State{
-      unsigned long pid; /**< Program index*/
-      unsigned long id; /**< Function index*/
-      std::string name; /**< Function name*/
-      unsigned long n_anomaly; /**< Number of anomalies*/
-      RunStats::State inclusive; /**< Inclusive runtime stats*/
-      RunStats::State exclusive; /**< Exclusive runtime stats*/
-      
-      State(){}
-      /**
-       * @brief Create the State from the FuncStats instance
-       */
-      State(const FuncStats &p);
-
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(pid,id,name,n_anomaly,inclusive,exclusive);
-      }
-
-      /**
-       * @brief Create a JSON object from this instance
-       */
-      nlohmann::json get_json() const;
-    };
-
     /**
-     *@brief Get the State object corresponding to this object
+     * @brief Create a JSON object from this instance
      */
-    inline State get_state() const{ return State(*this); }
-
-    /**
-     * @brief Set the object state
-     */
-    void set_state(const State &to);
+    nlohmann::json get_json() const;
 
     /**
      * @brief Equivalence operator

@@ -3,16 +3,6 @@
 
 using namespace chimbuko;
 
-ADLocalAnomalyMetrics::State::State(const ADLocalAnomalyMetrics &parent){
-  app = parent.m_app; 
-  rank = parent.m_rank;
-  step = parent.m_step;
-  first_event_ts = parent.m_first_event_ts;
-  last_event_ts = parent.m_last_event_ts;
-  for(auto it = parent.m_func_anom_metrics.begin(); it != parent.m_func_anom_metrics.end(); it++)
-    func_anom_metrics[it->first] = it->second.get_state();
-}
-
 ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const Anomalies &anom): 
   m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
   const std::vector<CallListIterator_t> & outliers = anom.allEventsRecorded(Anomalies::EventType::Outlier);
@@ -25,23 +15,6 @@ ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsign
     fit->second.add(*cit);
   }
 }
-
-ADLocalAnomalyMetrics::State ADLocalAnomalyMetrics::get_state() const{
-  return State(*this);
-}
-
-
-void ADLocalAnomalyMetrics::set_state(const ADLocalAnomalyMetrics::State &s){
-  m_app = s.app;
-  m_rank = s.rank;
-  m_step = s.step;
-  m_first_event_ts = s.first_event_ts;
-  m_last_event_ts = s.last_event_ts;
-  m_func_anom_metrics.clear();
-  for(auto it = s.func_anom_metrics.begin(); it != s.func_anom_metrics.end(); it++)
-    m_func_anom_metrics[it->first].set_state(it->second);
-}
-
 
 std::string ADLocalAnomalyMetrics::serialize_cerealpb() const{
   return cereal_serialize(*this);

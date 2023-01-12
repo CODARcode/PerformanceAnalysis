@@ -43,12 +43,5 @@ TEST(FuncAnomalyMetricsTest, TestAddAndState){
   EXPECT_EQ( met.get_score(), expect_score );
   EXPECT_EQ( met.get_severity(), expect_sev );
   EXPECT_EQ( met.get_count() , 2);  
-
-  FuncAnomalyMetrics::State s = met.get_state();
-  
-  FuncAnomalyMetrics met_recon;
-  met_recon.set_state(s);
-
-  EXPECT_EQ(met_recon, met);
 }
 
