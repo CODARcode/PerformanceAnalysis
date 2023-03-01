@@ -194,11 +194,21 @@ namespace chimbuko{
     }
 
     /**
-     * @brief Create new histogram locally for AD module's batch data instances
+     * @brief Create new histogram with the bin width chosen according to the functional provided
      * @param r_times a vector<double> of function run times
      * @param bwspec a functional that specifies the bin width. Default to using Scott's rule
      */
     void create_histogram(const std::vector<double>& r_times, const binWidthSpecifier &bwspec = binWidthScott());
+
+    /**
+     * @brief Create new histogram using the bin edges and min/max provided
+     * @param data the data to be included in the histogram
+     * @param min The minimum data value ever encountered
+     * @param edges The bin edges. The first bin edge should be very slightly below min such that the value at min always falls in the first bin
+     *
+     * All data should lie within min and the last edge!
+     */
+    void create_histogram(const std::vector<double>& data, const double min, const std::vector<double> &edges);
 
     /**
      * @brief merges a Histogram with function runtimes

@@ -459,6 +459,25 @@ void Histogram::set_hist_data(const Histogram::Data& d)
   m_histogram = d;
 }
 
+void Histogram::create_histogram(const std::vector<double>& data, const double min, const std::vector<double> &edges){
+  if(data.size() == 0) fatal_error("No data points provided");
+  if(edges.size() < 2) fatal_error("Require at least 2 edges");
+  if(min < edges[0] || min > edges[1]) fatal_error("min point should lie within the first bin");
+  
+  m_histogram.min = min;
+  m_histogram.max = edges.back();
+  m_histogram.bin_edges = edges;
+  m_histogram.counts.resize(edges.size()-1);
+  for(int i=0;i<m_histogram.counts.size();i++)
+    m_histogram.counts[i] = 0;
+
+  for(double d: data){
+    int b = this->getBin(d);
+    if(b == LeftOfHistogram || b == RightOfHistogram) fatal_error("One or more data points do not lie within the bins provided");
+    ++m_histogram.counts[b];
+  }
+}
+
 void Histogram::create_histogram(const std::vector<double>& r_times, const binWidthSpecifier &bwspec){
   if(r_times.size() == 0) fatal_error("No data points provided");
 
