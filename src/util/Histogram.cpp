@@ -78,6 +78,12 @@ Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &b
   create_histogram(data, bwspec);
 }
 
+double Histogram::binWidth() const{
+  if(m_histogram.bin_edges.size() == 0) return 0;
+  if(m_histogram.bin_edges.size() < 2) fatal_error("Logic bomb, histogram has 1 bin edge?!");
+  return m_histogram.bin_edges[1] - m_histogram.bin_edges[0];
+}
+
 double Histogram::getLowerBoundShiftMul(){ return 1e-6; }
 
 double Histogram::uniformCountInRange(double l, double u) const{
@@ -284,7 +290,7 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
     if(bin_width == 0. || ceil((max-min)/bin_width) > 50000. ) fatal_error("Failed to determine the appropriate bin width");
   }
 
-  verboseStream << "Histogram::merge_histograms suggested bin width " << bin_width << std::endl;
+  verboseStream << "Histogram::merge_histograms suggested bin width " << bin_width << " cf local hist bin width " << l.binWidth() << " global hist bin width " << g.binWidth() << std::endl;
 
   double range_start = min - getLowerBoundShiftMul() * bin_width; //lower edges are exclusive and we want the first data point inside the first bin
   double range_end = max;
@@ -608,6 +614,9 @@ int Histogram::getBin(const double v, const double tol) const{
       --bin;  //because lower bound is exclusive, a value lying exactly on a bin edge should be counted as part of the previous bin. Also rounding errors can put the edge above the value
       if(bin<0) fatal_error("Logic bomb: bin outside of histogram after edge adjustment");
     }
+    //If v is in the bin above due to rounding error, try to move it down
+    if(v>bin_edges()[bin+1]) ++bin;
+    if(v<=bin_edges()[bin]) --bin;
 
     if(v<=bin_edges()[bin] || v>bin_edges()[bin+1]){ //check we computed the correct bin
       std::ostringstream ss; ss << "Error calculating bin for " << v << " obtained " << bin << " with edges " << bin_edges()[bin] << ":" << bin_edges()[bin+1] << " edge sep " << v-bin_edges()[bin] << " " << v-bin_edges()[bin+1];

@@ -197,7 +197,15 @@ void HbosParam::generate_histogram(const unsigned long func_id, const std::vecto
     if(global_hist != nullptr){
       //Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
       double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
-      verboseStream << "Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
+
+      //If a larger bin width is chosen than the global histogram, use the finer value
+      if(global_hist->bin_edges().size() >= 2){
+	double bw_glob = global_hist->bin_edges()[1]-global_hist->bin_edges()[0];
+	bw = std::min(bw,bw_glob);
+      }
+
+      verboseStream << "HbosParam::generate_histogram Global histogram bins " << global_hist->Nbin() << " range " << global_hist->getMin() << "-" << global_hist->getMax() << " and bin width " << global_hist->binWidth() << std::endl;
+      verboseStream << "HbosParam::generate_histogram Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
       binWidthFixedMaxNbin l_bwspec(bw, m_maxbins);
       hist.create_histogram(runtimes, l_bwspec);
     }else{

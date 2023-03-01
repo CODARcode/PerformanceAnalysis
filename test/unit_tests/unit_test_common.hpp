@@ -45,11 +45,14 @@ namespace chimbuko{
 			    unsigned long tid,
 			    unsigned long eid,
 			    unsigned long func_id,
-			    unsigned long ts){
+			    unsigned long ts,
+			    std::list< std::array<unsigned long, FUNC_EVENT_DIM> > *into = nullptr){
     static std::list< std::array<unsigned long, FUNC_EVENT_DIM> > todelete; //make sure they get deleted eventually
-    todelete.push_back(std::array<unsigned long, FUNC_EVENT_DIM>());
+    std::list< std::array<unsigned long, FUNC_EVENT_DIM> >* into_p = into == nullptr ? &todelete : into;
 
-    std::array<unsigned long, FUNC_EVENT_DIM> &ev = todelete.back();
+    into_p->push_back(std::array<unsigned long, FUNC_EVENT_DIM>());
+
+    std::array<unsigned long, FUNC_EVENT_DIM> &ev = into_p->back();
     return createFuncEvent_t(pid,rid,tid,eid,func_id,ts,ev.data());
   }
 
@@ -63,8 +66,9 @@ namespace chimbuko{
 				  unsigned long func_id,
 				  const std::string &func_name,
 				  unsigned long start,
-				  unsigned long runtime){
-    Event_t entry = createFuncEvent_t(pid, rid, tid, 0, func_id, start);
+				  unsigned long runtime,
+				  std::list< std::array<unsigned long, FUNC_EVENT_DIM> > *into = nullptr){
+    Event_t entry = createFuncEvent_t(pid, rid, tid, 0, func_id, start, into);
     ExecData_t exec(entry);
 
     if(runtime > 0){

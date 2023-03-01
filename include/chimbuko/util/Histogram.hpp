@@ -278,6 +278,11 @@ namespace chimbuko{
     inline double binCount(const int bin) const{ return m_histogram.counts[bin]; }
 
     /**
+     * @brief Get the bin width
+     */
+    double binWidth() const;
+
+    /**
      * @brief Get the current statistics as a JSON object
      */
     nlohmann::json get_json() const;

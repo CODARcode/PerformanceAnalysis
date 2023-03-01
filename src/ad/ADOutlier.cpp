@@ -69,7 +69,7 @@ ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoPar
   }
 }
 
-void ADOutlier::linkNetworkClient(ADThreadNetClient *client){
+void ADOutlier::linkNetworkClient(ADNetClient *client){
   m_net_client = client;
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }

@@ -68,6 +68,15 @@ namespace chimbuko{
      */
     void enableForceUpdate(bool val = true){ m_force_update = val; }
 
+    /**
+     * @brief Access the global model interface
+     */
+    ParamInterface const* getGlobalParamsPtr() const{ return m_global_params; }
+    /**
+     * @brief Access the worker model interface
+     */
+    ParamInterface const* getWorkerParamsPtr(const int w) const{ return m_worker_params[w]; }
+
   protected:
     /**
      * @brief Access the global parameter object
