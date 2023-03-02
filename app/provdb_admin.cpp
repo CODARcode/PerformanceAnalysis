@@ -439,16 +439,19 @@ int main(int argc, char** argv) {
 	      commit_timer_start = Clock::now();
 	    }
 
-	    //If at least one client has previously connected but none are now connected, shutdown the server
-	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
+	    bool do_break = false;
 
-	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
-	    if(
-	       (args.autoshutdown || cmd_shutdown)  &&
-	       ( a_client_has_connected && connected.size() == 0 ) &&
-	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
-	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
-	       ){
+	    //Shut down if told to, as long as no clients are still connected
+	    //Force shutdown is called via a "stop_server" RPC
+	    if(cmd_shutdown && connected.size() == 0 && !pserver_connected && !committer_connected){
+	      do_break = true;
+	    }
+	    //If using auto-shutdown, we wait until a) at least one client has previously connected b) no clients are currently connected  c) The pserver and committer are not connected (their connection is optional)
+	    if(args.autoshutdown && a_client_has_connected && connected.size() == 0 && !pserver_connected && !committer_connected){
+	      do_break = true;
+	    }
+
+	    if(do_break){
 	      PSprogressStream << "detected all clients disconnected, shutting down" << std::endl;
 #ifdef ENABLE_MARGO_STATE_DUMP
 	      margo_dump("margo_dump_all_client_disconnected." + std::to_string(instance));
