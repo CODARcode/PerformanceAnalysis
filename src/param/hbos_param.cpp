@@ -127,40 +127,30 @@ HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
    }
  }
 
+void HbosParam::update_internal(const HbosParam &from){
+  m_maxbins = from.m_maxbins; //copy the max number of bins from the input data
+  binWidthFixedNbin bwspec(m_maxbins);    
+  
+  for (auto& pair: from.m_hbosstats) {
+    verboseStream << "Histogram merge of func " << pair.first << std::endl;   
+    m_hbosstats[pair.first].merge(pair.second, bwspec);
+  }
+} 
+
  void HbosParam::update(const HbosParam &from)
  {
    std::lock_guard<std::mutex> _(from.m_mutex);
    std::lock_guard<std::mutex> __(m_mutex);
-   m_maxbins = from.m_maxbins; //copy the max number of bins from the input data
-   //binWidthScottMaxNbin bwspec(m_maxbins); //use Scott method to set the bin width
-     
-   for (auto& pair: from.m_hbosstats) {
-     verboseStream << "Histogram merge (no response) of func " << pair.first << std::endl;
-
-     int Nbin_g = m_hbosstats[pair.first].getHistogram().Nbin();
-     int Nbin_l = pair.second.getHistogram().Nbin();
-     
-     int Nbin = std::max(Nbin_g,Nbin_l);
-     Nbin = std::min(Nbin, m_maxbins);
-     binWidthFixedNbin bwspec(Nbin);
-     
-     m_hbosstats[pair.first].merge(pair.second, bwspec);
-   }
+   this->update_internal(from);
  }
 
  void HbosParam::update_and_return(HbosParam &to_from)
  {
    std::lock_guard<std::mutex> _(to_from.m_mutex);
    std::lock_guard<std::mutex> __(m_mutex);
-   m_maxbins = to_from.m_maxbins; //copy the max number of bins from the input data
-   binWidthScottMaxNbin bwspec(m_maxbins); //use Scott method to set the bin width
-
-   for (auto& pair: to_from.m_hbosstats) {
-     verboseStream << "Histogram merge (with response) of func " << pair.first << std::endl;
-     m_hbosstats[pair.first].merge(pair.second, bwspec);
+   this->update_internal(to_from); //update this
+   for (auto& pair: to_from.m_hbosstats)
      pair.second = m_hbosstats[pair.first];
-   }
-
  }
 
 
@@ -204,28 +194,9 @@ void HbosParam::generate_histogram(const unsigned long func_id, const std::vecto
     Histogram &hist = fparam.getHistogram();
 
     //Always use the max number of bins for finest resolution
-    //binWidthFixedNbin bwspec(m_maxbins);
-    //hist.create_histogram(runtimes, bwspec);
+    binWidthFixedNbin bwspec(m_maxbins);
+    hist.create_histogram(runtimes, bwspec);
 
-    if(global_hist != nullptr && global_hist->bin_edges().size() >= 2){
-      //Choose a bin width based on a combination of the local dataset and the existing global model to reduce discretization errors from merging a coarse and fine histogram
-      double bw = Histogram::scottBinWidth(global_hist->counts(), global_hist->bin_edges(), runtimes);
-      
-      //If a larger bin width is chosen than the global histogram, use the finer value
-      if(global_hist->bin_edges().size() >= 2){
-    	double bw_glob = global_hist->binWidth();
-    	bw = std::min(bw,bw_glob);
-      }
-      
-      verboseStream << "HbosParam::generate_histogram Global histogram bins " << global_hist->Nbin() << " range " << global_hist->getMin() << "-" << global_hist->getMax() << " and bin width " << global_hist->binWidth() << std::endl;
-      verboseStream << "HbosParam::generate_histogram Combining knowledge of current global model and local dataset, chose bin width " << bw << std::endl;
-      binWidthFixedMaxNbin l_bwspec(bw, m_maxbins);
-      hist.create_histogram(runtimes, l_bwspec);
-    }else{
-      verboseStream << "Using Scott bin width of local data set to determine bin width" << std::endl;
-      binWidthScottMaxNbin l_bwspec(m_maxbins);
-      hist.create_histogram(runtimes, l_bwspec);
-    }
     fparam.setInternalGlobalThreshold(global_threshold_init);
 
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;

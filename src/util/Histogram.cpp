@@ -48,7 +48,7 @@ double binWidthMaxNbinBase::correct_bin_width(double bin_width, const double min
   else
     return bin_width;
 }
-  
+ 
 
 void Histogram::Data::clear() {
   counts.clear();
@@ -482,14 +482,14 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
   if(r_times.size() == 0) fatal_error("No data points provided");
 
   //If there is only one data point or all data points have the same value we cannot use the Scott bin width rule because the std.dev is 0
-  //Instead just put the bin edges +-1% around the point   
+  //Instead just put the bin edges +-x% around the point   
   bool all_same = true;
   for(size_t i=1;i<r_times.size();i++) if(r_times[i] != r_times[0]){ all_same =false; break; }
    
   if(all_same){
-    double delta = 0.01 * fabs(r_times[0]);
-    if(delta == 0.) delta = 0.001; //if the value is 0 we cannot infer a scale
-
+    double delta = 1e-12 * fabs(r_times[0]);
+    if(delta == 0.) delta = 1e-12; //if the value is 0 we cannot infer a scale    
+    
     m_histogram.bin_edges.resize(2);
     m_histogram.bin_edges[0] = r_times[0] - delta;
     m_histogram.bin_edges[1] = r_times[0] + delta;

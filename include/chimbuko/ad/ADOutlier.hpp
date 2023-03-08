@@ -252,6 +252,11 @@ namespace chimbuko {
     void set_alpha(double alpha) { m_alpha = alpha; }
 
     /**
+     * @brief Set the maximum number of histogram bins
+     */
+    void set_maxbins(int to){ m_maxbins = to; }
+    
+    /**
      * @brief run HBOS anomaly detection algorithm
      *
      * @param step step (or frame) number
