@@ -32,7 +32,7 @@ void HbosFuncParam::merge(const HbosFuncParam &other, const binWidthSpecifier &b
   m_internal_global_threshold = std::max(m_internal_global_threshold, other.m_internal_global_threshold); //choose the more stringent threshold
 }
 
-HbosParam::HbosParam(): m_maxbins(std::numeric_limits<int>::max()){
+HbosParam::HbosParam(): m_maxbins(200){
    clear();
  }
 

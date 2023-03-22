@@ -24,12 +24,17 @@ TEST(TestHbosParam, generateLocalHistograms){
   
   //For first test, do not bound the number of bins
   {    
-    binWidthScott bw;
+    std::cout << "Test with unbounded number of bins" << std::endl;
+    //binWidthScott bw;
+    binWidthFixedNbin bw(200);
     HbosFuncParam expect;
     expect.setInternalGlobalThreshold(init_global_threshold);
+    std::cout << "Generating expectation histogram" << std::endl;
     expect.getHistogram() = Histogram(runtimes, bw);
     
+    std::cout << "Generating histogram through HbosParam" << std::endl;
     HbosParam p;
+    p.setMaxBins(200);
     p.generate_histogram(fid, runtimes, init_global_threshold);
 
     auto const &stats = p.get_hbosstats();
@@ -42,6 +47,7 @@ TEST(TestHbosParam, generateLocalHistograms){
   //Bound the number of bins
   {    
     int maxbins = 2;
+    std::cout << "Test with bounded number of bins: " << maxbins << std::endl;
     //Check that the unbounded Scott rule would want more bins than maxbins
 
     double bwscott = Histogram::scottBinWidth(runtimes);
