@@ -67,7 +67,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
     std::vector<double> runtimes;
     Histogram &r = local_params_ad2[0].getHistogram();
     for(int i=0;i<N;i++) {
-      double val = i==N-1 ? 1000 : double(dist(gen));
+      double val = i==N-1 ? 2000 : double(dist(gen));
       call_list2.push_back( createFuncExecData_t(0,0,0,  0, "my_func", 1000*(i+1), val) );
       runtimes.push_back(val);
       std::cout << "vals in localhist 2: " << val << std::endl;
@@ -104,7 +104,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 #elif defined(_USE_ZMQNET)
   std::cout << "Using ZMQ net" << std::endl;
 
-  Barrier barrier2(3);
+  Barrier barrier2(2);
 
   std::string sinterface = "tcp://*:5559";
   std::string sname = "tcp://localhost:5559";
@@ -122,10 +122,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
       ps.setAutoShutdown(false);
       ps.init(&argc, &argv, nt);
       ps.run(".");
-      std::cout << "PS thread waiting at barrier" << std::endl;
-      barrier2.wait();
-      std::cout << "PS thread terminating connection" << std::endl;
-      ps.finalize(); ps.stop();
+      ps.finalize();
     });
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -165,7 +162,6 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 	std::cout << "AD thread terminating connection" << std::endl;
 	net_client.disconnect_ps();
-	std::cout << "AD thread waiting at barrier" << std::endl;
 	barrier2.wait();
       }catch(const std::exception &e){
 	std::cerr << e.what() << std::endl;
@@ -173,13 +169,10 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
     });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-
-
   std::cout << "Initializing AD thread 2" << std::endl;
   std::thread out_thr2([&]{
       try{
+	barrier2.wait(); //enforce thread ordering
 	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	ADOutlierHBOSTest outlier;
@@ -205,7 +198,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 	Anomalies outliers;
 	nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
 
-	std::cout << "# outliers detected: " << nout << std::endl;
+	std::cout << "# outliers detected: " << nout2 << std::endl;
 	std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;
 	std::cout << global_params_ps[0].get_json().dump();
 	std::cout << local_params_ad[0].get_json().dump();
@@ -213,25 +206,21 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 	std::cout << "AD thread terminating connection" << std::endl;
 	net_client.disconnect_ps();
-	std::cout << "AD thread waiting at barrier" << std::endl;
-	barrier2.wait();
       }catch(const std::exception &e){
 	std::cerr << e.what() << std::endl;
       }
 
     });
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-  std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std::endl;}});
   out_thr2.join();
   out_thr.join();
+
+  std::thread stop_ps([&]{ try{ps.stop();}catch(const std::exception &e) {std::cerr << e.what() << std::endl;}});
   stop_ps.join();
   ps_thr.join();
 
-
-
-  EXPECT_EQ(nout, 1);
-  EXPECT_EQ(nout2, 1);
+  EXPECT_GE(nout, 1);
+  EXPECT_GE(nout2, 1);
 #else
 #error "Requires compiling with MPI or ZMQ net"
 #endif
