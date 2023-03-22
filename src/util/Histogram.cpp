@@ -50,22 +50,6 @@ double binWidthMaxNbinBase::correct_bin_width(double bin_width, const double min
 }
  
 
-void Histogram::Data::clear() {
-  counts.clear();
-  bin_edges.clear();
-  min = std::numeric_limits<double>::max();
-  max = std::numeric_limits<double>::lowest();
-}
-
-
-void Histogram::set_min_max(double min, double max){ 
-  if(min <= binEdges(0).first || max > binEdges(Nbin()-1).second) fatal_error("Values must be within the histogram!");
-  m_histogram.min = min; 
-  m_histogram.max = max; 
-}
-
-
-
 /**
  * @brief Histogram Class Implementation
  */
@@ -74,14 +58,27 @@ void Histogram::set_min_max(double min, double max){
 Histogram::Histogram(){clear();}
 Histogram::~Histogram(){}
 
+void Histogram::clear() {
+  m_counts.clear();
+  m_bin_edges.clear();
+  m_min = std::numeric_limits<double>::max();
+  m_max = std::numeric_limits<double>::lowest();
+}
+
+void Histogram::set_min_max(double min, double max){ 
+  if(min <= binEdges(0).first || max > binEdges(Nbin()-1).second) fatal_error("Values must be within the histogram!");
+  m_min = min; 
+  m_max = max; 
+}
+
 Histogram::Histogram(const std::vector<double> &data, const binWidthSpecifier &bwspec): Histogram(){
   create_histogram(data, bwspec);
 }
 
 double Histogram::binWidth() const{
-  if(m_histogram.bin_edges.size() == 0) return 0;
-  if(m_histogram.bin_edges.size() < 2) fatal_error("Logic bomb, histogram has 1 bin edge?!");
-  return m_histogram.bin_edges[1] - m_histogram.bin_edges[0];
+  if(m_bin_edges.size() == 0) return 0;
+  if(m_bin_edges.size() < 2) fatal_error("Logic bomb, histogram has 1 bin edge?!");
+  return m_bin_edges[1] - m_bin_edges[0];
 }
 
 double Histogram::getLowerBoundShiftMul(){ return 1e-6; }
@@ -89,9 +86,9 @@ double Histogram::getLowerBoundShiftMul(){ return 1e-6; }
 double Histogram::uniformCountInRange(double l, double u) const{
   if(u<=l) fatal_error(std::string("Invalid range, require u>l but got l=") + std::to_string(l) + " u=" + std::to_string(u));
 
-  if(m_histogram.max == m_histogram.min){
+  if(m_max == m_min){
     //Ignore the bin edges, the data set is a delta function
-    double v = m_histogram.max;
+    double v = m_max;
     int dbin = getBin(v,0);
     double count = binCount(dbin);
     verboseStream << "uniformCountInRange range " << l << ":" << u << " evaluating for max=min=" << v << ": data are in bin " << dbin << " with count " << count << " : l<v?" << int(l<v) << " u>=v?" << int(u>=v);
@@ -147,8 +144,8 @@ double Histogram::uniformCountInRange(double l, double u) const{
 }
 
 void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
-  std::vector<double> &comb_counts = combined.m_histogram.counts;
+  std::vector<double> &comb_binedges = combined.m_bin_edges;
+  std::vector<double> &comb_counts = combined.m_counts;
   
   int nbin_merged = comb_counts.size();
   double new_total = 0;
@@ -176,8 +173,8 @@ void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g
 
 
 void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
-  std::vector<double> &comb_counts = combined.m_histogram.counts;
+  std::vector<double> &comb_binedges = combined.m_bin_edges;
+  std::vector<double> &comb_counts = combined.m_counts;
 
   //Use variable bin width histograms and use the extractUniformCountInRangeInt function to pull out data in ranges so as to ensure correct treatment of integer bins
   HistogramVBW gw(g), lw(l);
@@ -217,8 +214,8 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
 
 
 void Histogram::merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
-  std::vector<double> &comb_counts = combined.m_histogram.counts;
+  std::vector<double> &comb_binedges = combined.m_bin_edges;
+  std::vector<double> &comb_counts = combined.m_counts;
   double start = comb_binedges[0];
   double bin_width = comb_binedges[1]-comb_binedges[0]; //assume uniform bin width
 
@@ -270,14 +267,14 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   if(l.bin_edges().size()!=l.Nbin()+1) fatal_error("Invalid local histogram");
   if(g.bin_edges().size()!=g.Nbin()+1) fatal_error("Invalid global histogram");
 
-  if(l.m_histogram.min == std::numeric_limits<double>::max() || l.m_histogram.max == std::numeric_limits<double>::lowest()) fatal_error("Local histogram min/max values are uninitialized!");
-  if(g.m_histogram.min == std::numeric_limits<double>::max() || g.m_histogram.max == std::numeric_limits<double>::lowest()) fatal_error("Global histogram min/max values are uninitialized!");
+  if(l.m_min == std::numeric_limits<double>::max() || l.m_max == std::numeric_limits<double>::lowest()) fatal_error("Local histogram min/max values are uninitialized!");
+  if(g.m_min == std::numeric_limits<double>::max() || g.m_max == std::numeric_limits<double>::lowest()) fatal_error("Global histogram min/max values are uninitialized!");
 
-  double min = std::min(l.m_histogram.min,g.m_histogram.min);
-  double max = std::max(l.m_histogram.max,g.m_histogram.max);
+  double min = std::min(l.m_min,g.m_min);
+  double max = std::max(l.m_max,g.m_max);
   if(max < min) fatal_error("Min and max values out of order");
 
-  verboseStream << "Histogram::merge_histograms local hist min, max = " << l.m_histogram.min << ", " << l.m_histogram.max << "  global histogram min, max = " << g.m_histogram.min << ", " << g.m_histogram.max << std::endl;
+  verboseStream << "Histogram::merge_histograms local hist min, max = " << l.m_min << ", " << l.m_max << "  global histogram min, max = " << g.m_min << ", " << g.m_max << std::endl;
 
   double bin_width = bwspec.bin_width(g,l,min,max);
   if(bin_width < 0.) fatal_error("Suggested bin width " + std::to_string(bin_width) + " is invalid");
@@ -326,10 +323,10 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
      
   //Compute the bin edges
   Histogram combined;
-  combined.m_histogram.min = min;
-  combined.m_histogram.max = max;
-  std::vector<double> &comb_binedges = combined.m_histogram.bin_edges;
-  std::vector<double> &comb_counts = combined.m_histogram.counts;
+  combined.m_min = min;
+  combined.m_max = max;
+  std::vector<double> &comb_binedges = combined.m_bin_edges;
+  std::vector<double> &comb_counts = combined.m_counts;
 
   comb_binedges.resize(nbin+1);
   for(int e=0;e<=nbin;e++) comb_binedges[e] = range_start + e*bin_width;
@@ -454,27 +451,22 @@ double Histogram::scottBinWidth(const std::vector<double> & global_counts, const
 }
 
 
-void Histogram::set_hist_data(const Histogram::Data& d)
-{
-  m_histogram = d;
-}
-
 void Histogram::create_histogram(const std::vector<double>& data, const double min, const std::vector<double> &edges){
   if(data.size() == 0) fatal_error("No data points provided");
   if(edges.size() < 2) fatal_error("Require at least 2 edges");
   if(min < edges[0] || min > edges[1]) fatal_error("min point should lie within the first bin");
   
-  m_histogram.min = min;
-  m_histogram.max = edges.back();
-  m_histogram.bin_edges = edges;
-  m_histogram.counts.resize(edges.size()-1);
-  for(int i=0;i<m_histogram.counts.size();i++)
-    m_histogram.counts[i] = 0;
+  m_min = min;
+  m_max = edges.back();
+  m_bin_edges = edges;
+  m_counts.resize(edges.size()-1);
+  for(int i=0;i<m_counts.size();i++)
+    m_counts[i] = 0;
 
   for(double d: data){
     int b = this->getBin(d);
     if(b == LeftOfHistogram || b == RightOfHistogram) fatal_error("One or more data points do not lie within the bins provided");
-    ++m_histogram.counts[b];
+    ++m_counts[b];
   }
 }
 
@@ -490,19 +482,19 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
     double delta = 1e-12 * fabs(r_times[0]);
     if(delta == 0.) delta = 1e-12; //if the value is 0 we cannot infer a scale    
     
-    m_histogram.bin_edges.resize(2);
-    m_histogram.bin_edges[0] = r_times[0] - delta;
-    m_histogram.bin_edges[1] = r_times[0] + delta;
-    m_histogram.counts.resize(1);
-    m_histogram.counts[0] = r_times.size();
-    m_histogram.min = m_histogram.max = r_times[0];
-    verboseStream << "Histogram::create_histogram all data points have same value. Creating 1-bin histogram with edges " << m_histogram.bin_edges[0] << "," << m_histogram.bin_edges[1] << std::endl;
+    m_bin_edges.resize(2);
+    m_bin_edges[0] = r_times[0] - delta;
+    m_bin_edges[1] = r_times[0] + delta;
+    m_counts.resize(1);
+    m_counts[0] = r_times.size();
+    m_min = m_max = r_times[0];
+    verboseStream << "Histogram::create_histogram all data points have same value. Creating 1-bin histogram with edges " << m_bin_edges[0] << "," << m_bin_edges[1] << std::endl;
     return;
   }
 
   //Determine the range
-  double &min = m_histogram.min;
-  double &max = m_histogram.max;
+  double &min = m_min;
+  double &max = m_max;
   
   min = std::numeric_limits<double>::max();
   max = std::numeric_limits<double>::lowest();
@@ -524,28 +516,28 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
 
   verboseStream << "Histogram::create_histogram determined bin width " << bin_width << " and number of bins " << nbin << std::endl;
   
-  m_histogram.bin_edges.resize(nbin+1);
+  m_bin_edges.resize(nbin+1);
   double e = first_edge;
   for(int b=0;b<=nbin;b++){
-    m_histogram.bin_edges[b] = e;
+    m_bin_edges[b] = e;
     e += bin_width;
   }
-  if(fabs(m_histogram.bin_edges[nbin] - max) > 1e-8*bin_width) fatal_error("Unexpectedly large error in bin upper edge");
-  m_histogram.bin_edges[nbin] = max; //correct for rounding errors
+  if(fabs(m_bin_edges[nbin] - max) > 1e-8*bin_width) fatal_error("Unexpectedly large error in bin upper edge");
+  m_bin_edges[nbin] = max; //correct for rounding errors
 
-  m_histogram.counts = std::vector<double>(nbin,0.);
+  m_counts = std::vector<double>(nbin,0.);
   for(double v: r_times){
     int b = getBin(v,0.);
     if(b==LeftOfHistogram || b==RightOfHistogram){
-      std::ostringstream os; os << "Value " << v << " is outside of histogram with range " << first_edge << " " << m_histogram.bin_edges[nbin] << " diffs " << v-first_edge << " " << v-m_histogram.bin_edges[nbin];
+      std::ostringstream os; os << "Value " << v << " is outside of histogram with range " << first_edge << " " << m_bin_edges[nbin] << " diffs " << v-first_edge << " " << v-m_bin_edges[nbin];
       fatal_error(os.str());
     }
-    m_histogram.counts[b] += 1.0;
+    m_counts[b] += 1.0;
   }
   
   //Check sum of counts is equal to the number of data points
   double count_sum = 0;
-  for(double c: m_histogram.counts) count_sum += c;
+  for(double c: m_counts) count_sum += c;
   if( fabs(count_sum - double(r_times.size())) > 1e-5){
     std::ostringstream os; os << "Histogram bin total count " << count_sum << " does not match number of data points " << r_times.size();
     fatal_error(os.str());
@@ -610,8 +602,8 @@ Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<doub
 
 nlohmann::json Histogram::get_json() const {
   return {
-    {"Histogram Bin Counts", m_histogram.counts},
-      {"Histogram Bin Edges", m_histogram.bin_edges}};
+    {"Histogram Bin Counts", m_counts},
+      {"Histogram Bin Edges", m_bin_edges}};
 }
 
 
@@ -665,12 +657,11 @@ double Histogram::empiricalCDF(const double value, empiricalCDFworkspace *worksp
 
 Histogram Histogram::operator-() const{
   Histogram out(*this);
-  Histogram::Data &d = out.m_histogram;
-  for(int b=0; b< d.bin_edges.size(); b++) d.bin_edges[b] = -d.bin_edges[b];
-  std::reverse(d.bin_edges.begin(),d.bin_edges.end());
-  std::reverse(d.counts.begin(),d.counts.end());
-  d.max = -this->m_histogram.min;
-  d.min = -this->m_histogram.max;
+  for(int b=0; b< out.m_bin_edges.size(); b++) out.m_bin_edges[b] = -out.m_bin_edges[b];
+  std::reverse(out.m_bin_edges.begin(),out.m_bin_edges.end());
+  std::reverse(out.m_counts.begin(),out.m_counts.end());
+  out.m_max = -this->m_min;
+  out.m_min = -this->m_max;
   return out;
 }
 
@@ -682,7 +673,7 @@ double Histogram::skewness() const{
   double csum = 0;
   for(int b=0;b<Nbin();b++){
     double v = binValue(b);
-    double c = m_histogram.counts[b];
+    double c = m_counts[b];
     avg_x3 += c*pow(v,3);
     avg_x2 += c*pow(v,2);
     avg_x += c*v;
@@ -699,7 +690,7 @@ double Histogram::skewness() const{
 }
 
 void Histogram::shiftBinEdges(const double x){
-  for(auto &e : m_histogram.bin_edges)
+  for(auto &e : m_bin_edges)
     e += x;
 }
 
