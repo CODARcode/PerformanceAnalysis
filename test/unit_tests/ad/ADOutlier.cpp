@@ -65,7 +65,6 @@ public:
 
 };
 
-
 TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
 
@@ -632,8 +631,6 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     data_map[it->get_fid()].push_back(it);
 
-  //run method generates statistics from input data map and merges with stored stats
-  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
   outlier.linkExecDataMap(&data_map);
   outlier.setIgnoreFunction(fname1);
   EXPECT_TRUE(outlier.ignoringFunction(fname1));
@@ -641,7 +638,7 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
 
   Anomalies anomalies = outlier.run(0);
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_GE(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1); //depending on various tolerances (e.g. number of bins, number of data points), it may detect more than 1 outlier, but should detect at least the artificial one
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
@@ -775,7 +772,6 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   }
 
 }
-
 
 TEST(ADOutlierCOPODTestFuncIgnore, Works){
   //Generate statistics
