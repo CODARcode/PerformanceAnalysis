@@ -12,7 +12,7 @@ using namespace chimbuko;
 TEST(TestHistogram, getBin){
   //Create a fake histogram
   std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
-  std::vector<double> counts = { 1,2,0,4 };
+  std::vector<unsigned int> counts = { 1,2,0,4 };
 
   Histogram h;
   h.set_counts(counts);
@@ -359,8 +359,8 @@ TEST(TestHistogram, negation){
 }
  
 
-double sum_counts(const std::vector<double> &counts, const int bin){
-  double out = 0;
+unsigned int sum_counts(const std::vector<unsigned int> &counts, const int bin){
+  unsigned int out = 0;
   for(int b=0;b<=bin;b++) out += counts[b];
   return out;
 }
@@ -374,7 +374,7 @@ TEST(TestHistogram, empiricalCDF){
   int nbin = g.Nbin();
   EXPECT_EQ(nbin, 8);
 
-  double sum_count = 0;
+  unsigned int sum_count = 0;
   for(auto c : g.counts()) sum_count += c;
 
   std::cout << g << std::endl;
@@ -434,7 +434,7 @@ TEST(TestHistogram, empiricalCDF){
   //Inverted:
   //counts:  1,0,1,3,10,24,40,2
   //edges; -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1
-  std::vector<double> inv_counts = { 1,0,1,3,10,24,40,2 };
+  std::vector<unsigned int> inv_counts = { 1,0,1,3,10,24,40,2 };
   std::vector<double> inv_edges = { -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1 };
 
   
@@ -512,7 +512,7 @@ TEST(TestHistogram, negatedEmpiricalCDF){
 TEST(TestHistogram, skewness){
   //Create a fake histogram
   std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
-  std::vector<double> counts = { 8,2,1,4 };
+  std::vector<unsigned int> counts = { 8,2,1,4 };
   
   Histogram g;
   g.set_counts(counts);
@@ -795,7 +795,7 @@ TEST(TestHistogramVBW, extractUniformCountInRangeInt){
 
 
 struct HistogramTest: public Histogram{
-  using Histogram::merge_histograms_uniform;
+  //using Histogram::merge_histograms_uniform;
   using Histogram::merge_histograms_uniform_int;
 
 };
@@ -893,85 +893,6 @@ TEST(TestHistogram, mergeUniformInt){
     EXPECT_EQ(h.binCount(7),1);
   }
 }
-
-TEST(TestHistogram, mergeUniform){
-  //Test merge when bin edges align
-  {
-    HistogramTest h;
-    h.set_bin_edges({0,1,2,3});
-    h.set_counts({0,0,0});
-    
-    HistogramTest l;
-    l.set_bin_edges({0,1,2,3});
-    l.set_counts({0,3,0});
-
-    HistogramTest g;
-    g.set_bin_edges({0,1,2,3});
-    g.set_counts({2,0,1});
-
-    HistogramTest::merge_histograms_uniform(h,l,g);
-
-    EXPECT_EQ(h.binCount(0),2);
-    EXPECT_EQ(h.binCount(1),3);
-    EXPECT_EQ(h.binCount(2),1);
-  }
-
-  //Test merge when bin edges don't align
-  {
-    HistogramTest h;
-    h.set_bin_edges({-1,0,1,2,3,4,5});
-    h.set_counts({0,0,0,0,0,0});
-    
-    HistogramTest l;
-    l.set_bin_edges({-1,1,3,5});
-    l.set_counts({4,0,0});
-
-    EXPECT_NEAR(l.uniformCountInRange(0,1), 2.0, 0.001);
-
-    HistogramTest g;
-    g.set_bin_edges({-1,1,2,3});
-    g.set_counts({6,0,0});
-
-    EXPECT_NEAR(g.uniformCountInRange(0,1), 3.0, 0.001);
-
-
-    HistogramTest::merge_histograms_uniform(h,l,g);
-
-    EXPECT_EQ(h.binCount(0),5); //expect 1/2 of the first bin from each
-    EXPECT_EQ(h.binCount(1),5); //same for the second bin
-
-    for(int i=2;i<6;i++) EXPECT_EQ(h.binCount(i),0);
-  }
-
-
-  //Test with fractional counts
-  {
-    HistogramTest h;
-    h.set_bin_edges({-1,-0.5,0,0.5,1,1.5,2.0,2.5,3.0});
-    h.set_counts({0,0,0,0,0,0,0,0});
-    
-    HistogramTest l;
-    l.set_bin_edges({-1,1,3});
-    l.set_counts({3,0});
-
-    EXPECT_NEAR(l.uniformCountInRange(-1,-0.5), 0.75, 0.001); //first 4 bins will get 0.75 from l
-    EXPECT_NEAR(l.uniformCountInRange(1,1.5), 0.0, 0.001); //last 4 bins will get 0 from l
-
-    HistogramTest g;
-    g.set_bin_edges({-1,1,3});
-    g.set_counts({0,2});
-
-    EXPECT_NEAR(g.uniformCountInRange(-1,-0.5), 0.0, 0.001); //first 4 bins will get 0 from g
-    EXPECT_NEAR(g.uniformCountInRange(1,1.5), 0.5, 0.001); //last 4 bins will get 0.5 from g rounded up to 1
-
-    HistogramTest::merge_histograms_uniform(h,l,g);
-
-    //Total count will be 8 but it should be 5, and as the bins all have value 1, it will subtract 1 from the first 3 bins (note this is something of an edge case)
-    for(int i=0;i<4;i++) EXPECT_NEAR(h.binCount(i),0.75,1e-12);
-    for(int i=4;i<8;i++) EXPECT_NEAR(h.binCount(i),0.5,1e-12);
-  }
-}
-
 
 //Test the correction used for COPOD where we shift the bin edges such that the CDF of the min value is 1/N rather than 0
 TEST(TestHistogram, empiricalCDFshift){

@@ -489,7 +489,7 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   ADOutlierHBOSTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<double> counts = {2,8,1,0,0,2};
+  std::vector<unsigned int> counts = {2,8,1,0,0,2};
   HbosFuncParam fp;
   Histogram &h = fp.getHistogram();
   h.set_counts(counts);
@@ -652,7 +652,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<double> counts = {2,8,1,0,0,2};
+  std::vector<unsigned int> counts = {2,8,1,0,0,2};
   CopodFuncParam hp;
   Histogram &h = hp.getHistogram();
   h.set_counts(counts);

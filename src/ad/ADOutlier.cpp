@@ -382,13 +382,13 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   double max_score = std::numeric_limits<double>::lowest();  
 
   //Compute scores
-  double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);
+  unsigned int tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0);
   std::vector<double> out_scores_i(nbin);
 
   verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < nbin; i++){
-    double count = bin_counts[i];
-    double prob = count / tot_runtimes;
+    unsigned int count = bin_counts[i];
+    double prob = double(count)/ tot_runtimes;
     double score = -1 * log2(prob + m_alpha);
     out_scores_i[i] = score;
     verboseStream << "Bin " << i << ", Range " << bin_edges[i] << "-" << bin_edges[i+1] << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
@@ -483,7 +483,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //Note that the total number of bins can be > 1 providing the other bins have 0 counts
       if (ad_score <= 0 ){
 	int nbin_nonzero = 0;
-	for(double c : hist.counts())
+	for(unsigned int c : hist.counts())
 	  if(c>0) ++nbin_nonzero;
 	if(nbin_nonzero != 1){
 	  fatal_error("ad_score <= 0 but #bins with non zero count, "+std::to_string(nbin_nonzero)+" is not 1");

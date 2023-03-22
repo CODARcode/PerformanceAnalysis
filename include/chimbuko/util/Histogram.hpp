@@ -33,7 +33,7 @@ namespace chimbuko{
     binWidthFixed(double width): width(width){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return width; }
-    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return width; }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override{ return width; }
   };
   /**
    * @brief Determine the bin width using Scott's rule
@@ -73,7 +73,7 @@ namespace chimbuko{
     binWidthFixedMaxNbin(double width, int maxbins): width(width),binWidthMaxNbinBase(maxbins){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return correct_bin_width(width,min,max); }
-    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return correct_bin_width(width,min,max); }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override{ return correct_bin_width(width,min,max); }
   };
   /**
    * @brief Determine the bin width using Scott's rule but adjust if the number of bins is larger than some maximum
@@ -163,7 +163,7 @@ namespace chimbuko{
      * @brief set bin counts in Histogram
      * @param c: vector of bin counts
      */
-    void set_counts(const std::vector<double> & c) { m_counts = c; }
+    void set_counts(const std::vector<unsigned int> & c) { m_counts = c; }
 
     /**
      * @brief set bin edges in Histogram
@@ -182,14 +182,14 @@ namespace chimbuko{
      * @brief New bin counts in Histogram
      * @param count: bin count value
      */
-    void add2counts(const double count) {m_counts.push_back(count);}
+    void add2counts(const unsigned int count) {m_counts.push_back(count);}
 
     /*
      * @brief Update counts for a given index of bin in histogram
      * @param id: index of bin in Histogram
      * @param count: bin count value to update
      */
-    void add2counts(const int id, const double count) {m_counts[id] += count;}
+    void add2counts(const int id, const unsigned int count) {m_counts[id] += count;}
 
     /*
      * @brief New bin edges in histogram
@@ -201,7 +201,7 @@ namespace chimbuko{
      * @brief Get current vector of bin counts of Histogram
      * @return vector of bin counts
      */
-    const std::vector<double>& counts() const {return m_counts;}
+    const std::vector<unsigned int>& counts() const {return m_counts;}
 
     /**
      * @brief Get current vector of bin edges of histogram
@@ -217,7 +217,7 @@ namespace chimbuko{
     /**
      * @brief Get the count of a given bin
      */
-    inline double binCount(const int bin) const{ return m_counts[bin]; }
+    inline unsigned int binCount(const int bin) const{ return m_counts[bin]; }
 
     /**
      * @brief Get the bin width
@@ -267,10 +267,10 @@ namespace chimbuko{
      */
     struct empiricalCDFworkspace{
       bool set;
-      double sum;
+      unsigned int sum;
       empiricalCDFworkspace(): set(false){}
 
-      double getSum(const Histogram &h);
+      unsigned int getSum(const Histogram &h);
     };
  
     /**
@@ -283,7 +283,7 @@ namespace chimbuko{
     /**
      * @brief Return the sum of all the bin counts
      */
-    double totalCount() const;
+    unsigned int totalCount() const;
 
     /**
      * @brief Comparison operator
@@ -326,7 +326,7 @@ namespace chimbuko{
      * @param local_edges: bin edges in local histogram in AD module
      * @return computed bin width
      */
-    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges);
+    static double scottBinWidth(const std::vector<unsigned int> & global_counts, const std::vector<double> & global_edges, const std::vector<unsigned int> & local_counts, const std::vector<double> & local_edges);
 
 
     /**
@@ -336,7 +336,7 @@ namespace chimbuko{
      * @param local_vals: local data values
      * @return computed bin width
      */
-    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals);
+    static double scottBinWidth(const std::vector<unsigned int> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals);
 
 
     /**
@@ -361,7 +361,7 @@ namespace chimbuko{
     void shiftBinEdges(const double x);
     
   private:
-    std::vector<double> m_counts; /**< Bin counts in Histogram*/
+    std::vector<unsigned int> m_counts; /**< Bin counts in Histogram*/
     std::vector<double> m_bin_edges; /**< Bin edges in Histogram*/
     double m_min; /**< Minimum value ever encountered*/
     double m_max; /**< Maximum value ever encountered*/
@@ -372,16 +372,6 @@ namespace chimbuko{
      */
     static double binValue(const size_t i, const std::vector<double> & edges);
 
-    /**
-     * @brief Merge two histograms into a third assuming that the histogram bins are represented by bin_count copies of the bin's midpoint
-     */
-    static void merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l);
-
-    /**
-     * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
-     */
-    static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
-    
     static void merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l);
   
   };

@@ -143,38 +143,9 @@ double Histogram::uniformCountInRange(double l, double u) const{
   }
 }
 
-void Histogram::merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<double> &comb_binedges = combined.m_bin_edges;
-  std::vector<double> &comb_counts = combined.m_counts;
-  
-  int nbin_merged = comb_counts.size();
-  double new_total = 0;
-
-  for(int b=0;b<nbin_merged;b++){
-    double gc = g.uniformCountInRange(comb_binedges[b], comb_binedges[b+1]);
-    double lc = l.uniformCountInRange(comb_binedges[b], comb_binedges[b+1]);
-    double val = gc+lc;
-    verboseStream << "Bin " << b << " range " << comb_binedges[b] << " to " << comb_binedges[b+1] << ": gc=" << gc << " lc=" << lc << " val=" << val << std::endl;
-    
-    comb_counts[b] += val;
-    new_total += val;
-  }
-
-  //Due to rounding issues the total number of points in the merged histogram can differ from the sum of the points in the
-  //inputs. This is undesirable. To fix this while minimizing the impact we apply the changes over the largest bin
-  double ltotal = l.totalCount();
-  double gtotal = g.totalCount();
-  if( fabs(new_total - ltotal - gtotal) > 1e-5*(ltotal+gtotal) ){
-    std::stringstream ss;
-    ss << "New histogram total count doesn't match sum of counts of inputs: combined total " << new_total << " l total " << ltotal << " g total " << gtotal << " l+g total " << ltotal + gtotal << " diff " << fabs(new_total - ltotal - gtotal);    
-    recoverable_error(ss.str());
-  }
-}
-
-
 void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l){
   std::vector<double> &comb_binedges = combined.m_bin_edges;
-  std::vector<double> &comb_counts = combined.m_counts;
+  std::vector<unsigned int> &comb_counts = combined.m_counts;
 
   //Use variable bin width histograms and use the extractUniformCountInRangeInt function to pull out data in ranges so as to ensure correct treatment of integer bins
   HistogramVBW gw(g), lw(l);
@@ -183,9 +154,9 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
   double new_total = 0;
 
   for(int b=0;b<nbin_merged;b++){
-    double gc = gw.extractUniformCountInRangeInt(comb_binedges[b], comb_binedges[b+1]);
-    double lc = lw.extractUniformCountInRangeInt(comb_binedges[b], comb_binedges[b+1]);
-    double val = gc+lc;
+    unsigned int gc = gw.extractUniformCountInRangeInt(comb_binedges[b], comb_binedges[b+1]);
+    unsigned int lc = lw.extractUniformCountInRangeInt(comb_binedges[b], comb_binedges[b+1]);
+    unsigned int val = gc+lc;
     verboseStream << "Bin " << b << " range " << comb_binedges[b] << " to " << comb_binedges[b+1] << ": gc=" << gc << " lc=" << lc << " val=" << val << std::endl;
     
     comb_counts[b] += val;
@@ -201,47 +172,14 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
     recoverable_error(ss.str());
   }
 
-  double ltotal = l.totalCount();
-  double gtotal = g.totalCount();
-  if( fabs(new_total - ltotal - gtotal) > 1e-5*(ltotal+gtotal) ){
+  unsigned int ltotal = l.totalCount();
+  unsigned int gtotal = g.totalCount();
+  if( new_total - ltotal - gtotal > 0 ){
     std::stringstream ss;
     ss << "New histogram total count doesn't match sum of counts of inputs: combined total " << new_total << " l total " << ltotal << " g total " << gtotal << " l+g total " << ltotal + gtotal << " diff " << fabs(new_total - ltotal - gtotal);    
     recoverable_error(ss.str());
   }
 
-}
-
-
-
-void Histogram::merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<double> &comb_binedges = combined.m_bin_edges;
-  std::vector<double> &comb_counts = combined.m_counts;
-  double start = comb_binedges[0];
-  double bin_width = comb_binedges[1]-comb_binedges[0]; //assume uniform bin width
-
-  //Bin data points from global histogram
-  for(int i=0; i<g.Nbin(); i++){
-    double v = g.binValue(i);
-    const double inc = g.counts().at(i);
-    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
-    int id( floor( (v-start) / bin_width ) ); //uniform bin width
-    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
-
-    verboseStream << "In g " << "id: " << id << ", inc: " << inc << std::endl;
-    comb_counts[id] += inc;
-  }
-
-  //Bin data points from local histogram
-  for(int i=0; i<l.Nbin(); i++){
-    double v = l.binValue(i);
-    const double inc = l.counts().at(i);
-    if(v <= start) fatal_error("Logic bomb: value below or equal to lower bin edge");
-    int id( floor( (v-start) / bin_width ) ); //uniform bin width
-    if(id < 0 || id >= comb_counts.size()) fatal_error("Logic bomb: bin beyond range of merged histogram");
-
-    verboseStream << "In l " << "id: " << id << ", inc: " << inc << std::endl;
-    comb_counts[id] += inc;
-  }
 }
 
 /**
@@ -326,7 +264,7 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
   combined.m_min = min;
   combined.m_max = max;
   std::vector<double> &comb_binedges = combined.m_bin_edges;
-  std::vector<double> &comb_counts = combined.m_counts;
+  std::vector<unsigned int> &comb_counts = combined.m_counts;
 
   comb_binedges.resize(nbin+1);
   for(int e=0;e<=nbin;e++) comb_binedges[e] = range_start + e*bin_width;
@@ -343,8 +281,6 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
    
   comb_counts.resize(comb_binedges.size() - 1, 0);
 
-  //merge_histograms_central_value(combined, g, l);
-  //merge_histograms_uniform(combined, g, l);
   merge_histograms_uniform_int(combined, g, l);
 
   verboseStream << "Merged histogram has " << combined.counts().size() << " bins" << std::endl;
@@ -362,22 +298,21 @@ double Histogram::binValue(const size_t i, const std::vector<double> & edges){
   
 
 
-double Histogram::scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges){
+double Histogram::scottBinWidth(const std::vector<unsigned int> & global_counts, const std::vector<double> & global_edges, const std::vector<unsigned int> & local_counts, const std::vector<double> & local_edges){
   verboseStream << "scottBinWidth (2 histograms)" << std::endl << "Size of Vector global_counts: " << global_counts.size() << std::endl << "Size of Vector local_counts: " << local_counts.size() << std::endl;
 
-  double size = 0., avgx = 0., avgx2 = 0.;
+  unsigned int size = 0;
+  double avgx = 0., avgx2 = 0.;
 
   for(int i = 0; i < global_counts.size(); i++) {
-    double count = global_counts[i];
-    if (count < 0) fatal_error("Negative count encountered in global_counts!");
+    unsigned int count = global_counts[i];
     size += count;
     double v = binValue(i,global_edges);
     avgx += count * v;
     avgx2 += count * v*v;
   }
   for(int i = 0; i < local_counts.size(); i++) {
-    double count = local_counts[i];
-    if (count < 0) fatal_error("Negative count encountered in local_counts!");
+    unsigned int count = local_counts[i];
     size += count;
     double v = binValue(i,local_edges);
     avgx += count * v;
@@ -422,13 +357,12 @@ double Histogram::scottBinWidth(const std::vector<double> & vals){
 }
 
 
-double Histogram::scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals){
+double Histogram::scottBinWidth(const std::vector<unsigned int> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals){
   double sum = 0.0;
   double sum_sq = 0.0;
-  double size = 0;
+  unsigned int size = 0;
   for(int i = 0; i < global_counts.size(); i++) {
-    double count = global_counts[i];
-    if (count < 0) fatal_error("Negative count encountered in global_counts!");
+    unsigned int count = global_counts[i];
     if (count != 0){
       verboseStreamAdd << global_edges[i]<<"-"<<global_edges[i+1] << ":" << count << std::endl;
     }
@@ -525,7 +459,7 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
   if(fabs(m_bin_edges[nbin] - max) > 1e-8*bin_width) fatal_error("Unexpectedly large error in bin upper edge");
   m_bin_edges[nbin] = max; //correct for rounding errors
 
-  m_counts = std::vector<double>(nbin,0.);
+  m_counts = std::vector<unsigned int>(nbin,0);
   for(double v: r_times){
     int b = getBin(v,0.);
     if(b==LeftOfHistogram || b==RightOfHistogram){
@@ -536,8 +470,8 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
   }
   
   //Check sum of counts is equal to the number of data points
-  double count_sum = 0;
-  for(double c: m_counts) count_sum += c;
+  unsigned int count_sum = 0;
+  for(unsigned int c: m_counts) count_sum += c;
   if( fabs(count_sum - double(r_times.size())) > 1e-5){
     std::ostringstream os; os << "Histogram bin total count " << count_sum << " does not match number of data points " << r_times.size();
     fatal_error(os.str());
@@ -545,24 +479,24 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
 }
 
 std::vector<double> Histogram::unpack() const{
-  int tot_size = 0;
-  for(double c : counts()) tot_size += int(floor(c+0.5)); //have to round to nearest int to unpack
+  unsigned int tot_size = 0;
+  for(unsigned int c : counts()) tot_size += c;
 
   std::vector<double> r_times(tot_size);
 
   int idx=0;
   for (int i = 0; i < Nbin(); i++) {
     double v = binValue(i,bin_edges());
-    int icount = int(floor(counts()[i]+0.5));
-    for(int j = 0; j < icount; j++){ 
+    unsigned int icount = m_counts[i];
+    for(unsigned int j = 0; j < icount; j++){ 
       r_times.at(idx++) = v;
     }
   }
   return r_times;
 }
 
-double Histogram::totalCount() const{
-  double c = 0; 
+unsigned int Histogram::totalCount() const{
+  unsigned int c = 0; 
   for(auto v: counts()) c += v;
   return c;
 }
@@ -570,8 +504,8 @@ double Histogram::totalCount() const{
 
 Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec)
 {
-  int tot_size = runtimes.size();
-  for(double c : g.counts()) tot_size += int(floor(c+0.5)); //have to round to nearest int to unpack
+  unsigned int tot_size = runtimes.size();
+  for(unsigned int c : g.counts()) tot_size += c;
 
   std::vector<double> r_times(tot_size); // = runtimes;
   int idx = 0;
@@ -587,8 +521,8 @@ Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<doub
   for (int i = 0; i < g.Nbin(); i++) {
     verboseStream << " Bin counts in " << i << ": " << g.counts()[i] << std::endl;
     double v = binValue(i,g.bin_edges());
-    int icount = int(floor(g.counts()[i]+0.5)); //have to round to nearest int in order to unpack    
-    for(int j = 0; j < icount; j++){ 
+    unsigned int icount = g.counts()[i];
+    for(unsigned int j = 0; j < icount; j++){ 
       r_times.at(idx++) = v;
     }
   }
@@ -637,7 +571,7 @@ int Histogram::getBin(const double v, const double tol) const{
   }
 }
 
-double Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
+unsigned int Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
   if(!set){
     verboseStream << "Workspace computing sum" << std::endl;
     sum = h.totalCount();
@@ -648,7 +582,7 @@ double Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
 
 
 double Histogram::empiricalCDF(const double value, empiricalCDFworkspace *workspace) const{
-  double sum;
+  unsigned int sum;
   if(workspace != nullptr) sum = workspace->getSum(*this);
   else sum = totalCount();
 
@@ -670,10 +604,10 @@ double Histogram::skewness() const{
   //<(x-mu)^3> = <x^3> - mu^3 - 3<x^2> mu + 3 mu^2 <x>
   //           = <x^3> - 3<x^2> mu + 2 mu^3
   double avg_x3 = 0, avg_x2 = 0, avg_x = 0;
-  double csum = 0;
+  unsigned int csum = 0;
   for(int b=0;b<Nbin();b++){
     double v = binValue(b);
-    double c = m_counts[b];
+    unsigned int c = m_counts[b];
     avg_x3 += c*pow(v,3);
     avg_x2 += c*pow(v,2);
     avg_x += c*v;
@@ -686,7 +620,7 @@ double Histogram::skewness() const{
   double var = avg_x2 - avg_x*avg_x;  //<x^2> - mu^2
   
   double avg_xmmu_3 = avg_x3 - 3*avg_x2 * avg_x + 2 * pow(avg_x,3);
-  return csum/(csum-1.) * avg_xmmu_3 / pow(var, 3./2);
+  return double(csum)/(csum-1.) * avg_xmmu_3 / pow(var, 3./2);
 }
 
 void Histogram::shiftBinEdges(const double x){
