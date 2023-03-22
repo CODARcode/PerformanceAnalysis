@@ -347,16 +347,18 @@ class InteractiveAnalysis(Cmd):
             entry['exec_count'] = f['runtime_profile']['exclusive_runtime']['count']
             entry['avg_sev'] = f['anomaly_metrics']['severity']['mean']
             entry['anom_freq'] = float(entry['anom_count'])/entry['exec_count']
-            entry['runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['accumulate'])/1e6
-            entry['runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['accumulate'])/1e6
+            entry['tot_runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['accumulate'])/1e6 #s
+            entry['tot_runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['accumulate'])/1e6
+            entry['avg_runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['mean'])/1e3 #ms
+            entry['avg_runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['mean'])/1e3
             self.table.append(entry)
 
         #The columns we will show (can be user-manipulated)
         self.col_show = {'pid','fid','fname','accum_sev','anom_count'}
         #The list of all columns in the order that they will be displayed (assuming they are enabled by the show list)
-        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','runtime_excl','runtime_incl','fname']
+        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','avg_runtime_excl','tot_runtime_excl','avg_runtime_incl','tot_runtime_incl','fname']
         #Headers for the columns above
-        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Excl.Runtime (s)','Incl.Runtime (s)', 'Name']
+        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Avg.Excl.Runtime (ms)','Total.Excl.Runtime (s)','Avg.Incl.Runtime (ms)','Total.Incl.Runtime (s)', 'Name']
 
         #Default sort order, can be changed by 'order'
         self.sort_order = 'Descending'
@@ -375,8 +377,10 @@ avg_sev: The average severity of anomalies
 anom_count: The number of anomalies
 exec_count: The number of times the function was executed
 anom_freq: The frequency of anomalies
-runtime_excl : The total running time of the function in seconds over all executions, excluding child function calls
-runtime_incl : The total running time of the function in seconds over all executions, including child function calls        
+avg_runtime_excl : The average running time of the function in milliseconds, excluding child function calls
+tot_runtime_excl : The total running time of the function in seconds over all executions, excluding child function calls
+avg_runtime_incl : The average running time of the function in milliseconds, including child function calls
+tot_runtime_incl : The total running time of the function in seconds over all executions, including child function calls
 fname: The function name""")        
         
     def do_addcol(self,coltag):
