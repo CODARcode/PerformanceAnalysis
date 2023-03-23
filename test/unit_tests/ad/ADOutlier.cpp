@@ -492,10 +492,8 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   std::vector<unsigned int> counts = {2,8,1,0,0,2};
   HbosFuncParam fp;
   Histogram &h = fp.getHistogram();
-  h.set_counts(counts);
-  h.set_bin_edges({100,200,300,400,500,600,700});
-  h.set_min_max(101,700);
-  
+  h.set_histogram(counts,101,700,100,100);
+
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
   outlier.set_alpha(alpha); 
@@ -655,9 +653,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   std::vector<unsigned int> counts = {2,8,1,0,0,2};
   CopodFuncParam hp;
   Histogram &h = hp.getHistogram();
-  h.set_counts(counts);
-  h.set_bin_edges({100,200,300,400,500,600,700});
-  h.set_min_max(101,700);
+  h.set_histogram(counts,101,700,100,100);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -737,8 +733,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   //Generate a histogram
   CopodFuncParam hp;
   Histogram &h = hp.getHistogram();
-  h.set_counts({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2});
-  h.set_bin_edges({100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400});
+  h.set_histogram({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2}, 101,1400,100,100);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100

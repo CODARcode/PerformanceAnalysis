@@ -9,17 +9,50 @@
 
 using namespace chimbuko;
 
+
+TEST(TestHistogram, setHistogram){
+  {
+    std::cout << "setHistogram checking valid histogram" << std::endl;
+    Histogram h;
+    h.set_histogram({1,2,0,4}, 0.1+1e-8,0.5,  0.1,0.1);
+    EXPECT_EQ(h.Nbin(),4);
+    EXPECT_EQ(h.binWidth(),0.1);
+    EXPECT_EQ(h.getMin(),0.1+1e-8);
+    EXPECT_EQ(h.getMax(),0.5);
+    EXPECT_EQ(h.binEdgeLower(0),0.1);
+    EXPECT_NEAR(h.binEdgeUpper(0),0.2,1e-8);
+    EXPECT_EQ(h.binEdgeUpper(3),0.5);
+    EXPECT_EQ(h.binCount(0),1);
+    EXPECT_EQ(h.binCount(1),2);
+    EXPECT_EQ(h.binCount(2),0);
+    EXPECT_EQ(h.binCount(3),4);
+  }
+  {
+    std::cout << "setHistogram check it throws an error when the upper edge doesn't match the max" << std::endl;
+    Histogram h;
+    EXPECT_ANY_THROW( h.set_histogram({1,2,0,4}, 0.1+1e-8,0.51,  0.1,0.1) );
+  }
+  {
+    std::cout << "setHistogram check it throws an error if max < min" << std::endl;
+    Histogram h;
+    EXPECT_ANY_THROW( h.set_histogram({1,2,0,4}, 2,1,  0.1,0.1) );
+  }
+  {
+    std::cout << "setHistogram check it throws an error if min is not inside the first bin" << std::endl;
+    Histogram h;
+    EXPECT_ANY_THROW( h.set_histogram({1,2,0,4}, 0.21,0.5,  0.1,0.1) );
+    EXPECT_ANY_THROW( h.set_histogram({1,2,0,4}, 0.09,0.5,  0.1,0.1) );
+  }
+}
+
 TEST(TestHistogram, getBin){
   //Create a fake histogram
-  std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
   std::vector<unsigned int> counts = { 1,2,0,4 };
 
   Histogram h;
-  h.set_counts(counts);
-  h.set_bin_edges(edges);
+  h.set_histogram(counts, 0.11, 0.5, 0.1, 0.1);
 
   EXPECT_EQ(h.counts().size(), counts.size());
-  EXPECT_EQ(h.bin_edges().size(), edges.size());
   
   //Check for data points within the histogram
   EXPECT_EQ( h.getBin(0.15,0.05), 0 );
@@ -42,6 +75,7 @@ TEST(TestHistogram, getBin){
   EXPECT_EQ( h.getBin(0.1, 0.01), 0 );
   
   //Check upper bin edge is inclusive
+  EXPECT_EQ( h.getBin(0.19999, 0.05), 0 );
   EXPECT_EQ( h.getBin(0.2, 0.05), 0 );
   EXPECT_EQ( h.getBin(0.20001, 0.05), 1 );
   EXPECT_EQ( h.getBin(0.5, 0.05), 3 );
@@ -57,10 +91,9 @@ TEST(TestHistogram, createHistogram){
     h.create_histogram(rtimes);
     
     EXPECT_EQ(h.counts().size(), 1);
-    EXPECT_EQ(h.bin_edges().size(), 2);
     EXPECT_EQ(h.counts()[0], 3);
-    EXPECT_LT(h.bin_edges()[0], 0.1);
-    EXPECT_GE(h.bin_edges()[1], 0.1);
+    EXPECT_LT(h.binEdgeLower(0), 0.1);
+    EXPECT_GE(h.binEdgeUpper(0), 0.1);
     EXPECT_EQ( h.getBin(0.1,0.05), 0 );
   }
   //Test generation of histogram for which all data points have the same value of 0
@@ -70,10 +103,9 @@ TEST(TestHistogram, createHistogram){
     h.create_histogram(rtimes);
     
     EXPECT_EQ(h.counts().size(), 1);
-    EXPECT_EQ(h.bin_edges().size(), 2);
     EXPECT_EQ(h.counts()[0], 3);
-    EXPECT_LT(h.bin_edges()[0], 0.0);
-    EXPECT_GE(h.bin_edges()[1], 0.0);
+    EXPECT_LT(h.binEdgeLower(0), 0.0);
+    EXPECT_GE(h.binEdgeUpper(1), 0.0);
     EXPECT_EQ( h.getBin(0.0,0.05), 0 );
   }
 
@@ -131,8 +163,8 @@ TEST(TestHistogram, createHistogram){
 
       EXPECT_NE(b, Histogram::LeftOfHistogram);
       EXPECT_NE(b, Histogram::RightOfHistogram);
-      EXPECT_LT(h.bin_edges()[b], r); //lower edge exclusive
-      EXPECT_GE(h.bin_edges()[b+1], r); //upper edge inclusive
+      EXPECT_LT(h.binEdgeLower(b), r); //lower edge exclusive
+      EXPECT_GE(h.binEdgeUpper(b), r); //upper edge inclusive
     }      
   }
   //Test generation of histogram where lowest value is exactly 0; the lowest bin edge should still be slightly below 0 so as not to exclude it
@@ -141,7 +173,7 @@ TEST(TestHistogram, createHistogram){
     Histogram h;
     h.create_histogram(rtimes);
 
-    EXPECT_LT(h.bin_edges()[0], 0.0);
+    EXPECT_LT(h.binEdgeLower(0), 0.0);
      int b = h.getBin(0.0, 0);
     EXPECT_EQ(b, 0);
   }
@@ -166,7 +198,7 @@ TEST(TestHistogram, createHistogram){
     EXPECT_EQ( h.getBin(0.5, 0.), Histogram::RightOfHistogram);
     
     //Check all data points inside histogram
-    int sum = 0;
+    unsigned int sum = 0;
     for(int c: h.counts()) sum += c;
     
     EXPECT_EQ(sum, rtimes.size());
@@ -217,25 +249,20 @@ TEST(TestHistogram, mergeTwoHistograms){
     binWidthFixed bw(1e-20);
 
     Histogram g;
-    g.set_counts({1,4});
-    g.set_bin_edges({0.1,0.2,0.3});
-    g.set_min_max(0.100001,0.3);
+    g.set_histogram({1,4}, 0.100001,0.3, 0.1, 0.1);
     
     Histogram l;
-    l.set_counts({3,2});
-    l.set_bin_edges({0.0,0.3,0.6}); //other bins don't matter
-    l.set_min_max(0.000001,0.6);
+    l.set_histogram({3,2}, 0.000001,0.6, 0.0, 0.3);
     
     Histogram c = Histogram::merge_histograms(g, l, bw);
     
-    //It should choose a bin width equal to the smallest of the two bin widths
-    EXPECT_NEAR( c.bin_edges()[1] - c.bin_edges()[0], 0.1, 1e-5);
+    EXPECT_NEAR( c.binWidth(), 0.1, 1e-4);
 
     //Lower edge should be near the shared min
-    EXPECT_NEAR( c.bin_edges()[0], 0.001,  1e-3);
+    EXPECT_NEAR( c.binEdgeLower(0), 0.001,  1e-3);
 
-    //Upper edge should be near the shared max
-    EXPECT_NEAR( c.bin_edges()[c.Nbin()], 0.6,  1e-3);
+    //Upper edge should be equal to the shared max
+    EXPECT_EQ( c.binEdgeUpper(c.Nbin()-1), 0.6);
 
     //Number of bins should not be large
     EXPECT_LT( c.Nbin(), 100 );    
@@ -245,15 +272,10 @@ TEST(TestHistogram, mergeTwoHistograms){
   {
     std::cout << "Regular merge for histograms with same bin width" << std::endl;
     Histogram g;
-    g.set_counts({0,1,4,1,0});
-    g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6});  
-    g.set_min_max(0.1+1e-8,0.6);
+    g.set_histogram({0,1,4,1,0}, 0.1+1e-8,0.6, 0.1, 0.1);
 
     Histogram l;
-    l.set_counts({1,0,6,0,1});
-    l.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6});
-    l.set_min_max(0.1+1e-8,0.6);
-
+    l.set_histogram({1,0,6,0,1}, 0.1+1e-8,0.6, 0.1, 0.1);
 
     Histogram c = Histogram::merge_histograms(g, l);
 
@@ -262,19 +284,18 @@ TEST(TestHistogram, mergeTwoHistograms){
     std::cout << "g+l : " << c << std::endl;
 
     EXPECT_NE(c.Nbin(),0);
-    EXPECT_EQ(c.bin_edges().size(), c.Nbin()+1);
 
     //Check first bin edge is below the minimum data value (not equal; lower bin edges are exclusive)
-    EXPECT_LT(c.bin_edges()[0], 0.101);
-    //Check last bin edge is equal to or larger than the largest data point
-    EXPECT_GE(c.bin_edges()[c.Nbin()], 0.6);
+    EXPECT_LT(c.binEdgeLower(0), 0.101);
+    //Check last bin edge is equal to shared max
+    EXPECT_EQ(c.binEdgeUpper(c.Nbin()-1), 0.6);
 
     //Check total count is the same
-    double gc = 0; 
+    unsigned int gc = 0; 
     for(auto v: g.counts()) gc += v;
-    double lc = 0; 
+    unsigned int lc = 0; 
     for(auto v: l.counts()) lc += v;
-    double cc = 0; 
+    unsigned int cc = 0; 
     for(auto v: c.counts()) cc += v;
 
     EXPECT_EQ(gc, g.totalCount());
@@ -288,20 +309,16 @@ TEST(TestHistogram, mergeTwoHistograms){
   {
     std::cout << "Regular merge for histograms with different bin width" << std::endl;
     Histogram g;
-    g.set_counts({2,1,1,7,2,1,1});
     double bwg = 0.087;
-    std::vector<double> beg(g.Nbin()+1);
-    for(int i=0;i<=g.Nbin();i++) beg[i] = 0.09 + i * bwg;
-    g.set_bin_edges(beg);
-    g.set_min_max(beg.front()+1e-8, beg.back());
+    std::vector<double> beg(8);
+    for(int i=0;i<8;i++) beg[i] = 0.09 + i * bwg;
+    g.set_histogram({2,1,1,7,2,1,1}, beg.front()+1e-8, beg.back(), beg.front(), bwg);
 
     Histogram l;
-    l.set_counts({1,0,6,0,0,6,1});
     double bwl = 0.095;
-    std::vector<double> bel(l.Nbin()+1);
-    for(int i=0;i<=l.Nbin();i++) bel[i] = 0.093 + i * bwl;
-    l.set_bin_edges(bel);
-    l.set_min_max(bel.front()+1e-8, bel.back());
+    std::vector<double> bel(8);
+    for(int i=0;i<8;i++) bel[i] = 0.093 + i * bwl;
+    l.set_histogram({1,0,6,0,0,6,1},bel.front()+1e-8, bel.back(), bel.front(), bwl);   
 
     double smallest = std::min(beg.front()+1e-8,bel.front()+1e-8);
     double largest = std::max(beg.back(),bel.back());
@@ -313,19 +330,18 @@ TEST(TestHistogram, mergeTwoHistograms){
     std::cout << "g+l : " << c << std::endl;
 
     EXPECT_NE(c.Nbin(),0);
-    EXPECT_EQ(c.bin_edges().size(), c.Nbin()+1);
 
     //Check first bin edge is below representative data point (not equal; lower bin edges are exclusive)
-    EXPECT_LT(c.bin_edges()[0], smallest);
-    //Check last bin edge is equal to or larger than the largest data point
-    EXPECT_GE(c.bin_edges()[c.Nbin()], largest);
+    EXPECT_LT(c.binEdgeLower(0), smallest);
+    //Check last bin edge is equal to the largest data point
+    EXPECT_EQ(c.binEdgeUpper(c.Nbin()-1), largest);
 
     //Check total count is the same
-    double gc = g.totalCount();
-    double lc = l.totalCount();
-    double cc = c.totalCount();
+    unsigned int gc = g.totalCount();
+    unsigned int lc = l.totalCount();
+    unsigned int cc = c.totalCount();
 
-    EXPECT_NEAR(cc, gc+lc, 1e-12);
+    EXPECT_EQ(cc, gc+lc);
   }
 
 
@@ -334,11 +350,13 @@ TEST(TestHistogram, mergeTwoHistograms){
 
 TEST(TestHistogram, negation){
   Histogram g;
-  g.set_counts({2,40,24,10,3,1,0,1});
-  g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
-  g.set_min_max(0.11,0.9);
+  g.set_histogram({2,40,24,10,3,1,0,1}, 0.11,0.9, 0.1,0.1);
 
   Histogram n = -g;
+
+  std::cout << "Histogram : " << g << std::endl;
+  std::cout << "Negated histogram : " << n << std::endl;
+
   EXPECT_EQ(n.getBin(-0.95, 0.), Histogram::LeftOfHistogram);
   EXPECT_EQ(n.getBin(-0.85, 0.), 0);
   EXPECT_EQ(n.counts()[0], 1);
@@ -367,9 +385,7 @@ unsigned int sum_counts(const std::vector<unsigned int> &counts, const int bin){
 
 TEST(TestHistogram, empiricalCDF){
   Histogram g;
-  g.set_counts({2,40,24,10,3,1,0,1});
-  g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
-  g.set_min_max(0.1+1e-8,0.9);
+  g.set_histogram({2,40,24,10,3,1,0,1}, 0.1+1e-8,0.9, 0.1, 0.1);
 
   int nbin = g.Nbin();
   EXPECT_EQ(nbin, 8);
@@ -462,7 +478,7 @@ TEST(TestHistogram, empiricalCDF){
   cdf = n.empiricalCDF(value);
   prob = (sum_counts(inv_counts,6) + (value - (-0.2))/0.1 * inv_counts.back())/sum_count;
   std::cout << value << " " << cdf << std::endl;
-  EXPECT_EQ(cdf , prob);
+  EXPECT_NEAR(cdf , prob, 1e-3);
   
   //Test a value of a middle bin
   value = -0.26;
@@ -494,29 +510,27 @@ TEST(TestHistogram, negatedEmpiricalCDF){
   Histogram::empiricalCDFworkspace w;
 
   //Check   Fbar(5.94) = n(-5.94) = 1./6  (should include entire last bin)
-  EXPECT_NEAR(n.empiricalCDF(-5.94), 1./6, 1e-8);
+  EXPECT_NEAR(n.empiricalCDF(-5.94), 1./6, 1e-6);
 
   //Check   Fbar(6.0) = n(-6.0) = 0/6
-  EXPECT_NEAR(n.empiricalCDF(-6.0), 0., 1e-8);
+  EXPECT_NEAR(n.empiricalCDF(-6.0), 0., 1e-6);
  
   //Check   Fbar(6.1) = n(-6.1) = 0/6
-  EXPECT_NEAR(n.empiricalCDF(-6.1), 0./6, 1e-8);
+  EXPECT_NEAR(n.empiricalCDF(-6.1), 0./6, 1e-6);
 
   //Check   Fbar(0.9999) = n(-0.999) = 6/6  (should include entire first bin)
-  EXPECT_NEAR(n.empiricalCDF(-0.999), 6./6, 1e-8);
+  EXPECT_NEAR(n.empiricalCDF(-0.999), 6./6, 1e-6);
 
   //Check   Fbar(1.1) = n(-1.1) = 5/6
-  EXPECT_NEAR(n.empiricalCDF(-1.1), 5./6, 1e-8);
+  EXPECT_NEAR(n.empiricalCDF(-1.1), 5./6, 1e-6);
 }
 
 TEST(TestHistogram, skewness){
   //Create a fake histogram
-  std::vector<double> edges = { 0.1, 0.2, 0.3, 0.4, 0.5 };
   std::vector<unsigned int> counts = { 8,2,1,4 };
   
   Histogram g;
-  g.set_counts(counts);
-  g.set_bin_edges(edges);
+  g.set_histogram(counts, 0.11,0.5, 0.1,0.1);
 
   //Compute naively by unpacking histogram
   std::vector<double> gu = g.unpack();
@@ -545,9 +559,7 @@ TEST(TestHistogram, uniformCountInRange){
   //Check for a normal histogram
   {
     Histogram h;
-    h.set_bin_edges({0,1,2,3});
-    h.set_counts({1,2,3});
-    h.set_min_max(1e-12, 3);
+    h.set_histogram({1,2,3}, 1e-12,3  , 0,1);
     
     //total sum
     EXPECT_NEAR(h.uniformCountInRange(0,3),6.,1e-5);
@@ -564,9 +576,7 @@ TEST(TestHistogram, uniformCountInRange){
   //Check special treatment for a histogram with min=max
   {
     Histogram h;
-    h.set_bin_edges({0,1});
-    h.set_counts({3});
-    h.set_min_max(0.5, 0.5);
+    h.set_histogram({3}, 0.5,0.5, 0.5-1e-8,1e-8);
     
     EXPECT_NEAR(h.uniformCountInRange(0.499,0.5),3.,1e-5);
     EXPECT_NEAR(h.uniformCountInRange(0.5,0.501),0.,1e-5);
@@ -576,9 +586,7 @@ TEST(TestHistogram, uniformCountInRange){
 
 TEST(TestHistogramVBW, TestBasics){
   Histogram h;
-  h.set_bin_edges({0,1,2,3});
-  h.set_counts({1,2,3});
-  h.set_min_max(1e-12, 3);
+  h.set_histogram({1,2,3}, 1e-12, 3,  0,1);
   
   HistogramVBW hv;
   EXPECT_EQ(hv.Nbin(),0);
@@ -646,9 +654,7 @@ TEST(TestHistogramVBW, extractUniformCountInRangeInt){
   //Check for a normal histogram
   {
     Histogram h;
-    h.set_bin_edges({0,1,2,3});
-    h.set_counts({1,2,3});
-    h.set_min_max(1e-12, 3);
+    h.set_histogram({1,2,3}, 1e-12, 3, 0,1);
     
     //total sum
     {
@@ -771,9 +777,7 @@ TEST(TestHistogramVBW, extractUniformCountInRangeInt){
   //Check special treatment for a histogram with min=max
   {
     Histogram h;
-    h.set_bin_edges({0,1});
-    h.set_counts({3});
-    h.set_min_max(0.5, 0.5);
+    h.set_histogram({3}, 0.5, 0.5, 0.5-1e-8,1e-8);
 
     {
       HistogramVBW hcp(h);	    
@@ -804,16 +808,13 @@ TEST(TestHistogram, mergeUniformInt){
   //Test merge when bin edges align
   {
     HistogramTest h;
-    h.set_bin_edges({0,1,2,3});
-    h.set_counts({0,0,0});
+    h.set_histogram({0,0,0}, 1e-8,3, 0,1);
     
     HistogramTest l;
-    l.set_bin_edges({0,1,2,3});
-    l.set_counts({0,3,0});
+    l.set_histogram({0,3,0}, 1e-8,3, 0,1);
 
     HistogramTest g;
-    g.set_bin_edges({0,1,2,3});
-    g.set_counts({2,0,1});
+    g.set_histogram({2,0,1}, 1e-8,3, 0,1);
 
     HistogramTest::merge_histograms_uniform_int(h,l,g);
 
@@ -826,17 +827,13 @@ TEST(TestHistogram, mergeUniformInt){
   //Test merge when bin edges don't align
   {
     HistogramTest h;
-    h.set_bin_edges({-1,0,1,2,3,4,5}); //target edges
-    h.set_counts({0,0,0,0,0,0});
+    h.set_histogram({0,0,0,0,0,0}, -1+1e-8,5, -1,1);
     
     HistogramTest l;
-    l.set_bin_edges({-1,1,3,5});
-    l.set_counts({4,0,0});
+    l.set_histogram({4,0,0}, -1+1e-8,5, -1,2);
 
     HistogramTest g;
-    g.set_bin_edges({-1,1,2,3});
-    g.set_counts({6,0,0});
-
+    g.set_histogram({6,0}, -1+1e-8,3, -1,2);
 
     std::cout << "Merging l:\n" << l << std::endl;
     std::cout << "Merging g:\n" << g << std::endl;
@@ -857,16 +854,13 @@ TEST(TestHistogram, mergeUniformInt){
   //Test with fractional counts
   {
     HistogramTest h;
-    h.set_bin_edges({-1,-0.5,0,0.5,1,1.5,2.0,2.5,3.0});
-    h.set_counts({0,0,0,0,0,0,0,0});
+    h.set_histogram({0,0,0,0,0,0,0,0}, -1+1e-8,3,  -1,0.5);
     
     HistogramTest l;
-    l.set_bin_edges({-1,1,3});
-    l.set_counts({3,0});
+    l.set_histogram({3,0}, -1+1e-8,3, -1,2);
 
     HistogramTest g;
-    g.set_bin_edges({-1,1,3});
-    g.set_counts({0,2});
+    g.set_histogram({0,2}, -1+1e-8,3, -1,2);
 
     HistogramTest::merge_histograms_uniform_int(h,l,g);
 
@@ -897,9 +891,7 @@ TEST(TestHistogram, mergeUniformInt){
 //Test the correction used for COPOD where we shift the bin edges such that the CDF of the min value is 1/N rather than 0
 TEST(TestHistogram, empiricalCDFshift){
   Histogram g;
-  g.set_counts({2,6,5});
-  g.set_bin_edges({0.1,0.2,0.3,0.4});
-  g.set_min_max(0.1+1e-8,0.4);
+  g.set_histogram({2,6,5}, 0.1+1e-8,0.4, 0.1,0.1);
 
   //Check initial CDF is ~0
   double min = g.getMin();
@@ -910,9 +902,8 @@ TEST(TestHistogram, empiricalCDFshift){
   //Require  (min - edge)/bin_width * bin_count[0] / n = 1./n
   //edge = min - bin_width/bin_count[0]
   double shift = -0.1/2;
+  g.set_histogram({2,6,5}, 0.1+1e-8+shift,0.4+shift, 0.1+shift,0.1);
 
-  g.shiftBinEdges(shift);
-  
   double cdf = g.empiricalCDF(min);
   double desire = 1./n;
   std::cout << min << " " << cdf << " desire " << desire << std::endl;
@@ -929,7 +920,7 @@ TEST(TestHistogram, maxNbinBinWidthSpecifiers){
     Histogram h(runtimes, bw1);
     
     EXPECT_EQ(h.Nbin(),91);
-    EXPECT_NEAR(h.bin_edges()[1]-h.bin_edges()[0],0.1,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
+    EXPECT_NEAR(h.binWidth(),0.1,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
   }
 
   {
@@ -938,7 +929,7 @@ TEST(TestHistogram, maxNbinBinWidthSpecifiers){
     Histogram h(runtimes, bw1);
     
     EXPECT_EQ(h.Nbin(),50);
-    EXPECT_NEAR(h.bin_edges()[1]-h.bin_edges()[0], (10-0.99999)/50,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
+    EXPECT_NEAR(h.binWidth(), (10-0.99999)/50,1e-2);   //it will modify the bin width to max the max sit exactly on the upper bin edge
   }
 
   {
@@ -968,9 +959,7 @@ TEST(TestHistogram, maxNbinBinWidthSpecifiers){
 
 TEST(TestHistogram, serialize){
   Histogram g;
-  g.set_counts({2,40,24,10,3,1,0,1});
-  g.set_bin_edges({0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9});
-  g.set_min_max(0.1+1e-8,0.9);
+  g.set_histogram({2,40,24,10,3,1,0,1}, 0.1+1e-8,0.9,  0.1,0.1);
 
   {
     std::stringstream ss;

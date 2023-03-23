@@ -128,10 +128,13 @@ namespace chimbuko {
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
-     * @brief synchronize local parameters with global parameters
+     * @brief Synchronize the local model with the global model
      *
-     * @param[in] param local parameters
+     * @param[in] param local model
      * @return std::pair<size_t, size_t> [sent, recv] message size
+     *
+     * If we are connected to the pserver, the local model will be merged remotely with the current global model on the server, and the new global model returned. The internal global model will be replaced by this.
+     * If we are *not* connected to the pserver, the local model will be merged into the internal global model
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
 
