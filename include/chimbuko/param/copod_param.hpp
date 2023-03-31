@@ -160,6 +160,16 @@ namespace chimbuko {
      */
     nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
 
+    /**
+     * @brief Get the algorithm parameters in JSON form
+     */
+    nlohmann::json get_json() const override;
+    
+    /**
+     * @brief Set the algorithm parameters from the input JSON structure
+     */
+    void set_json(const nlohmann::json &from) override;
+
   private:
     std::unordered_map<unsigned long, CopodFuncParam> m_copodstats; /**< Map of func_id and corresponding Histogram*/
   };

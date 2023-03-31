@@ -3,6 +3,7 @@
 #include "chimbuko/util/error.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
+#include <cereal/archives/json.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/access.hpp>
 #include <cereal/types/vector.hpp>
@@ -113,6 +114,26 @@ HbosParam::HbosParam(): m_maxbins(200){
      rd(p.m_maxbins);
    }
  }
+
+nlohmann::json HbosParam::get_json() const{
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive wr(ss);
+    wr(m_hbosstats);
+    wr(m_maxbins);
+  }
+  return nlohmann::json::parse(ss.str());
+}  
+  
+void HbosParam::set_json(const nlohmann::json &from){
+  std::stringstream ss; ss << from.dump();
+  {
+    cereal::JSONInputArchive rd(ss);
+    rd(m_hbosstats);
+    rd(m_maxbins);
+  }
+}
+
 
  std::string HbosParam::update(const std::string& parameters, bool return_update)
  {

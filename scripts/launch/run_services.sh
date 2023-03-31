@@ -51,6 +51,7 @@ mkdir chimbuko/provdb    #directory in which provDB is run. Also the default dir
 mkdir chimbuko/viz
 mkdir chimbuko/vars      #directory for files containing variables for inter-script communication
 mkdir chimbuko/adios2
+mkdir chimbuko/pserver   #directory for storing data produced by the pserver
 
 #Set absolute paths
 base=$(pwd)
@@ -59,6 +60,7 @@ log_dir=${base}/chimbuko/logs
 provdb_dir=${base}/chimbuko/provdb
 var_dir=${base}/chimbuko/vars
 bp_dir=${base}/chimbuko/adios2
+ps_dir=${base}/chimbuko/pserver
 
 #Check tau adios2 path is writable; by default this is ${bp_dir} but it can be overridden by users, eg for offline analysis
 #touch ${TAU_ADIOS2_PATH}/write_check
@@ -279,7 +281,7 @@ if (( ${use_pserver} == 1 )); then
 
     pserver_alg=${ad_alg} #Pserver AD algorithm choice must match that used for the driver
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
-    pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
+    pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
 
     ps_pid=$!
     extra_args+=" -pserver_addr ${pserver_addr}"

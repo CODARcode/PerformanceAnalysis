@@ -4,6 +4,7 @@
 #include "chimbuko/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
+#include <cereal/archives/json.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/access.hpp>
 #include <cereal/types/vector.hpp>
@@ -16,7 +17,6 @@
 using namespace chimbuko;
 
 CopodFuncParam::CopodFuncParam():  m_internal_global_threshold(log2(1.00001)){}
-
 
 nlohmann::json CopodFuncParam::get_json() const{
   nlohmann::json entry = nlohmann::json::object();
@@ -100,6 +100,26 @@ void CopodFuncParam::merge(const CopodFuncParam &other){
      rd(p.m_copodstats);
    }
  }
+
+
+nlohmann::json CopodParam::get_json() const{
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive wr(ss);
+    wr(m_copodstats);
+  }
+  return nlohmann::json::parse(ss.str());
+}  
+  
+void CopodParam::set_json(const nlohmann::json &from){
+  std::stringstream ss; ss << from.dump();
+  {
+    cereal::JSONInputArchive rd(ss);
+    rd(m_copodstats);
+  }
+}
+
+
 
  std::string CopodParam::update(const std::string& parameters, bool return_update)
  {

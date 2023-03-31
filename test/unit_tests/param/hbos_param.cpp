@@ -155,3 +155,55 @@ TEST(TestHbosParam, syncLocalGlobal){
   ASSERT_TRUE(g.find(fid));
   EXPECT_EQ(g[fid], expect);
 }  
+
+TEST(TestHbosParam, serialize){
+  std::default_random_engine gen(1234);
+  std::normal_distribution<double> dist(50.,10.);
+  int N = 50;
+  int fid = 123;
+  double init_global_threshold = 100;
+  int maxbins = 200;
+
+  std::vector<double> runtimes(N);
+  for(int i=0;i<N;i++){
+    runtimes[i] = dist(gen);
+  }
+
+  HbosParam l;
+  l.setMaxBins(maxbins);
+  l.generate_histogram(fid, runtimes, init_global_threshold);
+  
+  std::string ser = l.serialize();
+  
+  HbosParam r;
+  r.assign(ser);
+
+  EXPECT_EQ(l.get_hbosstats(),r.get_hbosstats());
+  EXPECT_EQ(l.getMaxBins(), r.getMaxBins());
+}
+
+TEST(TestHbosParam, serializeJSON){
+  std::default_random_engine gen(1234);
+  std::normal_distribution<double> dist(50.,10.);
+  int N = 50;
+  int fid = 123;
+  double init_global_threshold = 100;
+  int maxbins = 200;
+
+  std::vector<double> runtimes(N);
+  for(int i=0;i<N;i++){
+    runtimes[i] = dist(gen);
+  }
+
+  HbosParam l;
+  l.setMaxBins(maxbins);
+  l.generate_histogram(fid, runtimes, init_global_threshold);
+  
+  nlohmann::json ser = l.get_json();
+  
+  HbosParam r;
+  r.set_json(ser);
+  
+  EXPECT_EQ(l.get_hbosstats(),r.get_hbosstats());
+  EXPECT_EQ(l.getMaxBins(), r.getMaxBins());
+}

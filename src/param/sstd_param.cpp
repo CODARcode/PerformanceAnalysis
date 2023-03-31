@@ -2,6 +2,7 @@
 #include "chimbuko/util/error.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
+#include <cereal/archives/json.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/access.hpp>
 #include <cereal/types/vector.hpp>
@@ -40,6 +41,23 @@ void SstdParam::deserialize_cerealpb(const std::string& parameters,  std::unorde
   {
     cereal::PortableBinaryInputArchive rd(ss);
     rd(runstats);
+  }
+}
+
+nlohmann::json SstdParam::get_json() const{
+  std::stringstream ss;
+  {
+    cereal::JSONOutputArchive wr(ss);
+    wr(m_runstats);
+  }
+  return nlohmann::json::parse(ss.str());
+}  
+  
+void SstdParam::set_json(const nlohmann::json &from){
+  std::stringstream ss; ss << from.dump();
+  {
+    cereal::JSONInputArchive rd(ss);
+    rd(m_runstats);
   }
 }
 

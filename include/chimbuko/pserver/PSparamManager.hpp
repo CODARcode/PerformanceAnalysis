@@ -59,7 +59,19 @@ namespace chimbuko{
      * @brief Get the current global model in serialized form
      */
     std::string getSerializedGlobalModel() const;
-    
+
+    /**
+     * @brief Get the current global model in JSON form
+     */
+    nlohmann::json getGlobalModelJSON() const;  
+
+    /**
+     * @brief Restore a previously saved global model
+     *
+     * The model for worker thread 0 will be set to this model, and the currently stored global model will be updated
+     * NOTE: This should be performed immediately after starting the server
+     */
+    void restoreGlobalModelJSON(const nlohmann::json &from);
 
     ~PSparamManager();
 

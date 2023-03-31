@@ -136,14 +136,7 @@ int main (int argc, char ** argv){
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
-    std::ifstream in(args.load_params);
-    if(!in.good()) throw std::runtime_error("Could not load anomaly algorithm parameters from the file provided");
-    nlohmann::json in_p;
-    in >> in_p;
-    global_func_index_map.deserialize(in_p["func_index_map"]);
-
-    //When the global model is updated the previous model is discarded. Thus if we want to bring in params from a previous run we need to set the state of *one* of the worker threads (which are never flushed)
-    param.updateWorkerModel(in_p["alg_params"].dump(),0);
+    restoreModel(global_func_index_map,  param, args.load_params);
   }
 
   //Start the aggregator thread for the global model
@@ -299,12 +292,7 @@ int main (int argc, char ** argv){
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
     progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
-    std::ofstream out(args.save_params);
-    if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
-    nlohmann::json out_p;
-    out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param.getSerializedGlobalModel()); //todo  - store in human readable format rather than net-serialize format
-    out << out_p;
+    writeModel(args.save_params, global_func_index_map, param);
   }
 
   progressStream << "Pserver: finished" << std::endl;
