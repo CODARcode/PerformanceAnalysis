@@ -2,6 +2,7 @@
 #include<chrono>
 #include<thread>
 #include<cassert>
+#include<csignal>
 #include<chimbuko/ad/ADProvenanceDBengine.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
