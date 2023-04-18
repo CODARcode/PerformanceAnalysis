@@ -144,14 +144,10 @@ int main(int argc, char **argv){
       }
       params = p;
     }else if(args.algorithm == "hbos" || args.algorithm == "copod"){
-      Histogram::Data d;
-      d.counts.resize(args.hbos_bins);
-      d.bin_edges.resize(args.hbos_bins+1);
-      for(int i=0;i<args.hbos_bins;i++) d.counts[i] = i;
-      for(int i=0;i<args.hbos_bins+1;i++) d.bin_edges[i] = i;
+      std::vector<unsigned int> counts(args.hbos_bins);
+      for(int i=0;i<args.hbos_bins;i++) counts[i] = i;
       Histogram hd;
-      hd.set_hist_data(d);
-      hd.set_min_max(0.0001, args.hbos_bins-0.0001);
+      hd.set_histogram(counts, 0.0001, args.hbos_bins, 0, 1);
 
       if(args.algorithm == "hbos"){
 	HbosParam *p = new HbosParam;
