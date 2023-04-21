@@ -70,6 +70,12 @@ namespace chimbuko{
   void set_error_output_file(const int rank, const std::string &file_stub = "ad_error");
 
   /**
+   * @brief Print a stack trace
+   */
+  void stacktrace(std::ostream &out, unsigned int max_frames = 63);
+
+
+  /**
    * @brief Signal a recoverable error
    */
 #define recoverable_error(MSG) \

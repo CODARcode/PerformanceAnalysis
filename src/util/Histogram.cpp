@@ -642,9 +642,40 @@ namespace chimbuko{
   }
 }
 
+std::string HistogramVBW::Bin::getBinInfo(Bin* bin){
+  std::ostringstream os;
+  if(!bin) os << "(null)";
+  else os << *bin;
+  return os.str();
+}
+
+HistogramVBW::Bin* HistogramVBW::Bin::getChainStart(Bin* begin){
+  if(!begin) fatal_error("Provided bin is null");
+  Bin* f= begin;
+  while(f->left != nullptr) f = f->left;
+  return f;
+}
+
+std::string HistogramVBW::Bin::getChainInfo(Bin* any_bin){
+  std::ostringstream os;
+  Bin* f = getChainStart(any_bin);
+  while(!f->is_end){
+    os << getBinInfo(f) << " ";
+    f = f->right;
+  }
+  return os.str();
+}
+
+
 HistogramVBW::Bin* HistogramVBW::Bin::insertRight(HistogramVBW::Bin* of, HistogramVBW::Bin* toins){
   if(of == nullptr) fatal_error("Nullptr exception");
   if(of->is_end) fatal_error("Cannot insert right of end");
+  if(toins->l < of->u || toins->u < of->u){
+    std::ostringstream os; os << "Cannot insert " << getBinInfo(toins) << " right of " << getBinInfo(of) << " because the edges are not properly ordered: " 
+			      << toins->l << "<" << of->u << "?" << (toins->l < of->u) << "  "
+			      << toins->u << "<" << of->u << "?" << (toins->u < of->u) << std::endl;
+    fatal_error(os.str());
+  }
 
   toins->right = of->right;
   toins->right->left = toins;
@@ -656,7 +687,8 @@ HistogramVBW::Bin* HistogramVBW::Bin::insertRight(HistogramVBW::Bin* of, Histogr
 
 HistogramVBW::Bin* HistogramVBW::Bin::insertLeft(HistogramVBW::Bin* of, HistogramVBW::Bin* toins){
   if(of == nullptr) fatal_error("Nullptr exception");
-  
+  if(!of->is_end && (toins->u > of->l || toins->l > of->l) ) fatal_error("Cannot insert " + getBinInfo(toins) + " left of " + getBinInfo(of) + " because the edges are not properly ordered");
+ 
   toins->left = of->left;
   if(toins->left) toins->left->right = toins;
 
@@ -703,7 +735,14 @@ HistogramVBW::Bin* HistogramVBW::Bin::getBin(HistogramVBW::Bin* start, double v)
   Bin* cur = start;
   Bin* next = cur->right;
   while(!cur->is_end){
-    if(v <= cur->u) return cur;
+    if(v <= cur->u){
+      if(v <= cur->l){
+	std::ostringstream os;
+	os << "Logic error in bin search, expect " << v << " to be within bin " << getBinInfo(cur) << " but the value is below the lower edge. Possibly the chain edges are not ordered? Chain: " << getChainInfo(start);
+	fatal_error(os.str());
+      }
+      return cur;
+    }
     cur = next;
     next = cur->right;
   }
@@ -713,7 +752,14 @@ HistogramVBW::Bin* HistogramVBW::Bin::getBin(HistogramVBW::Bin* start, double v)
     
 std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(HistogramVBW::Bin* bin, double about){
   if(bin == nullptr || bin->is_end) fatal_error("Invalid bin");
-  if(about < bin->l || about > bin->u) fatal_error("Split location not inside bin");
+  if(about <= bin->l || about > bin->u){
+    std::ostringstream os;
+    os << "Split location " << about << " not inside bin " << getBinInfo(bin) << "\n"
+       << "Tests for exclusion  about < lower_edge: " << (about < bin->l) << "  about > upper edge: " << (about > bin->u) << "\n"
+       << "Left neighbor bin " << getBinInfo(bin->left) << " and right neighbor bin " << getBinInfo(bin->right);
+    fatal_error(os.str());
+  }
+
   verboseStream << "Splitting bin " << *bin << " about " << about << std::endl;
   if(about == bin->u){
     verboseStream << "Split point matches upper edge, doing nothing" << std::endl;
@@ -736,11 +782,12 @@ std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(Histog
   
   //Assign debt to largest fraction with preference from left
   o[lrg] += debt;
-  
-  insertRight(bin, new Bin(about, bin->u, o[1]));
-  
+  double bu_prev = bin->u;
   bin->u = about;
   bin->c = o[0];
+  
+  insertRight(bin, new Bin(about, bu_prev, o[1]));
+  
   verboseStream << "Split bin into " << *bin << " and " << *bin->right << std::endl;
   return {bin, bin->right};
 }
@@ -759,7 +806,7 @@ size_t HistogramVBW::Bin::size(HistogramVBW::Bin* first){
 
 std::ostream & chimbuko::operator<<(std::ostream &os, const HistogramVBW::Bin &b){
   if(b.is_end) os << "(END)";
-  else os << "(" << b.l << ":" << b.u << "; " << b.c << ")";
+  else os << "(" << b.l << "," << b.u << "]{" << b.c << "}";
   return os;
 }
 
@@ -811,10 +858,21 @@ void HistogramVBW::import(const Histogram &h){
   first = fe.first;
   end = fe.second;
 
+  //for this histogram we want to ensure the upper edge of the previous bin and the lower edge of the next
+  //are identical. As the basic histogram computes these edges up to potential floating point errors, we enforce it manually here
+  double prev_upper = be.second; 
+
   Bin* hp = first;
   for(int b=1;b<h.Nbin();b++){
     be = h.binEdges(b);
-    hp = Bin::insertRight(hp, new Bin(be.first, be.second, h.binCount(b)) );
+    double reldiff_l = 2*(be.first - prev_upper)/(be.first + prev_upper);
+    if( fabs(reldiff_l) > 1e-8  ){
+      std::ostringstream of; of << "Lower bin edge should match upper bin edge of previous bin! Got " << prev_upper << " "  << be.first << " reldiff " << reldiff_l;
+      fatal_error(of.str());
+    }
+
+    hp = Bin::insertRight(hp, new Bin(prev_upper, be.second, h.binCount(b)) );
+    prev_upper = be.second;
   }
   m_min = h.getMin();
   m_max = h.getMax();

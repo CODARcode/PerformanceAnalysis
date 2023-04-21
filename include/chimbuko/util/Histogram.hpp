@@ -379,6 +379,17 @@ namespace chimbuko{
       static Bin* getBin(Bin* leftmost, double v);    
       static std::pair<Bin*,Bin*> split(Bin* bin, double about);
       static size_t size(Bin* leftmost);
+      /**
+       * @brief Return bin information as a string
+       */
+      static std::string getBinInfo(Bin* bin);
+      static Bin* getChainStart(Bin* begin);
+      /**
+       * @brief Print the info output for the entire chain
+       *
+       * Provided bin can be any in the chain
+       */
+      static std::string getChainInfo(Bin* any_bin);
     };
 
     HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0){}
