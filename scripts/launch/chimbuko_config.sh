@@ -3,7 +3,7 @@
 
 #IMPORTANT NOTE: Variables that cannot be left as default are marked as <------------ ***SET ME***
 
-service_node_iface=eth0 #network interface upon which communication to the service node is performed <------------ ***SET ME***
+service_node_iface=eth0 #network interface upon which communication to the service node is performed. Obtain from, e.g. "ip link show" (cf https://www.cyberciti.biz/faq/linux-list-network-interfaces-names-command/) <------------ ***SET ME***
 
 ####################################
 #Options for visualization module
@@ -31,9 +31,10 @@ provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi 
 provdb_port=5000 #the port of the provenance database. For >1 instance the port of instance i will be provdb_port+i 
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
+provdb_auto_interface=true #if true, the server will automatically choose its interface rather than using $service_node_iface
 
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
-provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***
+provdb_domain= #only needed for verbs provider. If left blank it will be chosen automatically. <------------ ***SET ME (if using verbs)***
 
 export FI_UNIVERSE_SIZE=1600  # Defines the expected number of provenance DB clients per instance <------------- *** SET ME (should be larger than the number of clients/instance)
 export FI_MR_CACHE_MAX_COUNT=0   # disable MR cache in libfabric; still problematic as of libfabric 1.10.1

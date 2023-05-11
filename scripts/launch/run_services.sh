@@ -108,11 +108,17 @@ if (( ${use_provdb} == 1 )); then
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address*
 
     #Enable better error reporting from Mercury
-    export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
+    export HG_LOG_SUBSYS=hg 
+    export HG_LOG_LEVEL=error
 
     for((i=0;i<provdb_ninstances;i++)); do
 	port=$((provdb_port+i))
-	provdb_addr="${service_node_iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
+	iface=${service_node_iface}
+	if [[ ${provdb_auto_interface} == true ]]; then
+	    echo "Chimbuko services: provDB is using automatic interface selection"
+	    iface=""
+	fi
+	provdb_addr="${iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
 	if [[ ${provdb_engine} == "verbs" ]]; then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
