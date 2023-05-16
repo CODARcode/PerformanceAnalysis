@@ -139,7 +139,7 @@ def summarizeEvent(event):
     thr_str = "{}".format(event['tid'])
     if event['is_gpu_event']:
         thr_str = "GPU{}/{}/{}".format(event['gpu_location']['device'],event['gpu_location']['context'],event['gpu_location']['stream'])    
-    return "pid={} rid={} tid={} func=\"{}\" step={} excl={}s tot={}s score={} severity={}".format(event['pid'],event['rid'],  thr_str, event['func'], event['io_step'], float(event['runtime_exclusive'])/1e6, float(event['runtime_total'])/1e6, event['outlier_score'], event['outlier_severity'])
+    return "pid={} rid={} tid={} fid={} func=\"{}\" step={} excl={}s tot={}s score={} severity={}".format(event['pid'],event['rid'],  thr_str, event['fid'], event['func'], event['io_step'], float(event['runtime_exclusive'])/1e6, float(event['runtime_total'])/1e6, event['outlier_score'], event['outlier_severity'])
                                              
 
 #Get the function profile information for application index 'app'
