@@ -119,7 +119,7 @@ if (( ${use_provdb} == 1 )); then
 	    iface=""
 	fi
 	provdb_addr="${iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
-	if [[ ${provdb_engine} == "verbs" ]]; then
+	if [[ ${provdb_engine} == "verbs" && ${provdb_domain} != "" ]]; then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
 	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
