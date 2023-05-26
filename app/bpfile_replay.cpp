@@ -75,7 +75,7 @@ int main(int argc, char** argv){
   }
 
 
-  adios2::ADIOS ad = adios2::ADIOS(adios2::DebugON);
+  adios2::ADIOS ad = adios2::ADIOS();
 
   adios2::IO io_out = ad.DeclareIO("writer");
     

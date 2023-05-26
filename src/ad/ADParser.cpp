@@ -24,7 +24,7 @@ ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, s
   m_inputFile = inputFile;
   if(inputFile == "") return;
 
-  m_ad = adios2::ADIOS(adios2::DebugON);
+  m_ad = adios2::ADIOS();
 
   // set io and engine
   m_io = m_ad.DeclareIO("tau-metrics");

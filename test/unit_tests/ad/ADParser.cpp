@@ -30,7 +30,7 @@ struct SSTrw{
     barrier.wait(); 
     std::cout << "Writer thread initializing" << std::endl;
   
-    ad = adios2::ADIOS(adios2::DebugON);
+    ad = adios2::ADIOS();
     io = ad.DeclareIO("tau-metrics");
     io.SetEngine("SST");
     io.SetParameters({
@@ -103,7 +103,7 @@ TEST(ADParserTestConstructor, opensCorrectlyBPFile){
   try{
     std::string filename = "commFile";   
     {
-      adios2::ADIOS ad = adios2::ADIOS(adios2::DebugON);
+      adios2::ADIOS ad = adios2::ADIOS();
       adios2::IO io = ad.DeclareIO("tau-metrics");
       io.SetEngine("BPFile");
       io.SetParameters({

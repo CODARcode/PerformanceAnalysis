@@ -48,7 +48,7 @@ int main(int argc, char** argv){
   adios2::IO io;
   adios2::Engine eng;
 
-  ad = adios2::ADIOS(adios2::DebugON);
+  ad = adios2::ADIOS();
   io = ad.DeclareIO("tau-metrics");
   if(!offline) io.SetEngine("SST");
   io.SetParameters({
