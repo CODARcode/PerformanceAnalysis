@@ -66,13 +66,15 @@ TEST(TestError, runTests){
 
     EXPECT_EQ(caught, true);
 
-    std::stringstream expect;
-    expect << "Error (FATAL) rank 22 : " << __func__ << " (" << __FILE__ << ":" << line <<") : hello\n";
+    std::stringstream expect_ss;
+    expect_ss << "Error (FATAL) rank 22 : " << __func__ << " (" << __FILE__ << ":" << line <<") : hello";
+    std::string expect = expect_ss.str();
 
     std::string thrown_err_str = removeDateTime(thrown_err.what());
+    thrown_err_str = thrown_err_str.substr(0,expect.size()); //remove stack trace information
 
     std::cout << thrown_err_str << std::endl;
-    EXPECT_EQ(thrown_err_str, expect.str());
+    EXPECT_EQ(thrown_err_str, expect);
 
     //Normally fatal errors are only written to the error stream if they are uncaught
     //As we caught the error above it will not be in the error stream unless we do an explicit flush
@@ -81,9 +83,10 @@ TEST(TestError, runTests){
     Error().flushError(thrown_err);
 
     std::string e = removeDateTime(ss.str());
+    e = e.substr(0,expect.size());
 
     std::cout << e << std::endl;
 
-    EXPECT_EQ(e, expect.str());
+    EXPECT_EQ(e, expect);
   }
 }

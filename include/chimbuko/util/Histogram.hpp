@@ -439,6 +439,15 @@ namespace chimbuko{
      */
     double extractUniformCountInRangeInt(double l, double u);
 
+    /**
+     * @brief Obtain the count of values falling between the given sets of bounds assuming a uniform distribution of points within a bin. The array of bounds must be ordered consecutively.
+     * The number is rounded to the nearest integer and returned. The data within the range in the histogram is zeroed, creating new edges appropriately
+     * This array operation is more efficient but otherwise identical to applying extractUniformCountInRangeInt on each of the ranges successively (in the same order!)
+     * @param edges An ordered list of lower and upper bounds, i.e. with edges[n].first <= edges[n].second for all n, and edges[n+1].first >= edges[n].second
+     */
+    std::vector<double> extractUniformCountInRangesInt(const std::vector<std::pair<double,double> > &edges);
+
+
     Bin const *getFirst() const{ return first; }
     Bin const *getEnd() const{ return end; }
   private:

@@ -956,6 +956,89 @@ TEST(TestHistogram, maxNbinBinWidthSpecifiers){
   }
 }
 
+TEST(TestHistogramVBW, extractUniformCountInRangeIntArray){
+  typedef HistogramVBW::Bin Bin;
+
+  //Check for a normal histogram
+  {
+    Histogram h;
+    h.set_histogram({7,21,33}, 1e-12, 3, 0,1); //count, min, max, start, binwidth
+
+    std::cout << h << std::endl;
+    std::vector<std::pair<double,double> > edges = {
+      { -1,-0.001 },
+      { -0.001, 0.5 },
+      { 0.5, 2} ,
+      { 2, 2.85}, 
+      { 2.85, 3.0},
+      { 3.0, 4.8 },
+      { 4.8, 9}
+    };
+
+    HistogramVBW v1(h);
+    std::cout << "Init VBW:" << std::endl << v1 << std::endl;
+
+    std::vector<double> expect;
+    for(auto const &e: edges){
+      double v = v1.extractUniformCountInRangeInt(e.first,e.second);
+      std::cout << "Extract " << e.first << "-" << e.second << " got " << v << std::endl;    
+      expect.push_back(v);
+      std::cout << "New VBW:" << std::endl << v1 << std::endl;
+    }
+    
+    HistogramVBW v2(h);
+    std::vector<double> got = v2.extractUniformCountInRangesInt(edges);
+    
+    EXPECT_EQ(expect.size(),got.size());
+
+    size_t i=0;
+    for(auto const &e: edges){
+      std::cout << e.first << "-" << e.second << " got " << got[i] << " expect " << expect[i] << std::endl;
+      EXPECT_NEAR(expect[i],got[i],1e-8);
+      i++;
+    }
+  }
+
+
+  //Check special treatment for a histogram with min=max
+  {
+    Histogram h;
+    h.set_histogram({33}, 0.5, 0.5, 0.5-1e-8,1e-8);
+
+    std::vector<std::pair<double,double> > edges = {
+      { -1,-0.499 },
+      { 0.499, 0.5 },
+      { 0.5, 3.0 }
+    };
+    std::cout << h << std::endl;
+
+    HistogramVBW v1(h);
+    std::cout << "Init VBW:" << std::endl << v1 << std::endl;
+
+    std::vector<double> expect;
+    for(auto const &e: edges){
+      double v = v1.extractUniformCountInRangeInt(e.first,e.second);
+      std::cout << "Extract " << e.first << "-" << e.second << " got " << v << std::endl;    
+      expect.push_back(v);
+      std::cout << "New VBW:" << std::endl << v1 << std::endl;
+    }
+    
+    HistogramVBW v2(h);
+    std::vector<double> got = v2.extractUniformCountInRangesInt(edges);
+    
+    EXPECT_EQ(expect.size(),got.size());
+
+    size_t i=0;
+    for(auto const &e: edges){
+      std::cout << e.first << "-" << e.second << " got " << got[i] << " expect " << expect[i] << std::endl;
+      EXPECT_NEAR(expect[i],got[i],1e-8);
+      i++;
+    }
+  }
+
+
+}
+
 
 TEST(TestHistogram, serialize){
   Histogram g;

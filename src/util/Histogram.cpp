@@ -159,13 +159,19 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
   int nbin_merged = comb_counts.size();
   double new_total = 0;
 
+  std::vector<std::pair<double,double> > edges(nbin_merged);
   for(int b=0;b<nbin_merged;b++){
-    auto be = combined.binEdges(b);
-    unsigned int gc = gw.extractUniformCountInRangeInt(be.first,be.second);
-    unsigned int lc = lw.extractUniformCountInRangeInt(be.first,be.second);
-    unsigned int val = gc+lc;
-    verboseStream << "Bin " << b << " range " << be.first << " to " << be.second << ": gc=" << gc << " lc=" << lc << " val=" << val << std::endl;
-    
+    edges[b] = combined.binEdges(b);
+    if(b>0) edges[b].first = edges[b-1].second; //eliminate floating point errors
+  }
+  
+  std::vector<double> gc = gw.extractUniformCountInRangesInt(edges);
+  std::vector<double> lc = lw.extractUniformCountInRangesInt(edges);
+  
+  for(int b=0;b<nbin_merged;b++){
+    unsigned int gcc = gc[b], lcc = lc[b];
+    unsigned int val = lcc + gcc;
+    verboseStream << "Bin " << b << " range " << edges[b].first << " to " << edges[b].second << ": gc=" << gcc << " lc=" << lcc << " val=" << val << std::endl;    
     comb_counts[b] += val;
     new_total += val;
   }
@@ -961,5 +967,93 @@ double HistogramVBW::extractUniformCountInRangeInt(double l, double u){
   
   out += h->c;
   h->c = 0;
+  return out;
+}
+
+
+std::vector<double> HistogramVBW::extractUniformCountInRangesInt(const std::vector<std::pair<double,double> > &edges){
+  std::vector<double> out(edges.size(), 0.);
+  if(edges.size()==0) return out;
+
+  if(first == nullptr) fatal_error("Histogram is empty");
+
+  if(m_max == m_min){
+    //Ignore the bin edges, the data set is a delta function
+    double v = m_max;
+    Bin* bin = (Bin*)getBin(v);
+    double count = bin->c;
+    for(size_t idx = 0; idx < edges.size(); idx++){
+      auto const &be = edges[idx];
+      double l = be.first, u = be.second;
+      if(u<=l) fatal_error(std::string("Invalid range, require u>l but got l=") + std::to_string(l) + " u=" + std::to_string(u));
+
+      if(l < v && u>= v){
+	verboseStream << "extractUniformCountInRangeInt range " << l << ":" << u << " evaluating for max=min=" << v << ": data are in bin with count " << count << std::endl;
+	bin->c = 0;
+	out[idx] = count;
+	break; //all future entries already 0
+      }
+    }
+  }
+
+  Bin* last = end->left;
+  Bin* prev_upper = first;
+
+  for(size_t idx = 0; idx < edges.size(); idx++){
+    auto const &be = edges[idx];
+    double l = be.first, u = be.second;
+    if(u<=l) fatal_error(std::string("Invalid range, require u>l but got l=") + std::to_string(l) + " u=" + std::to_string(u));
+    if(idx>0 && l< edges[idx-1].second) fatal_error("Expect edges to be ordered");
+
+    Bin* bl = Bin::getBin(prev_upper, l);
+
+    if(bl != nullptr){
+      verboseStream << "Lower edge " << l << " in bin " << *bl << std::endl;
+      bl = Bin::split(bl,l).second;
+      if(bl->is_end){
+	verboseStream << "Right of split point is end" << std::endl;
+	//If the split point matches the upper edge of the last bin, the .second pointer is END and the entry is 0
+	//furthermore, all entries with edges >=l will also have 0 entries, so we don't need to continue
+	return out;
+      }
+    }else if(l <= first->l){ //left edge is left of histogram
+      bl = first;
+      verboseStream << "Lower edge is left of histogram" << std::endl;
+    }else if(l > last->u){ //left edge is right of histogram
+      return out;
+    }else{
+      assert(0);
+    }
+
+    last = end->left; //update last in case it changed
+    
+    Bin* bu = Bin::getBin(bl, u);
+    if(bu != nullptr){
+      bu = Bin::split(bu,u).first;
+    }else if(u <= first->l){ //right edge is left of histogram
+      continue;
+    }else if(u > last->u){ //right edge is right of histogram
+      verboseStream << "Upper edge is right of histogram" << std::endl;
+      bu = last;
+    }else{
+      assert(0);
+    }
+
+    last = end->left;
+    
+    verboseStream << "Zeroing bins between " << *bl << " and " << *bu << std::endl;
+    Bin* h = bl;
+    while(h != bu){
+      out[idx] += h->c;
+      h->c = 0;
+      h = h->right;
+    }
+  
+    out[idx] += h->c;
+    h->c = 0;
+    
+    prev_upper = bu;
+  }
+  
   return out;
 }
