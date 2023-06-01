@@ -1,6 +1,6 @@
 #pragma once
-
-#include<vector>
+#include <chimbuko/util/chunkAllocator.hpp>
+#include <vector>
 #include <nlohmann/json.hpp>
 
 namespace chimbuko{
@@ -372,12 +372,12 @@ namespace chimbuko{
       
       Bin(double l, double u, double c): l(l), u(u), c(c), left(nullptr), right(nullptr), is_end(false){}
   
-      static std::pair<Bin*,Bin*> insertFirst(Bin* toins);
-      static Bin* insertRight(Bin* of, Bin* toins);
-      static Bin* insertLeft(Bin* of, Bin* toins);
-      static void deleteChain(Bin* leftmost);
-      static Bin* getBin(Bin* leftmost, double v);    
-      static std::pair<Bin*,Bin*> split(Bin* bin, double about);
+      static std::pair<Bin*,Bin*> insertFirst(Bin* toins, chunkAllocator<Bin> &alloc);
+      inline static Bin* insertRight(Bin* of, Bin* toins);
+      inline static Bin* insertLeft(Bin* of, Bin* toins);
+      static void deleteChain(Bin* leftmost, chunkAllocator<Bin> &alloc);
+      inline static Bin* getBin(Bin* leftmost, double v);    
+      inline static std::pair<Bin*,Bin*> split(Bin* bin, double about, chunkAllocator<Bin> &alloc);
       static size_t size(Bin* leftmost);
       /**
        * @brief Return bin information as a string
@@ -392,7 +392,7 @@ namespace chimbuko{
       static std::string getChainInfo(Bin* any_bin);
     };
 
-    HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0){}
+    HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0), allocator(100){}
 
     ~HistogramVBW();
 
@@ -401,7 +401,7 @@ namespace chimbuko{
     /**
      * @brief Construct from a fixed binwidth histogram
      */
-    explicit HistogramVBW(const Histogram &h): HistogramVBW(){ import(h); }
+    explicit HistogramVBW(const Histogram &h): first(nullptr), end(nullptr), m_min(0), m_max(0), allocator(h.Nbin()){ import(h); }
 
     /**
      * @brief Get the bin containing value 'v'
@@ -455,6 +455,7 @@ namespace chimbuko{
     Bin *end;
     double m_min;
     double m_max;
+    chunkAllocator<Bin> allocator;
   };
 
   std::ostream & operator<<(std::ostream &os, const HistogramVBW::Bin &b);

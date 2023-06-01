@@ -703,35 +703,37 @@ HistogramVBW::Bin* HistogramVBW::Bin::insertLeft(HistogramVBW::Bin* of, Histogra
   return toins;
 }
 
-HistogramVBW::Bin* create_end(){
-  HistogramVBW::Bin* end = new HistogramVBW::Bin(0,0,0);  
+HistogramVBW::Bin* create_end(chunkAllocator<HistogramVBW::Bin> &alloc){
+  HistogramVBW::Bin* end = new (alloc.get()) HistogramVBW::Bin(0,0,0);  
   end->is_end = true;
   return end;
 }
 
 
-std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::insertFirst(HistogramVBW::Bin* toins){
+std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::insertFirst(HistogramVBW::Bin* toins, chunkAllocator<Bin> &alloc){
   if(toins == nullptr) fatal_error("Nullptr exception");
-  Bin* end = create_end();
+  Bin* end = create_end(alloc);
   insertLeft(end, toins);
   return {toins,end};
 }
   
 
 
-void HistogramVBW::Bin::deleteChain(HistogramVBW::Bin* first){
+void HistogramVBW::Bin::deleteChain(HistogramVBW::Bin* first, chunkAllocator<Bin> &alloc){
   if(first == nullptr) fatal_error("Nullptr exception");
   if(first->left != nullptr) fatal_error("Deleting must start at the beginning of the chain");
 
   Bin* cur = first;
   Bin* next = cur->right;
   while(next != nullptr){
-    delete cur;
+    cur->~Bin();
+    alloc.free(cur);
     cur = next;
     next = cur->right;
   }
   if(!cur->is_end) fatal_error("Chain is broken");
-  delete cur;
+  cur->~Bin();
+  alloc.free(cur);
 }
 
 HistogramVBW::Bin* HistogramVBW::Bin::getBin(HistogramVBW::Bin* start, double v){
@@ -756,7 +758,7 @@ HistogramVBW::Bin* HistogramVBW::Bin::getBin(HistogramVBW::Bin* start, double v)
 }
 
     
-std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(HistogramVBW::Bin* bin, double about){
+std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(HistogramVBW::Bin* bin, double about, chunkAllocator<Bin> &alloc){
   if(bin == nullptr || bin->is_end) fatal_error("Invalid bin");
   if(about <= bin->l || about > bin->u){
     std::ostringstream os;
@@ -777,14 +779,11 @@ std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(Histog
   double fracs[2] = { (about - bin->l)/bw, 0 };
   fracs[1] = 1. - fracs[0];
   double count = bin->c;
-  
-  int lrg = 0;
-  double debt = count;
-  for(int i=0;i<2;i++){
-    o[i] = floor(fracs[i] * count + 0.5);
-    debt -= o[i];
-    if(fracs[i] > fracs[lrg]) lrg = i;
-  }
+ 
+  o[0] = floor(fracs[0] * count + 0.5);
+  o[1] = floor(fracs[1] * count + 0.5);
+  double debt = count - o[0] - o[1];
+  int lrg = fracs[1] > fracs[0] ? 1 : 0; 
   
   //Assign debt to largest fraction with preference from left
   o[lrg] += debt;
@@ -792,7 +791,7 @@ std::pair<HistogramVBW::Bin*,HistogramVBW::Bin*> HistogramVBW::Bin::split(Histog
   bin->u = about;
   bin->c = o[0];
   
-  insertRight(bin, new Bin(about, bu_prev, o[1]));
+  insertRight(bin, new (alloc.get()) Bin(about, bu_prev, o[1]));
   
   verboseStream << "Split bin into " << *bin << " and " << *bin->right << std::endl;
   return {bin, bin->right};
@@ -860,7 +859,7 @@ void HistogramVBW::import(const Histogram &h){
   if(h.Nbin() == 0) return;
 
   auto be = h.binEdges(0);
-  auto fe = Bin::insertFirst(new Bin(be.first, be.second, h.binCount(0)) );
+  auto fe = Bin::insertFirst(new (allocator.get()) Bin(be.first, be.second, h.binCount(0)), allocator);
   first = fe.first;
   end = fe.second;
 
@@ -877,7 +876,7 @@ void HistogramVBW::import(const Histogram &h){
       fatal_error(of.str());
     }
 
-    hp = Bin::insertRight(hp, new Bin(prev_upper, be.second, h.binCount(b)) );
+    hp = Bin::insertRight(hp, new (allocator.get()) Bin(prev_upper, be.second, h.binCount(b)) );
     prev_upper = be.second;
   }
   m_min = h.getMin();
@@ -885,7 +884,7 @@ void HistogramVBW::import(const Histogram &h){
 }
 
 HistogramVBW::~HistogramVBW(){
-  if(first != nullptr) Bin::deleteChain(first);
+  if(first != nullptr) Bin::deleteChain(first,allocator);
 }
 
 double HistogramVBW::totalCount() const{
@@ -927,7 +926,7 @@ double HistogramVBW::extractUniformCountInRangeInt(double l, double u){
 
   if(bl != nullptr){
     verboseStream << "Lower edge " << l << " in bin " << *bl << std::endl;
-    bl = Bin::split(bl,l).second;
+    bl = Bin::split(bl,l,allocator).second;
     if(bl->is_end){
       verboseStream << "Right of split point is end" << std::endl;
       //If the split point matches the upper edge of the last bin, the .second pointer is END
@@ -946,7 +945,7 @@ double HistogramVBW::extractUniformCountInRangeInt(double l, double u){
 
   Bin* bu = Bin::getBin(bl, u);
   if(bu != nullptr){
-    bu = Bin::split(bu,u).first;
+    bu = Bin::split(bu,u,allocator).first;
   }else if(u <= first->l){ //right edge is left of histogram
     return 0;
   }else if(u > last->u){ //right edge is right of histogram
@@ -1009,7 +1008,7 @@ std::vector<double> HistogramVBW::extractUniformCountInRangesInt(const std::vect
 
     if(bl != nullptr){
       verboseStream << "Lower edge " << l << " in bin " << *bl << std::endl;
-      bl = Bin::split(bl,l).second;
+      bl = Bin::split(bl,l, allocator).second;
       if(bl->is_end){
 	verboseStream << "Right of split point is end" << std::endl;
 	//If the split point matches the upper edge of the last bin, the .second pointer is END and the entry is 0
@@ -1029,7 +1028,7 @@ std::vector<double> HistogramVBW::extractUniformCountInRangesInt(const std::vect
     
     Bin* bu = Bin::getBin(bl, u);
     if(bu != nullptr){
-      bu = Bin::split(bu,u).first;
+      bu = Bin::split(bu,u, allocator).first;
     }else if(u <= first->l){ //right edge is left of histogram
       continue;
     }else if(u > last->u){ //right edge is right of histogram
