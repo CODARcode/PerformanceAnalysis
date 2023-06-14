@@ -1,0 +1,74 @@
+spack:
+  specs:
+  - chimbuko-provdb-python ^mercury~ofi~boostsys~checksum ^pkgconf@1.8.0 ^mochi-sonata~bedrock
+  - cmake ^openssl@1.1.1t
+  concretizer:
+    unify: true
+  config:
+    install_tree: /opt/software
+  view: /opt/view
+  compilers:
+  - compiler:
+      spec: gcc@=7.5.0
+      paths:
+        cc: /usr/bin/gcc
+        cxx: /usr/bin/g++
+        f77: null
+        fc: null
+      flags: {}
+      operating_system: ubuntu18.04
+      target: x86_64
+      modules: []
+      environment: {}
+      extra_rpaths: []
+  repos:
+  - /Downloads/PerformanceAnalysis/spack/repo/chimbuko
+  - /Downloads/mochi-spack-packages
+  packages:
+    all:
+      compiler: [gcc@=7.5.0]
+      providers: {}
+      buildable: false
+      version: []
+      target: []
+    findutils:
+      externals:
+      - spec: findutils@4.7.0-git
+        prefix: /usr
+    gmake:
+      externals:
+      - spec: gmake@4.1
+        prefix: /usr
+    binutils:
+      externals:
+      - spec: binutils@2.30
+        prefix: /usr
+    openssh:
+      externals:
+      - spec: openssh@7.6p1
+        prefix: /usr
+    diffutils:
+      externals:
+      - spec: diffutils@3.6
+        prefix: /usr
+    openssl:
+      externals:       
+      - spec: openssl@1.1.1t
+        prefix: /opt/conda
+        buildable: false
+    coreutils:
+      externals:
+      - spec: coreutils@8.28
+        prefix: /usr
+    python:
+      externals:
+      - spec: python@3.10.10
+        prefix: /opt/conda
+    py-pip:
+      externals:
+      - spec: py-pip@23.0.1
+        prefix: /opt/conda
+    perl:
+      externals:
+      - spec: perl@5.26.1
+        prefix: /usr
