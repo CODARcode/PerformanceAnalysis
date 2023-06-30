@@ -15,6 +15,229 @@
 namespace chimbuko {
 
   /**
+   * An abstract interface for passing data to the AD algorithms and recording the results
+   * THIS API IS FOR A SINGLE DATA SET, EG FOR ONE FUNCTION INDEX
+   */
+  class ADDataSetInterface{
+    size_t m_dset_idx; /**< The data set index associated with this interface*/
+
+    std::vector<size_t> m_anomalies; /**< Indices of recorded anomalies*/
+    std::vector<size_t> m_normal_events; /**< The normal event (array max size 1 !) if present*/
+    double m_normal_event_score; /**< The score of the normal event recorded, if present*/
+    size_t m_labeled_events; /**< The number of events that were labeled, whether recorded or not*/
+
+  public:
+    enum class EventType { Outlier, Normal };
+
+    struct Elem{
+      double value; /**< The value of the data point */
+      size_t index; /**< An arbitrary but unique identifier index for this element*/
+    };
+
+    ADDataSetInterface(size_t dset_idx): m_dset_idx(dset_idx), m_labeled_events(0){}
+
+    /**
+     * @brief Return a unique identifier index associated with this set of data
+     *
+     * This index is associated with a specific model by the AD algorithms. For example, if analyzing function runtimes, this index could be the function index.
+     */
+    inline size_t getDataSetIndex() const{ return m_dset_idx; }
+    
+    /**
+     * @brief Return the set of data points
+     *
+     * These should only include data not previously labeled
+     */
+    virtual std::vector<Elem> getDataSet() const = 0;
+
+    /**
+     * @brief Set the label for the given data point and the associated score
+     *
+     * This function also records the indices of all anomalies and a single normal event (if detected); that which has the lowest score (most likely) 
+     */
+    void setDataLabel(size_t index, double score, EventType label);
+
+    /**
+     * @brief Apply the label to the data element in whatever its native format. This is called by setDataLabel
+     */
+    virtual void labelDataElement(size_t index, double score, EventType label) = 0;
+
+    /**
+     * @brief Get number of outliers/normal events recorded
+     *
+     * Note: This is not all of the normal events, only the selection of normal events that we keep for comparison purposes
+     */
+    size_t nEventsRecorded(EventType type) const{ return type == Outlier ? m_anomalies.size() : m_normal_events.size(); }
+
+    /**
+     * @brief  Get the total number of events analyzed (both recorded and unrecorded)
+     */
+    size_t nEvents() const{ return m_labeled_events; }
+
+    /**
+     * @brief Return an array of indices corresponding to events of the given type
+     */
+    const std::vector<size_t> & getEventsRecorded(EventType type) const{ return type == Outlier ? m_anomalies : m_normal_events; }
+
+
+    virtual ~ADDataSetInterface(){}
+  };
+
+
+
+  /**
+   * An abstract interface for passing data to the AD algorithms and recording the results
+   * THIS API IS FOR A MULTIPLE DATA SETS
+   * Note: the index here is always 0...Ndataset
+   */
+  class ADDataInterface{
+    /**
+     * @brief Anomaly information for a given data set
+     */
+    class DataSetAnomalies{
+      std::vector<size_t> m_anomalies; /**< Indices of recorded anomalies*/
+      std::vector<size_t> m_normal_events; /**< The normal event (array max size 1 !) if present*/
+      double m_normal_event_score; /**< The score of the normal event recorded, if present*/
+      size_t m_labeled_events; /**< The number of events that were labeled, whether recorded or not*/
+      
+    public:
+      DataSetAnomalies(): m_labeled_events(0){}
+
+      /**
+       * @brief Get number of outliers/normal events recorded
+       *
+       * Note: This is not all of the normal events, only the selection of normal events that we keep for comparison purposes
+       */
+      size_t nEventsRecorded(EventType type) const{ return type == Outlier ? m_anomalies.size() : m_normal_events.size(); }
+
+      /**
+       * @brief  Get the total number of events analyzed (both recorded and unrecorded)
+       */
+      size_t nEvents() const{ return m_labeled_events; }
+
+      /**
+       * @brief Return an array of indices corresponding to events of the given type
+       */
+      const std::vector<size_t> & getEventsRecorded(EventType type) const{ return type == Outlier ? m_anomalies : m_normal_events; }     
+    };
+    
+    std::vector<DataSetAnomalies> m_dset_anom;
+  public:
+    enum class EventType { Outlier, Normal };
+
+    struct Elem{
+      double value; /**< The value of the data point */
+      size_t index; /**< An arbitrary but unique identifier index for this element*/
+      Elem(double v, size_t i): value(v), index(i){}
+    };
+
+    ADDataInterface(size_t ndataset): m_dset_anom(ndataset){}
+
+    /**
+     * @brief Return the number of data sets
+     */
+    inline size_t nDataSets() const{ m_dset_anom.size(); }
+   
+    /**
+     * @brief Return the set of data points associated with data set index 'dset_index'
+     *
+     * These should only include data not previously labeled
+     */
+    virtual std::vector<Elem> getDataSet(size_t dset_index) const = 0;
+
+    /**
+     * @brief Set the label for the given data point and the associated score
+     *
+     * This function also records the indices of all anomalies and a single normal event (if detected); that which has the lowest score (most likely) 
+     */
+    void setDataLabel(size_t dset_index, size_t elem_index, double score, EventType label);
+
+    /**
+     * @brief Apply the label to the data element in whatever its native format. This is called by setDataLabel
+     * @param dset_index The index of the dataset  0 <= idx < nDataSets()
+     * @param elem_index The index of the element, used as a key so the assigment is implementation dependent
+     */
+    virtual void labelDataElement(size_t dset_index, size_t elem_index, double score, EventType label) = 0;
+
+    const DataSetAnomalies & getResults(size_t dset_index) const{ return m_dset_anom[dset_index]; }
+
+    /**
+     * @brief  Get the total number of events analyzed (both recorded and unrecorded) summed over all data sets
+     */
+    size_t nEvents() const;
+
+    virtual ~ADDataInterface(){}
+  };
+  
+  /**
+   * @brief An implementation of the data set interface for ExecData
+   */
+  class ADExecDataInterface: public ADDataInterface{
+  public:
+    /**
+     * @brief Enumeration of which statistic is used for outlier detection
+     */
+    enum OutlierStatistic { ExclusiveRuntime, InclusiveRuntime };
+
+    /**
+     * @brief Set the statistic used for the anomaly detection
+     */
+    void setStatistic(OutlierStatistic to){ m_statistic = to; }
+
+    /**
+     * @brief Extract the appropriate statistic from an ExecData_t object
+     */
+    double getStatisticValue(const ExecData_t &e) const;
+
+    /**
+     * @brief Return true if the specified function is being ignored
+     */
+    bool ignoringFunction(const std::string &func) const;
+
+    /**
+     * @brief Set a function to be ignored by the outlier detection.
+     *
+     * All such events are flagged as normal
+     */
+    void setIgnoreFunction(const std::string &func);
+
+    std::vector<ADDataInterface::Elem> getDataSet(size_t dset_index) const override{
+      std::vector<ADDataInterface::Elem> out;
+      size_t fid = m_dset_fid_map[dset_index];
+      auto &data = (*m_execDataMap)[fid];
+
+      if(data.size() == 0) return out;
+      const std::string &fname = data.front()->get_funcname();
+      bool ignore_func =  ignoringFunction(fname);
+
+      for(size_t i=0;i<data.size();i++){ //loop over events for that function
+	auto &e = *data[i];
+	if(e.get_label() == 0){ //has not been analyzed previously
+	  if(ignore_func) e.set_label(1); //label as normal event
+	  else{
+	    out.push_back(ADDataInterface::Elem(getStatisticValue(e),i));
+	  }
+	}
+      }
+      return out;
+    }
+    
+    void labelDataElement(size_t dset_index, size_t elem_index, double score, EventType label) override{
+      auto &e = (*m_execDataMap)[ m_dset_fid_map[dset_index] ][elem_index];
+      e.set_outlier_score(score);
+      e.set_label( label == ADDataInterface::Outlier ? -1 : 1 );
+    }
+    
+  private:
+    OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
+    std::unordered_set<std::string> m_func_ignore; /**< A list of functions that are ignored by the anomaly detection (all flagged as normal events)*/
+    const ExecDataMap_t * m_execDataMap;     /**< execution data map */
+    std::vector<size_t> m_dset_fid_map; /**< Map of data set index to func idx*/
+  };
+
+
+
+  /**
    * @brief abstract class for anomaly detection algorithms
    *
    */
