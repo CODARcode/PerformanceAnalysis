@@ -1,0 +1,42 @@
+FROM ubuntu:18.04 as conda
+RUN apt-get update && apt-get install -y build-essential wget && apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV CONDA_DIR /opt/conda
+ENV PATH=$CONDA_DIR/bin:$PATH
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && /bin/bash ~/miniconda.sh -b -p /opt/conda
+RUN conda init bash
+
+FROM conda as builder
+RUN apt-get update && apt-get install -y git
+WORKDIR /Downloads
+RUN git clone https://github.com/CODARcode/PerformanceAnalysis.git && rm -rf PerformanceAnalysis/spack/repo/chimbuko/packages/binutils
+RUN git clone https://github.com/mochi-hpc/mochi-spack-packages.git
+WORKDIR /
+RUN git clone https://github.com/spack/spack.git
+WORKDIR /Downloads
+RUN . /spack/share/spack/setup-env.sh && spack repo add PerformanceAnalysis/spack/repo/chimbuko && spack repo add mochi-spack-packages
+WORKDIR /opt/spack-environment
+RUN echo 'invalidate 8'
+COPY provdb_python_spack_env /opt/spack-environment/spack.yaml
+RUN . /spack/share/spack/setup-env.sh && spack env activate . && spack install --fail-fast && spack gc -y
+
+RUN apt-get update && apt-get install -y file && find -L /opt/view/* -type f -exec readlink -f '{}' \; | \
+    xargs file -i | \
+    grep 'charset=binary' | \
+    grep 'x-executable\|x-archive\|x-sharedlib' | \
+    awk -F: '{print $1}' | xargs strip -s
+
+RUN cd /opt/spack-environment && \
+    . /spack/share/spack/setup-env.sh && spack env activate --sh -d . >> /etc/profile.d/z10_spack_environment.sh
+
+FROM conda
+COPY --from=builder /opt/spack-environment /opt/spack-environment
+COPY --from=builder /opt/software /opt/software
+COPY --from=builder /opt/view /opt/view
+COPY --from=builder /etc/profile.d/z10_spack_environment.sh /etc/profile.d/z10_spack_environment.sh
+
+RUN pip3 install jupyter
+WORKDIR /jupyter
+RUN echo '#!/bin/bash\njupyter notebook --no-browser --port=$1 --allow-root --ip=0.0.0.0' > run_notebook.sh && chmod u+x run_notebook.sh
+COPY jupyter_example.ipynb /jupyter/
+
+ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l"]
