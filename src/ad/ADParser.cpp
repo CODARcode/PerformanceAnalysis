@@ -681,7 +681,8 @@ std::vector<Event_t> ADParser::getEvents() const{
 	ndata_t[type] = it->second.size();
       }
     }
-    
+  
+    unsigned long last_func_entry = 0; //record the entry of the currently open function
     size_t off_t[3] = {0,0,0};
 
     while(data_t[0] != nullptr || data_t[1] != nullptr || data_t[2] != nullptr){
@@ -715,6 +716,15 @@ std::vector<Event_t> ADParser::getEvents() const{
       int pe = getEarliest(arrays);
       int earliest = priority[pe]; //the index of the type that is earliest
       
+      //Catch edge case where ENTRY, CORRID, EXIT all have the same timestamp. We will assume the corrid is associated with this function event
+      if(earliest == FUNC && func_event_type == EXIT && data_t[FUNC]->ts() == last_func_entry && 
+	 counter_is_correlation_id && data_t[COUNTER]->ts() == last_func_entry)
+	earliest = COUNTER;
+
+      //Record function entry time for logic above
+      if(earliest == FUNC && func_event_type == ENTRY)
+	last_func_entry = data_t[FUNC]->ts();
+
       out.push_back(*data_t[earliest]);
       ++data_t[earliest];
       ++off_t[earliest];
