@@ -47,3 +47,18 @@ std::vector<CallListIterator_t> Anomalies::funcEventsRecorded(unsigned long fid,
   }
   return out;
 }
+
+void Anomalies::import(const ADExecDataInterface &iface){
+  m_n_events_total = iface.nEvents();
+  m_all_outliers.resize(iface.nEventsRecorded(ADExecDataInterface::EventType::Outlier));
+  m_all_normal_execs.resize(iface.nEventsRecorded(ADExecDataInterface::EventType::Normal));
+  size_t i=0,j=0;
+  for(size_t dset=0;dset<iface.nDataSets();dset++){
+    for(size_t eidx : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Outlier))
+      m_all_outliers[i++] = iface.getExecDataEntry(dset,eidx);
+    for(size_t eidx : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Normal)){
+      m_all_normal_execs[j] = iface.getExecDataEntry(dset,eidx);
+      m_func_normal_exec_idx[ m_all_normal_execs[j]->get_fid() ] = j++;
+    }
+  }
+}

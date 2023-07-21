@@ -1,4 +1,5 @@
 #include<chimbuko/ad/ADOutlier.hpp>
+#include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/param/copod_param.hpp>
@@ -18,30 +19,44 @@ using namespace chimbuko;
 //Derived class to allow access to protected member functions
 class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
-  ADOutlierSSTDTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierSSTD(stat){}
+  ADOutlierSSTDTest(): ADOutlierSSTD(){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    return this->compute_outliers(anomalies,func_id, data);
+    ExecDataMap_t execdata;
+    execdata[func_id] = data;
+    
+    ADExecDataInterface iface(&execdata);
+    this->labelData(iface.getDataSet(0),0,iface);
+
+    anomalies.import(iface);
+    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
   }
 
   double computeScoreTest(CallListIterator_t ev, const SstdParam &stats) const{
-    return this->computeScore(ev, stats);
+    return this->computeScore(ev->get_exclusive(),ev->get_fid(),stats);
   }
 
 };
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
 public:
-  ADOutlierHBOSTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierHBOS(stat){}
+  ADOutlierHBOSTest(): ADOutlierHBOS(){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    return this->compute_outliers(anomalies,func_id, data);
+    ExecDataMap_t execdata;
+    execdata[func_id] = data;
+    
+    ADExecDataInterface iface(&execdata);
+    this->labelData(iface.getDataSet(0),0,iface);
+
+    anomalies.import(iface);
+    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
   }
 
   void setParams(const HbosParam &p){ 
@@ -52,11 +67,18 @@ public:
 
 class ADOutlierCOPODTest: public ADOutlierCOPOD{
 public:
-  ADOutlierCOPODTest(ADOutlier::OutlierStatistic stat = ADOutlier::ExclusiveRuntime): ADOutlierCOPOD(stat){}
+  ADOutlierCOPODTest(): ADOutlierCOPOD(){}
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    return this->compute_outliers(anomalies,func_id, data);
+    ExecDataMap_t execdata;
+    execdata[func_id] = data;
+    
+    ADExecDataInterface iface(&execdata);
+    this->labelData(iface.getDataSet(0),0,iface);
+
+    anomalies.import(iface);
+    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
   }
 
   void setParams(const CopodParam &p){ 
@@ -304,8 +326,10 @@ TEST(ADOutlierSSTDTestRunWithoutPS, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  outlier.linkExecDataMap(&data_map);
-  Anomalies anomalies = outlier.run(0);
+  ADExecDataInterface iface(&data_map);
+  outlier.run(iface,0);
+  Anomalies anomalies;
+  anomalies.import(iface);
 
   size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
   std::cout << "# outliers detected: " << nout << std::endl;
@@ -361,12 +385,15 @@ TEST(ADOutlierSSTDTestFuncIgnore, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  outlier.linkExecDataMap(&data_map);
-  outlier.setIgnoreFunction(fname1);
-  EXPECT_TRUE(outlier.ignoringFunction(fname1));
-  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+  ADExecDataInterface iface(&data_map);
+  iface.setIgnoreFunction(fname1);
+  EXPECT_TRUE(iface.ignoringFunction(fname1));
+  EXPECT_FALSE(iface.ignoringFunction(fname2));
+  
+  outlier.run(iface,0);
+  Anomalies anomalies;
+  anomalies.import(iface);
 
-  Anomalies anomalies = outlier.run(0);
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
 
@@ -411,9 +438,10 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
 
   //Check using the exclusive runtime (default)
   {
-    ADOutlierSSTDTest outlier(ADOutlier::ExclusiveRuntime);
-    outlier.linkExecDataMap(&data_map);
-    Anomalies anomalies = outlier.run(0);
+    ADOutlierSSTDTest outlier;
+    ADExecDataInterface iface(&data_map);
+    outlier.run(iface, 0);
+    Anomalies anomalies; anomalies.import(iface);
 
     size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
@@ -433,9 +461,10 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
 
   //Check using the include runtime; the parent should also be anomalous
   {
-    ADOutlierSSTDTest outlier(ADOutlier::InclusiveRuntime);
-    outlier.linkExecDataMap(&data_map);
-    Anomalies anomalies = outlier.run(0);
+    ADOutlierSSTDTest outlier;
+    ADExecDataInterface iface(&data_map);
+    outlier.run(iface, 0);
+    Anomalies anomalies; anomalies.import(iface);
 
     size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
@@ -449,7 +478,7 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
 
 
 TEST(ADOutlierSSTDtest, TestAnomalyScore){
-  ADOutlierSSTDTest outlier(ADOutlier::ExclusiveRuntime);
+  ADOutlierSSTDTest outlier;
   
   int fid = 100;
   SstdParam params;
@@ -486,7 +515,7 @@ TEST(ADOutlierSSTDtest, TestAnomalyScore){
 }
 
 TEST(ADOutlierHBOSTest, TestAnomalyDetection){
-  ADOutlierHBOSTest outlier(ADOutlier::ExclusiveRuntime);
+  ADOutlierHBOSTest outlier;
   
   //Generate a histogram
   std::vector<unsigned int> counts = {2,8,1,0,0,2};
@@ -629,12 +658,15 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     data_map[it->get_fid()].push_back(it);
 
-  outlier.linkExecDataMap(&data_map);
-  outlier.setIgnoreFunction(fname1);
-  EXPECT_TRUE(outlier.ignoringFunction(fname1));
-  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+  ADExecDataInterface iface(&data_map);
+  iface.setIgnoreFunction(fname1);
+  EXPECT_TRUE(iface.ignoringFunction(fname1));
+  EXPECT_FALSE(iface.ignoringFunction(fname2));
 
-  Anomalies anomalies = outlier.run(0);
+  outlier.run(iface, 0);
+  Anomalies anomalies;
+  anomalies.import(iface);
+
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
   EXPECT_GE(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1); //depending on various tolerances (e.g. number of bins, number of data points), it may detect more than 1 outlier, but should detect at least the artificial one
 
@@ -647,7 +679,7 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
 
 
 TEST(ADOutlierCOPODTest, TestAnomalyDetection){
-  ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
+  ADOutlierCOPODTest outlier;
   
   //Generate a histogram
   std::vector<unsigned int> counts = {2,8,1,0,0,2};
@@ -728,7 +760,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
 
 //For a multi-modal distribution it is not clear how COPOD handles data in bins between peaks
 TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
-  ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
+  ADOutlierCOPODTest outlier;
   
   //Generate a histogram
   CopodFuncParam hp;
@@ -793,12 +825,15 @@ TEST(ADOutlierCOPODTestFuncIgnore, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  outlier.linkExecDataMap(&data_map);
-  outlier.setIgnoreFunction(fname1);
-  EXPECT_TRUE(outlier.ignoringFunction(fname1));
-  EXPECT_FALSE(outlier.ignoringFunction(fname2));
+  ADExecDataInterface iface(&data_map);
+  iface.setIgnoreFunction(fname1);
+  EXPECT_TRUE(iface.ignoringFunction(fname1));
+  EXPECT_FALSE(iface.ignoringFunction(fname2));
 
-  Anomalies anomalies = outlier.run(0);
+  outlier.run(iface, 0);
+  Anomalies anomalies;
+  anomalies.import(iface);
+
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
 

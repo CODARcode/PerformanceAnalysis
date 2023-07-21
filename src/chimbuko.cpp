@@ -241,33 +241,27 @@ void Chimbuko::init_outlier(){
   params.glob_thres = m_params.hbos_use_global_threshold;
   params.sstd_sigma = m_params.outlier_sigma;
   params.hbos_max_bins = m_params.hbos_max_bins;
-  params.func_threshold_file = m_params.func_threshold_file;
-
-  ADOutlier::OutlierStatistic stat;
-  if(m_params.outlier_statistic == "exclusive_runtime") params.stat = ADOutlier::ExclusiveRuntime;
-  else if(m_params.outlier_statistic == "inclusive_runtime") params.stat = ADOutlier::InclusiveRuntime;
-  else{ fatal_error("Invalid statistic"); }
+  //params.func_threshold_file = m_params.func_threshold_file;
 
   m_outlier = ADOutlier::set_algorithm(m_params.ad_algorithm, params);
-  m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
   m_ptr_registry.registerPointer(m_outlier);
 
   //Read ignored functions
-  if(m_params.ignored_func_file.size()){
-    std::ifstream in(m_params.ignored_func_file);
-    if(in.is_open()) {
-      std::string func;
-      while (std::getline(in, func)){
-	headProgressStream(m_params.rank) << "Skipping anomaly detection for function \"" << func << "\"" << std::endl;
-	m_outlier->setIgnoreFunction(func);
-      }
-      in.close();
-    }else{
-      fatal_error("Failed to open ignored-func file " + m_params.ignored_func_file);
-    }
-  }
+  // if(m_params.ignored_func_file.size()){
+  //   std::ifstream in(m_params.ignored_func_file);
+  //   if(in.is_open()) {
+  //     std::string func;
+  //     while (std::getline(in, func)){
+  // 	headProgressStream(m_params.rank) << "Skipping anomaly detection for function \"" << func << "\"" << std::endl;
+  // 	m_outlier->setIgnoreFunction(func);
+  //     }
+  //     in.close();
+  //   }else{
+  //     fatal_error("Failed to open ignored-func file " + m_params.ignored_func_file);
+  //   }
+  // }
 
 
 }
@@ -660,16 +654,25 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
   if(do_run_analysis){
     //Run the outlier detection algorithm on the events
-    timer.start();
-    Anomalies anomalies = m_outlier->run(step);
-    m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
-    m_perf.add("ad_run_anomaly_count", anomalies.nEventsRecorded(Anomalies::EventType::Outlier));
-    m_perf.add("ad_run_n_exec_analyzed", anomalies.nEvents());
+    ADExecDataInterface::OutlierStatistic stat;
+    if(m_params.outlier_statistic == "exclusive_runtime") stat = ADExecDataInterface::ExclusiveRuntime;
+    else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADExecDataInterface::InclusiveRuntime;
+    else{ fatal_error("Invalid statistic"); }
 
-    int nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-    int nnormal = anomalies.nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
+    timer.start();
+    ADExecDataInterface data_iface(m_event->getExecDataMap(), stat);
+    m_outlier->run(data_iface,step);
+    m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
+    m_perf.add("ad_run_anomaly_count", data_iface.nEventsRecorded(ADDataInterface::EventType::Outlier));
+    m_perf.add("ad_run_n_exec_analyzed", data_iface.nEvents());
+
+    int nout = data_iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
+    int nnormal = data_iface.nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
     n_outliers += nout;
     m_n_outliers_accum_prd += nout;
+
+    Anomalies anomalies;
+    anomalies.import(data_iface);
 
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();

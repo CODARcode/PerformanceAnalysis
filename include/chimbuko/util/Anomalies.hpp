@@ -1,6 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include "chimbuko/ad/ADEvent.hpp"
+#include "chimbuko/ad/ADOutlier.hpp"
 
 namespace chimbuko{
 
@@ -51,6 +52,11 @@ namespace chimbuko{
      * @brief Return an array of iterators to events of the given type associated with a specific function
      */
     std::vector<CallListIterator_t> funcEventsRecorded(unsigned long fid, EventType type) const;
+
+    /**
+     * @brief Import the data stored inside the interface into this object
+     */
+    void import(const ADExecDataInterface &iface); 
 
   private:
     std::vector<CallListIterator_t> m_all_outliers; /**< Array of outliers */
