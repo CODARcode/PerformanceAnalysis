@@ -121,8 +121,10 @@ if (( ${use_provdb} == 1 )); then
 	provdb_addr="${iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
 	if [[ ${provdb_engine} == "verbs" && ${provdb_domain} != "" ]]; then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
+	elif [[ ${provdb_engine} == "cxi" ]]; then       
+	    provdb_addr="" #cxi doesn't have ports. We just let Mochi choose its optimal provider
 	fi
-	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
+	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address '${provdb_addr}' and engine '${provdb_engine}'"
 	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
 	sleep 1
     done
