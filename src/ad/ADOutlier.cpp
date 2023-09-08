@@ -16,7 +16,10 @@ using namespace chimbuko;
 void ADDataInterface::DataSetAnomalies::recordEvent(size_t elem_idx, double score, EventType label){
   if(label == EventType::Normal){
     //Store a max of one normal event. Select that with the lower score (more normal)
-    if(m_normal_events.size() == 0) m_normal_events.push_back(elem_idx);
+    if(m_normal_events.size() == 0){
+      m_normal_events.push_back(elem_idx);
+      m_normal_event_score = score;
+    }
     else if(score < m_normal_event_score){
       m_normal_events[0] = elem_idx;
       m_normal_event_score = score;
@@ -46,7 +49,7 @@ void ADDataInterface::setDataLabel(size_t dset_index, size_t elem_index, double 
   this->labelDataElement(dset_index, elem_index, score, label);
 }
 
-ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, OutlierStatistic stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()){
+ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, OutlierStatistic stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()), m_ignore_first_func_call(false){
   //Build a map between a data set index and the function indices
   size_t dset_idx = 0;
   for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it)
@@ -79,6 +82,9 @@ CallListIterator_t ADExecDataInterface::getExecDataEntry(size_t dset_index, size
 }
 
 std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_index) const{
+  auto it = m_dset_cache.find(dset_index);
+  if(it != m_dset_cache.end()) return it->second;
+
   std::vector<ADDataInterface::Elem> out;  
   size_t fid = m_dset_fid_map[dset_index];
   auto const &data = m_execDataMap->find(fid)->second;
@@ -87,15 +93,23 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
   const std::string &fname = data.front()->get_funcname();
   bool ignore_func =  ignoringFunction(fname);
 
+  std::array<unsigned long, 4> fkey;
+
   for(size_t i=0;i<data.size();i++){ //loop over events for that function
     auto &e = *data[i];
     if(e.get_label() == 0){ //has not been analyzed previously
       if(ignore_func) e.set_label(1); //label as normal event
-      else{
+      else if(m_ignore_first_func_call && !m_local_func_exec_seen->count(fkey = {e.get_pid(), e.get_rid(), e.get_tid(), fid}) ){
+	//Note, because we cache the data sets, successive calls to getDataSet with the same dset_index will always return the same thing despite marking this function as seen
+	e.set_label(1);
+	m_local_func_exec_seen->insert(fkey);
+      }else{
 	out.push_back(ADDataInterface::Elem(getStatisticValue(e),i));
       }
     }
   }
+  verboseStream << "ADExecDataInterface::getDataSet for dset_index=" << dset_index << " got " << out.size() << " data" << std::endl;
+  m_dset_cache[dset_index] = out;
   return out;
 }
     
@@ -238,6 +252,11 @@ void ADOutlierSSTD::run(ADDataInterface &data, int step) {
     for(auto const &e : data_vals[dset_idx])
       dset_params.push(e.value);
   }
+  if(enableVerboseLogging()){
+    verboseStream << "ADOutlierSSTD::run obtained data for " << ndset << " data sets, sizes:";
+    for(int i=0;i<ndset;i++) std::cout << " " << data_vals[i].size();
+    std::cout << std::endl;
+  }
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
   PerfTimer timer;
@@ -276,7 +295,7 @@ double ADOutlierSSTD::computeScore(double value, size_t model_idx, const SstdPar
 
 void ADOutlierSSTD::labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface){
 
-  verboseStream << "Finding outliers in events for data set " << dset_idx << std::endl;
+  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << std::endl;
 
   if(data_vals.size() == 0) return;
  

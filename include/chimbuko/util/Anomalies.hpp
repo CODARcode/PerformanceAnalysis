@@ -61,7 +61,7 @@ namespace chimbuko{
   private:
     std::vector<CallListIterator_t> m_all_outliers; /**< Array of outliers */
     std::vector<CallListIterator_t> m_all_normal_execs; /**< Array of normal executions (the algorithm will capture a limited number of these for comparison with outliers)*/
-    std::unordered_map<unsigned long, size_t> m_func_normal_exec_idx; /**< Map of function index to the index of the array entry containing the normal execution recorded for that function*/
+    std::unordered_map<unsigned long, size_t> m_func_normal_exec_idx; /**< Map of function index to the index of the array entry (within m_all_normal_execs) containing the normal execution recorded for that function*/
 
     size_t m_n_events_total; /**< Total number of events analyzed (both recorded and unrecorded)*/
   };

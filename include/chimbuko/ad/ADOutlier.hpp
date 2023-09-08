@@ -14,6 +14,7 @@
 namespace chimbuko {
   /**
    * An abstract interface for passing data to the AD algorithms and recording the results
+   * WARNING:  These objects are supposed to be temporary accessors and should be regenerated anew for new data
    * Note: the index here is always 0...Ndataset
    */
   class ADDataInterface{
@@ -59,6 +60,7 @@ namespace chimbuko {
       double value; /**< The value of the data point */
       size_t index; /**< An arbitrary but unique identifier index for this element*/
       Elem(double v, size_t i): value(v), index(i){}
+      inline bool operator==(const Elem &r) const{ return value == r.value && index == r.index; }
     };
 
     ADDataInterface(size_t ndataset): m_dset_anom(ndataset){}
@@ -66,7 +68,7 @@ namespace chimbuko {
     /**
      * @brief Return the number of data sets
      */
-    inline size_t nDataSets() const{ m_dset_anom.size(); }
+    inline size_t nDataSets() const{ return m_dset_anom.size(); }
    
     /**
      * @brief Return the set of data points associated with data set index 'dset_index'
@@ -163,14 +165,22 @@ namespace chimbuko {
      */
     size_t getDataSetParamIndex(size_t dset_index) const override{ return m_dset_fid_map[dset_index]; }
 
+    /**
+     * @brief Tell the interface to ignore the first call to a function on a given pid/rid/tid
+     * @param functions_seen A pointer to a FunctionsSeenType instance where the functions that have been seen will be recorded
+     */
+    typedef std::unordered_set< std::array<unsigned long, 4>, ArrayHasher<unsigned long,4> > FunctionsSeenType;
+    void setIgnoreFirstFunctionCall(FunctionsSeenType *functions_seen){ m_ignore_first_func_call = true; m_local_func_exec_seen = functions_seen; }
+
   private:
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
     std::unordered_set<std::string> m_func_ignore; /**< A list of functions that are ignored by the anomaly detection (all flagged as normal events)*/
     ExecDataMap_t const* m_execDataMap;     /**< execution data map */
     std::vector<size_t> m_dset_fid_map; /**< Map of data set index to func idx*/
 
-    //FINISH ME: Sometimes need to ignore just the first time a function has been seen
-    //std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
+    bool m_ignore_first_func_call;
+    FunctionsSeenType *m_local_func_exec_seen; /**< Map(program id, rank id, thread id, func id) exist if previously seen*/
+    mutable std::unordered_map<size_t, std::vector<ADDataInterface::Elem> > m_dset_cache; /** Cache previously-generated datasets to avoid extra work and ensure the same results for sucessive calls */ 
   };
 
 

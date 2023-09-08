@@ -661,6 +661,9 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     timer.start();
     ADExecDataInterface data_iface(m_event->getExecDataMap(), stat);
+    if( (m_params.ad_algorithm == "sst" || m_params.ad_algorithm == "SST") && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
+      data_iface.setIgnoreFirstFunctionCall(&m_func_seen);
+   
     m_outlier->run(data_iface,step);
     m_perf.add("ad_run_anom_detection_time_ms", timer.elapsed_ms());
     m_perf.add("ad_run_anomaly_count", data_iface.nEventsRecorded(ADDataInterface::EventType::Outlier));

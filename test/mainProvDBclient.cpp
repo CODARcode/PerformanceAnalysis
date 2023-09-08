@@ -10,6 +10,7 @@
 #include <dirent.h>
 #include <regex>
 #include <thread>
+#include <cstdio>
 
 using namespace chimbuko;
 
@@ -335,12 +336,31 @@ bool fileExistsMatchingRegex(const std::string &dir, const std::regex &regex){
   return false;
 }
 
+void deleteFilesMatchingRegex(const std::string &dir, const std::regex &regex){
+  DIR* dirp = opendir(dir.c_str());
+  if (dirp == NULL) return;
+
+  dirent* dp;
+  while ((dp = readdir(dirp)) != NULL) {
+    std::string fn(dp->d_name);
+    bool m = std::regex_search(fn, regex);
+    if(m){
+      remove(fn.c_str());
+    }
+  }
+  closedir(dirp);
+}
+
+
+
 #ifdef ENABLE_MARGO_STATE_DUMP
 TEST(ADProvenanceDBclientTest, TestStateDump){
   if(rank == 0){
     std::regex fn(R"(margo_dump\.)");
+    deleteFilesMatchingRegex(".", fn);
+
     if(fileExistsMatchingRegex(".", fn))
-      throw std::runtime_error("Existing file of form margo_dump.* found in test directory, delete this before running");
+      throw std::runtime_error("Existing file of form margo_dump.* found in test directory, these should be deleted!");
 
     bool fail = true;
     ADProvenanceDBclient client(rank);

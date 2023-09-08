@@ -281,6 +281,8 @@ namespace chimbuko {
     int m_n_steps_accum_prd; /**< Number of steps since last write of periodic data */
 
     std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
+
+    ADExecDataInterface::FunctionsSeenType m_func_seen; /**< If using SST algorithm, we record whether a function has previously been seen in order to avoid including the first call to a function in the data*/
   };
 
 }
