@@ -54,6 +54,7 @@ struct pserverArgs{
 
 #ifdef ENABLE_PROVDB
   std::string provdb_addr_dir;
+  std::string provdb_mercury_auth_key; //An authorization key for initializing Mercury (optional, default "")
 #endif
 
   std::string prov_outputpath;
@@ -63,7 +64,7 @@ struct pserverArgs{
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr_dir("")
+	       , provdb_addr_dir(""), provdb_mercury_auth_key("")
 #endif
   {}
 
@@ -88,6 +89,7 @@ struct pserverArgs{
 #endif
 #ifdef ENABLE_PROVDB
       addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
+      addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
       addOptionalCommandLineArg(p, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
@@ -158,6 +160,11 @@ int main (int argc, char ** argv){
   PSstatSender stat_sender(args.stat_send_freq);
 
 #ifdef ENABLE_PROVDB
+  if(args.provdb_mercury_auth_key != ""){
+    progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
+    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+  }
+  
   PSProvenanceDBclient provdb_client;
 #endif
 

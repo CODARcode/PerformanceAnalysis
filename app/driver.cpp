@@ -88,6 +88,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, provdb_addr_dir, "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
     addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
     addOptionalCommandLineArg(p, nprovdb_instances, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
+    addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");

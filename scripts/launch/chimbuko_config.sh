@@ -36,6 +36,8 @@ provdb_auto_interface=true #if true, the server will automatically choose its in
 #With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
 provdb_domain= #only needed for verbs provider. If left blank it will be chosen automatically. <------------ ***SET ME (if using verbs)***
 
+commit_extra_args="" #extra arguments for the committer
+
 export FI_UNIVERSE_SIZE=1600  # Defines the expected number of provenance DB clients per instance <------------- *** SET ME (should be larger than the number of clients/instance)
 export FI_MR_CACHE_MAX_COUNT=0   # disable MR cache in libfabric; still problematic as of libfabric 1.10.1
 export FI_OFI_RXM_USE_SRX=1 # use shared recv context in RXM; should improve scalability

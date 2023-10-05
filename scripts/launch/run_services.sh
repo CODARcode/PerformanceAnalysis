@@ -159,8 +159,8 @@ if (( ${use_provdb} == 1 )); then
     echo "Instantiating committer"
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
-	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
+	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances} using extra args \"${commit_extra_args}\""
+	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} ${commit_extra_args} > ${log_dir}/committer_${i}.log 2>&1 &
 	sleep 1
     done
     sleep 3
