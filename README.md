@@ -12,7 +12,7 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 
 # Releases
 
-- Latest release: v5.0.0
+- Latest release: v6.5.0
 
 # Directory layout
 
