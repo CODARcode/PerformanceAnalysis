@@ -74,10 +74,6 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
   stats_r.create_histogram(runtimes);
 
-  std::vector<double> bin_edges = stats_r.bin_edges();
-  std::cout << "Bin edges 1:" << std::endl;
-  for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
-
   ADOutlierCOPODTest outlier, outlier2, outlier3, outlier4;
 
   outlier.sync_param_test(&stats);
@@ -98,9 +94,6 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
 
   stats_r2.create_histogram(runtimes);
 
-  std::vector<double> bin_edges2 = stats_r2.bin_edges();
-  std::cout << "Bin edges 2:" << std::endl;
-  for(int i=0; i<bin_edges2.size(); i++) std::cout << bin_edges2[i] << std::endl;
   outlier.sync_param_test(&stats2);
 
   std::string stats_state2 = outlier.get_global_parameters()->serialize();
@@ -127,10 +120,6 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   }
 
   stats_r3.create_histogram(runtimes);
-
-  std::vector<double> bin_edges3 = stats_r3.bin_edges();
-  std::cout << "Bin edges 3:" << std::endl;
-  for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
 
   outlier.sync_param_test(&stats3);
 
@@ -159,10 +148,6 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   }
 
   stats_r4.create_histogram(runtimes);
-
-  std::vector<double> bin_edges4 = stats_r4.bin_edges();
-  std::cout << "Bin edges 4:" << std::endl;
-  for(int i=0; i<bin_edges4.size(); i++) std::cout << bin_edges4[i] << std::endl;
 
   outlier.sync_param_test(&stats4);
 

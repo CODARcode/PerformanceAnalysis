@@ -118,13 +118,13 @@ if test "x$with_adios2" != "x"; then
 
    LIBS_BAK=${LIBS}
 
-   #2.6.0
+   #2.6.0+
    LIBS+=" -L$with_adios2/lib -L$with_adios2/lib64 -ladios2_cxx11 -Wl,-rpath-link,${with_adios2}/lib:${with_adios2}/lib64 -Wl,-rpath,${with_adios2}/lib:${with_adios2}/lib64"
    AC_LINK_IFELSE(
  	[
 		AC_LANG_PROGRAM(
 			[[ #include<adios2.h>
-                            ]], [[ adios2::ADIOS ad(adios2::DebugON);  ]]
+                            ]], [[ adios2::ADIOS ad();  ]]
 			)
 	], [adios2_links26=yes], [adios2_links26=no]
 	)

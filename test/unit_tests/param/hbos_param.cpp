@@ -24,12 +24,17 @@ TEST(TestHbosParam, generateLocalHistograms){
   
   //For first test, do not bound the number of bins
   {    
-    binWidthScott bw;
+    std::cout << "Test with unbounded number of bins" << std::endl;
+    //binWidthScott bw;
+    binWidthFixedNbin bw(200);
     HbosFuncParam expect;
     expect.setInternalGlobalThreshold(init_global_threshold);
+    std::cout << "Generating expectation histogram" << std::endl;
     expect.getHistogram() = Histogram(runtimes, bw);
     
+    std::cout << "Generating histogram through HbosParam" << std::endl;
     HbosParam p;
+    p.setMaxBins(200);
     p.generate_histogram(fid, runtimes, init_global_threshold);
 
     auto const &stats = p.get_hbosstats();
@@ -42,6 +47,7 @@ TEST(TestHbosParam, generateLocalHistograms){
   //Bound the number of bins
   {    
     int maxbins = 2;
+    std::cout << "Test with bounded number of bins: " << maxbins << std::endl;
     //Check that the unbounded Scott rule would want more bins than maxbins
 
     double bwscott = Histogram::scottBinWidth(runtimes);
@@ -149,3 +155,55 @@ TEST(TestHbosParam, syncLocalGlobal){
   ASSERT_TRUE(g.find(fid));
   EXPECT_EQ(g[fid], expect);
 }  
+
+TEST(TestHbosParam, serialize){
+  std::default_random_engine gen(1234);
+  std::normal_distribution<double> dist(50.,10.);
+  int N = 50;
+  int fid = 123;
+  double init_global_threshold = 100;
+  int maxbins = 200;
+
+  std::vector<double> runtimes(N);
+  for(int i=0;i<N;i++){
+    runtimes[i] = dist(gen);
+  }
+
+  HbosParam l;
+  l.setMaxBins(maxbins);
+  l.generate_histogram(fid, runtimes, init_global_threshold);
+  
+  std::string ser = l.serialize();
+  
+  HbosParam r;
+  r.assign(ser);
+
+  EXPECT_EQ(l.get_hbosstats(),r.get_hbosstats());
+  EXPECT_EQ(l.getMaxBins(), r.getMaxBins());
+}
+
+TEST(TestHbosParam, serializeJSON){
+  std::default_random_engine gen(1234);
+  std::normal_distribution<double> dist(50.,10.);
+  int N = 50;
+  int fid = 123;
+  double init_global_threshold = 100;
+  int maxbins = 200;
+
+  std::vector<double> runtimes(N);
+  for(int i=0;i<N;i++){
+    runtimes[i] = dist(gen);
+  }
+
+  HbosParam l;
+  l.setMaxBins(maxbins);
+  l.generate_histogram(fid, runtimes, init_global_threshold);
+  
+  nlohmann::json ser = l.get_json();
+  
+  HbosParam r;
+  r.set_json(ser);
+  
+  EXPECT_EQ(l.get_hbosstats(),r.get_hbosstats());
+  EXPECT_EQ(l.getMaxBins(), r.getMaxBins());
+}

@@ -65,7 +65,6 @@ public:
 
 };
 
-
 TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
 
@@ -456,17 +455,15 @@ TEST(ADOutlierSSTDtest, TestAnomalyScore){
   SstdParam params;
   RunStats & stats = params[fid];
 
-  RunStats::State state;
   double mean = 100;
-  state.eta = mean;
+  stats.set_eta(mean);
   
   double std_dev = 10;
   double var = pow(std_dev,2);
   
-  state.count = 1000;
-  state.rho = var * (state.count - 1);
-  
-  stats.set_state(state);
+  stats.set_count(1000);
+  stats.set_rho(var * (stats.count() - 1));
+
 
   std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  100, "myfunc", 1000, mean + std_dev) };
   CallListIterator_t it = events.begin();
@@ -492,13 +489,11 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   ADOutlierHBOSTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<double> counts = {2,8,1,0,0,2};
+  std::vector<unsigned int> counts = {2,8,1,0,0,2};
   HbosFuncParam fp;
   Histogram &h = fp.getHistogram();
-  h.set_counts(counts);
-  h.set_bin_edges({100,200,300,400,500,600,700});
-  h.set_min_max(101,700);
-  
+  h.set_histogram(counts,101,700,100,100);
+
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
   outlier.set_alpha(alpha); 
@@ -634,8 +629,6 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     data_map[it->get_fid()].push_back(it);
 
-  //run method generates statistics from input data map and merges with stored stats
-  //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
   outlier.linkExecDataMap(&data_map);
   outlier.setIgnoreFunction(fname1);
   EXPECT_TRUE(outlier.ignoringFunction(fname1));
@@ -643,7 +636,7 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
 
   Anomalies anomalies = outlier.run(0);
   EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_GE(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1); //depending on various tolerances (e.g. number of bins, number of data points), it may detect more than 1 outlier, but should detect at least the artificial one
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
@@ -657,12 +650,10 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
   ADOutlierCOPODTest outlier(ADOutlier::ExclusiveRuntime);
   
   //Generate a histogram
-  std::vector<double> counts = {2,8,1,0,0,2};
+  std::vector<unsigned int> counts = {2,8,1,0,0,2};
   CopodFuncParam hp;
   Histogram &h = hp.getHistogram();
-  h.set_counts(counts);
-  h.set_bin_edges({100,200,300,400,500,600,700});
-  h.set_min_max(101,700);
+  h.set_histogram(counts,101,700,100,100);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -742,8 +733,7 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   //Generate a histogram
   CopodFuncParam hp;
   Histogram &h = hp.getHistogram();
-  h.set_counts({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2});
-  h.set_bin_edges({100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400});
+  h.set_histogram({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2}, 101,1400,100,100);
 
   //Compute the expected scores
   double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
@@ -777,7 +767,6 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
   }
 
 }
-
 
 TEST(ADOutlierCOPODTestFuncIgnore, Works){
   //Generate statistics

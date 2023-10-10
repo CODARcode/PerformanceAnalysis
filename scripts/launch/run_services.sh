@@ -51,6 +51,7 @@ mkdir chimbuko/provdb    #directory in which provDB is run. Also the default dir
 mkdir chimbuko/viz
 mkdir chimbuko/vars      #directory for files containing variables for inter-script communication
 mkdir chimbuko/adios2
+mkdir chimbuko/pserver   #directory for storing data produced by the pserver
 
 #Set absolute paths
 base=$(pwd)
@@ -59,6 +60,7 @@ log_dir=${base}/chimbuko/logs
 provdb_dir=${base}/chimbuko/provdb
 var_dir=${base}/chimbuko/vars
 bp_dir=${base}/chimbuko/adios2
+ps_dir=${base}/chimbuko/pserver
 
 #Check tau adios2 path is writable; by default this is ${bp_dir} but it can be overridden by users, eg for offline analysis
 #touch ${TAU_ADIOS2_PATH}/write_check
@@ -106,15 +108,23 @@ if (( ${use_provdb} == 1 )); then
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address*
 
     #Enable better error reporting from Mercury
-    export HG_LOG_SUBSYS=hg export HG_LOG_LEVEL=error
+    export HG_LOG_SUBSYS=hg 
+    export HG_LOG_LEVEL=error
 
     for((i=0;i<provdb_ninstances;i++)); do
 	port=$((provdb_port+i))
-	provdb_addr="${service_node_iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
-	if [[ ${provdb_engine} == "verbs" ]]; then
-	    provdb_addr="${provdb_domain}/${provdb_addr}"
+	iface=${service_node_iface}
+	if [[ ${provdb_auto_interface} == true ]]; then
+	    echo "Chimbuko services: provDB is using automatic interface selection"
+	    iface=""
 	fi
-	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
+	provdb_addr="${iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
+	if [[ ${provdb_engine} == "verbs" && ${provdb_domain} != "" ]]; then
+	    provdb_addr="${provdb_domain}/${provdb_addr}"
+	elif [[ ${provdb_engine} == "cxi" ]]; then       
+	    provdb_addr="" #cxi doesn't have ports. We just let Mochi choose its optimal provider
+	fi
+	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address '${provdb_addr}' and engine '${provdb_engine}'"
 	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
 	sleep 1
     done
@@ -149,8 +159,8 @@ if (( ${use_provdb} == 1 )); then
     echo "Instantiating committer"
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
-	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
+	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances} using extra args \"${commit_extra_args}\""
+	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} ${commit_extra_args} > ${log_dir}/committer_${i}.log 2>&1 &
 	sleep 1
     done
     sleep 3
@@ -279,7 +289,7 @@ if (( ${use_pserver} == 1 )); then
 
     pserver_alg=${ad_alg} #Pserver AD algorithm choice must match that used for the driver
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
-    pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
+    pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
 
     ps_pid=$!
     extra_args+=" -pserver_addr ${pserver_addr}"

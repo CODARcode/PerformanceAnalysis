@@ -87,6 +87,15 @@ namespace chimbuko {
      */
     virtual nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const = 0;
 
+    /**
+     * @brief Get the algorithm parameters in JSON form
+     */
+    virtual nlohmann::json get_json() const = 0;
+
+    /**
+     * @brief Set the algorithm parameters from the input JSON structure
+     */
+    virtual void set_json(const nlohmann::json &from) = 0;
 
   protected:
     mutable std::mutex m_mutex; // used to update parameters

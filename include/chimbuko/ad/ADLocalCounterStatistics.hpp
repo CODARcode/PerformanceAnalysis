@@ -14,51 +14,6 @@ namespace chimbuko{
   class ADLocalCounterStatistics{
   public:
     /**
-     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
-     */
-    struct State{
-      struct CounterData{
-	unsigned long pid; /**< Program idx*/
-	std::string name; /**< Counter name*/
-	RunStats::State stats; /**< Counter value statistics */
-	
-	/**
-	 * @brief Serialize using cereal
-	 */
-	template<class Archive>
-	void serialize(Archive & archive){
-	  archive(pid,name,stats);
-	}
-      };
-
-      int step; /**< Step index*/
-      std::vector<CounterData> counters; /**< Statistics for all counters */
-      
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(counters, step);
-      }
-
-      /**
-       * Serialize into Cereal portable binary format
-       */
-      std::string serialize_cerealpb() const;
-      
-      /**
-       * Serialize from Cereal portable binary format
-       */     
-      void deserialize_cerealpb(const std::string &strstate);
-
-      /**
-       * Serialize into JSON format
-       */
-      nlohmann::json get_json() const;      
-    };     
-
-    /**
      * @brief Constructor
      * @param program_idx The program index
      * @param step The io step
@@ -96,24 +51,28 @@ namespace chimbuko{
     const std::unordered_map<std::string , RunStats> &getStats() const{ return m_stats; }
     
     /**
-     * @brief Get the JSON object that is sent to the parameter server
+     * @brief Get object in the JSON format
      *
      */
-    nlohmann::json get_json_state() const;
+    nlohmann::json get_json() const;
 
     /**
-     * @brief Get the State object that is sent to the parameter server
-     *
-     * The string form of this object is sent to the pserver using updateGlobalStatistics
+     * @brief Serialize using cereal
      */
-    State get_state() const;  
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_program_idx, m_step, m_stats);
+    }
 
     /**
-     * @brief Set the internal variables to the given state object
-     *
-     * Note: it does not set the list of counters that are collected by gatherStatistics (m_which_counter)
+     * Serialize into Cereal portable binary format
      */
-    void set_state(const State &s);
+    std::string serialize_cerealpb() const;
+    
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
     /**
      * @brief Serialize this class for communication over the network
@@ -133,12 +92,22 @@ namespace chimbuko{
     /**
      * @brief Get the program index
      */
-    unsigned long getProgramIdex() const{ return m_program_idx; }
+    unsigned long getProgramIndex() const{ return m_program_idx; }
+
+    /**
+     * @brief Get the program index
+     */
+    void setProgramIndex(unsigned long to){ m_program_idx = to; }
     
     /**
      * @brief Get the IO step
      */
     int getIOstep() const{ return m_step; }
+
+    /**
+     * @brief Set the IO step
+     */   
+    void setIOstep(int to){ m_step = to; }
 
     /**
      * @brief Comparison operator

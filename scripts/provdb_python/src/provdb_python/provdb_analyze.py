@@ -6,6 +6,7 @@ from pymargo.core import Engine
 import json
 import sys
 import copy
+from cmd import Cmd
 
 #Terminology:
 #The database comprises multiple *shards* each of which contains a number of records (*events*)
@@ -138,7 +139,7 @@ def summarizeEvent(event):
     thr_str = "{}".format(event['tid'])
     if event['is_gpu_event']:
         thr_str = "GPU{}/{}/{}".format(event['gpu_location']['device'],event['gpu_location']['context'],event['gpu_location']['stream'])    
-    return "pid={} rid={} tid={} func=\"{}\" step={} excl={}s tot={}s score={} severity={}".format(event['pid'],event['rid'],  thr_str, event['func'], event['io_step'], float(event['runtime_exclusive'])/1e6, float(event['runtime_total'])/1e6, event['outlier_score'], event['outlier_severity'])
+    return "pid={} rid={} tid={} fid={} func=\"{}\" step={} excl={}s tot={}s score={} severity={}".format(event['pid'],event['rid'],  thr_str, event['fid'], event['func'], event['io_step'], float(event['runtime_exclusive'])/1e6, float(event['runtime_total'])/1e6, event['outlier_score'], event['outlier_severity'])
                                              
 
 #Get the function profile information for application index 'app'
@@ -284,52 +285,239 @@ def filterGlobalDatabase(interface, collection_name, filter_list):
     #print("Filtering with function: %s" % filter_func)
 
     return [ json.loads(x) for x in interface.getGlobalDB().filter(collection_name, filter_func) ]
-   
-    
-def provdb_basic_analysis(args):
-    if(len(args) != 1):
-        print("Arguments: <nshards>")
-        sys.exit(0)
-    nshards = int(args[0])
 
+
+def stringRowPadded(row, widths):
+    assert(len(row) == len(widths))
+    s = ""
+    for i in range(len(row)-1):
+        s = "%s%s | " % (s, row[i].ljust(widths[i]) )
+    s = "%s%s" % (s, row[-1])
+    return s
+
+#Print a table width padding
+def printTable(labels, table):
+    ncol = len(labels)
+    maxwidths = [len(l) for l in labels]
+    for r in table:
+        assert(len(r) == ncol)
+        for i in range(ncol):
+            maxwidths[i] = max( len(r[i]), maxwidths[i] )
+    h = stringRowPadded(labels, maxwidths)
+    print(h)
+    h = "-" * len(h)
+    print(h)
+    for r in table:
+        print(stringRowPadded(r, maxwidths))
+
+
+
+#Get a map of (pid, function name) to its func stats for those functions that had anomalies
+#Note we don't use function index as it may differ between runs. We assume the program index is the same as it is assigned manually
+def getFuncStatsMap(db):
+    func_stats = db.getGlobalDB().all('func_stats')
+    out = {}
+    for f in func_stats:
+        if(f['anomaly_metrics'] != None):
+            fname = f['fname']
+            pid = f['app']
+            out[(pid,fname)] = f
+    return out
+
+
+#Interactive component for detailed analysis
+class InteractiveAnalysis(Cmd):
+    prompt = '> '
+    intro = "Type ? to list commands"
+
+    def __init__(self, db):
+        Cmd.__init__(self)
+        self.fstats = getFuncStatsMap(db)
+        self.db = db
+
+        #Generate the table
+        self.table = []
+        for f in self.fstats.values():
+            entry = {}
+            entry['fname'] = f['fname']
+            entry['fid'] = f['fid']
+            entry['pid'] = f['app']
+            entry['anom_count'] = f['anomaly_metrics']['anomaly_count']['accumulate']
+            entry['accum_sev'] = f['anomaly_metrics']['severity']['accumulate']
+            entry['exec_count'] = f['runtime_profile']['exclusive_runtime']['count']
+            entry['avg_sev'] = f['anomaly_metrics']['severity']['mean']
+            entry['anom_freq'] = float(entry['anom_count'])/entry['exec_count']
+            entry['tot_runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['accumulate'])/1e6 #s
+            entry['tot_runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['accumulate'])/1e6
+            entry['avg_runtime_excl'] = float(f['runtime_profile']['exclusive_runtime']['mean'])/1e3 #ms
+            entry['avg_runtime_incl'] = float(f['runtime_profile']['inclusive_runtime']['mean'])/1e3
+            self.table.append(entry)
+
+        #The columns we will show (can be user-manipulated)
+        self.col_show = {'pid','fid','fname','accum_sev','anom_count'}
+        #The list of all columns in the order that they will be displayed (assuming they are enabled by the show list)
+        self.all_cols = ['pid','fid','accum_sev','avg_sev','anom_count','exec_count','anom_freq','avg_runtime_excl','tot_runtime_excl','avg_runtime_incl','tot_runtime_incl','fname']
+        #Headers for the columns above
+        self.all_cols_headers = ['PID','FID','Acc.Sev','Avg.Sev','Anom.Count','Exec.Count','Anom.Freq','Avg.Excl.Runtime (ms)','Total.Excl.Runtime (s)','Avg.Incl.Runtime (ms)','Total.Incl.Runtime (s)', 'Name']
+
+        #Default sort order, can be changed by 'order'
+        self.sort_order = 'Descending'
+        #Default sorted-by, will be overridden when the user calls 'sort'
+        self.sort_by = None
+
+        #Number of entries to display (-1 for unbounded)
+        self.top = 10
+
+    def do_lscol(self,ignored):
+        '''Display the valid column tags and a description'''
+        print("""pid: The program index
+fid: The function index (not guaranteed to be the same for different runs)
+accum_sev: The accumulated severity of anomalies
+avg_sev: The average severity of anomalies
+anom_count: The number of anomalies
+exec_count: The number of times the function was executed
+anom_freq: The frequency of anomalies
+avg_runtime_excl : The average running time of the function in milliseconds, excluding child function calls
+tot_runtime_excl : The total running time of the function in seconds over all executions, excluding child function calls
+avg_runtime_incl : The average running time of the function in milliseconds, including child function calls
+tot_runtime_incl : The total running time of the function in seconds over all executions, including child function calls
+fname: The function name""")        
+        
+    def do_addcol(self,coltag):
+        '''Add a column to the output table by column tag. For allowed tags, call \'lscol\'. If called without an argument it will print the current set.'''
+        if coltag == '':
+            pass
+        elif coltag not in self.all_cols:
+            print("Invalid tag")
+        else:            
+            self.col_show.add(coltag)
+        print(self.col_show)
+
+    def do_rmcol(self,coltag):
+        '''Remove a column to the output table by column tag. For allowed tags, call \'lscol\''''
+        if coltag not in self.all_cols:
+            print("Invalid tag")
+        else:
+            self.col_show.remove(coltag)
+        print(self.col_show)
+
+    def do_top(self,val):
+        '''Set the number of entries to display. -1 is unbounded. Default 10. If called without an argument it will print the current value.'''
+        if val == '':
+            pass
+        else:
+            top = None
+            try:
+                top = int(val)
+            except:
+                print("Expect an integer")
+
+            if top < -1:
+                print("Value must be >= -1")
+            else:
+                self.top = top
+
+        print(self.top)
+
+    def do_order(self, order):
+        '''Set the sort order. Allowed values are 'Ascending', 'Descending' (default). If called without an argument it will print the current order.'''
+        if order == '':
+            pass
+        elif order != "Ascending" and order != "Descending":
+            print("Invalid sort order")
+        else:
+            self.sort_order = order
+        print(self.sort_order)
+        
+    def emptyline(self):
+        return
+        
+    def do_exit(self, inp):
+        '''Exit the application.'''
+        print("Exiting")
+        return True
+
+
+    def do_show(self, ignored):
+        '''Show the current table'''
+        hdr = []
+        tab = []
+
+        #Generate headers, highlight sorted-by in bold
+        for c in range(len(self.all_cols)):
+            tag = self.all_cols[c]
+            if tag in self.col_show:
+                h = self.all_cols_headers[c]
+                if tag == self.sort_by:
+                    h = '((' + h + '))'
+                hdr.append(h)
+        #Generate the table
+        top = self.top
+        if top == -1:
+            top = len(self.table)
+        top = min(top,len(self.table))
+            
+        for i in range(top):
+            v = self.table[i]
+            row = []
+            for tag in self.all_cols:
+                if tag in self.col_show:
+                    sv = str(v[tag])                            
+                    if tag == 'avg_sev':
+                        sv = "%.1f" % v[tag]
+                    elif tag == 'anom_freq':
+                        sv = "%.3f" % v[tag]
+                        
+                    row.append( sv )
+                    
+            tab.append(row)
+        printTable(hdr,tab)
+    
+    def do_sort(self, sort_by):
+        '''Sort the global database func_stats by the column tag provided and output the result.
+        If no tag is provided, the tag used for the last sort will be reused. If no sort has been performed previously, the default will be used.
+        For allowed tags, call \'lscol\''''
+
+        if(sort_by == ''):
+            sort_by = self.sort_by
+
+        if sort_by not in self.all_cols:
+            print("Invalid tag")
+            return
+
+        #Add the column to the show list if not already
+        if sort_by not in self.col_show:
+            self.do_addcol(sort_by)
+        
+        reverse=None
+        if self.sort_order == 'Ascending':
+            reverse = False
+        elif self.sort_order == 'Descending':
+            reverse = True
+        else:
+            raise Exception("Invalid 'order' argument: '%s'" % self.sort_order)
+
+        self.table.sort(key=lambda v: v[sort_by], reverse=reverse)
+        self.sort_by = sort_by
+        self.do_show('')
+
+            
+
+def provdb_basic_analysis(args):
+    # if(len(args) != 1):
+    #     print("Arguments: <nshards>")
+    #     sys.exit(0)
+    # nshards = int(args[0])
+    nshards = 0 #currently need only to connect to the global database
+    
     with Engine('na+sm', pymargo.server) as engine:
         db = pdb.provDBinterface(engine, r'provdb.%d.unqlite', nshards)
-
-        print("Generating index")
-        anom_index = generateIndex(db, ['func','rid'], 'anomalies')
-        print("Getting function names")
-        func_names = getValuesUsingIndex(anom_index, 'func')
-
-        #Sort functions by total anomalous event time (sum of anomaly times)
-        print("Computing total anomalous event time")
-        anom_times = {}
-        for func in func_names:
-            events =  getRecordsByKeyValue(db, anom_index, 'func', func)
-            time = 0
-            for e in events:
-                time += e['runtime_exclusive']                
-            anom_times[func] = time
-        
-        func_names.sort(key=lambda x: anom_times[x], reverse=True)
-        print("Functions ordered by total anomalous event time (name #anomalies time):")
-        for func in func_names:
-            print("{} {} {}s".format(func, len(getRecordIDsByKeyValue(anom_index, 'func', func)), float(anom_times[func])/1e6 ))
-                
-
-        print("Summary of top 10 events for each anomalous function with <100 anomalies")
-        for func in func_names:
-            nanom = len(getRecordIDsByKeyValue(anom_index, 'func', func))
-            if nanom < 100:
-                print("%s (%d anomalies):" % (func, nanom  )    )
-                events = getRecordsByKeyValue(db, anom_index, 'func', func)
-                events.sort(key=lambda x: x['runtime_exclusive'], reverse=True)
-                n = 0
-                for e in events:
-                    print(summarizeEvent(e))
-                    n+=1
-                    if n > 10:
-                        break
-
-
+        if db.getGlobalDB() != None:
+            ian = InteractiveAnalysis(db)
+            ian.cmdloop()
+            del ian
+        else:
+            print("Could not connect to global database")
+            
         del db
         engine.finalize()

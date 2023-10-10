@@ -80,15 +80,14 @@ int main (int argc, char** argv)
         int n_anomalies = std::max(0, (int)dist(generator));
         AnomalyData d(0, rank, step, 0, 0, n_anomalies);
 
-	ADLocalFuncStatistics::State state;
-	state.anomaly = d;
+	ADLocalFuncStatistics fstat;
+	fstat.setAnomalyData(d);
 
         // create message
         msg.clear();
         msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
         msg.set_msg(
-		    state.serialize_cerealpb(), false
-		    //nlohmann::json::object({{"anomaly", d.get_json()}}).dump(), false
+		    fstat.net_serialize(), false
         );
 
 #ifdef _USE_MPINET

@@ -111,80 +111,30 @@ namespace chimbuko {
     /**
      * @brief Negative comparison operator
      */
-    friend bool operator!=(const AnomalyData& a, const AnomalyData& b);
-
-   
-    /**
-     * @brief State struct for serialization
-     */
-    struct State{      
-      unsigned long app;
-      unsigned long rank;
-      unsigned long step;
-      unsigned long min_timestamp;
-      unsigned long max_timestamp;
-      unsigned long n_anomalies;
-      RunStats::State outlier_scores;
-
-      /*
-       * @brief Serialize this instance in Cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(app, rank, step, min_timestamp, max_timestamp, n_anomalies, outlier_scores);
-      }
-
-      State(const AnomalyData &p);
-      State(){}
-      State(const nlohmann::json &j);
-
-      /**
-       * Serialize into Cereal portable binary format
-       */
-      std::string serialize_cerealpb() const;
-      
-      /**
-       * Serialize from Cereal portable binary format
-       */     
-      void deserialize_cerealpb(const std::string &strstate);
-
-      /**
-       * @brief Serialize this instance in JSON format
-       */
-      nlohmann::json get_json() const;
-
-      /**
-       * @brief Set the state from a JSON object
-       */
-      void set_json(const nlohmann::json &j);
-    };
-    
-    /**
-     * @brief Get the state for serialization
-     */
-    State get_state() const{ return State(*this); }
-
-
-    /**
-     * @brief Serialize the state (internal variables) of this instance in JSON format
-     */
-    nlohmann::json get_json_state() const{ return get_state().get_json(); }
+    friend bool operator!=(const AnomalyData& a, const AnomalyData& b); 
 
     /**
      * @brief Get the object in JSON format 
      */
     nlohmann::json get_json() const;
 
-    /**
-     * @brief Set the member variables according to the state
+    /*
+     * @brief Serialize this instance in Cereal
      */
-    void set_state(const State &state);
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_app, m_rank, m_step, m_min_timestamp, m_max_timestamp, m_n_anomalies, m_outlier_scores);
+    }    
 
     /**
-     * @brief Set the member variables according to the state in JSON format
+     * Serialize into Cereal portable binary format
      */
-    void set_json_state(const nlohmann::json &j){ set_state(State(j)); }
+    std::string serialize_cerealpb() const;
     
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
     /**
      * @brief Serialize this class for communication over the network

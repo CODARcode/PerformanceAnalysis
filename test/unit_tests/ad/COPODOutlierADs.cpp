@@ -56,9 +56,6 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
       std::cout << "vals in localhist 1: " << uval << std::endl;
     }
     r.create_histogram(runtimes);
-    std::vector<double> local_bin_edges = r.bin_edges();
-    std::cout << "Bin edges local:" << std::endl;
-    for(int i=0; i < local_bin_edges.size(); i++) std::cout << local_bin_edges[i] << std::endl;
   }
 
   {
@@ -73,9 +70,6 @@ TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
       std::cout << "vals in localhist 2: " << uval << std::endl;
     }
     r.create_histogram(runtimes);
-    std::vector<double> local_bin_edges = r.bin_edges();
-    std::cout << "Bin edges local:" << std::endl;
-    for(int i=0; i < local_bin_edges.size(); i++) std::cout << local_bin_edges[i] << std::endl;
   }
 
   std::cout << global_params_ps[0].get_json().dump();

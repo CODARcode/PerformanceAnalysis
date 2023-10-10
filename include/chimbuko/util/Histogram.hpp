@@ -1,6 +1,6 @@
 #pragma once
-
-#include<vector>
+#include <chimbuko/util/chunkAllocator.hpp>
+#include <vector>
 #include <nlohmann/json.hpp>
 
 namespace chimbuko{
@@ -33,7 +33,7 @@ namespace chimbuko{
     binWidthFixed(double width): width(width){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return width; }
-    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return width; }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override{ return width; }
   };
   /**
    * @brief Determine the bin width using Scott's rule
@@ -73,7 +73,7 @@ namespace chimbuko{
     binWidthFixedMaxNbin(double width, int maxbins): width(width),binWidthMaxNbinBase(maxbins){}
 
     double bin_width(const std::vector<double> &runtimes, const double min, const double max) const override{ return correct_bin_width(width,min,max); }
-    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const{ return correct_bin_width(width,min,max); }
+    double bin_width(const Histogram &a, const Histogram &b, const double min, const double max) const override{ return correct_bin_width(width,min,max); }
   };
   /**
    * @brief Determine the bin width using Scott's rule but adjust if the number of bins is larger than some maximum
@@ -115,90 +115,47 @@ namespace chimbuko{
      */
     Histogram(const std::vector<double> &data, const binWidthSpecifier &bwspec = binWidthScott());
 
-
-    /**
-     * @brief Data structure that stores Histogram data ( bin counts, bin edges)
-     */
-    struct Data {
-      std::vector<double> counts; /**< Bin counts in Histogram*/
-      std::vector<double> bin_edges; /**< Bin edges in Histogram*/
-      double min; /**< Minimum value ever encountered*/
-      double max; /**< Maximum value ever encountered*/
-
-      /**
-       * @brief Initialize histogram data
-       */
-      Data(){
-        clear();
-      }
-
-      /**
-       * @brief Initialize histogram data with existing histogram data
-       * @param h_counts: a vector of histogram bin counts
-       * @param h_bin_edges: a vector of histogram bin edges
-       */
-      Data(const std::vector<double>& h_counts, const std::vector<double>& h_bin_edges, double min, double max): counts(h_counts), bin_edges(h_bin_edges), min(min), max(max) {}
-
-      /**
-       * @brief Resets histogram data
-       */
-      void clear();
-
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(counts, bin_edges, min, max);
-      }
-
-      /**
-       * @brief Comparison operator
-       */
-      bool operator==(const Data &r) const{ return counts == r.counts && bin_edges == r.bin_edges && min == r.min && max == r.max; }
-
-
-    };
-
     /**
      * @brief Serialize using cereal
      */
     template<class Archive>
     void serialize(Archive & archive){
-      m_histogram.serialize(archive);
+      archive(m_counts, m_start, m_bin_width, m_min, m_max);
     }
 
-    void clear() {m_histogram.clear();}
+    void clear();
 
     /**
-     * @brief returns reference to current histogram Data
-     * @return Data: Histogram data (bin counts, bin edges)
-     */
-    const Data &get_histogram() const{ return m_histogram; }
-
-    /**
-     * @brief Set the internal variables from an instance of Histogram Data
-     * @param d: Histogram Data (bin counts, bin edges)
-     */
-    void set_hist_data(const Data& d);
-
-    /**
-     * @brief Create an instance of this class from a Histogram Data instance
-     * @param d: Histogram Data (bin counts, bin edges)
-     * @return Instance of Histogram
-     */
-    static Histogram from_hist_data(const Data& d) {
-      Histogram histdata;
-      histdata.set_hist_data(d);
-      return histdata;
-    }
-
-    /**
-     * @brief Create new histogram locally for AD module's batch data instances
+     * @brief Create new histogram with the bin width chosen according to the functional provided
      * @param r_times a vector<double> of function run times
      * @param bwspec a functional that specifies the bin width. Default to using Scott's rule
      */
     void create_histogram(const std::vector<double>& r_times, const binWidthSpecifier &bwspec = binWidthScott());
+
+    /**
+     * @brief Create new histogram using the bin edges and min/max provided
+     * @param data the data to be included in the histogram
+     * @param min The minimum data value ever encountered
+     * @param max The maximum data value ever encountered. This should be equal to the upper edge of the last bin
+     * @param start The lower edge of the first bin
+     * @param nbin The number of bins
+     * @param bin_width The bin width
+     *
+     * All data should lie within min and the last edge!
+     */
+    void create_histogram(const std::vector<double>& data, const double min, const double max, const double start, const int nbin, const double bin_width);
+
+
+    /**
+     * @brief Set the histogram data the information provided
+     * @param counts The bin counts
+     * @param min The minimum data value ever encountered
+     * @param max The maximum data value ever encountered. This should be equal to the upper edge of the last bin
+     * @param start The lower edge of the first bin
+     * @param bin_width The bin width
+     */
+    void set_histogram(const std::vector<unsigned int> &counts, const double min, const double max, const double start, const double bin_width);
+
 
     /**
      * @brief merges a Histogram with function runtimes
@@ -221,61 +178,38 @@ namespace chimbuko{
      * @brief set bin counts in Histogram
      * @param c: vector of bin counts
      */
-    void set_counts(const std::vector<double> & c) { m_histogram.counts = c; }
-
-    /**
-     * @brief set bin edges in Histogram
-     * @param be: vector of bin edges
-     */
-    void set_bin_edges(const std::vector<double> &be){ m_histogram.bin_edges = be; }
-    
-    /**
-    * @brief Set the minimum and maximum values of data represented by the histogram
-    *
-    * both min and max values should be inside the histogram bounds!
-    */
-    void set_min_max(double min, double max);
-    
-    /*
-     * @brief New bin counts in Histogram
-     * @param count: bin count value
-     */
-    void add2counts(const double count) {m_histogram.counts.push_back(count);}
-
-    /*
-     * @brief Update counts for a given index of bin in histogram
-     * @param id: index of bin in Histogram
-     * @param count: bin count value to update
-     */
-    void add2counts(const int id, const double count) {m_histogram.counts[id] += count;}
-
-    /*
-     * @brief New bin edges in histogram
-     * @param bin_edge: vector of bin edges of histogram
-     */
-    void add2binedges(const double bin_edge) {m_histogram.bin_edges.push_back(bin_edge);}
+    void set_counts(const std::vector<unsigned int> & c) { m_counts = c; }
 
     /**
      * @brief Get current vector of bin counts of Histogram
      * @return vector of bin counts
      */
-    const std::vector<double>& counts() const {return m_histogram.counts;}
+    const std::vector<unsigned int>& counts() const {return m_counts;}
 
     /**
-     * @brief Get current vector of bin edges of histogram
-     * @return vector of bin edges
+     * @brief Get the lower edge of the given bin
      */
-    const std::vector<double>& bin_edges() const {return m_histogram.bin_edges;}
+    double binEdgeLower(const int bin) const;
+
+    /**
+     * @brief Get the upper edge of the given bin
+     */
+    double binEdgeUpper(const int bin) const;
 
     /**
      * @brief Get the lower and upper edges of the given bin
      */
-    inline std::pair<double,double> binEdges(const int bin) const{ return {m_histogram.bin_edges[bin],m_histogram.bin_edges[bin+1]}; }
+    std::pair<double,double> binEdges(const int bin) const;
     
     /**
      * @brief Get the count of a given bin
      */
-    inline double binCount(const int bin) const{ return m_histogram.counts[bin]; }
+    inline unsigned int binCount(const int bin) const{ return m_counts[bin]; }
+
+    /**
+     * @brief Get the bin width
+     */
+    double binWidth() const;
 
     /**
      * @brief Get the current statistics as a JSON object
@@ -285,7 +219,7 @@ namespace chimbuko{
     /**
      * @brief Return the number of bins
      */
-    size_t Nbin() const{ return counts().size(); }
+    size_t Nbin() const{ return m_counts.size(); }
 
     /**
      * @brief Enums for reporting bin index outside of histogram
@@ -312,18 +246,17 @@ namespace chimbuko{
     /**
      * @brief Get the value represented by a bin; we use the midpoint
      */
-    inline double binValue(const size_t i) const{ return binValue(i, bin_edges()); }
-
+    inline double binValue(const size_t i) const{ return m_start + (i+0.5)*m_bin_width; }
 
     /**
      * @brief Workspace for empiricalCDF function allows repeated calls to avoid recomputing the total sum
      */
     struct empiricalCDFworkspace{
       bool set;
-      double sum;
+      unsigned int sum;
       empiricalCDFworkspace(): set(false){}
 
-      double getSum(const Histogram &h);
+      unsigned int getSum(const Histogram &h);
     };
  
     /**
@@ -336,12 +269,12 @@ namespace chimbuko{
     /**
      * @brief Return the sum of all the bin counts
      */
-    double totalCount() const;
+    unsigned int totalCount() const;
 
     /**
      * @brief Comparison operator
      */
-    inline bool operator==(const Histogram &r) const{ return m_histogram == r.m_histogram; }
+    inline bool operator==(const Histogram &r) const{ return m_counts == r.m_counts && m_start == r.m_start && m_bin_width == r.m_bin_width && m_min == r.m_min && m_max == r.m_max; }
     inline bool operator!=(const Histogram &r) const{ return !(*this == r); }
 
     /**
@@ -373,65 +306,46 @@ namespace chimbuko{
 
     /**
      * @brief Compute bin width based on Scott's rule
-     * @param global_counts: bin counts in global histogram on pserver
-     * @param global_edges: bin edges in global histogram on pserver
-     * @param local_counts: bin counts in local histogram in AD module
-     * @param local_edges: bin edges in local histogram in AD module
+     * @param global: The global histogram
+     * @param local: The local histogram
      * @return computed bin width
      */
-    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_counts, const std::vector<double> & local_edges);
-
+    static double scottBinWidth(const Histogram &global, const Histogram &local);
 
     /**
      * @brief Compute bin width based on Scott's rule
-     * @param global_counts: bin counts in global histogram on pserver
-     * @param global_edges: bin edges in global histogram on pserver
+     * @param global: The global histogram
      * @param local_vals: local data values
      * @return computed bin width
+     *
      */
-    static double scottBinWidth(const std::vector<double> & global_counts, const std::vector<double> & global_edges, const std::vector<double> & local_vals);
-
+    static double scottBinWidth(const Histogram & global, const std::vector<double> & local_vals);
 
     /**
      * @brief Return the smallest value encountered
      */
-    double getMin() const{ return m_histogram.min; }
+    double getMin() const{ return m_min; }
 
     /**
      * @brief Return the largest value encountered
      */
-    double getMax() const{ return m_histogram.max; }
+    double getMax() const{ return m_max; }
 
     /**
      * @brief The lower bound of the histogram will be placed  getLowerBoundShiftMul()*bin_width below the minimum value
      */
     static double getLowerBoundShiftMul();
-
-
-    /**
-     * @brief Uniformly shift the bin edges by x
-     */
-    void shiftBinEdges(const double x);
-    
+   
   private:
-    Data m_histogram; /**< Histogram Data (bin counts, bin edges)*/
+    std::vector<unsigned int> m_counts; /**< Bin counts in Histogram*/
 
+    double m_start; /**< The lower edge of the first bin*/
+    double m_bin_width; /**< The bin width*/
+
+    double m_min; /**< Minimum value ever encountered. This should be slightly above m_start, within the first bin*/
+    double m_max; /**< Maximum value ever encountered. This is defined as the upper edge of the last bin*/	       
   protected:
-    /**
-     * @brief Get the value represented by a bin; we use the midpoint
-     */
-    static double binValue(const size_t i, const std::vector<double> & edges);
 
-    /**
-     * @brief Merge two histograms into a third assuming that the histogram bins are represented by bin_count copies of the bin's midpoint
-     */
-    static void merge_histograms_central_value(Histogram &combined, const Histogram& g, const Histogram& l);
-
-    /**
-     * @brief Merge two histograms into a third assuming that the data are uniformly distributed across the histogram bins
-     */
-    static void merge_histograms_uniform(Histogram &combined, const Histogram& g, const Histogram& l);
-    
     static void merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l);
   
   };
@@ -458,16 +372,27 @@ namespace chimbuko{
       
       Bin(double l, double u, double c): l(l), u(u), c(c), left(nullptr), right(nullptr), is_end(false){}
   
-      static std::pair<Bin*,Bin*> insertFirst(Bin* toins);
-      static Bin* insertRight(Bin* of, Bin* toins);
-      static Bin* insertLeft(Bin* of, Bin* toins);
-      static void deleteChain(Bin* leftmost);
-      static Bin* getBin(Bin* leftmost, double v);    
-      static std::pair<Bin*,Bin*> split(Bin* bin, double about);
+      static std::pair<Bin*,Bin*> insertFirst(Bin* toins, chunkAllocator<Bin> &alloc);
+      inline static Bin* insertRight(Bin* of, Bin* toins);
+      inline static Bin* insertLeft(Bin* of, Bin* toins);
+      static void deleteChain(Bin* leftmost, chunkAllocator<Bin> &alloc);
+      inline static Bin* getBin(Bin* leftmost, double v);    
+      inline static std::pair<Bin*,Bin*> split(Bin* bin, double about, chunkAllocator<Bin> &alloc);
       static size_t size(Bin* leftmost);
+      /**
+       * @brief Return bin information as a string
+       */
+      static std::string getBinInfo(Bin* bin);
+      static Bin* getChainStart(Bin* begin);
+      /**
+       * @brief Print the info output for the entire chain
+       *
+       * Provided bin can be any in the chain
+       */
+      static std::string getChainInfo(Bin* any_bin);
     };
 
-    HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0){}
+    HistogramVBW(): first(nullptr), end(nullptr), m_min(0), m_max(0), allocator(100){}
 
     ~HistogramVBW();
 
@@ -476,7 +401,7 @@ namespace chimbuko{
     /**
      * @brief Construct from a fixed binwidth histogram
      */
-    explicit HistogramVBW(const Histogram &h): HistogramVBW(){ import(h); }
+    explicit HistogramVBW(const Histogram &h): first(nullptr), end(nullptr), m_min(0), m_max(0), allocator(h.Nbin()){ import(h); }
 
     /**
      * @brief Get the bin containing value 'v'
@@ -514,6 +439,15 @@ namespace chimbuko{
      */
     double extractUniformCountInRangeInt(double l, double u);
 
+    /**
+     * @brief Obtain the count of values falling between the given sets of bounds assuming a uniform distribution of points within a bin. The array of bounds must be ordered consecutively.
+     * The number is rounded to the nearest integer and returned. The data within the range in the histogram is zeroed, creating new edges appropriately
+     * This array operation is more efficient but otherwise identical to applying extractUniformCountInRangeInt on each of the ranges successively (in the same order!)
+     * @param edges An ordered list of lower and upper bounds, i.e. with edges[n].first <= edges[n].second for all n, and edges[n+1].first >= edges[n].second
+     */
+    std::vector<double> extractUniformCountInRangesInt(const std::vector<std::pair<double,double> > &edges);
+
+
     Bin const *getFirst() const{ return first; }
     Bin const *getEnd() const{ return end; }
   private:
@@ -521,6 +455,7 @@ namespace chimbuko{
     Bin *end;
     double m_min;
     double m_max;
+    chunkAllocator<Bin> allocator;
   };
 
   std::ostream & operator<<(std::ostream &os, const HistogramVBW::Bin &b);

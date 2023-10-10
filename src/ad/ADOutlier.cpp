@@ -69,7 +69,7 @@ ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoPar
   }
 }
 
-void ADOutlier::linkNetworkClient(ADThreadNetClient *client){
+void ADOutlier::linkNetworkClient(ADNetClient *client){
   m_net_client = client;
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }
@@ -356,10 +356,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   unsigned long n_outliers = 0;
 
   auto const & bin_counts = hist.counts();
-  auto const & bin_edges = hist.bin_edges();
-
   size_t nbin = bin_counts.size();
-  size_t nedge = bin_edges.size();
 
   verboseStream << "Number of bins " << nbin << std::endl;
 
@@ -371,9 +368,6 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
     return 0;
   }
 
-  //For a histogram that has bins, the number of edges should be nbin+1
-  if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
-
   //Bounds of the range of possible scores
   const double max_possible_score = -1 * log2(0.0 + m_alpha); //-log2(78.88e-32) ~ 100.0 by default (i.e. the theoretical max score)
 
@@ -382,16 +376,16 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   double max_score = std::numeric_limits<double>::lowest();  
 
   //Compute scores
-  double tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0.0);
+  unsigned int tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0);
   std::vector<double> out_scores_i(nbin);
 
   verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < nbin; i++){
-    double count = bin_counts[i];
-    double prob = count / tot_runtimes;
+    unsigned int count = bin_counts[i];
+    double prob = double(count)/ tot_runtimes;
     double score = -1 * log2(prob + m_alpha);
     out_scores_i[i] = score;
-    verboseStream << "Bin " << i << ", Range " << bin_edges[i] << "-" << bin_edges[i+1] << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
+    verboseStream << "Bin " << i << ", Range " << hist.binEdgeLower(i) << "-" << hist.binEdgeUpper(i) << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
     if(prob > 0 ) {
       min_score = std::min(min_score,score);
       max_score = std::max(max_score,score);
@@ -452,7 +446,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 #endif
 
   //Compute HBOS based score for each datapoint
-  const double bin_width = hist.bin_edges().at(1) - hist.bin_edges().at(0);
+  const double bin_width = hist.binWidth();
   verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
@@ -464,7 +458,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 
       verboseStream << "Locating " << itt->get_json().dump() << std::endl;
       const int bin_ind = hist.getBin(runtime_i, 0.05); //allow events within 5% of the bin width away from the histogram edges to be included in the first/last bin
-      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where bin_edges Size:" << nedge << " & num_bins: "<< nbin << std::endl;
+      verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << runtime_i << ", where num_bins: "<< nbin << std::endl;
 
       if( bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram){
 	//Sample (datapoint) lies outside of the histogram
@@ -483,7 +477,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
       //Note that the total number of bins can be > 1 providing the other bins have 0 counts
       if (ad_score <= 0 ){
 	int nbin_nonzero = 0;
-	for(double c : hist.counts())
+	for(unsigned int c : hist.counts())
 	  if(c>0) ++nbin_nonzero;
 	if(nbin_nonzero != 1){
 	  fatal_error("ad_score <= 0 but #bins with non zero count, "+std::to_string(nbin_nonzero)+" is not 1");
@@ -649,10 +643,8 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
   Histogram &hist = fparam.getHistogram();
 
   auto const & bin_counts = hist.counts();
-  auto const & bin_edges = hist.bin_edges();
 
   size_t nbin = bin_counts.size();
-  size_t nedge = bin_edges.size();
 
   verboseStream << "Number of bins " << nbin << std::endl;
 
@@ -665,9 +657,6 @@ unsigned long ADOutlierCOPOD::compute_outliers(Anomalies &outliers,
     verboseStream << "Global model is empty, skipping outlier evaluation for function " << func_id << std::endl;
     return 0;
   }
-
-  //For a histogram that has bins, the number of edges should be nbin+1
-  if(nedge != nbin+1) fatal_error("Number of histogram edges is not 1 larger than the number of bins: #bins "+std::to_string(nbin)+" #edges "+std::to_string(nedge));
 
   //Compute the skewness of the histogram
   double skewness = hist.skewness();

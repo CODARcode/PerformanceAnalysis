@@ -82,7 +82,7 @@ namespace chimbuko {
     /**
      * @brief Link the interface for communicating with the parameter server
      */
-    void linkNetworkClient(ADThreadNetClient *client);
+    void linkNetworkClient(ADNetClient *client);
 
     /**
      * @brief abstract method to run the implemented anomaly detection algorithm
@@ -128,10 +128,13 @@ namespace chimbuko {
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
-     * @brief synchronize local parameters with global parameters
+     * @brief Synchronize the local model with the global model
      *
-     * @param[in] param local parameters
+     * @param[in] param local model
      * @return std::pair<size_t, size_t> [sent, recv] message size
+     *
+     * If we are connected to the pserver, the local model will be merged remotely with the current global model on the server, and the new global model returned. The internal global model will be replaced by this.
+     * If we are *not* connected to the pserver, the local model will be merged into the internal global model
      */
     virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
 
@@ -149,7 +152,7 @@ namespace chimbuko {
   protected:
     int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
-    ADThreadNetClient* m_net_client;                 /**< interface for communicating to parameter server */
+    ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
 
     std::unordered_map< std::array<unsigned long, 4>, size_t, ArrayHasher<unsigned long,4> > m_local_func_exec_count; /**< Map(program id, rank id, thread id, func id) -> number of times encountered on this node*/
 
@@ -251,6 +254,11 @@ namespace chimbuko {
      */
     void set_alpha(double alpha) { m_alpha = alpha; }
 
+    /**
+     * @brief Set the maximum number of histogram bins
+     */
+    void set_maxbins(int to){ m_maxbins = to; }
+    
     /**
      * @brief run HBOS anomaly detection algorithm
      *

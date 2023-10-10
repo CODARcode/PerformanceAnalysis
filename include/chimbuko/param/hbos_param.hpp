@@ -185,8 +185,23 @@ namespace chimbuko {
      * @param global_threshold_init The initial value of the internal, global threshold
      */
     void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init,  HbosParam const *global_param = nullptr);
+
+    /**
+     * @brief Get the algorithm parameters in JSON form
+     */
+    nlohmann::json get_json() const override;
+    
+    /**
+     * @brief Set the algorithm parameters from the input JSON structure
+     */
+    void set_json(const nlohmann::json &from) override;
    
   private:
+    /**
+     * @brief Common functionality between update and update_and_return; assumed a mutex lock exists on this and other
+     */
+    void update_internal(const HbosParam &other);
+    
     std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
     int m_maxbins; /**< Maximum number of bins to use in the histograms */
   };

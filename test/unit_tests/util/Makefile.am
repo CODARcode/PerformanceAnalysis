@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs 
 
 testdir = $(prefix)/test/unit_tests/util
-test_PROGRAMS = DispatchQueue commandLineParser RunStats error memutils PerfStats environment Histogram pointerRegistry Anomalies
+test_PROGRAMS = DispatchQueue commandLineParser RunStats error memutils PerfStats environment Histogram pointerRegistry Anomalies chunkAllocator
 
 DispatchQueue_SOURCES = DispatchQueue.cpp ../unit_test_main.cpp
 DispatchQueue_LDADD = $(LDADD)
@@ -33,3 +33,6 @@ pointerRegistry_LDADD = $(LDADD)
 
 Anomalies_SOURCES = Anomalies.cpp ../unit_test_main.cpp
 Anomalies_LDADD = $(LDADD)
+
+chunkAllocator_SOURCES = chunkAllocator.cpp ../unit_test_main.cpp
+chunkAllocator_LDADD = $(LDADD)

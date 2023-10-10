@@ -30,7 +30,7 @@ struct SSTrw{
     barrier.wait(); 
     std::cout << "Writer thread initializing" << std::endl;
   
-    ad = adios2::ADIOS(adios2::DebugON);
+    ad = adios2::ADIOS();
     io = ad.DeclareIO("tau-metrics");
     io.SetEngine("SST");
     io.SetParameters({
@@ -85,6 +85,7 @@ struct SSTrw{
 };
 
 
+#if 1
 TEST(ADParserTestConstructor, opensTimesoutCorrectlySST){
   std::string filename = "commfile";
   bool got_err= false;
@@ -103,7 +104,7 @@ TEST(ADParserTestConstructor, opensCorrectlyBPFile){
   try{
     std::string filename = "commFile";   
     {
-      adios2::ADIOS ad = adios2::ADIOS(adios2::DebugON);
+      adios2::ADIOS ad = adios2::ADIOS();
       adios2::IO io = ad.DeclareIO("tau-metrics");
       io.SetEngine("BPFile");
       io.SetParameters({
@@ -620,6 +621,7 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   psthr.join();
   std::cout << "Main thread finished" << std::endl;
 }
+#endif
 
 //Events same up to id string (set by parser) or idx (set by static count in unit test header)
 bool same_up_to_id_string(const Event_t &l, const Event_t &r){
@@ -953,4 +955,117 @@ TEST(ADParserTest, CorrelationIDeventOrderCorrectly){
       ++off;
     }
   }  
+}
+
+
+
+
+
+TEST(ADParserTest, CorrelationIDeventEdgeCases){
+  std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
+  std::unordered_map<int, std::string> func_names = { {12,"MYFUNC"}, {13,"OTHERFUNC"} };
+  std::unordered_map<int, std::string> counter_names = { {99,"Correlation ID"} };
+
+  int ENTRY = 0;
+  int EXIT = 1;
+  int SEND = 2;
+  int RECV = 3;
+  int CORRID = 99;
+  int MYFUNC = 12;
+  int OTHERFUNC = 13;
+
+  int pid=0, tid=0, rid=0;
+
+
+  {
+    std::cout << "Show that a function will claim a correlation ID if ENTRY, EXIT and COUNTER all have the same timestamp" << std::endl;
+    //    Usually an EXIT event will be prioritized over a COUNTER if they have the same timestamp and the counter is a corid
+    //    because corids are associated with ENTRY events, but the basic logic doesn't work for the case when all 3 have the same timestamp
+    //    We deal with this edge case explicitly
+
+    std::vector<Event_t> events = {
+      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
+      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100),
+      createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
+      createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 101),
+      createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 102)
+    };
+
+    ADParser parser("",0,rid,"BPFile");
+    parser.setFuncDataCapacity(100);
+    parser.setCommDataCapacity(100);
+    parser.setCounterDataCapacity(100);
+    parser.setFuncMap(func_names);
+    parser.setEventTypeMap(event_types);
+    parser.setCounterMap(counter_names);
+
+    for(int i=0;i<events.size();i++){
+      if(events[i].type() == EventDataType::FUNC)
+	parser.addFuncData(events[i].get_ptr());
+      else if(events[i].type() == EventDataType::COMM)
+	parser.addCommData(events[i].get_ptr());
+      else if(events[i].type() == EventDataType::COUNT)
+	parser.addCounterData(events[i].get_ptr());
+      else
+	FAIL() << "Invalid EventDataType";
+    }
+  
+    std::vector<Event_t> events_out = parser.getEvents();
+    
+    EXPECT_EQ(events_out.size(), events.size());
+
+    std::vector<int> order = {0,2,1,3,4};
+    for(int i=0;i<5;i++){
+      std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
+      EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
+    }
+  }
+
+  {
+    std::cout << "Show that if an ENTRY, CORID, EXIT and the next ENTRY, CORID all coindice, the first function will claim only one of the CORIDs" << std::endl;
+    std::vector<Event_t> events = {
+      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //0
+      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //1
+      createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 100), //2
+      createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 100), //3
+      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //4
+      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //5
+      createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100), //6
+      createCounterEvent_t(pid, rid, tid, CORRID, 1257, 100), //7
+      createCounterEvent_t(pid, rid, tid, CORRID, 1258, 100) //8
+    };
+
+    ADParser parser("",0,rid,"BPFile");
+    parser.setFuncDataCapacity(100);
+    parser.setCommDataCapacity(100);
+    parser.setCounterDataCapacity(100);
+    parser.setFuncMap(func_names);
+    parser.setEventTypeMap(event_types);
+    parser.setCounterMap(counter_names);
+
+    for(int i=0;i<events.size();i++){
+      if(events[i].type() == EventDataType::FUNC)
+	parser.addFuncData(events[i].get_ptr());
+      else if(events[i].type() == EventDataType::COMM)
+	parser.addCommData(events[i].get_ptr());
+      else if(events[i].type() == EventDataType::COUNT)
+	parser.addCounterData(events[i].get_ptr());
+      else
+	FAIL() << "Invalid EventDataType";
+    }
+  
+    std::vector<Event_t> events_out = parser.getEvents();
+    
+    EXPECT_EQ(events_out.size(), events.size());
+
+    std::vector<int> order = {0,6,1,2,7,3,4,8,5};
+    for(int i=0;i<order.size();i++){
+      std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
+      EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
+    }
+  }
+
+
+
+
 }

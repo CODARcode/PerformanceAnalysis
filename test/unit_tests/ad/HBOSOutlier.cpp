@@ -2,6 +2,7 @@
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
+#include<chimbuko/verbose.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
@@ -26,7 +27,9 @@ public:
   }
 };
 
-TEST(HBOSADOutlierTestSyncParamWithoutPS, Works){
+TEST(HBOSADOutlierTestSyncParamWithoutPS, CheckSyncParam){
+  chimbuko::enableVerboseLogging() = false;
+  
   HbosParam local_params_ps;
 
 
@@ -70,42 +73,32 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   int func_id = 1234;
   HbosParam stats, stats2, stats3, stats4, stats5;
   Histogram &stats_r = stats[func_id].getHistogram(), &stats_r2 = stats2[func_id].getHistogram(), &stats_r3 = stats3[func_id].getHistogram(), &stats_r4 = stats4[func_id].getHistogram(), &stats_r5 = stats5[func_id].getHistogram();
-  std::vector<double> runtimes;
-  for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
-  stats_r.create_histogram(runtimes);
-
-  std::vector<double> bin_edges = stats_r.bin_edges();
-  std::cout << "Bin edges 1:" << std::endl;
-  for(int i=0; i<bin_edges.size(); i++) std::cout << bin_edges[i] << std::endl;
-
   ADOutlierHBOSTest outlier, outlier2, outlier3, outlier4;
 
+  std::vector<double> runtimes;
+  for(int i=0;i<N;i++) runtimes.push_back(dist(gen));
+
+  //Generate the local model
+  stats_r.create_histogram(runtimes);
+  //Set the global model equal to the local model
   outlier.sync_param_test(&stats);
 
-  std::string stats_state = outlier.get_global_parameters()->serialize();
-
-  std::cout << "Stats: " << stats_state << std::endl;
-
-  //Generate some events with an outlier itr 1
+  //Generate a new local model from data including an explicit outlier
   runtimes.clear();
   std::list<ExecData_t> call_list;  //aka CallList_t
+  unsigned long outlier_start, outlier_runtime;
   for(int i=0;i<N;i++){
     double val = i==N-1 ? 800 : double(dist(gen)); //outlier on N-1
-    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    unsigned long start = 1000*(i+1);
+    call_list.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", start,val) );
     runtimes.push_back(val);
-    //std::cout << call_list.back().get_json().dump() << std::endl;
+    if(i==N-1){
+      outlier_start = start;
+      outlier_runtime = val;
+    }
   }
-
   stats_r2.create_histogram(runtimes);
-
-  std::vector<double> bin_edges2 = stats_r2.bin_edges();
-  std::cout << "Bin edges 2:" << std::endl;
-  for(int i=0; i<bin_edges2.size(); i++) std::cout << bin_edges2[i] << std::endl;
-  outlier.sync_param_test(&stats2);
-
-  std::string stats_state2 = outlier.get_global_parameters()->serialize();
-
-  std::cout << "Stats: " << stats_state2 << std::endl;
+  outlier.sync_param_test(&stats2); //merge second data batch into global model
 
   std::vector<CallListIterator_t> call_list_its;
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
@@ -115,8 +108,21 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
 
   std::cout << "# outliers detected: " << nout << std::endl;
+  EXPECT_GE(nout, 1);
+  //Check the expected outlier is present
+  std::vector<CallListIterator_t> out_check  = outliers.funcEventsRecorded(func_id, Anomalies::EventType::Outlier);
+  bool found = false;
+  for(auto c : out_check){
+    if(c->get_entry() == outlier_start && c->get_runtime() == outlier_runtime){
+      std::cout << "Found expected outlier" << std::endl;
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
+  
 
-  //Generate some events with an outlier itr 2 same outlier val:800
+  //Generate some events with an outlier itr 2 same outlier val:800. 
   runtimes.clear();
   std::list<ExecData_t> call_list2;  //aka CallList_t
   for(int i=0;i<N;i++){
@@ -128,15 +134,8 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   stats_r3.create_histogram(runtimes);
 
-  std::vector<double> bin_edges3 = stats_r3.bin_edges();
-  std::cout << "Bin edges 3:" << std::endl;
-  for(int i=0; i<bin_edges3.size(); i++) std::cout << bin_edges3[i] << std::endl;
-
   outlier.sync_param_test(&stats3);
 
-  std::string stats_state3 = outlier.get_global_parameters()->serialize();
-
-  std::cout << "Stats: " << stats_state3 << std::endl;
 
   std::vector<CallListIterator_t> call_list_its2;
   for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
@@ -153,22 +152,17 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::list<ExecData_t> call_list3;  //aka CallList_t
   for(int i=0;i<N;i++){
     double val = i==N-1 ? 10000 : double(dist(gen)); //outlier on N-1
-    call_list3.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", 1000*(i+1),val) );
+    unsigned int start = 1000*(i+1);
+    call_list3.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", start,val) );
     runtimes.push_back(val);
-    //std::cout << call_list.back().get_json().dump() << std::endl;
+    if(i==N-1){
+      outlier_start = start;
+      outlier_runtime = val;
+    }
   }
 
   stats_r4.create_histogram(runtimes);
-
-  std::vector<double> bin_edges4 = stats_r4.bin_edges();
-  std::cout << "Bin edges 4:" << std::endl;
-  for(int i=0; i<bin_edges4.size(); i++) std::cout << bin_edges4[i] << std::endl;
-
   outlier.sync_param_test(&stats4);
-
-  std::string stats_state4 = outlier.get_global_parameters()->serialize();
-
-  std::cout << "Stats: " << stats_state4 << std::endl;
 
   std::vector<CallListIterator_t> call_list_its3;
   for(CallListIterator_t it=call_list3.begin(); it != call_list3.end(); ++it)
@@ -178,6 +172,20 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   unsigned long nout3 = outlier.compute_outliers_test(outliers3, func_id, call_list_its3);
 
   std::cout << "# outliers detected: " << nout3 << std::endl;
+  EXPECT_GE(nout, 1);
+  //Check the expected outlier is present
+  out_check  = outliers3.funcEventsRecorded(func_id, Anomalies::EventType::Outlier);
+  found = false;
+  std::cout << "Outliers:" << std::endl;
+  for(auto c : out_check){
+    std::cout << c->get_entry() << " " << c->get_runtime() << std::endl;
+    if(c->get_entry() == outlier_start && c->get_runtime() == outlier_runtime){
+      std::cout << "Found expected outlier" << std::endl;
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
 
 
 }

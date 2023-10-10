@@ -19,8 +19,10 @@ namespace chimbuko{
     struct data_v{
       thallium::engine* m_eng;
       std::pair<std::string, int> m_protocol; /**< The protocol and mode (client/server)*/
+      std::string m_mercury_auth_key; /**< Mercury authorization key (optional)*/
+      
       bool m_is_initialized;
-      inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp;ofi_rxm", THALLIUM_CLIENT_MODE}), m_is_initialized(false){}
+      inline data_v(): m_eng(nullptr), m_protocol({"ofi+tcp;ofi_rxm", THALLIUM_CLIENT_MODE}), m_mercury_auth_key(""), m_is_initialized(false){}
 
       /**
        * @brief Initialize the engine (if not already initialized)
@@ -52,6 +54,13 @@ namespace chimbuko{
       data().m_protocol = {transport, mode};
     }
 
+    /**
+     * @brief Set the Mercury authorization key. Must be done before the engine is created
+     */
+    static inline void setMercuryAuthorizationKey(const std::string &to){
+      data().m_mercury_auth_key = to;
+    }
+    
     /**
      * @brief Get the protocol used to create the engine.
      */

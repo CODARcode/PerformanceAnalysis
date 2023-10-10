@@ -12,3 +12,4 @@
 #include "pserver/AggregateFuncAnomalyMetrics.hpp"
 #include "pserver/FunctionProfile.hpp"
 #include "pserver/PSparamManager.hpp"
+#include "pserver/PSfunctions.hpp"

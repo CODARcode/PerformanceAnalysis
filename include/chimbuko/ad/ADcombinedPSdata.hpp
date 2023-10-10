@@ -25,47 +25,23 @@ namespace chimbuko{
     ADLocalAnomalyMetrics &get_anom_metrics(){ return m_anom_metrics; }
     const ADLocalAnomalyMetrics &get_anom_metrics() const{ return m_anom_metrics; }
 
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_func_stats , m_counter_stats, m_anom_metrics);
+    }
 
     /**
-     * @brief The State object is what is serialized for the communication
+     * Serialize into Cereal portable binary format
      */
-    struct State{
-      ADLocalFuncStatistics::State func_stats_state;
-      ADLocalCounterStatistics::State counter_stats_state;
-      ADLocalAnomalyMetrics::State anom_metrics_state;
-
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(func_stats_state , counter_stats_state, anom_metrics_state);
-      }
-
-      /**
-       * Serialize into Cereal portable binary format
-       */
-      std::string serialize_cerealpb() const;
+    std::string serialize_cerealpb() const;
       
-      /**
-       * Serialize from Cereal portable binary format
-       */     
-      void deserialize_cerealpb(const std::string &strstate);
-    };
-
     /**
-     * @brief Get the current state as a state object
-     *
-     * The string dump of this object is the serialized form sent to the parameter server
-     */    
-    State get_state() const;
-
-
-    /**
-     * @brief Set the internal variables to the given state object
-     */
-    void set_state(const State &s);
-
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
     /**
      * @brief Serialize this class for communication over the network

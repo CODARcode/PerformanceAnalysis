@@ -1,0 +1,51 @@
+Bootstrap: docker
+From: ubuntu:18.04
+Stage: build
+
+%files
+  provdb_python_spack_env /opt/spack-environment/spack.yaml
+  jupyter_example.ipynb /jupyter/
+%post
+  apt-get update && apt-get install -y build-essential wget && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+  export CONDA_DIR=/opt/conda  
+  export PATH=/opt/conda/bin:$PATH
+
+  mkdir /Downloads && cd /Downloads
+  wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && /bin/bash ./miniconda.sh -b -p /opt/conda && rm miniconda.sh
+
+  apt-get update && apt-get install -y git
+  git clone https://github.com/CODARcode/PerformanceAnalysis.git && rm -rf PerformanceAnalysis/spack/repo/chimbuko/packages/binutils
+  git clone https://github.com/mochi-hpc/mochi-spack-packages.git
+  cd /
+  git clone https://github.com/spack/spack.git
+  cd /Downloads
+  . /spack/share/spack/setup-env.sh && spack repo add PerformanceAnalysis/spack/repo/chimbuko && spack repo add mochi-spack-packages
+  cd /opt/spack-environment
+  . /spack/share/spack/setup-env.sh && spack env activate . && spack install --fail-fast && spack gc -y
+
+  apt-get update && apt-get install -y file && find -L /opt/view/* -type f -exec readlink -f '{}' \; | \
+    xargs file -i | \
+    grep 'charset=binary' | \
+    grep 'x-executable\|x-archive\|x-sharedlib' | \
+    awk -F: '{print $1}' | xargs strip -s
+
+  cd /opt/spack-environment && \
+    . /spack/share/spack/setup-env.sh && spack env activate --sh -d . >> /etc/profile.d/z10_spack_environment.sh
+
+  apt-get purge -y git && apt-get autoremove && rm -rf /var/lib/apt/lists/*
+  rm -rf /Downloads && rm -rf /spack && rm -rf ~/.spack
+
+  pip3 install jupyter
+  cd /jupyter && echo '#!/bin/bash\njupyter notebook --no-browser --port=$1 --allow-root --ip=0.0.0.0' > run_notebook.sh && chmod u+x run_notebook.sh
+
+  echo 'export CONDA_DIR=/opt/conda' >> $SINGULARITY_ENVIRONMENT
+  echo 'export SPACK_ENV=/opt/spack-environment' >> $SINGULARITY_ENVIRONMENT
+  echo 'export CMAKE_PREFIX_PATH=/opt/view:/opt/conda'  >> $SINGULARITY_ENVIRONMENT
+  echo 'export MANPATH=/opt/view/share/man:/opt/conda/share/man:/opt/conda/man:/opt/view/man:.:'  >> $SINGULARITY_ENVIRONMENT
+  echo 'export PATH=/opt/view/bin:/opt/conda/bin:/spack/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'  >> $SINGULARITY_ENVIRONMENT
+  echo 'export PKG_CONFIG_PATH=/opt/view/share/pkgconfig:/opt/view/lib/pkgconfig:/opt/conda/lib/pkgconfig:/opt/view/lib64/pkgconfig'  >> $SINGULARITY_ENVIRONMENT
+  echo 'export PYTHONPATH=/opt/view/lib/python3.10/site-packages:/opt/software/linux-ubuntu18.04-ivybridge/gcc-7.5.0/py-mochi-sonata-0.1.2-rvz76gls7gmiewupecqigb5kghjcubgl/lib/python3.10/site-packages'  >> $SINGULARITY_ENVIRONMENT
+  
+  chmod -R a+rwX /opt /jupyter
+  find / -type d -not -path '/proc/*' -exec chmod -f 777 {} \;

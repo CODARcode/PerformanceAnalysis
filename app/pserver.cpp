@@ -54,6 +54,7 @@ struct pserverArgs{
 
 #ifdef ENABLE_PROVDB
   std::string provdb_addr_dir;
+  std::string provdb_mercury_auth_key; //An authorization key for initializing Mercury (optional, default "")
 #endif
 
   std::string prov_outputpath;
@@ -63,7 +64,7 @@ struct pserverArgs{
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr_dir("")
+	       , provdb_addr_dir(""), provdb_mercury_auth_key("")
 #endif
   {}
 
@@ -88,6 +89,7 @@ struct pserverArgs{
 #endif
 #ifdef ENABLE_PROVDB
       addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
+      addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
       addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
       addOptionalCommandLineArg(p, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
@@ -136,14 +138,7 @@ int main (int argc, char ** argv){
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
-    std::ifstream in(args.load_params);
-    if(!in.good()) throw std::runtime_error("Could not load anomaly algorithm parameters from the file provided");
-    nlohmann::json in_p;
-    in >> in_p;
-    global_func_index_map.deserialize(in_p["func_index_map"]);
-
-    //When the global model is updated the previous model is discarded. Thus if we want to bring in params from a previous run we need to set the state of *one* of the worker threads (which are never flushed)
-    param.updateWorkerModel(in_p["alg_params"].dump(),0);
+    restoreModel(global_func_index_map,  param, args.load_params);
   }
 
   //Start the aggregator thread for the global model
@@ -165,6 +160,11 @@ int main (int argc, char ** argv){
   PSstatSender stat_sender(args.stat_send_freq);
 
 #ifdef ENABLE_PROVDB
+  if(args.provdb_mercury_auth_key != ""){
+    progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
+    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+  }
+  
   PSProvenanceDBclient provdb_client;
 #endif
 
@@ -299,12 +299,7 @@ int main (int argc, char ** argv){
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
     progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
-    std::ofstream out(args.save_params);
-    if(!out.good()) throw std::runtime_error("Could not write anomaly algorithm parameters to the file provided");
-    nlohmann::json out_p;
-    out_p["func_index_map"] = global_func_index_map.serialize();
-    out_p["alg_params"] = nlohmann::json::parse(param.getSerializedGlobalModel()); //todo  - store in human readable format rather than net-serialize format
-    out << out_p;
+    writeModel(args.save_params, global_func_index_map, param);
   }
 
   progressStream << "Pserver: finished" << std::endl;

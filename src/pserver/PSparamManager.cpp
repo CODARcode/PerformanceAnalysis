@@ -46,6 +46,20 @@ std::string PSparamManager::getSerializedGlobalModel() const{
   return m_latest_global_params;
 }  
 
+nlohmann::json PSparamManager::getGlobalModelJSON() const{
+  std::shared_lock<std::shared_mutex> _(m_mutex);
+  return m_global_params->get_json();
+}
+  
+void PSparamManager::restoreGlobalModelJSON(const nlohmann::json &from){
+  std::shared_lock<std::shared_mutex> _(m_mutex);
+  m_global_params->set_json(from);
+  m_latest_global_params = m_global_params->serialize();
+  //When the global model is updated the previous model is discarded. Thus if we want to bring in params from a previous run we need to set the state of *one* of the worker threads (which are never flushed)
+  m_worker_params[0]->set_json(from);
+  for(int i=1;i<m_worker_params.size();i++) m_worker_params[i]->clear();
+}
+
 
 void PSparamManager::startUpdaterThread(){
   if(m_updater_thread != nullptr) return;

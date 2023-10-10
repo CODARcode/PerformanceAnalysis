@@ -84,8 +84,8 @@ TEST(ADLocalFuncStatisticsTest, TestUpdateGlobalStatisticsWithPS){
   loc.gatherStatistics(&setup.fake_exec_map);
   loc.gatherAnomalies(setup.anomalies);
 
-  std::cout << "JSON size " << loc.get_json_state().dump().size() << std::endl;
-  std::cout << "Binary size " << loc.get_state().serialize_cerealpb().size() << std::endl;
+  std::cout << "JSON size " << loc.get_json().dump().size() << std::endl;
+  std::cout << "Binary size " << loc.net_serialize().size() << std::endl;
 
 
   GlobalAnomalyStats glob;

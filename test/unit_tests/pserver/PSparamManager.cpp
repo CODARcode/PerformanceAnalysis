@@ -7,6 +7,9 @@
 #include<chimbuko/util/barrier.hpp>
 #include<chimbuko/net/zmq_net.hpp>
 #include<chimbuko/ad/ADNetClient.hpp>
+#include<chimbuko/pserver/PSfunctions.hpp>
+
+#include<stdio.h>
 
 using namespace chimbuko;
 
@@ -17,6 +20,7 @@ public:
   using PSparamManager::getGlobalParams;
   using PSparamManager::getWorkerParams;
 };
+
 
 TEST(TestPSparamManager, Setup){
   //Test it fails with an invalid parameter type
@@ -319,7 +323,7 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
 
   //Wait a few seconds for the pserver to generate the global model from this data
   std::cout << "Main thread waiting for PS to process data" << std::endl;
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(4000));
   
   //Get the global model
   std::cout << "Main thread getting global model" << std::endl;
@@ -335,15 +339,26 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
 
   Histogram const& glob_h = glob[fid].getHistogram();
   Histogram const& expect_h = combined[fid].getHistogram();
-  double gc = glob_h.totalCount();
-  double ec = expect_h.totalCount();
+  unsigned int gc = glob_h.totalCount();
+  unsigned int ec = expect_h.totalCount();
   std::cout << "Global count " << gc << " expect " << ec << std::endl;
-  EXPECT_NEAR(gc,ec,1e-5);
+  EXPECT_EQ(gc,ec);
 
-  std::cout << "Got global model:" << std::endl << glob_h << std::endl;
-  std::cout << "Expect:" << std::endl << expect_h << std::endl;
+  std::cout << "Global Nbin " << glob_h.Nbin() << " expect " << expect_h.Nbin() << std::endl;
+  ASSERT_EQ(glob_h.Nbin(), expect_h.Nbin());
 
-  EXPECT_EQ(glob_h, expect_h);
+  for(int b=0;b<glob_h.Nbin();b++){
+    auto gbe = glob_h.binEdges(b);
+    auto ebe = expect_h.binEdges(b);
+    unsigned int gbc = glob_h.binCount(b);
+    unsigned int ebc = expect_h.binCount(b);
+
+    std::cout << "Bin " << b << " global edges " << gbe.first << ":" << gbe.second << " expect " << ebe.first << ":" << ebe.second << " and global count " << gbc << " expect " << ebc << std::endl;
+    EXPECT_EQ(gbe,ebe);
+    EXPECT_EQ(gbc,ebc);
+  } 
+
+  EXPECT_EQ(glob_h,expect_h);
 
   std::cout << "Main thread disconnecting from PS" << std::endl;
   net_client.disconnect_ps();
@@ -353,3 +368,72 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   psthr.join();
 }
 
+TEST(TestPSparamManager, ModelSaveRestore){
+  PSparamManagerTest man1(1, "hbos");
+  PSglobalFunctionIndexMap idx_map1;
+
+  std::string fname = "my_func";
+
+  HbosParam w1;
+  unsigned fid = idx_map1.lookup(0,fname); //populate index manager
+
+
+    //Some fake data
+  std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
+  HbosFuncParam hp1;
+  hp1.setInternalGlobalThreshold(3.141);
+  hp1.getHistogram() = Histogram(d1);
+  
+  w1[fid] = hp1;
+
+  man1.updateWorkerModel(w1.serialize(), 0);
+  man1.updateGlobalModel();
+  
+  {
+    //Check current global model is as expected
+    HbosParam test;
+    test.assign(man1.getSerializedGlobalModel());
+    
+    EXPECT_TRUE(test.find(fid));
+    EXPECT_EQ(test[fid], hp1);
+  }
+
+  std::string file = "model_save_restore_test.json";
+  remove(file.c_str());
+  std::cout << "Writing model to disk" << std::endl;
+  writeModel(file, idx_map1, man1);
+  
+  PSparamManagerTest man2(2, "hbos");
+  PSglobalFunctionIndexMap idx_map2;
+  std::cout << "Restoring model from disk" << std::endl;
+  restoreModel(idx_map2,man2,file);
+
+  std::cout << "Running tests" << std::endl;
+
+  ASSERT_TRUE(idx_map2.contains(0,fname));
+  EXPECT_EQ(idx_map2.lookup(0,fname), fid);
+
+  {
+    //Check restored global model is as expected
+    HbosParam test;
+    test.assign(man2.getSerializedGlobalModel());
+    
+    EXPECT_TRUE(test.find(fid));
+    EXPECT_EQ(test[fid], hp1);
+  }
+  
+  {
+    //Check worker 0 has the restored model
+    HbosParam test;
+    test.assign(man2.getWorkerParamsPtr(0)->serialize());
+    EXPECT_TRUE(test.find(fid));
+    EXPECT_EQ(test[fid], hp1);
+  }
+  {
+    //Check worker 1 has an empty model
+    HbosParam test;
+    test.assign(man2.getWorkerParamsPtr(1)->serialize());
+    EXPECT_EQ(test.size(), 0);
+  }
+  
+}

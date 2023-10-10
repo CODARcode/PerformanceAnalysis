@@ -27,36 +27,14 @@ TEST(TestGlobalCounterStats, Combination){
     stats2.push(M_PI*M_PI*(i+3) + M_PI*M_PI*M_PI*i*i*i);
   }
 
-  ADLocalCounterStatistics::State::CounterData cstate1;
-  cstate1.pid = pid;
-  cstate1.name = cname1;
-  cstate1.stats = stats1.get_state();
-
-  ADLocalCounterStatistics::State::CounterData cstate2;
-  cstate2.pid = pid;
-  cstate2.name = cname2;
-  cstate2.stats = stats2.get_state();
-
-  ADLocalCounterStatistics::State state_counter1_1;
-  state_counter1_1.step = step1;
-  state_counter1_1.counters = {cstate1};
-
   ADLocalCounterStatistics data_counter1_1(pid, step1, &which_counters);
-  data_counter1_1.set_state(state_counter1_1);
-
-  ADLocalCounterStatistics::State state_counter1_2;
-  state_counter1_2.step = step2;
-  state_counter1_2.counters = {cstate2};
+  data_counter1_1.setStats(cname1,stats1);
 
   ADLocalCounterStatistics data_counter1_2(pid, step2, &which_counters);
-  data_counter1_2.set_state(state_counter1_2);
-
-  ADLocalCounterStatistics::State state_counter2_1;
-  state_counter2_1.step = step1;
-  state_counter2_1.counters = {cstate2};
+  data_counter1_2.setStats(cname2,stats2);
 
   ADLocalCounterStatistics data_counter2_1(pid, step1, &which_counters);
-  data_counter2_1.set_state(state_counter2_1);
+  data_counter2_1.setStats(cname2,stats2);
   
   {
     //Check merge for stats for 2 different counters

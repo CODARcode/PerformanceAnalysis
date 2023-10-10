@@ -51,7 +51,7 @@ pserver_nt=1 #number of worker threads
 ####################################
 ad_extra_args="-perf_outputpath chimbuko/logs -perf_step 1" #any extra command line arguments to pass. Note: chimbuko/logs is automatically created by services script
 ad_win_size=5  #number of events around an anomaly to store; provDB entry size is proportional to this so keep it small!
-ad_alg="sstd" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
+ad_alg="hbos" #the anomaly detection algorithm. Valid values are "hbos" and "sstd"
 ad_outlier_hbos_threshold=0.99  #the percentile of events outside of which are considered anomalies by the HBOS algorithm
 ad_outlier_sstd_sigma=12 #number of standard deviations that defines an outlier in the SSTD algorithm
 ####################################
@@ -68,6 +68,8 @@ export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TA
 export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 
 export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use <------------ ***SET ME***
+
+tau_monitoring_conf="default" #Provide a configuration file for the TAU monitoring plugin. It will be copied to the work directory as "tau_monitoring.json" (unless it is already there!). If set to default, Chimbuko will generate one automatically
 
 #Note: the following 2 variables are not used by the service script but are included here for use from the user's run script allowing the application to be launched with either "${TAU_EXEC} <app>" or "${TAU_PYTHON} <app>"
 #Note: the "binding" -T ... is used by Tau to find the appropriate configuration. It can typically be inferred from the name of the Makefile. If using a non-MPI job the 'mpi' should be changed to 'serial' and a non-MPI build of

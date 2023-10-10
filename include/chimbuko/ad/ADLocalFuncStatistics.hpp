@@ -15,37 +15,6 @@ namespace chimbuko{
    */
   class ADLocalFuncStatistics{
   public:
-    /**
-     * @brief Data structure containing the data that is sent (in serialized form) to the parameter server
-     */
-    struct State{
-      std::vector<FuncStats::State> func; /** Function stats for each function*/
-      AnomalyData::State anomaly; /** Statistics on overall anomalies */
-   
-      /**
-       * @brief Serialize using cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(func , anomaly);
-      }
-
-      /**
-       * Serialize into Cereal portable binary format
-       */
-      std::string serialize_cerealpb() const;
-      
-      /**
-       * Serialize from Cereal portable binary format
-       */     
-      void deserialize_cerealpb(const std::string &strstate);
-
-	/**
-	 * @brief Create a JSON object from this instance
-	 */
-      nlohmann::json get_json() const;
-    };    
-
     ADLocalFuncStatistics(): m_perf(nullptr){}
 
     ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf = nullptr);
@@ -71,42 +40,52 @@ namespace chimbuko{
 
     
     /**
-     * @brief Get the current state as a JSON object
-     *
-     * The string dump of this object is the serialized form sent to the parameter server
+     * @brief Output the contents of this object in JSON format
      */
-    nlohmann::json get_json_state() const;
-
-    /**
-     * @brief Get the current state as a state object
-     *
-     * The string dump of this object is the serialized form sent to the parameter server
-     */    
-    State get_state() const;
-
-
-    /**
-     * @brief Set the internal variables to the given state object
-     */
-    void set_state(const State &s);
-
+    nlohmann::json get_json() const;
 
     /**
      * @brief Attach a RunMetric object into which performance metrics are accumulated
      */
     void linkPerf(PerfStats* perf){ m_perf = perf; }
-
     
     /**
      * @brief Access the AnomalyData instance
      */
     const AnomalyData & getAnomalyData() const{ return m_anom_data; }
-    
+
+    /**
+     * @brief Set the AnomalyData member
+     */
+    void setAnomalyData(const AnomalyData &to){ m_anom_data = to; }   
 
     /**
      * @brief Access the function profile statistics
      */
     const std::unordered_map<unsigned long, FuncStats> & getFuncStats() const{ return m_funcstats; }
+
+    /**
+     * @brief Set the function profile statistics
+     */   
+    void setFuncStats(const std::unordered_map<unsigned long, FuncStats> &to){ m_funcstats = to; }
+
+    /**
+     * @brief Serialize using cereal
+     */
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_funcstats , m_anom_data);
+    }
+
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
+      
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
 
     /**

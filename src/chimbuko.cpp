@@ -21,7 +21,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  hbos_use_global_threshold(true),
 				  hbos_max_bins(200),
 #ifdef ENABLE_PROVDB
-				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1),
+				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1), provdb_mercury_auth_key(""),
 #endif
 				  prov_outputpath(""),
                                   prov_record_startstep(-1),
@@ -281,6 +281,11 @@ void Chimbuko::init_counter(){
 
 #ifdef ENABLE_PROVDB
 void Chimbuko::init_provdb(){
+  if(m_params.provdb_mercury_auth_key != ""){
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " setting Mercury authorization key to \"" << m_params.provdb_mercury_auth_key << "\"" << std::endl;
+    ADProvenanceDBengine::setMercuryAuthorizationKey(m_params.provdb_mercury_auth_key);
+  }
+  
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
   if(m_params.provdb_addr_dir.length() > 0){
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
@@ -597,7 +602,7 @@ void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
 
     //Send the data in a single communication
     timer.start();
-    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics);
+    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics, &m_perf);
     comb_stats.send(*m_net_client);
     m_perf.add("ad_gather_send_ps_data_gather_send_all_stats_to_ps_time_ms", timer.elapsed_ms());
   }

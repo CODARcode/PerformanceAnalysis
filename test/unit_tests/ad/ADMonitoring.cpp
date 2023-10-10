@@ -29,7 +29,9 @@ TEST(ADMonitoringTest, Basics){
   
   //Check recoverable error if we haven't linked the counter map
   mon.extractCounters(getIndexCounterMap(clist));
-  EXPECT_TRUE( os.str().find("Error (recoverable)") != std::string::npos );
+  std::string err_msg = os.str();
+  std::cout << "Content of (expected) error message:'" << err_msg << "'" << std::endl;
+  EXPECT_TRUE( err_msg.find("Error (recoverable)") != std::string::npos );
   os.str("");
 
   mon.linkCounterMap(&counter_map);
@@ -47,13 +49,15 @@ TEST(ADMonitoringTest, Basics){
   EXPECT_EQ( e1.value, 9876);
   EXPECT_EQ( mon.getTimeStamp(), 10000 );
   
-  //Check we get a recoverable error if the thread is not 0
-  clist = {
-    createCounterData_t(0,0,33,1,11334,10006,"interesting counter") };
+  //Check we get a recoverable error if the thread is not 0   //EDIT: Kevin made a change to the plugin which makes this no longer always true
+  // clist = {
+  //   createCounterData_t(0,0,33,1,11334,10006,"interesting counter") };
 
-  mon.extractCounters(getIndexCounterMap(clist));
-  EXPECT_TRUE( os.str().find("Error (recoverable)") != std::string::npos );
-  os.str("");
+  // mon.extractCounters(getIndexCounterMap(clist));
+  // err_msg = os.str();
+  // std::cout << "Content of (expected) error message:'" << err_msg << "'" << std::endl;
+  // EXPECT_TRUE( err_msg.find("Error (recoverable)") != std::string::npos );
+  // os.str("");
 
   //JSON format; should only show latest state
   clist = {

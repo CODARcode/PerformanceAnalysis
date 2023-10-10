@@ -2,6 +2,7 @@
 #include<chrono>
 #include<thread>
 #include<cassert>
+#include<csignal>
 #include<chimbuko/ad/ADProvenanceDBengine.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/util/string.hpp>
@@ -48,8 +49,9 @@ struct Args{
   int ninstances;
   int nshards;
   int freq_ms;
-
-  Args(): addr_file_dir("."), instance(0), ninstances(1), nshards(1), freq_ms(30000){}
+  std::string provdb_mercury_auth_key; //An authorization key for initializing Mercury (optional, default "")
+  
+  Args(): addr_file_dir("."), instance(0), ninstances(1), nshards(1), freq_ms(30000), provdb_mercury_auth_key(""){}
 };
 
 
@@ -62,7 +64,8 @@ int main(int argc, char** argv){
   addOptionalCommandLineArg(parser, ninstances, "Specify the number of server instances (default 1)");
   addOptionalCommandLineArg(parser, nshards, "Specify the total number of database shards (default 1)");
   addOptionalCommandLineArg(parser, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
-
+  addOptionalCommandLineArg(parser, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+  
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
     return 0;    
@@ -77,6 +80,11 @@ int main(int argc, char** argv){
     return 0;
   } 
 
+  if(args.provdb_mercury_auth_key != ""){
+    CprogressStream << "setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
+    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+  }
+  
   ProvDBsetup setup(args.nshards, args.ninstances);
   std::string addr = setup.getInstanceAddress(args.instance, args.addr_file_dir);
   int instance_shard_offset = setup.getShardOffsetInstance(args.instance);

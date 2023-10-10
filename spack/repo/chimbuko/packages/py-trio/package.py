@@ -34,7 +34,7 @@ class PyTrio(PythonPackage):
     depends_on('py-outcome', type=('build', 'run'))
     depends_on('py-sniffio', type=('build', 'run'))
     depends_on('py-contextvars@2.1:', type=('build', 'run'),
-            when='^python@:3.6.99')
+               when='^python@:3.6')
 
     extends('python')
 

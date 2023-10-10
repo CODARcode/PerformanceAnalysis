@@ -141,14 +141,15 @@ struct ProvdbArgs{
   bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
   std::string db_margo_config;
-
+  std::string db_mercury_auth_key;
+  
   bool db_use_aggregator; /**< Use the aggregator backend*/
   int db_batch_size; /**< Batch size for "aggregator" backend*/
 
   bool db_bypass_unqlite;
   
   ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""),
-		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true){}
+		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true), db_mercury_auth_key(""){}
 };
 
 
@@ -176,6 +177,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
     addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
     addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
@@ -244,7 +246,12 @@ int main(int argc, char** argv) {
     
     free(config); //yuck c-strings
     margo_finalize(margo_id);
- 
+
+    //Apply auth_key if provided
+    if(args.db_mercury_auth_key.size()){
+      config_j["mercury"]["auth_key"] = args.db_mercury_auth_key;
+    }
+        
     //Initial number of pools should be 1: the primary pool
     assert(config_j["argobots"]["pools"].size() == 1);
     
@@ -439,16 +446,19 @@ int main(int argc, char** argv) {
 	      commit_timer_start = Clock::now();
 	    }
 
-	    //If at least one client has previously connected but none are now connected, shutdown the server
-	    //If all clients disconnected we must also wait for the pserver to disconnect (if it is connected)
+	    bool do_break = false;
 
-	    //If args.autoshutdown is disabled we can force shutdown via a "stop_server" RPC
-	    if(
-	       (args.autoshutdown || cmd_shutdown)  &&
-	       ( a_client_has_connected && connected.size() == 0 ) &&
-	       ( !pserver_has_connected || (pserver_has_connected && !pserver_connected) ) &&
-	       ( !committer_has_connected || (committer_has_connected && !committer_connected) )
-	       ){
+	    //Shut down if told to, as long as no clients are still connected
+	    //Force shutdown is called via a "stop_server" RPC
+	    if(cmd_shutdown && connected.size() == 0 && !pserver_connected && !committer_connected){
+	      do_break = true;
+	    }
+	    //If using auto-shutdown, we wait until a) at least one client has previously connected b) no clients are currently connected  c) The pserver and committer are not connected (their connection is optional)
+	    if(args.autoshutdown && a_client_has_connected && connected.size() == 0 && !pserver_connected && !committer_connected){
+	      do_break = true;
+	    }
+
+	    if(do_break){
 	      PSprogressStream << "detected all clients disconnected, shutting down" << std::endl;
 #ifdef ENABLE_MARGO_STATE_DUMP
 	      margo_dump("margo_dump_all_client_disconnected." + std::to_string(instance));

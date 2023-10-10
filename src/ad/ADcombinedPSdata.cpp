@@ -3,38 +3,20 @@
 
 using namespace chimbuko;
 
-std::string ADcombinedPSdata::State::serialize_cerealpb() const{
+std::string ADcombinedPSdata::serialize_cerealpb() const{
   return cereal_serialize(*this);
 }
 
-void ADcombinedPSdata::State::deserialize_cerealpb(const std::string &strstate){
+void ADcombinedPSdata::deserialize_cerealpb(const std::string &strstate){
   cereal_deserialize(*this, strstate);
 }
 
-
-ADcombinedPSdata::State ADcombinedPSdata::get_state() const{
-  State state;
-  state.func_stats_state = m_func_stats.get_state();
-  state.counter_stats_state = m_counter_stats.get_state();
-  state.anom_metrics_state = m_anom_metrics.get_state();
-  return state;
-}
-
-void ADcombinedPSdata::set_state(const ADcombinedPSdata::State &s){
-  m_func_stats.set_state(s.func_stats_state);
-  m_counter_stats.set_state(s.counter_stats_state);
-  m_anom_metrics.set_state(s.anom_metrics_state);
-}
-
-
 std::string ADcombinedPSdata::net_serialize() const{
-  return get_state().serialize_cerealpb();
+  return serialize_cerealpb();
 }
 
 void ADcombinedPSdata::net_deserialize(const std::string &s){
-  State state;
-  state.deserialize_cerealpb(s);
-  set_state(state);
+  deserialize_cerealpb(s);
 }
 
 std::pair<size_t, size_t> ADcombinedPSdata::send(ADNetClient &net_client) const{

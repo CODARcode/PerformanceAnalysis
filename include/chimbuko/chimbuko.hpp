@@ -45,6 +45,7 @@ namespace chimbuko {
     std::string provdb_addr_dir; /**< Directory in which the provenance database writes its address files. If an empty string the provDB will not be used*/
     int nprovdb_shards; /**< Number of database shards*/
     int nprovdb_instances; /**< Number of instances of the provenance database server*/
+    std::string provdb_mercury_auth_key; /**< An authorization key for initializing Mercury (optional, default "")*/
 #endif
     int prov_record_startstep; /**< If != -1, the IO step on which to start recording provenance information for anomalies */
     int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */

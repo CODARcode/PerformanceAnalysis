@@ -22,41 +22,30 @@ struct TestSetup{
 
     AnomalyData adata(pid,rid,step,0,100,55);
     FuncStats fstats(pid, 22, "myfunc");
-
-    ADLocalFuncStatistics::State fstate;
-    fstate.anomaly = adata.get_state();
-    fstate.func.push_back(fstats.get_state());
-
-    lclfstats.set_state(fstate);
+    lclfstats.setAnomalyData(adata);
+    lclfstats.setFuncStats(std::unordered_map<unsigned long, FuncStats>({{22,fstats}}));
 
     RunStats cstats;
     for(int i=0;i<100;i++) cstats.push((double)i);
   
-    ADLocalCounterStatistics::State cstate;
-    cstate.step = step;
-    cstate.counters.resize(1);
-    cstate.counters[0].pid = pid;
-    cstate.counters[0].name = "mycounter";
-    cstate.counters[0].stats = cstats.get_state();
-  
-    lclcstats.set_state(cstate);
+    lclcstats.setProgramIndex(pid);
+    lclcstats.setIOstep(step);
+    lclcstats.setStats("mycounter", cstats);
 
-    ADLocalAnomalyMetrics::State mstate;
-    mstate.app = pid;
-    mstate.rank = rid;
-    mstate.step = step;
-    mstate.first_event_ts = 1000;
-    mstate.last_event_ts = 2000;
+    lclmetrics.set_pid(pid);
+    lclmetrics.set_rid(rid);
+    lclmetrics.set_step(step);
+    lclmetrics.set_first_event_ts(1000);
+    lclmetrics.set_last_event_ts(2000);
+
+    FuncAnomalyMetrics mf;
+    mf.set_score(cstats);
+    mf.set_severity(cstats);
+    mf.set_count(100);
+    mf.set_fid(22);
+    mf.set_func("myfunc");
     
-    FuncAnomalyMetrics::State mfstate;
-    mfstate.score = cstats.get_state();
-    mfstate.severity = cstats.get_state();
-    mfstate.count = 100;
-    mfstate.fid = 22;
-    mfstate.func = "myfunc";
-    mstate.func_anom_metrics[22] = std::move(mfstate);
-    
-    lclmetrics.set_state(mstate);
+    lclmetrics.set_metrics(std::unordered_map<int, FuncAnomalyMetrics>({{22,mf}}));
   }
 
 };

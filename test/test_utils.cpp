@@ -124,7 +124,7 @@ TEST_F(UtilTest, RunStatSerializeTest)
         data.push_back(num);
     }
 
-    c_stat.set_strstate(stat.get_strstate());
+    c_stat.net_deserialize(stat.net_serialize());
 
     double static_mean = chimbuko::static_mean(data, 0.0);
     double static_std = chimbuko::static_std(data);
@@ -227,7 +227,7 @@ TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
 	const RunStats &stats = rp.second->get_stats();
         RunStats c_stats = c_anomaly_stats[pid][rid]->get_stats();
         
-        EXPECT_EQ(c_stats, stats);
+        EXPECT_TRUE(c_stats.equiv(stats));
         EXPECT_EQ(n_anomaly_data[pid][rid], rp.second->get_data()->size());
         delete rp.second;
         delete c_anomaly_stats[pid][rid];

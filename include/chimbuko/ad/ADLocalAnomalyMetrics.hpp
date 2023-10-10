@@ -10,31 +10,7 @@ namespace chimbuko{
    * @brief A class that collects anomaly metrics broken down by function for sending to the pserver
    */
   class ADLocalAnomalyMetrics{
-  public:
-    /**
-     * @brief Class state that is serialized for pserver comms
-     */
-    struct State{
-      int app; /**< Program idx*/
-      int rank; /**< rank */
-      int step; /**< io step */
-      unsigned long first_event_ts; /**< Timestamp of first event on step */
-      unsigned long last_event_ts;  /**< Timestamp of last event on step */
-      
-      std::unordered_map<int, FuncAnomalyMetrics::State> func_anom_metrics;
-
-      /*
-       * @brief Serialize this instance in Cereal
-       */
-      template<class Archive>
-      void serialize(Archive & archive){
-	archive(app, rank, step, first_event_ts, last_event_ts, func_anom_metrics);
-      }
-
-      State(const ADLocalAnomalyMetrics &parent);
-      State(){}
-    };
-    
+  public:   
     /**
      * @brief Constructor
      * @param app Application index
@@ -47,19 +23,23 @@ namespace chimbuko{
     ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const Anomalies &anom);
     ADLocalAnomalyMetrics(){}
 
-    /**
-     * @brief Get the current state as a state object
-     *
-     * The string dump of this object is the serialized form sent to the parameter server
-     */    
-    State get_state() const;
-
-
-    /**
-     * @brief Set the internal variables to the given state object
+    /*
+     * @brief Serialize this instance in Cereal
      */
-    void set_state(const State &s);
+    template<class Archive>
+    void serialize(Archive & archive){
+      archive(m_app, m_rank, m_step, m_first_event_ts, m_last_event_ts, m_func_anom_metrics);
+    }
 
+    /**
+     * Serialize into Cereal portable binary format
+     */
+    std::string serialize_cerealpb() const;
+      
+    /**
+     * Serialize from Cereal portable binary format
+     */     
+    void deserialize_cerealpb(const std::string &strstate);
 
     /**
      * @brief Serialize this class for communication over the network
@@ -78,12 +58,16 @@ namespace chimbuko{
      * @return std::pair<size_t, size_t> [sent, recv] message size
      */
     std::pair<size_t, size_t> send(ADNetClient &client) const;
-
-    
+   
     /**
      * @brief Get the data
      */
     const std::unordered_map<int, FuncAnomalyMetrics> & get_metrics() const{ return m_func_anom_metrics; }
+
+    /**
+     * @brief Set the data
+     */
+    void set_metrics(const std::unordered_map<int, FuncAnomalyMetrics> &to){ m_func_anom_metrics = to; }
 
     /**
      * @brief Get the program idx
@@ -91,9 +75,19 @@ namespace chimbuko{
     int get_pid() const{ return m_app; }
 
     /**
+     * @brief Set the program idx
+     */
+    void set_pid(int to){ m_app = to; }
+
+    /**
      * @brief Get the rank
      */
     int get_rid() const{ return m_rank; }
+
+    /**
+     * @brief Set the rank
+     */
+    void set_rid(int to){ m_rank = to; }
 
     /**
      * @brief Get the IO step
@@ -101,15 +95,29 @@ namespace chimbuko{
     int get_step() const{ return m_step; }
 
     /**
+     * @brief Get the IO step
+     */
+    void set_step(int to){ m_step = to; }
+
+    /**
      * @brief Get the timestamp of the first event on this IO step
      */
     unsigned long get_first_event_ts() const{ return m_first_event_ts; }
 
     /**
+     * @brief Set the timestamp of the first event on this IO step
+     */
+    void set_first_event_ts(unsigned long to){ m_first_event_ts = to; }
+
+    /**
      * @brief Get the timestamp of the last event on this IO step
      */
     unsigned long get_last_event_ts() const{ return m_last_event_ts; }
-    
+
+    /**
+     * @brief Set the timestamp of the last event on this IO step
+     */
+    void set_last_event_ts(unsigned long to){ m_last_event_ts = to; } 
     
     /**
      * @brief Equivalence operator

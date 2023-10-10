@@ -175,16 +175,16 @@ which can be used as follows:
 Running on Slurm-based systems
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This section we provide specifics on launching on the Spock machine, but the procedure will also apply to other machines using the Slurm task scheduler.
+This section we provide specifics on launching on machines using the Slurm task scheduler.
 
-Spock uses the *slurm* job management system. To control the explicit placement of the ranks we will use the :code:`--nodelist` (:code:`-w`) slurm option to specify the nodes associated with a resource set, the :code:`--nodes` (:code:`-N`) option to specify the number of nodes and the :code:`--overlap` option to allow the AD and application resource sets to coexist on the same node. These options are documented `here <https://slurm.schedmd.com/srun.html>`_.
+To control the explicit placement of the ranks we will use the :code:`--nodelist` (:code:`-w`) slurm option to specify the nodes associated with a resource set, the :code:`--nodes` (:code:`-N`) option to specify the number of nodes and the :code:`--overlap` option to allow the AD and application resource sets to coexist on the same node. These options are documented `here <https://slurm.schedmd.com/srun.html>`_.
 
-The :code:`--nodelist` option requires the range of full hostnames of the nodes to be provided. In order to simplify the generation of this list we provide a script `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts/spock/get_nodes.pl>`_ that parses the **SLURM_JOB_NODELIST** environment variable and generates the nodelist for the services and application. To use:
+The :code:`--nodelist` option requires the range of full hostnames of the nodes to be provided. For Crusher/Frontier and Spock we provide perl scripts in the appropriately named subdirectories of `here <https://github.com/CODARcode/PerformanceAnalysis/blob/ckelly_develop/scripts>`_ . These scripts parse the **SLURM_JOB_NODELIST** environment variable and generates the nodelist for the services and application. They differ only in adhering to the node naming convention for that particular machine. To use:
 
 .. code:: bash
 
-	  service_node=$(./get_nodes.pl HEAD)
-	  body_nodelist=$(./get_nodes.pl BODY)
+	  service_node=$(path_to_script/get_nodes.pl HEAD)
+	  body_nodelist=$(path_to_script/get_nodes.pl BODY)
 
 We can now set the various :code:`<LAUNCH ..>` commands in the section above:
 
@@ -202,6 +202,30 @@ Where
 - **${n_cores_per_rank_main}** and **${n_gpus_per_rank_main}** specify the number of cores and GPUs, respectively, given to each rank of the application.
 
 Note that we have assigned 1 core to each rank of the AD, and so :code:`${n_mpi_ranks_per_node} * (${n_cores_per_rank_main} + 1)` should not exceed 64, the number of available cores.
+
+Running with the CXI network provider on Frontier/Crusher
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Frontier/Crusher and other machines with Cray HPE Slingshot network support an optimized communications provider, **cxi**. Using this requires a few extra steps when running Chimbuko in order to allow the Mochi (provenance database) components to communicate between processes launched under different calls to *srun* (i.e. between our services and clients).
+
+First, add the following slurm options to your batch script header section:
+
+.. code:: bash
+
+	  #SBATCH --network=single_node_vni,job_vni
+
+Then, in the *chimbuko_config.sh*, set the following options (in addition to any other optional arguments):
+
+.. code:: bash
+	  
+	  provdb_engine="cxi"
+	  provdb_extra_args="-db_mercury_auth_key 0:0"
+	  commit_extra_args="-provdb_mercury_auth_key 0:0"  #add this variable if it doesn't yet exist in the setup script
+	  pserver_extra_args="-provdb_mercury_auth_key 0:0"
+	  ad_extra_args="-provdb_mercury_auth_key 0:0"
+
+Alternatively, if Chimbuko's services and online AD components are launched together using the new, experimental launch procedure (see below), it is only necessary to set the *provdb_engine* option.
+	  
 
 Scaling to large job sizes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -284,6 +308,43 @@ Online analysis of a non-MPI application with a non-MPI installation of Chimbuko
 
 In the context of a non-MPI application, instances of the application must still be associated with an index within Chimbuko that allows for their discrimination. This proceeds much as in the previous section, but with a catch: by default Chimbuko assumes that the instance index passed in by the **-rank <rank>** option matches the rank index reflected by the trace data and the ADIOS trace filename produced by Tau. However for a non-MPI application, Tau assigns rank 0 to **all instances**. In order to communicate this to Chimbuko a second command line option must be used: **-override_rank 0**. Here the 0 tells Chimbuko that the input data is labeled as 0 in both the filename and the trace data. Chimbuko will then overwrite the rank index in the trace data to match that of its internal rank index to ensure that this new label is passed through the analysis. Note that the user must make sure that each application instance is assigned either a different **TAU_ADIOS2_PATH** or **TAU_ADIOS2_FILE_PREFIX** otherwise the trace data files will overwrite each other.
 
+Launching Chimbuko's components together through a single script (advanced, experimental)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In order to simplify the launch procedure we are developing a script that simultaneously instantiates the Chimbuko services and the AD clients. At present we support only the Slurm task manager, and this feature is experimental.
+
+To use it, download the *PerformanceAnalysis* source. Then, in the run script remove the two separate calls to *srun* and the lines associated with the extra gathering of the body and head nodes, and replace with the following:
+
+.. code:: bash
+
+	  tasks_per_node=<SETME>
+	  nodes=${SLURM_NNODES}
+	  app_nodes=$(( nodes - 1 ))
+	  app_tasks=$(( ${app_nodes} * ${tasks_per_node} ))
+	  stasks=$(( ${nodes} * ${tasks_per_node} ))
+	  
+	  srun -N ${nodes} -n ${stasks} --ntasks-per-node ${tasks_per_node} --overlap path_to_PerformanceAnalysis_source/scripts/launch/chimbuko.sh ${app_tasks} &
+
+	  #Wait until server has started
+	  while [ ! -f chimbuko/vars/chimbuko_ad_cmdline.var ]; do sleep 1; done
+
+where **tasks_per_node** is the number of application tasks that you will be launching. It is assumed that the total number of nodes remains one larger than the number of nodes on which the application is to be launched.
+
+As the services are launched here on the *last* node, a simple call to srun for the application suffices to co-locate the application ranks with the AD instances:
+
+.. code:: bash
+
+	  srun --overlap -N${app_nodes} --ntasks-per-node=${tasks_per_node} <YOUR APPLICATION> <YOUR ARGUMENTS>
+
+The *chimbuko.sh* script has an optional argument **--core_bind** to bind the AD processes to specific cores, which can be used alongside Slurm's binding options to ensure the AD instances run on separate resources to the application. The format of the argument is a comma-separated list of core indices *per task on any given node*, with those lists themselves separated by colons (:). For example, with **${tasks_per_node}=8**
+
+.. code:: bash
+
+	  bnd="60,61:62,63:28,29:30,31:44,45:46,47:12,13:14,15"
+	  srun -N ${nodes} -n ${stasks} --ntasks-per-node ${tasks_per_node} --overlap ${rundir}/chimbuko.sh ${app_tasks} --core_bind ${bnd} &
+
+will bind the first AD process on a node to cores 60,61, the second to 62,63 and so on.
+	  
 	  
 .. _benchmark_suite:
 
