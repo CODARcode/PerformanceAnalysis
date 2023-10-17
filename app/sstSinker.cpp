@@ -230,6 +230,21 @@ int main(int argc, char ** argv){
       if(dump) delete dump;
       if(dump_runtimes){
 	dumpRuntimes(*dump_runtimes, fruntimes, *parser->getFuncMap());
+	size_t nincomplete = event_man.getCallListSize();
+	std::cout << nincomplete << " incomplete function executions at the end of the run" << std::endl;
+	if(nincomplete > 0){
+	  CallListMap_p_t& cl = event_man.getCallListMap();
+	  for (auto& it_p : cl) {
+	    for (auto& it_r : it_p.second) {
+	      for (auto& it_t: it_r.second) {
+		for( auto & it_e : it_t.second ){
+		  std::cout << it_e.get_json().dump(4) << std::endl;
+		}
+	      }
+	    }
+	  }
+	}	
+
 	delete dump_runtimes;
       }
       delete parser;
