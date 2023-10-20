@@ -26,6 +26,7 @@ namespace chimbuko {
 	m_metrics[name].set_do_accumulate(true);            
       }
       m_metrics[name].push(val);
+      m_last[name] = val;
     }
 
     /**
@@ -62,6 +63,7 @@ namespace chimbuko {
 
     /**
      * @brief Combine this instance with another
+     * Does not perform any action on the last recorded value
      */
     RunMetric & operator+=(const RunMetric &r){
       for(auto const &e : r.m_metrics){
@@ -71,9 +73,30 @@ namespace chimbuko {
       }
       return *this;
     }
+
+    /**
+     * @brief Get the statistics for a particular metric. Returns nullptr if the tag does not exist
+     */
+    RunStats const* getMetric(const std::string &tag) const{
+      auto it = m_metrics.find(tag);
+      if(it == m_metrics.end()) return nullptr;
+      else return &it->second;
+    }
+    
+    /**
+     * @brief Get the last recorded value for a particular metric
+     * @return A bool,double pair where the first entry indicates whether the tag exists, and the second its value
+     */
+    std::pair<bool,double> getLastRecorded(const std::string &tag) const{
+      auto it = m_last.find(tag);
+      if(it == m_last.end()) return std::pair<bool,double>(false,0);
+      else return std::pair<bool,double>(true,it->second);
+    }
+      
     
   private:
     std::unordered_map<std::string, RunStats> m_metrics; /**< Map of tag to statistics object */
+    std::unordered_map<std::string, double> m_last; /**< Map of tag to last recorded value*/
   };
 
 };

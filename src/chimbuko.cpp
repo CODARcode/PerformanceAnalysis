@@ -108,10 +108,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   //Reset state
   m_execdata_first_event_ts = m_execdata_last_event_ts = 0;
   m_execdata_first_event_ts_set = false;
-
-  m_n_func_events_accum_prd = m_n_comm_events_accum_prd = m_n_counter_events_accum_prd = 0;
-  m_n_outliers_accum_prd = 0; /**< Total number of outiers detected since last write of periodic data*/
-  m_n_steps_accum_prd = 0; /**< Number of steps since last write of periodic data */
+  m_accum_prd.reset();
 
   //Setup perf output
   std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
@@ -620,16 +617,16 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
   unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
 
   if(!parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step)) return false;
-  m_n_steps_accum_prd++;
+  m_accum_prd.n_steps++;
 
   //Increment total events
   n_func_events += n_func_events_step;
   n_comm_events += n_comm_events_step;
   n_counter_events += n_counter_events_step;
   
-  m_n_func_events_accum_prd += n_func_events_step;
-  m_n_comm_events_accum_prd += n_comm_events_step;
-  m_n_counter_events_accum_prd += n_counter_events_step;
+  m_accum_prd.n_func_events += n_func_events_step;
+  m_accum_prd.n_comm_events += n_comm_events_step;
+  m_accum_prd.n_counter_events += n_counter_events_step;
 
   //Decide whether to report step progress
   bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
@@ -671,10 +668,18 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     m_perf.add("ad_run_anomaly_count", anomalies.nEventsRecorded(Anomalies::EventType::Outlier));
     m_perf.add("ad_run_n_exec_analyzed", anomalies.nEvents());
 
+#ifdef _PERF_METRIC
+    {
+      auto pu = m_perf.getMetrics().getLastRecorded("param_update_ms");
+      if(!pu.first){ recoverable_error("Could not obtain information on parameter update/sync time"); }
+      else m_accum_prd.pserver_sync_time_ms += pu.second;
+    }
+#endif
+
     int nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
     int nnormal = anomalies.nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
     n_outliers += nout;
-    m_n_outliers_accum_prd += nout;
+    m_accum_prd.n_outliers += nout;
 
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
@@ -720,7 +725,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     getMemUsage(total, resident);
     m_perf_prd.add("ad_mem_usage_kB", resident);
 
-    m_perf_prd.add("io_steps", m_n_steps_accum_prd);
+    m_perf_prd.add("io_steps", m_accum_prd.n_steps);
 
     //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
     m_perf_prd.add("call_list_purged", purge_report.n_purged);
@@ -732,19 +737,16 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
 
     //Write accumulated outlier count
-    m_perf_prd.add("outlier_count", m_n_outliers_accum_prd);
+    m_perf_prd.add("outlier_count", m_accum_prd.n_outliers);
 
     //Write accumulated event counts
-    m_perf_prd.add("event_count_func", m_n_func_events_accum_prd);
-    m_perf_prd.add("event_count_comm", m_n_comm_events_accum_prd);
-    m_perf_prd.add("event_count_counter", m_n_counter_events_accum_prd);
+    m_perf_prd.add("event_count_func", m_accum_prd.n_func_events);
+    m_perf_prd.add("event_count_comm", m_accum_prd.n_comm_events);
+    m_perf_prd.add("event_count_counter", m_accum_prd.n_counter_events);
+    m_perf_prd.add("ps_sync_time_ms", m_accum_prd.pserver_sync_time_ms);
 
     //Reset the counts
-    m_n_func_events_accum_prd = 0;
-    m_n_comm_events_accum_prd = 0;
-    m_n_counter_events_accum_prd = 0;
-    m_n_outliers_accum_prd = 0;
-    m_n_steps_accum_prd = 0;
+    m_accum_prd.reset();
 
     //These only write if both filename and output path is set
     m_perf_prd.write();

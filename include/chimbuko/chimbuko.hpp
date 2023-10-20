@@ -85,6 +85,26 @@ namespace chimbuko {
     void print() const;
   };
 
+  /**
+   * @brief Record the state of accumulated statistics
+   */
+  struct AccumValuedPrd{
+    unsigned long long n_func_events; /**< Total number of function events since last write of periodic data*/
+    unsigned long long n_comm_events; /**< Total number of comm events since last write of periodic data*/
+    unsigned long long n_counter_events; /**< Total number of counter events since last write of periodic data*/
+    unsigned long n_outliers; /**< Total number of outiers detected since last write of periodic data*/
+    unsigned long pserver_sync_time_ms; /**< Time in ms spent synchronizing with the pserver since the last reset*/
+    int n_steps; /**< Number of steps since last write of periodic data */
+
+    void reset(){
+      n_func_events = n_comm_events = n_counter_events = 0;
+      n_outliers = pserver_sync_time_ms = 0;
+      n_steps = 0;
+    }     
+
+    AccumValuedPrd(){ reset(); }
+  };
+
 
   /**
    * @brief The main interface for the AD module
@@ -275,11 +295,7 @@ namespace chimbuko {
     bool m_execdata_first_event_ts_set; /**< False if the first event ts has not yet been set*/
 
     //State of accumulated statistics
-    unsigned long long m_n_func_events_accum_prd; /**< Total number of function events since last write of periodic data*/
-    unsigned long long m_n_comm_events_accum_prd; /**< Total number of comm events since last write of periodic data*/
-    unsigned long long m_n_counter_events_accum_prd; /**< Total number of counter events since last write of periodic data*/
-    unsigned long m_n_outliers_accum_prd; /**< Total number of outiers detected since last write of periodic data*/
-    int m_n_steps_accum_prd; /**< Number of steps since last write of periodic data */
+    AccumValuedPrd m_accum_prd;
 
     std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
   };
