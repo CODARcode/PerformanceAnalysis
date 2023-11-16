@@ -42,6 +42,13 @@ provdb_interface=auto
 #  If left blank it will be chosen automatically. <------------ ***SET ME (if using verbs)***
 provdb_domain=
 
+#provdb_numa_bind : specify NUMA domain binding for the provdb instances (requires numactl)
+# This variable has several options:
+# <blank>  - if left blank, no binding will be performed
+# <index>  - a single NUMA domain for all instances
+# <idx1>:<idx2>:<idx3> ...  - a colon-separated list of NUMA domains, one per instance
+provdb_numa_bind=
+
 commit_extra_args="" #extra arguments for the committer
 
 export FI_UNIVERSE_SIZE=1600  # Defines the expected number of provenance DB clients per instance <------------- *** SET ME (should be larger than the number of clients/instance)
@@ -56,6 +63,7 @@ pserver_extra_args="" #any extra command line arguments to pass
 pserver_interface=eth0 #network interface upon which communication to the pserver is performed. Obtain from, e.g. "ip link show" (cf https://www.cyberciti.biz/faq/linux-list-network-interfaces-names-command/). <------------ ***SET ME***
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads
+pserver_numa_bind= #specify NUMA domain binding for the pserver (requires numactl). If left blank, no binding will be performed
 ####################################
 #Options for the AD module
 ####################################
