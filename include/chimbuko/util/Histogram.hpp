@@ -335,6 +335,11 @@ namespace chimbuko{
      * @brief The lower bound of the histogram will be placed  getLowerBoundShiftMul()*bin_width below the minimum value
      */
     static double getLowerBoundShiftMul();
+
+    /**
+     * @brief Print the bounds of the histogram in form  (nbin, start, bin_width, min:max)
+     */
+    std::string printBounds() const;
    
   private:
     std::vector<unsigned int> m_counts; /**< Bin counts in Histogram*/

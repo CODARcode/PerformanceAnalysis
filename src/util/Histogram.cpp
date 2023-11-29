@@ -539,6 +539,13 @@ nlohmann::json Histogram::get_json() const {
 }
 
 
+std::string Histogram::printBounds() const{
+  std::stringstream ss; 
+  ss << "(" << m_counts.size() << ", " << m_start << ", " << m_bin_width << ", " << m_min << ":" << m_max << ")";
+  return ss.str();
+}
+
+
 template<typename FT> 
 std::enable_if_t<std::is_floating_point_v<FT>, FT> 
 ulp(FT x)
@@ -581,7 +588,7 @@ int Histogram::getBin(const double v, const double tol) const{
     // }
 
 
-    if(bin<0) fatal_error("Logic bomb: bin outside of histogram");
+    if(bin<0 || bin >= nbin) fatal_error("Logic bomb: bin index "+std::to_string(bin)+" outside of histogram: "+this->printBounds());
     return bin;
   }
 }
