@@ -480,8 +480,11 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 	for(unsigned int c : hist.counts())
 	  if(c>0) ++nbin_nonzero;
 	if(nbin_nonzero != 1){
+	  double prob;
+	  if(bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram) prob = 1.0;
+	  else prob = bin_counts[bin_ind]/tot_runtimes;
 	  std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Func " 
-				  << itt->get_funcname() << ", runtime " << runtime_i << ", prob " << bin_counts[bin_ind]/tot_runtimes << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
+				  << itt->get_funcname() << ", runtime " << runtime_i << ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
 	  recoverable_error(ss.str());
 	}
       }
