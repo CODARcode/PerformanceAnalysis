@@ -115,6 +115,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
     addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
     addOptionalCommandLineArg(p, prov_min_anom_time, "Set the minimum exclusive runtime (in microseconds) for anomalies to recorded in the provenance output (default 0)");
+    addOptionalCommandLineArg(p, prov_io_freq, "Set the frequency in steps at which provenance data is writen/sent to the provDB (default 1)");
 
     addOptionalCommandLineArg(p, analysis_step_freq, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");
     addOptionalCommandLineArg(p, monitoring_watchlist_file, "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");

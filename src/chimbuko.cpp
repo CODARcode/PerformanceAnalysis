@@ -38,7 +38,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   ignored_func_file(""),
                                   monitoring_watchlist_file(""),
                                   monitoring_counter_prefix(""),
-                                  prov_min_anom_time(0)
+                                  prov_min_anom_time(0),
+                                  prov_io_freq(1)
 {}
 
 void ChimbukoParams::print() const{
@@ -494,10 +495,10 @@ void Chimbuko::extractNodeState(){
 
 
 
-void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
-					const int step,
-					const unsigned long first_event_ts,
-					const unsigned long last_event_ts) const{
+void Chimbuko::extractProvenance(const Anomalies &anomalies,
+				 const int step,
+				 const unsigned long first_event_ts,
+				 const unsigned long last_event_ts){
   //Optionally skip provenance data recording on certain steps
   if(m_params.prov_record_startstep != -1 && step < m_params.prov_record_startstep) return;
   if(m_params.prov_record_stopstep != -1 && step > m_params.prov_record_stopstep) return;
@@ -514,34 +515,58 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
     m_anomaly_provenance->getProvenanceEntries(anomaly_prov, normalevent_prov, anomalies, step, first_event_ts, last_event_ts);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
+    timer.start();
+    m_anomaly_prov_buf.insert(m_anomaly_prov_buf.end(), anomaly_prov.begin(), anomaly_prov.end());
+    m_normalevent_prov_buf.insert(m_normalevent_prov_buf.end(), normalevent_prov.begin(), normalevent_prov.end());
+    m_perf.add("ad_extract_send_prov_buf_merge_ms", timer.elapsed_ms());
+  }//isConnected
+}
 
+
+void Chimbuko::sendProvenance(const int step, bool force){
+  if(
+     (m_params.prov_outputpath.length() > 0
+#ifdef ENABLE_PROVDB
+      || m_provdb_client->isConnected()
+#endif
+      )
+     && 
+     ( step % m_params.prov_io_freq == 0 || force )
+     ){
+    //Get the provenance data
+    
+    PerfTimer timer;
     //Write and send provenance data
-    if(anomaly_prov.size() > 0){
+    if(m_anomaly_prov_buf.size() > 0){
       timer.start();
-      m_io->writeJSON(anomaly_prov, step, "anomalies");
+      m_io->writeJSON(m_anomaly_prov_buf, step, "anomalies");
       m_perf.add("ad_extract_send_prov_anom_data_io_write_ms", timer.elapsed_ms());
 
 #ifdef ENABLE_PROVDB
       timer.start();
-      m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
+      m_provdb_client->sendMultipleDataAsync(m_anomaly_prov_buf, ProvenanceDataType::AnomalyData); //non-blocking send
       m_perf.add("ad_extract_send_prov_anom_data_send_async_ms", timer.elapsed_ms());
 #endif
+      m_anomaly_prov_buf.clear();
     }
 
-    if(normalevent_prov.size() > 0){
+    if(m_normalevent_prov_buf.size() > 0){
       timer.start();
-      m_io->writeJSON(normalevent_prov, step, "normalexecs");
+      m_io->writeJSON(m_normalevent_prov_buf, step, "normalexecs");
       m_perf.add("ad_extract_send_prov_normalexec_data_io_write_ms", timer.elapsed_ms());
-
+	
 #ifdef ENABLE_PROVDB
       timer.start();
-      m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
+      m_provdb_client->sendMultipleDataAsync(m_normalevent_prov_buf, ProvenanceDataType::NormalExecData); //non-blocking send
       m_perf.add("ad_extract_send_prov_normalexec_data_send_async_ms", timer.elapsed_ms());
 #endif
+      m_normalevent_prov_buf.clear();
     }
-
+  
   }//isConnected
 }
+
+
 
 void Chimbuko::sendNewMetadataToProvDB(int step) const{
   if(m_params.prov_outputpath.length() > 0
@@ -683,7 +708,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
-    extractAndSendProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    extractProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
     m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
       
     //Send any new metadata to the DB
@@ -711,6 +736,8 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " function execution analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
   }//if(do_run_analysis)
+
+  sendProvenance(step); //only actually sends if the step aligns with the send frequency. Want to do this even if not analyzing this step
 
   m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
@@ -776,4 +803,5 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
   }
+  sendProvenance(m_parser->getCurrentStep(), true); //send any outstanding buffered provenance data (second arg forces send)
 }

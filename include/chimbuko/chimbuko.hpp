@@ -50,6 +50,7 @@ namespace chimbuko {
     int prov_record_startstep; /**< If != -1, the IO step on which to start recording provenance information for anomalies */
     int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */
     unsigned long prov_min_anom_time; /**< The minimum exclusive runtime (in microseconds) for anomalies recorded in the provenance output (default 0) */
+    int prov_io_freq; /**< The frequency, in steps, at which provenance data is written/sent to the provDB. For steps between it is buffered.*/
 
     unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
 
@@ -245,12 +246,17 @@ namespace chimbuko {
     void extractNodeState();
 
     /**
-     * @brief Extract provenance information about anomalies and communicate to provenance DB
+     * @brief Extract provenance information about anomalies and store in buffer
      */
-    void extractAndSendProvenance(const Anomalies &anomalies,
-				  const int step,
-				  const unsigned long first_event_ts,
-				  const unsigned long last_event_ts) const;
+    void extractProvenance(const Anomalies &anomalies,
+			   const int step,
+			   const unsigned long first_event_ts,
+			   const unsigned long last_event_ts);
+    
+    /**
+     * @brief If step % m_params.prov_io_freq == 0  OR  force == true , write or communicate provenance data buffers to provenance DB, then flush buffers
+     */
+    void sendProvenance(const int step, bool force = false);
 
 
     /**
@@ -296,6 +302,9 @@ namespace chimbuko {
 
     //State of accumulated statistics
     AccumValuedPrd m_accum_prd;
+
+    std::vector<nlohmann::json> m_anomaly_prov_buf; /**<Buffered anomaly provenance data waiting to be sent*/
+    std::vector<nlohmann::json> m_normalevent_prov_buf; /**<Buffered normal event provenance data waiting to be sent*/
 
     std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
   };
