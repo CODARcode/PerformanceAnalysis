@@ -376,7 +376,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
   double max_score = std::numeric_limits<double>::lowest();  
 
   //Compute scores
-  Histogram::CountType tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), 0);
+  Histogram::CountType tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), Histogram::CountType(0));
   std::vector<double> out_scores_i(nbin);
 
   verboseStream << "out_scores_i: " << std::endl;
@@ -482,7 +482,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 	if(nbin_nonzero != 1){
 	  double prob;
 	  if(bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram) prob = 1.0;
-	  else prob = bin_counts[bin_ind]/tot_runtimes;
+	  else prob = double(bin_counts[bin_ind])/tot_runtimes;
 	  std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Func " 
 				  << itt->get_funcname() << ", runtime " << runtime_i << ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
 	  recoverable_error(ss.str());

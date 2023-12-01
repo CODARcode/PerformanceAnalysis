@@ -327,7 +327,7 @@ double Histogram::scottBinWidth(const Histogram &global, const Histogram &local)
 double Histogram::scottBinWidth(const std::vector<double> & vals){
   //Find bin width as per Scott's rule = 3.5*std*n^-1/3
 
-  double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
+  double sum = std::accumulate(vals.begin(), vals.end(), double(0.0));
 
   double mean = sum / vals.size();
   double var = 0.0, std = 0.0;
