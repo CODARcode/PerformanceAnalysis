@@ -188,6 +188,7 @@ int main (int argc, char ** argv){
       progressStream << "PServer: Run anomaly statistics sender ";
       if(args.ws_addr.size()) std::cout << "(ws @ " << args.ws_addr << ")";
       if(args.stat_outputdir.size()) std::cout << "(dir @ " << args.stat_outputdir << ")";
+      std::cout << std::endl;
     }
 
     for(int i=0;i<args.nt;i++){

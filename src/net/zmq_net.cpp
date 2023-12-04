@@ -260,7 +260,7 @@ void ZMQNet::run()
     };
 
   std::string perf_prefix = "router_";
-  PerfTimer timer, freq_timer;
+  PerfTimer timer, freq_timer, heartbeat_timer;
 
 #ifdef _PERF_METRIC
   m_perf.setWriteLocation(logdir, "ps_perf_stats.json");
@@ -284,6 +284,7 @@ void ZMQNet::run()
   //For measuring receive/response frequency
   freq_timer.start();
   size_t freq_n_req = 0, freq_n_reply = 0;
+  heartbeat_timer.start();
 
   verboseStream << "ZMQnet starting polling" << std::endl;
   m_n_requests = 0;
@@ -382,13 +383,14 @@ void ZMQNet::run()
       m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
       freq_n_req = freq_n_reply = 0; freq_timer.start();
     }
-    if(freq_elapsed > 10000){ //flush the perf statistics in case the server falls over
+    if(heartbeat_timer.elapsed_ms() > 10000){ //flush the perf statistics in case the server falls over
       progressStream << "PServer heartbeat" << std::endl;
       for(auto &t : m_perf_thr){
 	m_perf += t;
 	t.clear();
       }
       m_perf.write();
+      heartbeat_timer.start();
     }
 #endif
   }
