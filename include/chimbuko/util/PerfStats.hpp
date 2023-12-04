@@ -100,6 +100,15 @@ namespace chimbuko{
     PerfStats & operator+=(const PerfStats &r);
 
     /**
+     * @brief Clear the metrics state
+     */
+    void clear(){
+#ifdef _PERF_METRIC
+      m_perf.clear();
+#endif
+    }
+
+    /**
      * @brief Get the statistics data object
      */
 #ifdef _PERF_METRIC

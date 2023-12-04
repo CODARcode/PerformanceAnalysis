@@ -92,7 +92,14 @@ namespace chimbuko {
       if(it == m_last.end()) return std::pair<bool,double>(false,0);
       else return std::pair<bool,double>(true,it->second);
     }
-      
+     
+    /**
+     * @brief Clear the state
+     */
+    void clear(){
+      m_metrics.clear();
+      m_last.clear();
+    }
     
   private:
     std::unordered_map<std::string, RunStats> m_metrics; /**< Map of tag to statistics object */
