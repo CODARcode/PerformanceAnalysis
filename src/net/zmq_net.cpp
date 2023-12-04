@@ -135,7 +135,8 @@ void doWork(void* context,
 	    std::unordered_map<MessageKind,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
 	    > &payloads,
-	    PerfStats &perf, int thr_idx)
+	    PerfStats &perf, int thr_idx,
+	    std::mutex &thr_mutex)
 {
   void* socket = zmq_socket(context, ZMQ_REP); //create a REP socket (recv, send, recv, send pattern)
 
@@ -155,32 +156,36 @@ void doWork(void* context,
     //Errors typically mean the context has been terminated
     constexpr int nitems = 1; //size of items array
     constexpr long timeout = -1; //poll forever until error or success
+
+    double poll_time, recv_time, parse_time, perf_time, send_time;
+
     timer.start();
     if(zmq_poll(items, nitems, timeout) < 1){
       break;
     }
-    perf.add(perf_prefix + "poll_time_ms", timer.elapsed_ms());
+    poll_time = timer.elapsed_ms();
 
     std::string strmsg;
 
     //Receive the message
     timer.start();
     ZMQNet::recv(socket, strmsg);
-    perf.add(perf_prefix + "receive_from_front_ms", timer.elapsed_ms());
+    recv_time = timer.elapsed_ms();
+
     verboseStream << "ZMQNet worker thread " << thr_idx << " received message of size " << strmsg.size() << std::endl;
 
     //Parse the message and instantiate a reply message with appropriate sender
     timer.start();
     Message msg, msg_reply;
     msg.set_msg(strmsg, true);
-    perf.add(perf_prefix + "message_parse_ms", timer.elapsed_ms());
+    parse_time = timer.elapsed_ms();
 
     MessageKind kind = (MessageKind)msg.kind();
     MessageType type = (MessageType)msg.type();
 
     timer.start();
     NetInterface::find_and_perform_action(msg_reply, msg, payloads);
-    perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
+    perf_time = timer.elapsed_ms();
 
     //Send the reply
     strmsg = msg_reply.data();
@@ -188,8 +193,14 @@ void doWork(void* context,
 
     timer.start();
     ZMQNet::send(socket, strmsg);
-    perf.add(perf_prefix + "send_to_front_ms", timer.elapsed_ms());
+    send_time = timer.elapsed_ms();
 
+    std::lock_guard<std::mutex> _(thr_mutex);   
+    perf.add(perf_prefix + "poll_time_ms", poll_time);
+    perf.add(perf_prefix + "receive_from_front_ms", recv_time);
+    perf.add(perf_prefix + "message_parse_ms", parse_time);
+    perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", perf_time);
+    perf.add(perf_prefix + "send_to_front_ms", send_time);
   }//while(<receiving messages>)
 
   zmq_close(socket);
@@ -197,12 +208,16 @@ void doWork(void* context,
 
 void ZMQNet::init_thread_pool(int nt){
   m_perf_thr.resize(nt);
+  {
+    std::vector<std::mutex> tmp(nt);
+    m_thr_mutex.swap(tmp);
+  }
 
   for (int i = 0; i < nt; i++) {
     auto pit = m_payloads.find(i);
     if(pit == m_payloads.end()) fatal_error("Could not find work for thread");
     m_threads.push_back(
-			std::thread(&doWork, std::ref(m_context), std::ref(pit->second), std::ref(m_perf_thr[i]), i )
+			std::thread(&doWork, std::ref(m_context), std::ref(pit->second), std::ref(m_perf_thr[i]), i, std::ref(m_thr_mutex[i]) )
 			);
   }
 }
@@ -385,9 +400,10 @@ void ZMQNet::run()
     }
     if(heartbeat_timer.elapsed_ms() > 10000){ //flush the perf statistics in case the server falls over
       progressStream << "PServer heartbeat" << std::endl;
-      for(auto &t : m_perf_thr){
-	m_perf += t;
-	t.clear();
+      for(size_t i=0;i< m_perf_thr.size(); i++){
+	std::lock_guard<std::mutex> _(m_thr_mutex[i]);	
+	m_perf += m_perf_thr[i];
+	m_perf_thr[i].clear();
       }
       m_perf.write();
       heartbeat_timer.start();
@@ -414,9 +430,11 @@ void ZMQNet::run()
   m_perf.add(perf_prefix + "receive_rate_in_per_ms", double(freq_n_req)/freq_elapsed );
   m_perf.add(perf_prefix + "response_rate_in_per_ms", double(freq_n_reply)/freq_elapsed );
 
-  //Combine and write out statistics
-  for(auto const &t : m_perf_thr)
-    m_perf += t;
+  //Combine and write out statistics  
+  for(size_t i=0;i< m_perf_thr.size(); i++){
+    std::lock_guard<std::mutex> _(m_thr_mutex[i]);	
+    m_perf += m_perf_thr[i];
+  }
   m_perf.write();
 #endif
 
