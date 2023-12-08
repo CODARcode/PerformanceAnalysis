@@ -20,14 +20,13 @@ ADOutlier::AlgoParams::AlgoParams(): stat(ADOutlier::ExclusiveRuntime), sstd_sig
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
 ADOutlier::ADOutlier(OutlierStatistic stat)
-  : m_execDataMap(nullptr), m_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat)
+  : m_execDataMap(nullptr), m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat), m_sync_call_count(0), m_global_model_sync_freq(1)
 {
 }
 
 ADOutlier::~ADOutlier() {
-    if (m_param) {
-        delete m_param;
-    }
+    if (m_param) delete m_param;
+    if (m_local_param) delete m_local_param;
 }
 
 
@@ -79,13 +78,14 @@ double ADOutlier::getStatisticValue(const ExecData_t &e) const{
   case ExclusiveRuntime:
     return e.get_exclusive();
   case InclusiveRuntime:
+
     return e.get_inclusive();
   default:
     throw std::runtime_error("Invalid statistic");
   }
 }
 
-std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
+std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface *param)
 {
   if (!m_use_ps) {
     verboseStream << "m_use_ps not USED!" << std::endl;
@@ -106,10 +106,34 @@ std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
 }
 
 
+void ADOutlier::updateGlobalModel()
+{
+  PerfTimer timer;
+  timer.start();
+  
+  if ( m_sync_call_count %  m_global_model_sync_freq == 0 ){    
+    PerfTimer utimer;
+    utimer.start();
+
+    auto msgsz = sync_param(m_local_param);
+    m_local_param->clear(); //flush local params    
+
+    if(m_perf != nullptr){
+      m_perf->add("param_update_ms", utimer.elapsed_ms());
+      m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+      m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
+    }
+  }
+  
+  ++m_sync_call_count;
+
+  if(m_perf != nullptr) m_perf->add("update_global_model_call_ms", timer.elapsed_ms());
+}
+
+
 bool ADOutlier::ignoringFunction(const std::string &func) const{
   return m_func_ignore.count(func) != 0;
 }
-
 void ADOutlier::setIgnoreFunction(const std::string &func){
   m_func_ignore.insert(func);
 }
@@ -119,6 +143,7 @@ void ADOutlier::setIgnoreFunction(const std::string &func){
  * --------------------------------------------------------------------------- */
 ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat, double sigma) : ADOutlier(stat), m_sigma(sigma) {
     m_param = new SstdParam();
+    m_local_param = new SstdParam();
 }
 
 ADOutlierSSTD::~ADOutlierSSTD() {
@@ -157,17 +182,11 @@ Anomalies ADOutlierSSTD::run(int step) {
       }
     }
   }
+  SstdParam &local_param = *(SstdParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for (auto it : *m_execDataMap) { //loop over function index
@@ -261,11 +280,10 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
  * --------------------------------------------------------------------------- */
 ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold, int maxbins) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
     m_param = new HbosParam();
+    m_local_param = new HbosParam();
 }
 
 ADOutlierHBOS::~ADOutlierHBOS() {
-  if (m_param)
-    m_param->clear();
 }
 
 double ADOutlierHBOS::getFunctionThreshold(const std::string &fname) const{
@@ -298,17 +316,11 @@ Anomalies ADOutlierHBOS::run(int step) {
 
     param.generate_histogram(func_id, runtimes, 0, &global_param); //initialize global threshold to 0 so that it is overridden by the merge
   }
+  HbosParam &local_param = *(HbosParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for (auto it : *m_execDataMap) { //loop over function index
@@ -518,12 +530,10 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
  * --------------------------------------------------------------------------- */
 ADOutlierCOPOD::ADOutlierCOPOD(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
     m_param = new CopodParam();
+    m_local_param = new CopodParam();
 }
 
-ADOutlierCOPOD::~ADOutlierCOPOD() {
-  if (m_param)
-    m_param->clear();
-}
+ADOutlierCOPOD::~ADOutlierCOPOD() {}
 
 double ADOutlierCOPOD::getFunctionThreshold(const std::string &fname) const{
   double copod_threshold = m_threshold; //default threshold
@@ -559,17 +569,11 @@ Anomalies ADOutlierCOPOD::run(int step) {
     verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;
   }
+  CopodParam &local_param = *(CopodParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for (auto it : *m_execDataMap) { //loop over function index

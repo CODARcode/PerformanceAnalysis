@@ -39,7 +39,8 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   monitoring_watchlist_file(""),
                                   monitoring_counter_prefix(""),
                                   prov_min_anom_time(0),
-                                  prov_io_freq(1)
+                                  prov_io_freq(1),
+                                  global_model_sync_freq(1)
 {}
 
 void ChimbukoParams::print() const{
@@ -250,6 +251,7 @@ void Chimbuko::init_outlier(){
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
+  m_outlier->setGlobalModelSyncFrequency(m_params.global_model_sync_freq);
   m_ptr_registry.registerPointer(m_outlier);
 
   //Read ignored functions

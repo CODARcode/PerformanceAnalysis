@@ -25,6 +25,8 @@ namespace chimbuko {
     bool hbos_use_global_threshold; /**< Global threshold flag in HBOS*/
     int hbos_max_bins; /**< Maximum number of bins to use in HBOS algorithm histograms*/
 
+    int global_model_sync_freq; /**< How often (in steps) the global model is updated (default 1)*/
+
     std::string func_threshold_file; /**< A filename containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: "[ { "fname": <FUNC>, "threshold": <THRES> },... ]". Empty string (default) uses default threshold for all funcs*/ 
 
     std::string ignored_func_file; /**< A filename containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events*/

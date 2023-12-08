@@ -115,6 +115,11 @@ namespace chimbuko {
      */
     void setIgnoreFunction(const std::string &func);
 
+    /**
+     * @brief Set how often (in steps, or equivalently calls to "run") the global model is updated
+     */
+    void setGlobalModelSyncFrequency(int to){ m_global_model_sync_freq = to; }
+
   protected:
     /**
      * @brief abstract method to compute outliers (or anomalies)
@@ -128,16 +133,20 @@ namespace chimbuko {
 					   const unsigned long func_id, std::vector<CallListIterator_t>& data) = 0;
 
     /**
-     * @brief Synchronize the local model with the global model
+     * @brief Synchronize the input model with the global model
      *
-     * @param[in] param local model
+     * @param param the input model
      * @return std::pair<size_t, size_t> [sent, recv] message size
      *
      * If we are connected to the pserver, the local model will be merged remotely with the current global model on the server, and the new global model returned. The internal global model will be replaced by this.
      * If we are *not* connected to the pserver, the local model will be merged into the internal global model
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface *param);
 
+    /**
+     * @brief Every m_global_model_sync_freq calls to this function, synchronize the local model with the global model then flush the local model 
+     */
+    void updateGlobalModel();
 
     /**
      * @brief Set the statistic used for the anomaly detection
@@ -148,9 +157,8 @@ namespace chimbuko {
      * @brief Extract the appropriate statistic from an ExecData_t object
      */
     double getStatisticValue(const ExecData_t &e) const;
-    
+        
   protected:
-    int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
     ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
 
@@ -158,6 +166,9 @@ namespace chimbuko {
 
     const ExecDataMap_t * m_execDataMap;     /**< execution data map */
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
+    ParamInterface * m_local_param;          /**< local parameters that have not yet been sync'd with the global model */
+    int m_sync_call_count;                   /**< count of calls to sync_param */
+    int m_global_model_sync_freq;            /**< how often the local model is pushed and synchronized with the globel model (default 1)*/
 
     PerfStats *m_perf;
   private:
