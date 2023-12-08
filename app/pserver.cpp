@@ -194,7 +194,7 @@ int main (int argc, char ** argv){
     for(int i=0;i<args.nt;i++){
       net.add_payload(new NetPayloadUpdateParamManager(&param, i, args.freeze_params), i);
       net.add_payload(new NetPayloadGetParamsFromManager(&param),i);
-      net.add_payload(new NetPayloadRecvCombinedADdata(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
+      net.add_payload(new NetPayloadRecvCombinedADdataArray(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
       net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
       net.add_payload(new NetPayloadPing,i);
     }

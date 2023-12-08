@@ -39,6 +39,8 @@ namespace chimbuko {
 				 < If no parameter server is in use, this string should be empty (length zero)
 				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}"
 			      */
+    int ps_send_stats_freq; /**< How often in steps the statistics data is uploaded to the pserver (default 1) */
+
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
     std::string prov_outputpath; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
@@ -260,14 +262,18 @@ namespace chimbuko {
      */
     void sendProvenance(const int step, bool force = false);
 
+    /**
+     * @brief Gather and buffer the required statistics data for the pserver
+     */
+    void gatherPSdata(const Anomalies &anomalies,
+		      const int step,
+		      const unsigned long first_event_ts,
+		      const unsigned long last_event_ts);
 
     /**
-     * @brief Gather and send the required data to the pserver
+     * @brief Send buffered pserver statistics data when step matches frequency or force==true
      */
-    void gatherAndSendPSdata(const Anomalies &anomalies,
-			     const int step,
-			     const unsigned long first_event_ts,
-			     const unsigned long last_event_ts) const;
+    void sendPSdata(const int step, bool force = false);
 
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB
@@ -309,6 +315,10 @@ namespace chimbuko {
     std::vector<nlohmann::json> m_normalevent_prov_buf; /**<Buffered normal event provenance data waiting to be sent*/
 
     std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
+
+    std::vector<ADLocalFuncStatistics> m_funcstats_buf; /**< Buffered function statistics data waiting to be sent*/
+    std::vector<ADLocalCounterStatistics> m_countstats_buf;  /**< Buffered counter statistics data waiting to be sent*/
+    std::vector<ADLocalAnomalyMetrics> m_anom_metrics_buf;  /**< Buffered anomaly metrics data waiting to be sent*/    
   };
 
 }
