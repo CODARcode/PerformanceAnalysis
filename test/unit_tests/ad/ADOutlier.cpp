@@ -48,6 +48,9 @@ public:
     ( (HbosParam*)m_param )->copy(p);
   }
 
+  HbosParam & get_local_parameters() const{ return *((HbosParam*)m_local_param); }
+
+  void test_updateGlobalModel(){ this->updateGlobalModel(); }
 };
 
 class ADOutlierCOPODTest: public ADOutlierCOPOD{
@@ -105,6 +108,67 @@ TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
   EXPECT_NE(it->second.getHistogram().getMin(), std::numeric_limits<double>::max());
 
   EXPECT_EQ(local_params_ps.get_hbosstats(), g->get_hbosstats());
+}
+
+
+
+
+TEST(ADOutlierHBOSTestSyncParamFrequencyWithoutPS, Works){
+  HbosParam local_params_ps;
+
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(500.,100.), dist2(1000.,200.);
+
+  int N = 50;
+
+  ADOutlierHBOSTest outlier;
+  outlier.setGlobalModelSyncFrequency(3);
+
+  HbosParam &local_params = outlier.get_local_parameters();
+  HbosParam l, l2, g;
+  {
+    Histogram &h = l[0].getHistogram();
+    std::vector<double> runtime(N);
+    for(int i=0;i<N;i++) runtime[i] = dist(gen);
+    h.create_histogram(runtime);
+  }
+
+  const HbosParam & global_params = *( (HbosParam const*)outlier.get_global_parameters() );
+
+  //On first update we expect the global model to be set to be the same as the local model, then the local model flushed
+  local_params.assign(l);
+  g.assign(l);
+  outlier.test_updateGlobalModel();
+
+  EXPECT_EQ(g, global_params);
+  EXPECT_EQ(local_params.size(), 0);
+
+  //Second update should maintain the state of the local model
+  local_params.assign(l);
+  outlier.test_updateGlobalModel();
+
+  EXPECT_EQ(g, global_params);
+  EXPECT_EQ(local_params.size(), 1);
+  EXPECT_EQ(l, local_params);
+
+  //Third update we update the state of the local model as if we were adding new data, but the global model will again remain fixed
+  local_params.update(l);
+  l2.assign(l);
+  l2.update(l);
+  outlier.test_updateGlobalModel();
+  
+  EXPECT_EQ(g, global_params);
+  EXPECT_EQ(local_params.size(), 1);
+  EXPECT_EQ(l2, local_params);
+  
+  //Fourth update should update the global model and flush the local
+  local_params.update(l);
+  l2.update(l);
+  g.update(l2);
+  outlier.test_updateGlobalModel();
+  
+  EXPECT_EQ(g, global_params);
+  EXPECT_EQ(local_params.size(), 0);
 }
 
 TEST(ADOutlierSSTDTestSyncParamWithoutPS, Works){

@@ -112,6 +112,7 @@ void ADOutlier::updateGlobalModel()
   timer.start();
   
   if ( m_sync_call_count %  m_global_model_sync_freq == 0 ){    
+    verboseStream << "ADOutlier performing synchronization of local and global model" << std::endl;
     PerfTimer utimer;
     utimer.start();
 
@@ -123,6 +124,8 @@ void ADOutlier::updateGlobalModel()
       m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
       m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
     }
+  }else{
+    verboseStream << "ADOutlier NOT synchronizing global model on this step" << std::endl;
   }
   
   ++m_sync_call_count;

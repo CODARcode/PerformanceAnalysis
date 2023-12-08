@@ -224,3 +224,13 @@ void HbosParam::generate_histogram(const unsigned long func_id, const std::vecto
     verboseStream << hist << std::endl;
   }
 }
+
+
+bool HbosParam::operator==(const HbosParam &r) const{
+  for(auto it = r.m_hbosstats.begin(); it != r.m_hbosstats.end(); ++it){
+    auto lit = this->m_hbosstats.find(it->first);
+    if(lit == this->m_hbosstats.end()) return false;
+    if(lit->second != it->second) return false;
+  }
+  return true;
+}

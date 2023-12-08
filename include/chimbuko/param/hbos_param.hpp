@@ -195,6 +195,9 @@ namespace chimbuko {
      * @brief Set the algorithm parameters from the input JSON structure
      */
     void set_json(const nlohmann::json &from) override;
+
+    bool operator==(const HbosParam &r) const;
+    inline bool operator!=(const HbosParam &r) const{ return !(*this == r); }
    
   private:
     /**
