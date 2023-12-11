@@ -19,8 +19,8 @@ ADOutlier::AlgoParams::AlgoParams(): stat(ADOutlier::ExclusiveRuntime), sstd_sig
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
-ADOutlier::ADOutlier(OutlierStatistic stat)
-  : m_execDataMap(nullptr), m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat), m_sync_call_count(0), m_global_model_sync_freq(1)
+ADOutlier::ADOutlier(int rank, OutlierStatistic stat)
+  : m_execDataMap(nullptr), m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_statistic(stat), m_sync_call_count(0), m_global_model_sync_freq(1), m_rank(rank)
 {
 }
 
@@ -49,17 +49,17 @@ void loadPerFunctionThresholds(ADOutlierType* into, const std::string &filename)
 }
 
 
-ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoParams &params) {
+ADOutlier *ADOutlier::set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params) {
   if (algorithm == "sstd" || algorithm == "SSTD") {
-    return new ADOutlierSSTD(params.stat, params.sstd_sigma);
+    return new ADOutlierSSTD(rank, params.stat, params.sstd_sigma);
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
-    ADOutlierHBOS* alg = new ADOutlierHBOS(params.stat, params.hbos_thres, params.glob_thres, params.hbos_max_bins);
+    ADOutlierHBOS* alg = new ADOutlierHBOS(rank, params.stat, params.hbos_thres, params.glob_thres, params.hbos_max_bins);
     loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;
   }
   else if (algorithm == "copod" || algorithm == "COPOD") {
-    ADOutlierCOPOD* alg = new ADOutlierCOPOD(params.stat, params.hbos_thres);
+    ADOutlierCOPOD* alg = new ADOutlierCOPOD(rank, params.stat, params.hbos_thres);
     loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;   
   }
@@ -111,8 +111,8 @@ void ADOutlier::updateGlobalModel()
   PerfTimer timer;
   timer.start();
   
-  if ( m_sync_call_count %  m_global_model_sync_freq == 0 ){    
-    verboseStream << "ADOutlier performing synchronization of local and global model" << std::endl;
+  if ( m_sync_call_count == 0 || (m_sync_call_count + m_rank) %  m_global_model_sync_freq == 0 ){ //apart from on first step, stagger updates over ranks by rank index
+    verboseStream << "ADOutlier rank " << m_rank << " performing synchronization of local and global model on call count " << m_sync_call_count << std::endl;
     PerfTimer utimer;
     utimer.start();
 
@@ -144,7 +144,7 @@ void ADOutlier::setIgnoreFunction(const std::string &func){
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD(OutlierStatistic stat, double sigma) : ADOutlier(stat), m_sigma(sigma) {
+ADOutlierSSTD::ADOutlierSSTD(int rank, OutlierStatistic stat, double sigma) : ADOutlier(rank, stat), m_sigma(sigma) {
     m_param = new SstdParam();
     m_local_param = new SstdParam();
 }
@@ -281,7 +281,7 @@ unsigned long ADOutlierSSTD::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
-ADOutlierHBOS::ADOutlierHBOS(OutlierStatistic stat, double threshold, bool use_global_threshold, int maxbins) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
+ADOutlierHBOS::ADOutlierHBOS(int rank, OutlierStatistic stat, double threshold, bool use_global_threshold, int maxbins) : ADOutlier(rank, stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
     m_param = new HbosParam();
     m_local_param = new HbosParam();
 }
@@ -531,7 +531,7 @@ unsigned long ADOutlierHBOS::compute_outliers(Anomalies &outliers,
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierCOPOD class
  * --------------------------------------------------------------------------- */
-ADOutlierCOPOD::ADOutlierCOPOD(OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+ADOutlierCOPOD::ADOutlierCOPOD(int rank, OutlierStatistic stat, double threshold, bool use_global_threshold) : ADOutlier(rank, stat), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
     m_param = new CopodParam();
     m_local_param = new CopodParam();
 }

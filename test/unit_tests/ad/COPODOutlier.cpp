@@ -264,7 +264,7 @@ TEST(CopodADOutlierTest, TestFunctionThresholdOverride){
   int func_id2 = 202;
 
   double default_threshold = 0.99;
-  ADOutlierCOPOD ad(ADOutlier::ExclusiveRuntime, default_threshold);
+  ADOutlierCOPOD ad(0, ADOutlier::ExclusiveRuntime, default_threshold);
   ad.overrideFuncThreshold("my_func",0.77);
 
   EXPECT_EQ(ad.getFunctionThreshold("my_func"), 0.77);

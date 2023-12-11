@@ -248,7 +248,7 @@ void Chimbuko::init_outlier(){
   else if(m_params.outlier_statistic == "inclusive_runtime") params.stat = ADOutlier::InclusiveRuntime;
   else{ fatal_error("Invalid statistic"); }
 
-  m_outlier = ADOutlier::set_algorithm(m_params.ad_algorithm, params);
+  m_outlier = ADOutlier::set_algorithm(m_params.rank, m_params.ad_algorithm, params);
   m_outlier->linkExecDataMap(m_event->getExecDataMap()); //link the map of function index to completed calls such that they can be tagged as outliers if appropriate
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
@@ -534,9 +534,10 @@ void Chimbuko::sendProvenance(const int step, bool force){
 #endif
       )
      && 
-     ( step % m_params.prov_io_freq == 0 || force )
+     ( (step + m_params.rank) % m_params.prov_io_freq == 0 || force ) //stagger sends over ranks by offsetting by rank index
      ){
     //Get the provenance data
+    verboseStream << "Chimbuko rank " << m_params.rank << " performing send of provenance data on step " << step << std::endl;
     
     PerfTimer timer;
     //Write and send provenance data
@@ -633,8 +634,9 @@ void Chimbuko::gatherPSdata(const Anomalies &anomalies,
 }
 
 void Chimbuko::sendPSdata(const int step, bool force){
-  if(m_net_client && m_net_client->use_ps() && m_funcstats_buf.size() && (step % m_params.ps_send_stats_freq == 0 || force) ){
+  if(m_net_client && m_net_client->use_ps() && m_funcstats_buf.size() && ( (step + m_params.rank) % m_params.ps_send_stats_freq == 0 || force) ){ //stagger sends by offsetting by rank
     //Send the data in a single communication
+    verboseStream << "Chimbuko rank " << m_params.rank << " performing send of PS stats data on step " << step << std::endl;
     PerfTimer timer;
     timer.start();
     ADcombinedPSdataArray comb_stats(m_funcstats_buf, m_countstats_buf, m_anom_metrics_buf, &m_perf); 

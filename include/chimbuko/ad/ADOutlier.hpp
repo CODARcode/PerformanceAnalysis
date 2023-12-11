@@ -51,7 +51,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlier object
      *
      */
-    ADOutlier(OutlierStatistic stat = ExclusiveRuntime);
+    ADOutlier(int rank, OutlierStatistic stat = ExclusiveRuntime);
     /**
      * @brief Destroy the ADOutlier object
      *
@@ -59,9 +59,9 @@ namespace chimbuko {
     virtual ~ADOutlier();
 
     /**
-     * @brief Fatory method to select AD algorithm at runtime
+     * @brief Factory method to select AD algorithm at runtime
      */
-    static ADOutlier *set_algorithm(const std::string & algorithm, const AlgoParams &params);
+    static ADOutlier *set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params);
 
     /**
      * @brief check if the parameter server is in use
@@ -170,6 +170,7 @@ namespace chimbuko {
     int m_sync_call_count;                   /**< count of calls to sync_param */
     int m_global_model_sync_freq;            /**< how often the local model is pushed and synchronized with the globel model (default 1)*/
 
+    int m_rank;                              /**< rank index*/
     PerfStats *m_perf;
   private:
     OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
@@ -187,7 +188,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierSSTD object
      *
      */
-    ADOutlierSSTD(OutlierStatistic stat = ExclusiveRuntime, double sigma = 6.0);
+    ADOutlierSSTD(int rank, OutlierStatistic stat = ExclusiveRuntime, double sigma = 6.0);
     /**
      * @brief Destroy the ADOutlierSSTD object
      *
@@ -239,13 +240,14 @@ namespace chimbuko {
 
     /**
      * @brief Construct a new ADOutlierHBOS object
+     * @param rank Rank of AD instance
      * @param stat Which statistic to use
      * @param threshold The threshold defining an outlier
      * @param use_global_threshold The threshold is maintained as part of the global model
      * @param maxbins The maximum number of bins in the histograms
      *
      */
-    ADOutlierHBOS(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true, int maxbins = 200);
+    ADOutlierHBOS(int rank, OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true, int maxbins = 200);
 
     /**
      * @brief Destroy the ADOutlierHBOS object
@@ -337,7 +339,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierCOPOD object
      *
      */
-    ADOutlierCOPOD(OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
+    ADOutlierCOPOD(int rank, OutlierStatistic stat = ExclusiveRuntime, double threshold = 0.99, bool use_global_threshold = true);
 
     /**
      * @brief Destroy the ADOutlierCOPOD object
