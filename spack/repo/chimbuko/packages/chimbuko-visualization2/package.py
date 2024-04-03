@@ -20,7 +20,7 @@ class ChimbukoVisualization2(Package):
     depends_on('py-flask-socketio', type=('build', 'run'))
     depends_on('py-sqlalchemy', type=('build', 'run'))
     depends_on('py-werkzeug', type=('build', 'run'))
-    depends_on('py-celery@4.3.0', type=('build', 'run'))
+    depends_on('py-celery', type=('build', 'run'))
     depends_on('py-gevent', type=('build', 'run'))
     depends_on('py-eventlet', type=('build', 'run'))
     depends_on('py-runstats', type=('build', 'run'))
