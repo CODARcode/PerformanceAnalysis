@@ -13,7 +13,9 @@ class PyFlaskSqlalchemy(PythonPackage):
     git = "https://github.com/pallets/flask-sqlalchemy"
 
     #version('master', branch='master')
-    version('main', branch='main')
+    #version('main', branch='main')
+    version('2.5.1', tag='2.5.1')
+
 
     depends_on('py-setuptools', type='build')
     depends_on('py-flask@1.0.4:', type=('build', 'run'))

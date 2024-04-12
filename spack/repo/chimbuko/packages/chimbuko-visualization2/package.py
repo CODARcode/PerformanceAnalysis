@@ -25,6 +25,7 @@ class ChimbukoVisualization2(Package):
     depends_on('py-eventlet', type=('build', 'run'))
     depends_on('py-runstats', type=('build', 'run'))
     depends_on('py-redis', type=('build', 'run'))
+    depends_on('py-requests', type=('build','run'))
     depends_on('redis', type='run')
     depends_on('curl', type='run')
 
