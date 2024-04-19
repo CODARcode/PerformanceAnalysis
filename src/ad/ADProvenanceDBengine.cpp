@@ -1,5 +1,6 @@
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
+#include <nlohmann/json.hpp>
 
 #ifdef ENABLE_PROVDB
 
@@ -9,7 +10,14 @@ using namespace chimbuko;
 void ADProvenanceDBengine::data_v::initialize(){
   if(!m_is_initialized){
     verboseStream << "ADProvenanceDBengine initializing Thallium engine" << std::endl;
-    m_eng = new thallium::engine(m_protocol.first, m_protocol.second, true, -1); //3rd arg: use dedicated progress thread, 4th arg: use this thread for RPCs
+
+    nlohmann::json cfgj;
+    cfgj["use_progress_thread"] = true;
+    cfgj["rpc_thread_count"] = -1;  //use this thread for RPCs
+    if(m_mercury_auth_key != "") cfgj["mercury"]["auth_key"] = m_mercury_auth_key;
+    std::string config = cfgj.dump();
+    
+    m_eng = new thallium::engine(m_protocol.first, m_protocol.second, config.c_str());
     m_is_initialized = true;
     verboseStream << "ADProvenanceDBengine initialized Thallium engine" << std::endl;
   }

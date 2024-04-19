@@ -2,6 +2,7 @@
 #include <chimbuko/util/chunkAllocator.hpp>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <cstdint>
 
 namespace chimbuko{
 
@@ -95,7 +96,8 @@ namespace chimbuko{
    */
   class Histogram {
 
-  public:
+  public:   
+    typedef uint64_t CountType; /**<The data type for bin counts and sums. Previously used uint32_t, but experienced integer overflows for 4K+ ranks on Frontier for GPU API functions that run many many times per node.*/
 
     /**
      * @brief Construct a Histogram object
@@ -154,7 +156,7 @@ namespace chimbuko{
      * @param start The lower edge of the first bin
      * @param bin_width The bin width
      */
-    void set_histogram(const std::vector<unsigned int> &counts, const double min, const double max, const double start, const double bin_width);
+    void set_histogram(const std::vector<CountType> &counts, const double min, const double max, const double start, const double bin_width);
 
 
     /**
@@ -178,13 +180,13 @@ namespace chimbuko{
      * @brief set bin counts in Histogram
      * @param c: vector of bin counts
      */
-    void set_counts(const std::vector<unsigned int> & c) { m_counts = c; }
+    void set_counts(const std::vector<CountType> & c) { m_counts = c; }
 
     /**
      * @brief Get current vector of bin counts of Histogram
      * @return vector of bin counts
      */
-    const std::vector<unsigned int>& counts() const {return m_counts;}
+    const std::vector<CountType>& counts() const {return m_counts;}
 
     /**
      * @brief Get the lower edge of the given bin
@@ -204,7 +206,7 @@ namespace chimbuko{
     /**
      * @brief Get the count of a given bin
      */
-    inline unsigned int binCount(const int bin) const{ return m_counts[bin]; }
+    inline CountType binCount(const int bin) const{ return m_counts[bin]; }
 
     /**
      * @brief Get the bin width
@@ -253,10 +255,10 @@ namespace chimbuko{
      */
     struct empiricalCDFworkspace{
       bool set;
-      unsigned int sum;
+      CountType sum;
       empiricalCDFworkspace(): set(false){}
 
-      unsigned int getSum(const Histogram &h);
+      CountType getSum(const Histogram &h);
     };
  
     /**
@@ -269,7 +271,7 @@ namespace chimbuko{
     /**
      * @brief Return the sum of all the bin counts
      */
-    unsigned int totalCount() const;
+    CountType totalCount() const;
 
     /**
      * @brief Comparison operator
@@ -335,9 +337,14 @@ namespace chimbuko{
      * @brief The lower bound of the histogram will be placed  getLowerBoundShiftMul()*bin_width below the minimum value
      */
     static double getLowerBoundShiftMul();
+
+    /**
+     * @brief Print the bounds of the histogram in form  (nbin, start, bin_width, min:max)
+     */
+    std::string printBounds() const;
    
   private:
-    std::vector<unsigned int> m_counts; /**< Bin counts in Histogram*/
+    std::vector<CountType> m_counts; /**< Bin counts in Histogram*/
 
     double m_start; /**< The lower edge of the first bin*/
     double m_bin_width; /**< The bin width*/

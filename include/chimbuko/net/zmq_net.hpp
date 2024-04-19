@@ -124,6 +124,7 @@ namespace chimbuko {
     std::vector<std::thread> m_threads; /**< The pool of thread workers */
     PerfStats m_perf; /**< Performance monitoring */
     std::vector<PerfStats> m_perf_thr; /**< Performance monitoring for worker threads; will be combined with m_perf before write*/
+    mutable std::vector<std::mutex> m_thr_mutex; /**< Mutexes for locking between main thread and individual worker threads*/
     int m_max_pollcyc_msg; /**< Maximum number of front->back and back->front messages that will be routed per poll cycle. Too many and we risk starving a socket, too few and might hit perf issues*/
     int m_io_threads; /**< Set the number of IO threads used by ZeroMQ (default 1)*/
     mutable std::mutex m_mutex;

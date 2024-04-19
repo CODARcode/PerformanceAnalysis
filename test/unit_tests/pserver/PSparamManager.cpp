@@ -339,8 +339,8 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
 
   Histogram const& glob_h = glob[fid].getHistogram();
   Histogram const& expect_h = combined[fid].getHistogram();
-  unsigned int gc = glob_h.totalCount();
-  unsigned int ec = expect_h.totalCount();
+  Histogram::CountType gc = glob_h.totalCount();
+  Histogram::CountType ec = expect_h.totalCount();
   std::cout << "Global count " << gc << " expect " << ec << std::endl;
   EXPECT_EQ(gc,ec);
 
@@ -350,8 +350,8 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   for(int b=0;b<glob_h.Nbin();b++){
     auto gbe = glob_h.binEdges(b);
     auto ebe = expect_h.binEdges(b);
-    unsigned int gbc = glob_h.binCount(b);
-    unsigned int ebc = expect_h.binCount(b);
+    Histogram::CountType gbc = glob_h.binCount(b);
+    Histogram::CountType ebc = expect_h.binCount(b);
 
     std::cout << "Bin " << b << " global edges " << gbe.first << ":" << gbe.second << " expect " << ebe.first << ":" << ebe.second << " and global count " << gbc << " expect " << ebc << std::endl;
     EXPECT_EQ(gbe,ebe);

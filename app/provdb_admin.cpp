@@ -141,14 +141,15 @@ struct ProvdbArgs{
   bool db_in_mem; //database is in-memory not written to disk, for testing
   std::string db_base_config;
   std::string db_margo_config;
-
+  std::string db_mercury_auth_key;
+  
   bool db_use_aggregator; /**< Use the aggregator backend*/
   int db_batch_size; /**< Batch size for "aggregator" backend*/
 
   bool db_bypass_unqlite;
   
   ProvdbArgs(): engine("ofi+tcp"), autoshutdown(true), server_instance(0), ninstances(1), nshards(1), db_type("unqlite"), db_commit_freq(10000), db_write_dir("."), db_in_mem(false), db_base_config(""), db_margo_config(""),
-		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true){}
+		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true), db_mercury_auth_key(""){}
 };
 
 
@@ -176,6 +177,7 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
     addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
     addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
     addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
     addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
@@ -244,7 +246,12 @@ int main(int argc, char** argv) {
     
     free(config); //yuck c-strings
     margo_finalize(margo_id);
- 
+
+    //Apply auth_key if provided
+    if(args.db_mercury_auth_key.size()){
+      config_j["mercury"]["auth_key"] = args.db_mercury_auth_key;
+    }
+        
     //Initial number of pools should be 1: the primary pool
     assert(config_j["argobots"]["pools"].size() == 1);
     

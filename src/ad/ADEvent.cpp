@@ -382,8 +382,7 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
 	auto one_past_last = std::prev(cl.end(),n_keep_thread);
 
 	while (it != one_past_last) {
-	  // it = (it->get_runtime() < MAX_RUNTIME) ? cl.erase(it): ++it;
-	  if (it->can_delete() && it->get_runtime()) {
+	  if (it->can_delete() && it->get_exit() != 0) {
 	    //Add copy of completed event to output
 	    cpList.push_back(*it);
 	    //Remove completed event from map of event index string to call list
@@ -425,7 +424,7 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
 	auto one_past_last = std::prev(cl.end(),n_keep_thread);
 
 	while (it != one_past_last) {
-	  if (it->can_delete() && it->get_runtime()) {
+	  if (it->can_delete() && it->get_exit() != 0) {
 	    //Remove completed event from map of event index string to call list
 	    m_callIDMap.erase(it->get_id());
 	    //Remove completed event from call list
@@ -433,8 +432,8 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
 	    ++n_purged;
 	  }
 	  else {
-	    if(!it->can_delete()) ++n_kept_protected;
-	    else if(!it->get_runtime()) ++n_kept_incomplete;
+	    if(it->get_exit() == 0) ++n_kept_incomplete;
+	    else if(!it->can_delete()) ++n_kept_protected;	    
 	    it++;
 	  }
 	}

@@ -47,7 +47,7 @@ TEST(TestHistogram, setHistogram){
 
 TEST(TestHistogram, getBin){
   //Create a fake histogram
-  std::vector<unsigned int> counts = { 1,2,0,4 };
+  std::vector<Histogram::CountType> counts = { 1,2,0,4 };
 
   Histogram h;
   h.set_histogram(counts, 0.11, 0.5, 0.1, 0.1);
@@ -198,7 +198,7 @@ TEST(TestHistogram, createHistogram){
     EXPECT_EQ( h.getBin(0.5, 0.), Histogram::RightOfHistogram);
     
     //Check all data points inside histogram
-    unsigned int sum = 0;
+    Histogram::CountType sum = 0;
     for(int c: h.counts()) sum += c;
     
     EXPECT_EQ(sum, rtimes.size());
@@ -291,11 +291,11 @@ TEST(TestHistogram, mergeTwoHistograms){
     EXPECT_EQ(c.binEdgeUpper(c.Nbin()-1), 0.6);
 
     //Check total count is the same
-    unsigned int gc = 0; 
+    Histogram::CountType gc = 0; 
     for(auto v: g.counts()) gc += v;
-    unsigned int lc = 0; 
+    Histogram::CountType lc = 0; 
     for(auto v: l.counts()) lc += v;
-    unsigned int cc = 0; 
+    Histogram::CountType cc = 0; 
     for(auto v: c.counts()) cc += v;
 
     EXPECT_EQ(gc, g.totalCount());
@@ -337,9 +337,9 @@ TEST(TestHistogram, mergeTwoHistograms){
     EXPECT_EQ(c.binEdgeUpper(c.Nbin()-1), largest);
 
     //Check total count is the same
-    unsigned int gc = g.totalCount();
-    unsigned int lc = l.totalCount();
-    unsigned int cc = c.totalCount();
+    Histogram::CountType gc = g.totalCount();
+    Histogram::CountType lc = l.totalCount();
+    Histogram::CountType cc = c.totalCount();
 
     EXPECT_EQ(cc, gc+lc);
   }
@@ -377,8 +377,8 @@ TEST(TestHistogram, negation){
 }
  
 
-unsigned int sum_counts(const std::vector<unsigned int> &counts, const int bin){
-  unsigned int out = 0;
+Histogram::CountType sum_counts(const std::vector<Histogram::CountType> &counts, const int bin){
+  Histogram::CountType out = 0;
   for(int b=0;b<=bin;b++) out += counts[b];
   return out;
 }
@@ -390,7 +390,7 @@ TEST(TestHistogram, empiricalCDF){
   int nbin = g.Nbin();
   EXPECT_EQ(nbin, 8);
 
-  unsigned int sum_count = 0;
+  Histogram::CountType sum_count = 0;
   for(auto c : g.counts()) sum_count += c;
 
   std::cout << g << std::endl;
@@ -450,7 +450,7 @@ TEST(TestHistogram, empiricalCDF){
   //Inverted:
   //counts:  1,0,1,3,10,24,40,2
   //edges; -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1
-  std::vector<unsigned int> inv_counts = { 1,0,1,3,10,24,40,2 };
+  std::vector<Histogram::CountType> inv_counts = { 1,0,1,3,10,24,40,2 };
   std::vector<double> inv_edges = { -0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1 };
 
   
@@ -527,7 +527,7 @@ TEST(TestHistogram, negatedEmpiricalCDF){
 
 TEST(TestHistogram, skewness){
   //Create a fake histogram
-  std::vector<unsigned int> counts = { 8,2,1,4 };
+  std::vector<Histogram::CountType> counts = { 8,2,1,4 };
   
   Histogram g;
   g.set_histogram(counts, 0.11,0.5, 0.1,0.1);

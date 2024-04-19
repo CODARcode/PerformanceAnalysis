@@ -88,6 +88,7 @@ optionalArgsParser & getOptionalArgsParser(){
     addOptionalCommandLineArg(p, provdb_addr_dir, "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
     addOptionalCommandLineArg(p, nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
     addOptionalCommandLineArg(p, nprovdb_instances, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
+    addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
 #ifdef _PERF_METRIC
     addOptionalCommandLineArg(p, perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
@@ -110,10 +111,13 @@ optionalArgsParser & getOptionalArgsParser(){
     p.addOptionalArg(new setLoggingHeadRankArg); //-logging_head_rank <rank>
 
     addOptionalCommandLineArg(p, outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
+    addOptionalCommandLineArg(p, global_model_sync_freq, "Set the frequency in steps between updates of the global model (default 1)");
+    addOptionalCommandLineArg(p, ps_send_stats_freq, "Set how often in steps the statistics data is uploaded to the pserver (default 1)");
     addOptionalCommandLineArg(p, step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
     addOptionalCommandLineArg(p, prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
     addOptionalCommandLineArg(p, prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
     addOptionalCommandLineArg(p, prov_min_anom_time, "Set the minimum exclusive runtime (in microseconds) for anomalies to recorded in the provenance output (default 0)");
+    addOptionalCommandLineArg(p, prov_io_freq, "Set the frequency in steps at which provenance data is writen/sent to the provDB (default 1)");
 
     addOptionalCommandLineArg(p, analysis_step_freq, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");
     addOptionalCommandLineArg(p, monitoring_watchlist_file, "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");

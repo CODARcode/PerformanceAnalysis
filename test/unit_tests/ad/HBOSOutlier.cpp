@@ -160,7 +160,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   std::list<ExecData_t> call_list3;  //aka CallList_t
   for(int i=0;i<N;i++){
     double val = i==N-1 ? 10000 : double(dist(gen)); //outlier on N-1
-    unsigned int start = 1000*(i+1);
+    double start = 1000*(i+1);
     call_list3.push_back( createFuncExecData_t(0,0,0,  func_id, "my_func", start,val) );
     runtimes.push_back(val);
     if(i==N-1){
@@ -293,11 +293,9 @@ TEST(HBOSADOutlierTestSyncParamWithPS, Works){
 // TEST(HBOSADOutlierTest, TestFunctionThresholdOverride){
 //   int func_id =101;
 //   int func_id2 = 202;
-
 //   double default_threshold = 0.99;
 //   ADOutlierHBOS ad(default_threshold);
 //   ad.overrideFuncThreshold("my_func",0.77);
-
 //   EXPECT_EQ(ad.getFunctionThreshold("my_func"), 0.77);
 //   EXPECT_EQ(ad.getFunctionThreshold("my_other_func"), default_threshold);
 // }

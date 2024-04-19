@@ -681,8 +681,10 @@ std::vector<Event_t> ADParser::getEvents() const{
 	ndata_t[type] = it->second.size();
       }
     }
-    
+  
+    unsigned long last_func_entry = 0; //record the entry of the currently open function
     size_t off_t[3] = {0,0,0};
+    bool func_has_corid = false;
 
     while(data_t[0] != nullptr || data_t[1] != nullptr || data_t[2] != nullptr){
       //Determine what kind of func event it is (if !nullptr)
@@ -715,6 +717,40 @@ std::vector<Event_t> ADParser::getEvents() const{
       int pe = getEarliest(arrays);
       int earliest = priority[pe]; //the index of the type that is earliest
       
+      //Catch edge case where ENTRY, CORRID, EXIT all have the same timestamp. We will assume the corrid is associated with this function event
+      if(earliest == FUNC && func_event_type == EXIT && data_t[FUNC]->ts() == last_func_entry && 
+	 counter_is_correlation_id && data_t[COUNTER]->ts() == last_func_entry){
+	//There is an ambiguity here in cases where ENTRY,COUNTER,EXIT and the ENTRY,COUNTER of the *next* function all have the same timestamp
+	//this can cause the current function to claim the correlation ID which should rightfully belong to the next function
+	//To prevent this we impose a rule (which may not always be true but is perhaps the best we can manage!) that in such cases, a zero-length function
+	//can claim only one correlation ID
+
+	//First determine if an uncoming entry event has the same timestamp
+	unsigned long cur_ts = data_t[FUNC]->ts();
+	bool entry_same_timestamp = false;
+	Event_t* fdata = data_t[FUNC];
+	for(size_t off = off_t[FUNC]+1; off < ndata_t[FUNC]; off++){
+	  ++fdata;
+	  if(fdata->ts() != cur_ts) break;
+	  else if(func_event_type_map_v[fdata->eid()] == ENTRY){
+	    entry_same_timestamp = true; break;
+	  }
+	}
+	    
+	//Then we can impose the rule
+	if(!entry_same_timestamp || (entry_same_timestamp && !func_has_corid))
+	  earliest = COUNTER; //function will claim the corid
+      }
+
+      //Record function entry time for logic above
+      if(earliest == FUNC && func_event_type == ENTRY){
+	last_func_entry = data_t[FUNC]->ts();
+	func_has_corid = false;
+      }
+
+      if(earliest == COUNTER && counter_is_correlation_id)
+	func_has_corid = true; //note that a function has at least 1 corid attached
+
       out.push_back(*data_t[earliest]);
       ++data_t[earliest];
       ++off_t[earliest];

@@ -70,21 +70,6 @@ ps_dir=${base}/chimbuko/pserver
 #fi
 #rm -f ${TAU_ADIOS2_PATH}/write_check
 
-#Get head node IP
-if command -v ip &> /dev/null
-then
-    ip=$(ip -4 addr show ${service_node_iface} | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-elif command -v ifconfig &> /dev/null
-then
-    ip=$(ifconfig 2>&1 ${service_node_iface} | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
-else
-    echo "Chimbuko services: Neither ifconfig or ip commands exists; cannot infer ip for interface ${service_node_iface}"
-    exit 1
-fi
-
-echo "Chimbuko Services: Launching Chimbuko services on interface ${service_node_iface} with host IP" ${ip}
-
-
 ####################################
 #Run the Chimbuko head node services
 ####################################
@@ -108,22 +93,83 @@ if (( ${use_provdb} == 1 )); then
     rm -f ${provdb_writedir}/provdb.*.unqlite*  provider.address*
 
     #Enable better error reporting from Mercury
-    export HG_LOG_SUBSYS=hg 
-    export HG_LOG_LEVEL=error
+    if [[ -z "${HG_LOG_SUBSYS:-}" ]]; then
+	export HG_LOG_SUBSYS=hg
+    fi
+    if [[ -z "${HG_LOG_LEVEL:-}" ]]; then
+	export HG_LOG_LEVEL=error
+    fi
 
+    #provdb_interface has several options:
+    #auto  :   let Mercury automatically choose an interface
+    #<iface> : a single interface used for all instances
+    #<iface1>:<iface2>:<iface3> ....  :  a colon-separated list of interfaces, one per instance
+
+    IFS=':' read -a iface_in_lst <<< "$provdb_interface"
+    iface_in_lst_len=${#iface_in_lst[@]}
+    ifaces=()
+    auto_iface=0
+    if [[ ${iface_in_lst_len} -eq 1 ]]; then
+	if [[ "${iface_in_lst[0]}" == "auto" ]]; then
+	    auto_iface=1
+	    for ((i=0;i<provdb_ninstances;i++)); do
+		ifaces+=("")
+	    done
+	else
+	    for ((i=0;i<provdb_ninstances;i++)); do
+		ifaces+=("${iface_in_lst[0]}")
+	    done   
+	fi	
+    elif [[ ${iface_in_lst_len} -eq ${provdb_ninstances} ]]; then
+	for ((i=0;i<provdb_ninstances;i++)); do
+	    ifaces+=("${iface_in_lst[i]}")
+	done   
+    else
+	echo "Chimbuko Services: ERROR: provdb_interface colon-separated list '${provdb_interface}' should have either 1 entry or provdb_ninstances=${provdb_ninstances} entries"
+	exit 1
+    fi
+
+    #provdb_numa_bind : specify NUMA domain binding for the provdb instances (requires numactl)
+    # This variable has several options:
+    # <blank>  - if left blank, no binding will be performed
+    # <index>  - a single NUMA domain for all instances
+    # <idx1>:<idx2>:<idx3> ...  - a colon-separated list of NUMA domains, one per instance
+    do_numa_bind=0
+    numas=()
+    if [[ ! -z "${provdb_numa_bind:-}" ]]; then    
+	IFS=':' read -a numa_in_lst <<< "$provdb_numa_bind"
+	numa_in_lst_len=${#numa_in_lst[@]}
+	if [[ ${numa_in_lst_len} -eq 1 ]]; then
+	    for ((i=0;i<provdb_ninstances;i++)); do
+		numas+=("${numa_in_lst[0]}")
+	    done          
+	elif [[ ${numa_in_lst_len} -eq ${provdb_ninstances} ]]; then
+	    for ((i=0;i<provdb_ninstances;i++)); do
+		numas+=("${numa_in_lst[i]}")
+	    done	
+	else
+	    echo "Chimbuko Services: ERROR: provdb_numa_bind colon-separated list '${provdb_numa_bind}' should have either 1 entry or provdb_ninstances=${provdb_ninstances} entries"
+	    exit 1
+	fi
+	do_numa_bind=1
+    fi
+    
     for((i=0;i<provdb_ninstances;i++)); do
 	port=$((provdb_port+i))
-	iface=${service_node_iface}
-	if [[ ${provdb_auto_interface} == true ]]; then
-	    echo "Chimbuko services: provDB is using automatic interface selection"
-	    iface=""
-	fi
-	provdb_addr="${iface}:${port}"    #can be IP:PORT or ADAPTOR:PORT per libfabric conventions
+	iface=${ifaces[i]}
+	provdb_addr="${iface}:${port}"    #for conventions, cf https://mercury-hpc.github.io/user/na/)
 	if [[ ${provdb_engine} == "verbs" && ${provdb_domain} != "" ]]; then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
-	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address ${provdb_addr}"
-	provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine ${provdb_engine} -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &
+	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address '${provdb_addr}' and engine '${provdb_engine}'"
+	cmd="provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine '${provdb_engine}' -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &"
+	if [[ ${do_numa_bind} -eq 1 ]]; then
+	    numa=${numas[i]}
+	    echo "Chimbuko services binding provDB instance ${i} to NUMA domain ${numa}"
+	    cmd="numactl -N ${numa} ${cmd}"
+	fi
+	echo "${cmd}"
+	eval ${cmd}
 	sleep 1
     done
 
@@ -145,23 +191,29 @@ if (( ${use_provdb} == 1 )); then
     ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir}"
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
-else
-    echo "Chimbuko Services: Provenance database is not in use, provenance data will be stored in ASCII format at ${provdb_writedir}"
-    extra_args+=" -prov_outputpath ${provdb_writedir}"
-    ps_extra_args+=" -prov_outputpath ${provdb_writedir}"
-fi
 
-#Committer
-if (( ${use_provdb} == 1 )); then
+    #Committer
     echo "==========================================="
     echo "Instantiating committer"
     echo "==========================================="
     for((i=0;i<provdb_ninstances;i++)); do
-	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances}"
-	provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} > ${log_dir}/committer_${i}.log 2>&1 &
+	echo "Chimbuko services launching provDB committer ${i} of ${provdb_ninstances} using extra args \"${commit_extra_args}\""
+	cmd="provdb_commit "${provdb_addr_dir}" -instance ${i} -ninstances ${provdb_ninstances} -nshards ${provdb_nshards} -freq_ms ${provdb_commit_freq} ${commit_extra_args} > ${log_dir}/committer_${i}.log 2>&1 &"
+	if [[ ${do_numa_bind} -eq 1 ]]; then
+	    #Put the committer in the same NUMA domain as its parent instance
+	    numa=${numas[i]}
+	    echo "Chimbuko services binding provDB committer instance ${i} to NUMA domain ${numa}"
+	    cmd="numactl -N ${numa} ${cmd}"
+	fi
+	echo $cmd
+	eval $cmd
 	sleep 1
     done
-    sleep 3
+    sleep 3  
+else
+    echo "Chimbuko Services: Provenance database is not in use, provenance data will be stored in ASCII format at ${provdb_writedir}"
+    extra_args+=" -prov_outputpath ${provdb_writedir}"
+    ps_extra_args+=" -prov_outputpath ${provdb_writedir}"
 fi
 
 #Visualization
@@ -277,18 +329,38 @@ EOF
     echo "Chimbuko Services: Webserver is running on ${HOST}:${viz_port} and is ready for the user to connect"
 fi
 
-if (( ${use_pserver} == 1 )); then
-    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
-
+if (( ${use_pserver} == 1 )); then   
     echo "==========================================="
     echo "Chimbuko Services: Instantiating pserver"
     echo "==========================================="
+
+    #Get head node IP
+    if command -v ip &> /dev/null
+    then
+	ip=$(ip -4 addr show ${pserver_interface} | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+    elif command -v ifconfig &> /dev/null
+    then
+	ip=$(ifconfig 2>&1 ${pserver_interface} | grep -E -o 'inet [0-9.]+' | awk '{print $2}')
+    else
+	echo "Chimbuko services: Neither ifconfig or ip commands exists; cannot infer ip for interface ${pserver_interface}"
+	exit 1
+    fi
+
+    echo "Chimbuko Services: Launching pserver on interface ${pserver_interface} with host IP" ${ip}
+
+    pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"    
+    
     echo "Chimbuko Services: Pserver $pserver_addr"
 
     pserver_alg=${ad_alg} #Pserver AD algorithm choice must match that used for the driver
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
-    pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &
-
+    cmd="pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &"
+    if [[ ! -z "${pserver_numa_bind:-}" ]]; then
+	echo "Chimbuko Services binding pserver to NUMA domain ${pserver_numa_bind}"
+	cmd="numactl -N ${pserver_numa_bind} ${cmd}"
+    fi
+    echo $cmd
+    eval $cmd
     ps_pid=$!
     extra_args+=" -pserver_addr ${pserver_addr}"
     sleep 2

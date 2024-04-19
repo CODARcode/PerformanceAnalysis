@@ -151,7 +151,7 @@ double Histogram::uniformCountInRange(double l, double u) const{
 }
 
 void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogram& g, const Histogram& l){
-  std::vector<unsigned int> &comb_counts = combined.m_counts;
+  std::vector<CountType> &comb_counts = combined.m_counts;
 
   //Use variable bin width histograms and use the extractUniformCountInRangeInt function to pull out data in ranges so as to ensure correct treatment of integer bins
   HistogramVBW gw(g), lw(l);
@@ -169,8 +169,8 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
   std::vector<double> lc = lw.extractUniformCountInRangesInt(edges);
   
   for(int b=0;b<nbin_merged;b++){
-    unsigned int gcc = gc[b], lcc = lc[b];
-    unsigned int val = lcc + gcc;
+    CountType gcc = gc[b], lcc = lc[b];
+    CountType val = lcc + gcc;
     verboseStream << "Bin " << b << " range " << edges[b].first << " to " << edges[b].second << ": gc=" << gcc << " lc=" << lcc << " val=" << val << std::endl;    
     comb_counts[b] += val;
     new_total += val;
@@ -185,8 +185,8 @@ void Histogram::merge_histograms_uniform_int(Histogram &combined, const Histogra
     recoverable_error(ss.str());
   }
 
-  unsigned int ltotal = l.totalCount();
-  unsigned int gtotal = g.totalCount();
+  CountType ltotal = l.totalCount();
+  CountType gtotal = g.totalCount();
   if( new_total - ltotal - gtotal > 0 ){
     std::stringstream ss;
     ss << "New histogram total count doesn't match sum of counts of inputs: combined total " << new_total << " l total " << ltotal << " g total " << gtotal << " l+g total " << ltotal + gtotal << " diff " << fabs(new_total - ltotal - gtotal);    
@@ -287,18 +287,18 @@ Histogram Histogram::merge_histograms(const Histogram& g, const Histogram& l, co
 double Histogram::scottBinWidth(const Histogram &global, const Histogram &local){
   verboseStream << "scottBinWidth (2 histograms)" << std::endl << " with #Nbins " << local.Nbin() << " and " << global.Nbin() << std::endl;
 
-  unsigned int size = 0;
+  CountType size = 0;
   double avgx = 0., avgx2 = 0.;
 
   for(int i = 0; i < global.Nbin(); i++) {
-    unsigned int count = global.binCount(i);
+    CountType count = global.binCount(i);
     size += count;
     double v = global.binValue(i);
     avgx += count * v;
     avgx2 += count * v*v;
   }
   for(int i = 0; i < local.Nbin(); i++) {
-    unsigned int count = local.binCount(i);
+    CountType count = local.binCount(i);
     size += count;
     double v = local.binValue(i);
     avgx += count * v;
@@ -327,7 +327,7 @@ double Histogram::scottBinWidth(const Histogram &global, const Histogram &local)
 double Histogram::scottBinWidth(const std::vector<double> & vals){
   //Find bin width as per Scott's rule = 3.5*std*n^-1/3
 
-  double sum = std::accumulate(vals.begin(), vals.end(), 0.0);
+  double sum = std::accumulate(vals.begin(), vals.end(), double(0.0));
 
   double mean = sum / vals.size();
   double var = 0.0, std = 0.0;
@@ -346,9 +346,9 @@ double Histogram::scottBinWidth(const std::vector<double> & vals){
 double Histogram::scottBinWidth(const Histogram & global, const std::vector<double> & local_vals){
   double sum = 0.0;
   double sum_sq = 0.0;
-  unsigned int size = 0;
+  CountType size = 0;
   for(int i = 0; i < global.Nbin(); i++) {
-    unsigned int count = global.binCount(i);
+    CountType count = global.binCount(i);
     if (enableVerboseLogging() && count != 0){
       auto be = global.binEdges(i);
       verboseStreamAdd << be.first <<"-"<< be.second << ":" << count << std::endl;
@@ -380,7 +380,7 @@ void Histogram::create_histogram(const std::vector<double>& data, const double m
   
   m_min = min;
   m_max = max;
-  m_counts = std::vector<unsigned int>(nbin,0);
+  m_counts = std::vector<CountType>(nbin,0);
   m_start = start;
   m_bin_width = bin_width;
 
@@ -441,7 +441,7 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
   
   if(fabs(m_start + nbin*m_bin_width - max) > 1e-8*bin_width) fatal_error("Unexpectedly large error in bin upper edge");
 
-  m_counts = std::vector<unsigned int>(nbin,0);
+  m_counts = std::vector<CountType>(nbin,0);
   for(double v: r_times){
     int b = getBin(v,0.);
     if(b==LeftOfHistogram || b==RightOfHistogram){
@@ -452,8 +452,8 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
   }
   
   //Check sum of counts is equal to the number of data points
-  unsigned int count_sum = 0;
-  for(unsigned int c: m_counts) count_sum += c;
+  CountType count_sum = 0;
+  for(CountType c: m_counts) count_sum += c;
   if( count_sum - r_times.size() != 0){
     std::ostringstream os; os << "Histogram bin total count " << count_sum << " does not match number of data points " << r_times.size();
     fatal_error(os.str());
@@ -461,7 +461,7 @@ void Histogram::create_histogram(const std::vector<double>& r_times, const binWi
 }
 
 
-void Histogram::set_histogram(const std::vector<unsigned int> &counts, const double min, const double max, const double start, const double bin_width){
+void Histogram::set_histogram(const std::vector<CountType> &counts, const double min, const double max, const double start, const double bin_width){
   if(max < min) fatal_error("Invalid min/max: max " + std::to_string(max) + " < min " + std::to_string(min));
   if(min < start || min > start + bin_width) fatal_error("Min point " + std::to_string(min) + " should lie within the first bin " + std::to_string(start) +"-"+std::to_string(start+bin_width)  );
   int nbin = counts.size();
@@ -479,24 +479,24 @@ void Histogram::set_histogram(const std::vector<unsigned int> &counts, const dou
 
 
 std::vector<double> Histogram::unpack() const{
-  unsigned int tot_size = 0;
-  for(unsigned int c : counts()) tot_size += c;
+  CountType tot_size = 0;
+  for(CountType c : counts()) tot_size += c;
 
   std::vector<double> r_times(tot_size);
 
   int idx=0;
   for (int i = 0; i < Nbin(); i++) {
     double v = binValue(i);
-    unsigned int icount = binCount(i);
-    for(unsigned int j = 0; j < icount; j++){ 
+    CountType icount = binCount(i);
+    for(CountType j = 0; j < icount; j++){ 
       r_times[idx++] = v;
     }
   }
   return r_times;
 }
 
-unsigned int Histogram::totalCount() const{
-  unsigned int c = 0; 
+Histogram::CountType Histogram::totalCount() const{
+  CountType c = 0; 
   for(auto v: counts()) c += v;
   return c;
 }
@@ -504,8 +504,8 @@ unsigned int Histogram::totalCount() const{
 
 Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<double>& runtimes, const binWidthSpecifier &bwspec)
 {
-  unsigned int tot_size = runtimes.size();
-  for(unsigned int c : g.counts()) tot_size += c;
+  CountType tot_size = runtimes.size();
+  for(CountType c : g.counts()) tot_size += c;
 
   std::vector<double> r_times(tot_size); // = runtimes;
   int idx = 0;
@@ -515,8 +515,8 @@ Histogram Histogram::merge_histograms(const Histogram& g, const std::vector<doub
   for (int i = 0; i < g.Nbin(); i++) {
     verboseStream << " Bin counts in " << i << ": " << g.binCount(i) << std::endl;
     double v = g.binValue(i);
-    unsigned int icount = g.binCount(i);
-    for(unsigned int j = 0; j < icount; j++){ 
+    CountType icount = g.binCount(i);
+    for(CountType j = 0; j < icount; j++){ 
       r_times[idx++] = v;
     }
   }
@@ -536,6 +536,13 @@ nlohmann::json Histogram::get_json() const {
 	  {"Min", m_min},
 	    {"Max", m_max}
   };
+}
+
+
+std::string Histogram::printBounds() const{
+  std::stringstream ss; 
+  ss << "(" << m_counts.size() << ", " << m_start << ", " << m_bin_width << ", " << m_min << ":" << m_max << ")";
+  return ss.str();
 }
 
 
@@ -581,12 +588,12 @@ int Histogram::getBin(const double v, const double tol) const{
     // }
 
 
-    if(bin<0) fatal_error("Logic bomb: bin outside of histogram");
+    if(bin<0 || bin >= nbin) fatal_error("Logic bomb: bin index "+std::to_string(bin)+" outside of histogram: "+this->printBounds());
     return bin;
   }
 }
 
-unsigned int Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
+Histogram::CountType Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
   if(!set){
     verboseStream << "Workspace computing sum" << std::endl;
     sum = h.totalCount();
@@ -597,7 +604,7 @@ unsigned int Histogram::empiricalCDFworkspace::getSum(const Histogram &h){
 
 
 double Histogram::empiricalCDF(const double value, empiricalCDFworkspace *workspace) const{
-  unsigned int sum;
+  CountType sum;
   if(workspace != nullptr) sum = workspace->getSum(*this);
   else sum = totalCount();
 
@@ -618,10 +625,10 @@ double Histogram::skewness() const{
   //<(x-mu)^3> = <x^3> - mu^3 - 3<x^2> mu + 3 mu^2 <x>
   //           = <x^3> - 3<x^2> mu + 2 mu^3
   double avg_x3 = 0, avg_x2 = 0, avg_x = 0;
-  unsigned int csum = 0;
+  CountType csum = 0;
   for(int b=0;b<Nbin();b++){
     double v = binValue(b);
-    unsigned int c = m_counts[b];
+    CountType c = m_counts[b];
     avg_x3 += c*pow(v,3);
     avg_x2 += c*pow(v,2);
     avg_x += c*v;

@@ -126,14 +126,13 @@ ADOutlier::AlgoParams::AlgoParams(): sstd_sigma(6.0), hbos_thres(0.99), glob_thr
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
 ADOutlier::ADOutlier():
-  m_param(nullptr), m_use_ps(false), m_perf(nullptr)
+  m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_sync_call_count(0), m_global_model_sync_freq(1)
 {
 }
 
 ADOutlier::~ADOutlier() {
-    if (m_param) {
-        delete m_param;
-    }
+    if (m_param) delete m_param;
+    if (m_local_param) delete m_local_param;
 }
 
 
@@ -156,7 +155,7 @@ ADOutlier::~ADOutlier() {
 // }
 
 
-ADOutlier *ADOutlier::set_algorithm(const std::string & algorithm, const AlgoParams &params) {
+ADOutlier *ADOutlier::set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params) {
   if (algorithm == "sstd" || algorithm == "SSTD") {
     return new ADOutlierSSTD(params.sstd_sigma);
   }
@@ -201,11 +200,40 @@ std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
 }
 
 
+void ADOutlier::updateGlobalModel()
+{
+  PerfTimer timer;
+  timer.start();
+  
+  if ( m_sync_call_count == 0 || (m_sync_call_count + m_rank) %  m_global_model_sync_freq == 0 ){ //apart from on first step, stagger updates over ranks by rank index
+    verboseStream << "ADOutlier rank " << m_rank << " performing synchronization of local and global model on call count " << m_sync_call_count << std::endl;
+    PerfTimer utimer;
+    utimer.start();
+
+    auto msgsz = sync_param(m_local_param);
+    m_local_param->clear(); //flush local params    
+
+    if(m_perf != nullptr){
+      m_perf->add("param_update_ms", utimer.elapsed_ms());
+      m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
+      m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
+    }
+  }else{
+    verboseStream << "ADOutlier NOT synchronizing global model on this step" << std::endl;
+  }
+  
+  ++m_sync_call_count;
+
+  if(m_perf != nullptr) m_perf->add("update_global_model_call_ms", timer.elapsed_ms());
+}
+
+
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
 ADOutlierSSTD::ADOutlierSSTD(double sigma) : ADOutlier(), m_sigma(sigma) {
-    m_param = new SstdParam();
+  m_param = new SstdParam();
+  m_local_param = new SstdParam();
 }
 
 ADOutlierSSTD::~ADOutlierSSTD() {
@@ -257,17 +285,11 @@ void ADOutlierSSTD::run(ADDataInterface &data, int step) {
     for(int i=0;i<ndset;i++) std::cout << " " << data_vals[i].size();
     std::cout << std::endl;
   }
+  SstdParam &local_param = *(SstdParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
@@ -327,13 +349,13 @@ void ADOutlierSSTD::labelData(const std::vector<ADDataInterface::Elem> &data_val
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
+
 ADOutlierHBOS::ADOutlierHBOS(double threshold, bool use_global_threshold, int maxbins) : ADOutlier(), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
-    m_param = new HbosParam();
+  m_param = new HbosParam();
+  m_local_param = new HbosParam();
 }
 
 ADOutlierHBOS::~ADOutlierHBOS() {
-  if (m_param)
-    m_param->clear();
 }
 
 // double ADOutlierHBOS::getFunctionThreshold(const std::string &fname) const{
@@ -367,17 +389,11 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
 
     param.generate_histogram(data.getDataSetParamIndex(dset_idx), values, 0, &global_param); //initialize global threshold to 0 so that it is overridden by the merge
   }
+  HbosParam &local_param = *(HbosParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
@@ -416,13 +432,14 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
   double max_score = std::numeric_limits<double>::lowest();  
 
   //Compute scores
-  unsigned int tot_values = std::accumulate(bin_counts.begin(), bin_counts.end(), 0);
+  Histogram::CountType tot_runtimes = std::accumulate(bin_counts.begin(), bin_counts.end(), Histogram::CountType(0));
+
   std::vector<double> out_scores_i(nbin);
 
   verboseStream << "out_scores_i: " << std::endl;
   for(int i=0; i < nbin; i++){
-    unsigned int count = bin_counts[i];
-    double prob = double(count)/ tot_values;
+    Histogram::CountType count = bin_counts[i];
+    double prob = double(count)/ tot_runtimes;
     double score = -1 * log2(prob + m_alpha);
     out_scores_i[i] = score;
     verboseStream << "Bin " << i << ", Range " << hist.binEdgeLower(i) << "-" << hist.binEdgeUpper(i) << ", Count: " << count << ", Probability: " << prob << ", score: "<< score << std::endl;
@@ -516,7 +533,12 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
       for(unsigned int c : hist.counts())
 	if(c>0) ++nbin_nonzero;
       if(nbin_nonzero != 1){
-	fatal_error("ad_score <= 0 but #bins with non zero count, "+std::to_string(nbin_nonzero)+" is not 1");
+	double prob;
+	if(bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram) prob = 1.0;
+	else prob = double(bin_counts[bin_ind])/tot_runtimes;
+	std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Func " 
+				 << itt->get_funcname() << ", runtime " << runtime_i << ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
+	recoverable_error(ss.str());
       }
     }
 
@@ -538,13 +560,11 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
  * Implementation of ADOutlierCOPOD class
  * --------------------------------------------------------------------------- */
 ADOutlierCOPOD::ADOutlierCOPOD(double threshold, bool use_global_threshold) : ADOutlier(), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
-    m_param = new CopodParam();
+  m_param = new CopodParam();
+  m_local_param = new CopodParam();
 }
 
-ADOutlierCOPOD::~ADOutlierCOPOD() {
-  if (m_param)
-    m_param->clear();
-}
+ADOutlierCOPOD::~ADOutlierCOPOD() {}
 
 // double ADOutlierCOPOD::getFunctionThreshold(const std::string &fname) const{
 //   double copod_threshold = m_threshold; //default threshold
@@ -581,17 +601,11 @@ void ADOutlierCOPOD::run(ADDataInterface &data, int step) {
       hist.create_histogram(values);
     }
   }
+  CopodParam &local_param = *(CopodParam*)m_local_param;
+  local_param.update(param); 
 
   //Update temp runstats to include information collected previously (synchronizes with the parameter server if connected)
-  PerfTimer timer;
-  timer.start();
-  std::pair<size_t, size_t> msgsz = sync_param(&param);
-
-  if(m_perf != nullptr){
-    m_perf->add("param_update_ms", timer.elapsed_ms());
-    m_perf->add("param_sent_MB", (double)msgsz.first / 1000000.0); // MB
-    m_perf->add("param_recv_MB", (double)msgsz.second / 1000000.0); // MB
-  }
+  updateGlobalModel();
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){

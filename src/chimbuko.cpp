@@ -21,7 +21,7 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
 				  hbos_use_global_threshold(true),
 				  hbos_max_bins(200),
 #ifdef ENABLE_PROVDB
-				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1),
+				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1), provdb_mercury_auth_key(""),
 #endif
 				  prov_outputpath(""),
                                   prov_record_startstep(-1),
@@ -38,7 +38,10 @@ ChimbukoParams::ChimbukoParams(): rank(-1234),  //not set!
                                   ignored_func_file(""),
                                   monitoring_watchlist_file(""),
                                   monitoring_counter_prefix(""),
-                                  prov_min_anom_time(0)
+                                  prov_min_anom_time(0),
+                                  prov_io_freq(1),
+                                  global_model_sync_freq(1),
+                                  ps_send_stats_freq(1)
 {}
 
 void ChimbukoParams::print() const{
@@ -108,10 +111,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   //Reset state
   m_execdata_first_event_ts = m_execdata_last_event_ts = 0;
   m_execdata_first_event_ts_set = false;
-
-  m_n_func_events_accum_prd = m_n_comm_events_accum_prd = m_n_counter_events_accum_prd = 0;
-  m_n_outliers_accum_prd = 0; /**< Total number of outiers detected since last write of periodic data*/
-  m_n_steps_accum_prd = 0; /**< Number of steps since last write of periodic data */
+  m_accum_prd.reset();
 
   //Setup perf output
   std::string ad_perf = stringize("ad_perf.%d.%d.json", m_params.program_idx, m_params.rank);
@@ -246,6 +246,7 @@ void Chimbuko::init_outlier(){
   m_outlier = ADOutlier::set_algorithm(m_params.ad_algorithm, params);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
+  m_outlier->setGlobalModelSyncFrequency(m_params.global_model_sync_freq);
   m_ptr_registry.registerPointer(m_outlier);
 
   //Read ignored functions
@@ -275,6 +276,11 @@ void Chimbuko::init_counter(){
 
 #ifdef ENABLE_PROVDB
 void Chimbuko::init_provdb(){
+  if(m_params.provdb_mercury_auth_key != ""){
+    headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " setting Mercury authorization key to \"" << m_params.provdb_mercury_auth_key << "\"" << std::endl;
+    ADProvenanceDBengine::setMercuryAuthorizationKey(m_params.provdb_mercury_auth_key);
+  }
+  
   m_provdb_client = new ADProvenanceDBclient(m_params.rank);
   if(m_params.provdb_addr_dir.length() > 0){
     headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " connecting to provenance database" << std::endl;
@@ -486,10 +492,10 @@ void Chimbuko::extractNodeState(){
 
 
 
-void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
-					const int step,
-					const unsigned long first_event_ts,
-					const unsigned long last_event_ts) const{
+void Chimbuko::extractProvenance(const Anomalies &anomalies,
+				 const int step,
+				 const unsigned long first_event_ts,
+				 const unsigned long last_event_ts){
   //Optionally skip provenance data recording on certain steps
   if(m_params.prov_record_startstep != -1 && step < m_params.prov_record_startstep) return;
   if(m_params.prov_record_stopstep != -1 && step > m_params.prov_record_stopstep) return;
@@ -506,34 +512,59 @@ void Chimbuko::extractAndSendProvenance(const Anomalies &anomalies,
     m_anomaly_provenance->getProvenanceEntries(anomaly_prov, normalevent_prov, anomalies, step, first_event_ts, last_event_ts);
     m_perf.add("ad_extract_send_prov_provenance_data_generation_total_ms", timer.elapsed_ms());
 
+    timer.start();
+    m_anomaly_prov_buf.insert(m_anomaly_prov_buf.end(), anomaly_prov.begin(), anomaly_prov.end());
+    m_normalevent_prov_buf.insert(m_normalevent_prov_buf.end(), normalevent_prov.begin(), normalevent_prov.end());
+    m_perf.add("ad_extract_send_prov_buf_merge_ms", timer.elapsed_ms());
+  }//isConnected
+}
 
+
+void Chimbuko::sendProvenance(const int step, bool force){
+  if(
+     (m_params.prov_outputpath.length() > 0
+#ifdef ENABLE_PROVDB
+      || m_provdb_client->isConnected()
+#endif
+      )
+     && 
+     ( (step + m_params.rank) % m_params.prov_io_freq == 0 || force ) //stagger sends over ranks by offsetting by rank index
+     ){
+    //Get the provenance data
+    verboseStream << "Chimbuko rank " << m_params.rank << " performing send of provenance data on step " << step << std::endl;
+    
+    PerfTimer timer;
     //Write and send provenance data
-    if(anomaly_prov.size() > 0){
+    if(m_anomaly_prov_buf.size() > 0){
       timer.start();
-      m_io->writeJSON(anomaly_prov, step, "anomalies");
+      m_io->writeJSON(m_anomaly_prov_buf, step, "anomalies");
       m_perf.add("ad_extract_send_prov_anom_data_io_write_ms", timer.elapsed_ms());
 
 #ifdef ENABLE_PROVDB
       timer.start();
-      m_provdb_client->sendMultipleDataAsync(anomaly_prov, ProvenanceDataType::AnomalyData); //non-blocking send
+      m_provdb_client->sendMultipleDataAsync(m_anomaly_prov_buf, ProvenanceDataType::AnomalyData); //non-blocking send
       m_perf.add("ad_extract_send_prov_anom_data_send_async_ms", timer.elapsed_ms());
 #endif
+      m_anomaly_prov_buf.clear();
     }
 
-    if(normalevent_prov.size() > 0){
+    if(m_normalevent_prov_buf.size() > 0){
       timer.start();
-      m_io->writeJSON(normalevent_prov, step, "normalexecs");
+      m_io->writeJSON(m_normalevent_prov_buf, step, "normalexecs");
       m_perf.add("ad_extract_send_prov_normalexec_data_io_write_ms", timer.elapsed_ms());
-
+	
 #ifdef ENABLE_PROVDB
       timer.start();
-      m_provdb_client->sendMultipleDataAsync(normalevent_prov, ProvenanceDataType::NormalExecData); //non-blocking send
+      m_provdb_client->sendMultipleDataAsync(m_normalevent_prov_buf, ProvenanceDataType::NormalExecData); //non-blocking send
       m_perf.add("ad_extract_send_prov_normalexec_data_send_async_ms", timer.elapsed_ms());
 #endif
+      m_normalevent_prov_buf.clear();
     }
-
+  
   }//isConnected
 }
+
+
 
 void Chimbuko::sendNewMetadataToProvDB(int step) const{
   if(m_params.prov_outputpath.length() > 0
@@ -564,38 +595,52 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
   }
 }
 
-void Chimbuko::gatherAndSendPSdata(const Anomalies &anomalies,
-				   const int step,
-				   const unsigned long first_event_ts,
-				   const unsigned long last_event_ts) const{
+void Chimbuko::gatherPSdata(const Anomalies &anomalies,
+			    const int step,
+			    const unsigned long first_event_ts,
+			    const unsigned long last_event_ts){
   if(m_net_client && m_net_client->use_ps()){
     PerfTimer timer;
 
     //Gather function profile and anomaly statistics
     timer.start();
-    ADLocalFuncStatistics prof_stats(m_params.program_idx, m_params.rank, step, &m_perf);
-    prof_stats.gatherStatistics(m_event->getExecDataMap());
-    prof_stats.gatherAnomalies(anomalies);
-    m_perf.add("ad_gather_send_ps_data_gather_profile_stats_time_ms", timer.elapsed_ms());
+    ADLocalFuncStatistics func_stats(m_params.program_idx, m_params.rank, step, &m_perf);
+    func_stats.gatherStatistics(m_event->getExecDataMap());
+    func_stats.gatherAnomalies(anomalies);
+    m_funcstats_buf.emplace_back(std::move(func_stats));
+    m_perf.add("ad_gather_ps_data_gather_profile_stats_time_ms", timer.elapsed_ms());
 
     //Gather counter statistics
     timer.start();
     ADLocalCounterStatistics count_stats(m_params.program_idx, step, nullptr, &m_perf); //currently collect all counters
     count_stats.gatherStatistics(m_counter->getCountersByIndex());
-    m_perf.add("ad_gather_send_ps_data_gather_counter_stats_time_ms", timer.elapsed_ms());
+    m_countstats_buf.emplace_back(std::move(count_stats));
+    m_perf.add("ad_gather_data_gather_counter_stats_time_ms", timer.elapsed_ms());
 
     //Gather anomaly metrics
     timer.start();
     ADLocalAnomalyMetrics metrics(m_params.program_idx, m_params.rank, step, first_event_ts, last_event_ts, anomalies);
-    m_perf.add("ad_gather_send_ps_data_gather_metrics_time_ms", timer.elapsed_ms());
+    m_anom_metrics_buf.emplace_back(std::move(metrics));
+    m_perf.add("ad_gather_ps_data_gather_metrics_time_ms", timer.elapsed_ms());
 
-    //Send the data in a single communication
-    timer.start();
-    ADcombinedPSdata comb_stats(prof_stats, count_stats, metrics, &m_perf);
-    comb_stats.send(*m_net_client);
-    m_perf.add("ad_gather_send_ps_data_gather_send_all_stats_to_ps_time_ms", timer.elapsed_ms());
+    m_perf.add("ad_gather_ps_data_total_time_ms", timer.elapsed_ms());
   }
 }
+
+void Chimbuko::sendPSdata(const int step, bool force){
+  if(m_net_client && m_net_client->use_ps() && m_funcstats_buf.size() && ( (step + m_params.rank) % m_params.ps_send_stats_freq == 0 || force) ){ //stagger sends by offsetting by rank
+    //Send the data in a single communication
+    verboseStream << "Chimbuko rank " << m_params.rank << " performing send of PS stats data on step " << step << std::endl;
+    PerfTimer timer;
+    timer.start();
+    ADcombinedPSdataArray comb_stats(m_funcstats_buf, m_countstats_buf, m_anom_metrics_buf, &m_perf); 
+    comb_stats.send(*m_net_client); //serializes and puts result in buffer awaiting send so we are free to flush the buffers
+    m_funcstats_buf.clear(); m_countstats_buf.clear(); m_anom_metrics_buf.clear();
+    m_perf.add("ad_send_ps_data_total_time_ms", timer.elapsed_ms());
+  }
+}
+
+
 
 bool Chimbuko::runFrame(unsigned long long& n_func_events,
 			unsigned long long& n_comm_events,
@@ -609,16 +654,16 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
   unsigned long long n_func_events_step, n_comm_events_step, n_counter_events_step; //event count in present step
 
   if(!parseInputStep(step, n_func_events_step, n_comm_events_step, n_counter_events_step)) return false;
-  m_n_steps_accum_prd++;
+  m_accum_prd.n_steps++;
 
   //Increment total events
   n_func_events += n_func_events_step;
   n_comm_events += n_comm_events_step;
   n_counter_events += n_counter_events_step;
   
-  m_n_func_events_accum_prd += n_func_events_step;
-  m_n_comm_events_accum_prd += n_comm_events_step;
-  m_n_counter_events_accum_prd += n_counter_events_step;
+  m_accum_prd.n_func_events += n_func_events_step;
+  m_accum_prd.n_comm_events += n_comm_events_step;
+  m_accum_prd.n_counter_events += n_counter_events_step;
 
   //Decide whether to report step progress
   bool do_step_report = enableVerboseLogging() || (m_params.step_report_freq > 0 && step % m_params.step_report_freq == 0);
@@ -669,17 +714,25 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     m_perf.add("ad_run_anomaly_count", data_iface.nEventsRecorded(ADDataInterface::EventType::Outlier));
     m_perf.add("ad_run_n_exec_analyzed", data_iface.nEvents());
 
+#ifdef _PERF_METRIC
+    {
+      auto pu = m_perf.getMetrics().getLastRecorded("param_update_ms");
+      if(!pu.first){ recoverable_error("Could not obtain information on parameter update/sync time"); }
+      else m_accum_prd.pserver_sync_time_ms += pu.second;
+    }
+#endif
+
     int nout = data_iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
     int nnormal = data_iface.nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
     n_outliers += nout;
-    m_n_outliers_accum_prd += nout;
+    m_accum_prd.n_outliers += nout;
 
     Anomalies anomalies;
     anomalies.import(data_iface);
 
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
-    extractAndSendProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    extractProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
     m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
       
     //Send any new metadata to the DB
@@ -689,7 +742,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     //Gather and send statistics and data to the pserver
     timer.start();
-    gatherAndSendPSdata(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    gatherPSdata(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
     m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
 
     //Trim the call list
@@ -708,6 +761,10 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     if(do_step_report){ headProgressStream(m_params.rank) << "driver rank " << m_params.rank << " function execution analysis complete: total=" << nout + nnormal << " normal=" << nnormal << " anomalous=" << nout << std::endl; }
   }//if(do_run_analysis)
 
+  //Send provenance and PS data if the step aligns with the send frequency. Want to do this even if not analyzing this step
+  sendProvenance(step); 
+  sendPSdata(step);
+
   m_perf.add("ad_run_total_step_time_excl_parse_ms", step_timer.elapsed_ms());
 
   //Record periodic performance data
@@ -721,7 +778,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     getMemUsage(total, resident);
     m_perf_prd.add("ad_mem_usage_kB", resident);
 
-    m_perf_prd.add("io_steps", m_n_steps_accum_prd);
+    m_perf_prd.add("io_steps", m_accum_prd.n_steps);
 
     //Write out how many events remain in the ExecData and how many unmatched correlation IDs there are
     m_perf_prd.add("call_list_purged", purge_report.n_purged);
@@ -733,19 +790,16 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     m_perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
 
     //Write accumulated outlier count
-    m_perf_prd.add("outlier_count", m_n_outliers_accum_prd);
+    m_perf_prd.add("outlier_count", m_accum_prd.n_outliers);
 
     //Write accumulated event counts
-    m_perf_prd.add("event_count_func", m_n_func_events_accum_prd);
-    m_perf_prd.add("event_count_comm", m_n_comm_events_accum_prd);
-    m_perf_prd.add("event_count_counter", m_n_counter_events_accum_prd);
+    m_perf_prd.add("event_count_func", m_accum_prd.n_func_events);
+    m_perf_prd.add("event_count_comm", m_accum_prd.n_comm_events);
+    m_perf_prd.add("event_count_counter", m_accum_prd.n_counter_events);
+    m_perf_prd.add("ps_sync_time_ms", m_accum_prd.pserver_sync_time_ms);
 
     //Reset the counts
-    m_n_func_events_accum_prd = 0;
-    m_n_comm_events_accum_prd = 0;
-    m_n_counter_events_accum_prd = 0;
-    m_n_outliers_accum_prd = 0;
-    m_n_steps_accum_prd = 0;
+    m_accum_prd.reset();
 
     //These only write if both filename and output path is set
     m_perf_prd.write();
@@ -775,4 +829,7 @@ void Chimbuko::run(unsigned long long& n_func_events,
     if (m_params.interval_msec)
       std::this_thread::sleep_for(std::chrono::milliseconds(m_params.interval_msec));
   }
+  //send any outstanding buffered provenance and PS data (second arg forces send)
+  sendProvenance(m_parser->getCurrentStep(), true);
+  sendPSdata(m_parser->getCurrentStep(), true); 
 }

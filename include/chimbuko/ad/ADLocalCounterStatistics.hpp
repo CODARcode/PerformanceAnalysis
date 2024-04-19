@@ -24,7 +24,9 @@ namespace chimbuko{
 			     const std::unordered_set<std::string> *which_counters, PerfStats *perf = nullptr):
       m_program_idx(program_idx), m_step(step), m_which_counter(which_counters), m_perf(perf)
     {}
-				
+
+    ADLocalCounterStatistics(): m_program_idx(0), m_step(-1), m_which_counter(nullptr), m_perf(nullptr){}
+	
     /**
      * @brief Add counters to internal statistics
      */

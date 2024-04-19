@@ -25,6 +25,8 @@ namespace chimbuko {
     bool hbos_use_global_threshold; /**< Global threshold flag in HBOS*/
     int hbos_max_bins; /**< Maximum number of bins to use in HBOS algorithm histograms*/
 
+    int global_model_sync_freq; /**< How often (in steps) the global model is updated (default 1)*/
+
     std::string func_threshold_file; /**< A filename containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: "[ { "fname": <FUNC>, "threshold": <THRES> },... ]". Empty string (default) uses default threshold for all funcs*/ 
 
     std::string ignored_func_file; /**< A filename containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events*/
@@ -37,6 +39,8 @@ namespace chimbuko {
 				 < If no parameter server is in use, this string should be empty (length zero)
 				 < If using ZmqNet (default) this is a tcp address of the form "tcp://${ADDRESS}:${PORT}"
 			      */
+    int ps_send_stats_freq; /**< How often in steps the statistics data is uploaded to the pserver (default 1) */
+
     int hpserver_nthr;        /**< If using the hierarchical pserver, this parameter is used to compute a port offset for the particular endpoint that this AD rank connects to */
 
     std::string prov_outputpath; /**< Directory where provenance data is written (in conjunction with provDB if active). Blank string indicates no output*/
@@ -45,10 +49,12 @@ namespace chimbuko {
     std::string provdb_addr_dir; /**< Directory in which the provenance database writes its address files. If an empty string the provDB will not be used*/
     int nprovdb_shards; /**< Number of database shards*/
     int nprovdb_instances; /**< Number of instances of the provenance database server*/
+    std::string provdb_mercury_auth_key; /**< An authorization key for initializing Mercury (optional, default "")*/
 #endif
     int prov_record_startstep; /**< If != -1, the IO step on which to start recording provenance information for anomalies */
     int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */
     unsigned long prov_min_anom_time; /**< The minimum exclusive runtime (in microseconds) for anomalies recorded in the provenance output (default 0) */
+    int prov_io_freq; /**< The frequency, in steps, at which provenance data is written/sent to the provDB. For steps between it is buffered.*/
 
     unsigned int anom_win_size; /**< When anomaly data are recorded, a window of this size (in units of events) around the anomalous event are also recorded (used both for viz and provDB)*/
 
@@ -82,6 +88,26 @@ namespace chimbuko {
     ChimbukoParams();
 
     void print() const;
+  };
+
+  /**
+   * @brief Record the state of accumulated statistics
+   */
+  struct AccumValuedPrd{
+    unsigned long long n_func_events; /**< Total number of function events since last write of periodic data*/
+    unsigned long long n_comm_events; /**< Total number of comm events since last write of periodic data*/
+    unsigned long long n_counter_events; /**< Total number of counter events since last write of periodic data*/
+    unsigned long n_outliers; /**< Total number of outiers detected since last write of periodic data*/
+    unsigned long pserver_sync_time_ms; /**< Time in ms spent synchronizing with the pserver since the last reset*/
+    int n_steps; /**< Number of steps since last write of periodic data */
+
+    void reset(){
+      n_func_events = n_comm_events = n_counter_events = 0;
+      n_outliers = pserver_sync_time_ms = 0;
+      n_steps = 0;
+    }     
+
+    AccumValuedPrd(){ reset(); }
   };
 
 
@@ -224,21 +250,30 @@ namespace chimbuko {
     void extractNodeState();
 
     /**
-     * @brief Extract provenance information about anomalies and communicate to provenance DB
+     * @brief Extract provenance information about anomalies and store in buffer
      */
-    void extractAndSendProvenance(const Anomalies &anomalies,
-				  const int step,
-				  const unsigned long first_event_ts,
-				  const unsigned long last_event_ts) const;
-
+    void extractProvenance(const Anomalies &anomalies,
+			   const int step,
+			   const unsigned long first_event_ts,
+			   const unsigned long last_event_ts);
+    
+    /**
+     * @brief If step % m_params.prov_io_freq == 0  OR  force == true , write or communicate provenance data buffers to provenance DB, then flush buffers
+     */
+    void sendProvenance(const int step, bool force = false);
 
     /**
-     * @brief Gather and send the required data to the pserver
+     * @brief Gather and buffer the required statistics data for the pserver
      */
-    void gatherAndSendPSdata(const Anomalies &anomalies,
-			     const int step,
-			     const unsigned long first_event_ts,
-			     const unsigned long last_event_ts) const;
+    void gatherPSdata(const Anomalies &anomalies,
+		      const int step,
+		      const unsigned long first_event_ts,
+		      const unsigned long last_event_ts);
+
+    /**
+     * @brief Send buffered pserver statistics data when step matches frequency or force==true
+     */
+    void sendPSdata(const int step, bool force = false);
 
     /**
      * @brief Send new metadata entries collected during current fram to provenance DB
@@ -274,15 +309,18 @@ namespace chimbuko {
     bool m_execdata_first_event_ts_set; /**< False if the first event ts has not yet been set*/
 
     //State of accumulated statistics
-    unsigned long long m_n_func_events_accum_prd; /**< Total number of function events since last write of periodic data*/
-    unsigned long long m_n_comm_events_accum_prd; /**< Total number of comm events since last write of periodic data*/
-    unsigned long long m_n_counter_events_accum_prd; /**< Total number of counter events since last write of periodic data*/
-    unsigned long m_n_outliers_accum_prd; /**< Total number of outiers detected since last write of periodic data*/
-    int m_n_steps_accum_prd; /**< Number of steps since last write of periodic data */
+    AccumValuedPrd m_accum_prd;
+
+    std::vector<nlohmann::json> m_anomaly_prov_buf; /**<Buffered anomaly provenance data waiting to be sent*/
+    std::vector<nlohmann::json> m_normalevent_prov_buf; /**<Buffered normal event provenance data waiting to be sent*/
 
     std::set<unsigned long> m_exec_ignore_counters; /**< Counter indices in this list are ignored by the event manager (but will still be picked up by other components)*/
 
     ADExecDataInterface::FunctionsSeenType m_func_seen; /**< If using SST algorithm, we record whether a function has previously been seen in order to avoid including the first call to a function in the data*/
+
+    std::vector<ADLocalFuncStatistics> m_funcstats_buf; /**< Buffered function statistics data waiting to be sent*/
+    std::vector<ADLocalCounterStatistics> m_countstats_buf;  /**< Buffered counter statistics data waiting to be sent*/
+    std::vector<ADLocalAnomalyMetrics> m_anom_metrics_buf;  /**< Buffered anomaly metrics data waiting to be sent*/    
   };
 
 }

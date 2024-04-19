@@ -222,9 +222,9 @@ namespace chimbuko {
     virtual ~ADOutlier();
 
     /**
-     * @brief Fatory method to select AD algorithm at runtime
+     * @brief Factory method to select AD algorithm at runtime
      */
-    static ADOutlier *set_algorithm(const std::string & algorithm, const AlgoParams &params);
+    static ADOutlier *set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params);
 
     /**
      * @brief check if the parameter server is in use
@@ -258,26 +258,37 @@ namespace chimbuko {
      */
     ParamInterface const* get_global_parameters() const{ return m_param; }
 
-  protected:
     /**
-     * @brief Synchronize the local model with the global model
+     * @brief Set how often (in steps, or equivalently calls to "run") the global model is updated
+     */
+    void setGlobalModelSyncFrequency(int to){ m_global_model_sync_freq = to; }
+
+  protected:
+    /** @brief Synchronize the input model with the global model    
      *
-     * @param[in] param local model
+     * @param param the input model
      * @return std::pair<size_t, size_t> [sent, recv] message size
      *
      * If we are connected to the pserver, the local model will be merged remotely with the current global model on the server, and the new global model returned. The internal global model will be replaced by this.
      * If we are *not* connected to the pserver, the local model will be merged into the internal global model
      */
-    virtual std::pair<size_t, size_t> sync_param(ParamInterface const* param);
+    virtual std::pair<size_t, size_t> sync_param(ParamInterface *param);
 
-   
+    /**
+     * @brief Every m_global_model_sync_freq calls to this function, synchronize the local model with the global model then flush the local model 
+     */
+    void updateGlobalModel();
+
   protected:
-    int m_rank;                              /**< this process rank                      */
     bool m_use_ps;                           /**< true if the parameter server is in use */
     ADNetClient* m_net_client;                 /**< interface for communicating to parameter server */
 
     ParamInterface * m_param;                /**< global parameters (kept in sync with parameter server) */
+    ParamInterface * m_local_param;          /**< local parameters that have not yet been sync'd with the global model */
+    int m_sync_call_count;                   /**< count of calls to sync_param */
+    int m_global_model_sync_freq;            /**< how often the local model is pushed and synchronized with the globel model (default 1)*/
 
+    int m_rank;                              /**< rank index*/
     PerfStats *m_perf;
   };
 

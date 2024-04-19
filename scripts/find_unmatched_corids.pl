@@ -15,6 +15,7 @@ $ndata=-1;
 $i=0;
 
 %corid;
+$nmatched=0;
 
 while(<IN>){
     $line=$_;
@@ -31,6 +32,7 @@ while(<IN>){
 	    if(exists $corid{$1}){
 		delete $corid{$1};
 		print "Matched $1\n";
+		$nmatched+=1;
 	    }else{
 		$corid{$1} = 1;
 		print "Added $1\n";
@@ -57,6 +59,7 @@ while(<IN>){
 close(IN);
 
 $nunmatched=scalar keys %corid;
+print "--------$nmatched matched corids\n";
 print "--------$nunmatched unmatched corids\n";
 
 foreach $id (keys %corid){
