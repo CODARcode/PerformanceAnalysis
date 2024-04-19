@@ -243,7 +243,7 @@ void Chimbuko::init_outlier(){
   params.hbos_max_bins = m_params.hbos_max_bins;
   //params.func_threshold_file = m_params.func_threshold_file;
 
-  m_outlier = ADOutlier::set_algorithm(m_params.ad_algorithm, params);
+  m_outlier = ADOutlier::set_algorithm(m_params.rank, m_params.ad_algorithm, params);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
   m_outlier->setGlobalModelSyncFrequency(m_params.global_model_sync_freq);

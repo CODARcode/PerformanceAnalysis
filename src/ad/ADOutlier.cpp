@@ -125,8 +125,8 @@ ADOutlier::AlgoParams::AlgoParams(): sstd_sigma(6.0), hbos_thres(0.99), glob_thr
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlier class
  * --------------------------------------------------------------------------- */
-ADOutlier::ADOutlier():
-  m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_sync_call_count(0), m_global_model_sync_freq(1)
+ADOutlier::ADOutlier(int rank):
+  m_param(nullptr), m_local_param(nullptr), m_use_ps(false), m_perf(nullptr), m_sync_call_count(0), m_global_model_sync_freq(1), m_rank(rank)
 {
 }
 
@@ -157,15 +157,15 @@ ADOutlier::~ADOutlier() {
 
 ADOutlier *ADOutlier::set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params) {
   if (algorithm == "sstd" || algorithm == "SSTD") {
-    return new ADOutlierSSTD(params.sstd_sigma);
+    return new ADOutlierSSTD(rank,params.sstd_sigma);
   }
   else if (algorithm == "hbos" || algorithm == "HBOS") {
-    ADOutlierHBOS* alg = new ADOutlierHBOS(params.hbos_thres, params.glob_thres, params.hbos_max_bins);
+    ADOutlierHBOS* alg = new ADOutlierHBOS(rank,params.hbos_thres, params.glob_thres, params.hbos_max_bins);
     //loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;
   }
   else if (algorithm == "copod" || algorithm == "COPOD") {
-    ADOutlierCOPOD* alg = new ADOutlierCOPOD(params.hbos_thres);
+    ADOutlierCOPOD* alg = new ADOutlierCOPOD(rank,params.hbos_thres);
     //loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;   
   }
@@ -179,7 +179,7 @@ void ADOutlier::linkNetworkClient(ADNetClient *client){
   m_use_ps = (m_net_client != nullptr && m_net_client->use_ps());
 }
 
-std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface const* param)
+std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface* param)
 {
   if (!m_use_ps) {
     verboseStream << "m_use_ps not USED!" << std::endl;
@@ -231,7 +231,7 @@ void ADOutlier::updateGlobalModel()
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierSSTD class
  * --------------------------------------------------------------------------- */
-ADOutlierSSTD::ADOutlierSSTD(double sigma) : ADOutlier(), m_sigma(sigma) {
+ADOutlierSSTD::ADOutlierSSTD(int rank, double sigma) : ADOutlier(rank), m_sigma(sigma) {
   m_param = new SstdParam();
   m_local_param = new SstdParam();
 }
@@ -350,7 +350,7 @@ void ADOutlierSSTD::labelData(const std::vector<ADDataInterface::Elem> &data_val
  * Implementation of ADOutlierHBOS class
  * --------------------------------------------------------------------------- */
 
-ADOutlierHBOS::ADOutlierHBOS(double threshold, bool use_global_threshold, int maxbins) : ADOutlier(), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
+ADOutlierHBOS::ADOutlierHBOS(int rank, double threshold, bool use_global_threshold, int maxbins) : ADOutlier(rank), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold), m_maxbins(maxbins) {
   m_param = new HbosParam();
   m_local_param = new HbosParam();
 }
@@ -536,8 +536,8 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
 	double prob;
 	if(bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram) prob = 1.0;
 	else prob = double(bin_counts[bin_ind])/tot_runtimes;
-	std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Func " 
-				 << itt->get_funcname() << ", runtime " << runtime_i << ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
+	std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Data set " << dset_idx << ", value " << val_i <<  
+				 ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
 	recoverable_error(ss.str());
       }
     }
@@ -559,7 +559,7 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
 /* ---------------------------------------------------------------------------
  * Implementation of ADOutlierCOPOD class
  * --------------------------------------------------------------------------- */
-ADOutlierCOPOD::ADOutlierCOPOD(double threshold, bool use_global_threshold) : ADOutlier(), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
+ADOutlierCOPOD::ADOutlierCOPOD(int rank, double threshold, bool use_global_threshold) : ADOutlier(rank), m_alpha(78.88e-32), m_threshold(threshold), m_use_global_threshold(use_global_threshold) {
   m_param = new CopodParam();
   m_local_param = new CopodParam();
 }

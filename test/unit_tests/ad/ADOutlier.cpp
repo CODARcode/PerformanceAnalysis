@@ -19,7 +19,7 @@ using namespace chimbuko;
 //Derived class to allow access to protected member functions
 class ADOutlierSSTDTest: public ADOutlierSSTD{
 public:
-  ADOutlierSSTDTest(): ADOutlierSSTD(){}
+  ADOutlierSSTDTest(): ADOutlierSSTD(0){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
 
@@ -46,7 +46,7 @@ public:
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
 public:
-  ADOutlierHBOSTest(): ADOutlierHBOS(){}
+  ADOutlierHBOSTest(): ADOutlierHBOS(0){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
 
@@ -73,7 +73,7 @@ public:
 
 class ADOutlierCOPODTest: public ADOutlierCOPOD{
 public:
-  ADOutlierCOPODTest(): ADOutlierCOPOD(){}
+  ADOutlierCOPODTest(): ADOutlierCOPOD(0){}
 
   unsigned long compute_outliers_test(Anomalies &anomalies,
 				      const unsigned long func_id, std::vector<CallListIterator_t>& data){

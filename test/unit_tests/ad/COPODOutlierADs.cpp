@@ -18,7 +18,7 @@ using namespace chimbuko;
 
 class ADOutlierCOPODTest: public ADOutlierCOPOD{
 public:
-  ADOutlierCOPODTest(): ADOutlierCOPOD(){}
+  ADOutlierCOPODTest(): ADOutlierCOPOD(0){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierCOPOD::sync_param(param); }
 

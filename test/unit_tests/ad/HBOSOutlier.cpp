@@ -18,7 +18,7 @@ using namespace chimbuko;
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
 public:
-  ADOutlierHBOSTest(): ADOutlierHBOS(){}
+  ADOutlierHBOSTest(): ADOutlierHBOS(0){}
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
 

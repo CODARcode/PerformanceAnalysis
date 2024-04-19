@@ -212,9 +212,9 @@ namespace chimbuko {
 
     /**
      * @brief Construct a new ADOutlier object
-     *
+     * @param rank The rank of this instance
      */
-    ADOutlier();
+    ADOutlier(int rank);
     /**
      * @brief Destroy the ADOutlier object
      *
@@ -303,7 +303,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierSSTD object
      *
      */
-    ADOutlierSSTD(double sigma = 6.0);
+    ADOutlierSSTD(int rank, double sigma = 6.0);
     /**
      * @brief Destroy the ADOutlierSSTD object
      *
@@ -349,7 +349,7 @@ namespace chimbuko {
      * @param maxbins The maximum number of bins in the histograms
      *
      */
-    ADOutlierHBOS(double threshold = 0.99, bool use_global_threshold = true, int maxbins = 200);
+    ADOutlierHBOS(int rank, double threshold = 0.99, bool use_global_threshold = true, int maxbins = 200);
 
     /**
      * @brief Destroy the ADOutlierHBOS object
@@ -438,7 +438,7 @@ namespace chimbuko {
      * @brief Construct a new ADOutlierCOPOD object
      *
      */
-    ADOutlierCOPOD(double threshold = 0.99, bool use_global_threshold = true);
+    ADOutlierCOPOD(int rank, double threshold = 0.99, bool use_global_threshold = true);
 
     /**
      * @brief Destroy the ADOutlierCOPOD object
