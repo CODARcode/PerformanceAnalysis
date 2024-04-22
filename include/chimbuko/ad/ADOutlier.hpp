@@ -19,7 +19,7 @@ namespace chimbuko {
    */
   class ADDataInterface{
   public:
-    enum class EventType { Outlier, Normal };
+    enum class EventType { Outlier, Normal, Unassigned };
 
     /**
      * @brief Lightweight structure for passing data and results in/out of the AD implementation
@@ -31,7 +31,7 @@ namespace chimbuko {
       EventType label; /**< Label, assigned by AD alg*/
       double score; /**< Outlier score, assigned by AD alg*/
 
-      Elem(double v, size_t i): value(v), index(i), label(EventType::Normal), score(-1){}
+      Elem(double v, size_t i): value(v), index(i), label(EventType::Unassigned), score(-1){}
       inline bool operator==(const Elem &r) const{ return value == r.value && index == r.index && label == r.label && score == r.score; }
     };
 
@@ -86,7 +86,7 @@ namespace chimbuko {
     /**
      * @brief Record the labels and scores of data points associated with data set index 'dset_index' in implementation-internal format
      */
-    virtual void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const = 0;
+    virtual void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) = 0;
     
     /**
      * @brief Record the labels and scores of data points associated with data set index 'dset_index'
@@ -167,7 +167,7 @@ namespace chimbuko {
     /**
      * @brief Record the labels and scores of data points associated with data set index 'dset_index' in implementation-internal format
      */
-    void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const override;
+    void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) override;
     
     /**
      * @brief Return the function index associated with a given data set

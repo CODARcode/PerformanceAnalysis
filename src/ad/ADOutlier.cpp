@@ -39,6 +39,9 @@ size_t ADDataInterface::nEvents() const{
 }
 
 void ADDataInterface::recordDataSetLabels(const std::vector<Elem> &data, size_t dset_index){
+  //Check first for unassigned labels before we modify anything
+  for(auto const &e : data) if(e.label == EventType::Unassigned){ fatal_error("Encountered unassigned label when recording; the AD algorithm should label all data points assigned!"); }
+
   auto &danom = m_dset_anom[dset_index];
   for(auto const &e : data) danom.recordEvent(e);
   this->recordDataSetLabelsInternal(data,dset_index);
@@ -86,7 +89,7 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
 
   if(data.size() == 0) return out;
   const std::string &fname = data.front()->get_funcname();
-  bool ignore_func =  ignoringFunction(fname);
+  bool ignore_func = ignoringFunction(fname);
 
   std::array<unsigned long, 4> fkey;
 
@@ -108,12 +111,13 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
   return out;
 }
 
-void ADExecDataInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const{
+void ADExecDataInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index){
   auto it = m_execDataMap->find(m_dset_fid_map[dset_index]);
   if(it == m_execDataMap->end()){ fatal_error("Invalid dset_idx"); }
   for(auto const &e: data){
     CallListIterator_t eint = it->second[e.index];
     eint->set_outlier_score(e.score);
+    if(e.label == EventType::Unassigned){ fatal_error("Encountered an unassigned label when recording"); }
     eint->set_label( e.label == EventType::Outlier ? -1 : 1 );
   }
 }
