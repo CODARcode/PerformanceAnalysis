@@ -32,7 +32,9 @@ public:
     ADExecDataInterface::FunctionsSeenType fseen;
     iface.setIgnoreFirstFunctionCall(&fseen); //workaround for JIT compiled functions
 
-    this->labelData(iface.getDataSet(0),0,iface);
+    auto dset = iface.getDataSet(0);
+    this->labelData(dset,0,func_id);
+    iface.recordDataSetLabels(dset,0);
 
     anomalies.import(iface);
     return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
@@ -56,7 +58,9 @@ public:
     execdata[func_id] = data;
     
     ADExecDataInterface iface(&execdata);
-    this->labelData(iface.getDataSet(0),0,iface);
+    auto dset = iface.getDataSet(0);
+    this->labelData(dset,0,func_id);
+    iface.recordDataSetLabels(dset,0);
 
     anomalies.import(iface);
     return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
@@ -81,7 +85,9 @@ public:
     execdata[func_id] = data;
     
     ADExecDataInterface iface(&execdata);
-    this->labelData(iface.getDataSet(0),0,iface);
+    auto dset = iface.getDataSet(0);
+    this->labelData(dset,0,func_id);
+    iface.recordDataSetLabels(dset,0);
 
     anomalies.import(iface);
     return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);

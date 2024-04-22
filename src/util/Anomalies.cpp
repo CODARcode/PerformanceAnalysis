@@ -56,10 +56,10 @@ void Anomalies::import(const ADExecDataInterface &iface){
   verboseStream << "Anomalies::import  importing " << m_all_outliers.size() << " outliers and " << m_all_normal_execs.size() << " normal events" << std::endl;
   size_t i=0,j=0;
   for(size_t dset=0;dset<iface.nDataSets();dset++){
-    for(size_t eidx : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Outlier))
-      m_all_outliers[i++] = iface.getExecDataEntry(dset,eidx);
-    for(size_t eidx : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Normal)){
-      m_all_normal_execs[j] = iface.getExecDataEntry(dset,eidx);
+    for(auto const &e : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Outlier))
+      m_all_outliers[i++] = iface.getExecDataEntry(dset,e.index);
+    for(auto const &e : iface.getResults(dset).getEventsRecorded(ADExecDataInterface::EventType::Normal)){
+      m_all_normal_execs[j] = iface.getExecDataEntry(dset,e.index);
       size_t fid = m_all_normal_execs[j]->get_fid();
       m_func_normal_exec_idx[fid] = j++;
     }

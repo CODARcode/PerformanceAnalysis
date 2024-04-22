@@ -13,19 +13,13 @@
 
 using namespace chimbuko;
 
-void ADDataInterface::DataSetAnomalies::recordEvent(size_t elem_idx, double score, EventType label){
-  if(label == EventType::Normal){
+void ADDataInterface::DataSetAnomalies::recordEvent(const Elem &event){
+  if(event.label == EventType::Normal){
     //Store a max of one normal event. Select that with the lower score (more normal)
-    if(m_normal_events.size() == 0){
-      m_normal_events.push_back(elem_idx);
-      m_normal_event_score = score;
-    }
-    else if(score < m_normal_event_score){
-      m_normal_events[0] = elem_idx;
-      m_normal_event_score = score;
-    }
+    if(m_normal_events.size() == 0) m_normal_events.push_back(event);    
+    else if(event.score < m_normal_events[0].score) m_normal_events[0] = event;
   }else{ //Outlier
-    m_anomalies.push_back(elem_idx);
+    m_anomalies.push_back(event);
   }
   ++m_labeled_events; //increment even if not recorded
 }
@@ -44,9 +38,10 @@ size_t ADDataInterface::nEvents() const{
   return out;
 }
 
-void ADDataInterface::setDataLabel(size_t dset_index, size_t elem_index, double score, EventType label){
-  m_dset_anom[dset_index].recordEvent(elem_index,score,label);
-  this->labelDataElement(dset_index, elem_index, score, label);
+void ADDataInterface::recordDataSetLabels(const std::vector<Elem> &data, size_t dset_index){
+  auto &danom = m_dset_anom[dset_index];
+  for(auto const &e : data) danom.recordEvent(e);
+  this->recordDataSetLabelsInternal(data,dset_index);
 }
 
 ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, OutlierStatistic stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()), m_ignore_first_func_call(false){
@@ -109,16 +104,20 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
     }
   }
   verboseStream << "ADExecDataInterface::getDataSet for dset_index=" << dset_index << " got " << out.size() << " data" << std::endl;
-  m_dset_cache[dset_index] = out;
+  m_dset_cache[dset_index] = out; //store *unlabeled* data
   return out;
 }
-    
-void ADExecDataInterface::labelDataElement(size_t dset_index, size_t elem_index, double score, EventType label){
-  CallListIterator_t e = getExecDataEntry(dset_index, elem_index);
-  e->set_outlier_score(score);
-  e->set_label( label == EventType::Outlier ? -1 : 1 );
-}
 
+void ADExecDataInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const{
+  auto it = m_execDataMap->find(m_dset_fid_map[dset_index]);
+  if(it == m_execDataMap->end()){ fatal_error("Invalid dset_idx"); }
+  for(auto const &e: data){
+    CallListIterator_t eint = it->second[e.index];
+    eint->set_outlier_score(e.score);
+    eint->set_label( e.label == EventType::Outlier ? -1 : 1 );
+  }
+}
+    
 ADOutlier::AlgoParams::AlgoParams(): sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200){}  //, func_threshold_file("")
 
 
@@ -293,7 +292,8 @@ void ADOutlierSSTD::run(ADDataInterface &data, int step) {
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
-    labelData(data_vals[dset_idx], dset_idx, data);
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    data.recordDataSetLabels(data_vals[dset_idx], dset_idx);
   }
 }
 
@@ -315,13 +315,12 @@ double ADOutlierSSTD::computeScore(double value, size_t model_idx, const SstdPar
 }
 
 
-void ADOutlierSSTD::labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface){
+void ADOutlierSSTD::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
 
   verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << std::endl;
 
   if(data_vals.size() == 0) return;
- 
-  size_t model_idx = data_iface.getDataSetParamIndex(dset_idx);
+
   SstdParam& param = *(SstdParam*)m_param;
   auto & fparam = param[model_idx];
 
@@ -336,10 +335,9 @@ void ADOutlierSSTD::labelData(const std::vector<ADDataInterface::Elem> &data_val
   const double thr_hi = mean + m_sigma * std;
   const double thr_lo = mean - m_sigma * std;
 
-  for(auto const &e : data_vals){
-    ADDataInterface::EventType label = (thr_lo > e.value || thr_hi < e.value) ? ADDataInterface::EventType::Outlier : ADDataInterface::EventType::Normal;
-    double score = computeScore(e.value, model_idx, param);
-    data_iface.setDataLabel(dset_idx, e.index, score, label);
+  for(auto &e : data_vals){
+    e.label = (thr_lo > e.value || thr_hi < e.value) ? ADDataInterface::EventType::Outlier : ADDataInterface::EventType::Normal;
+    e.score = computeScore(e.value, model_idx, param);
   }
 }
 
@@ -396,19 +394,20 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
   updateGlobalModel();
 
   //Run anomaly detection algorithm
-  for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
-    labelData(data_vals[dset_idx], dset_idx, data);
+  for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){    
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    data.recordDataSetLabels(data_vals[dset_idx], dset_idx);   
   }
 }
 
 
-void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface){
+void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
   verboseStream << "Finding outliers in events for data set " << dset_idx << std::endl;
 
   if(data_vals.size() == 0) return;
 
   HbosParam& param = *(HbosParam*)m_param;
-  HbosFuncParam &fparam = param[data_iface.getDataSetParamIndex(dset_idx)];
+  HbosFuncParam &fparam = param[model_idx];
   const Histogram &hist = fparam.getHistogram();
 
   auto const & bin_counts = hist.counts();
@@ -507,9 +506,9 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
   verboseStream << "Bin width: " << bin_width << std::endl;
 
   int top_out = 0;
-  for(auto const &v : data_vals){
+  for(auto &v : data_vals){
     const double val_i = v.value;
-    double ad_score;
+    double &ad_score = v.score;
     const int bin_ind = hist.getBin(val_i, 0.05); //allow events within 5% of the bin width away from the histogram edges to be included in the first/last bin
     verboseStream << "bin_ind: " << bin_ind << " for runtime_i: " << val_i << ", where num_bins: "<< nbin << std::endl;
     
@@ -546,10 +545,10 @@ void ADOutlierHBOS::labelData(const std::vector<ADDataInterface::Elem> &data_val
 
     //Compare the ad_score with the threshold
     if (ad_score >= l_threshold) {
-      data_iface.setDataLabel(dset_idx, v.index, ad_score, ADDataInterface::EventType::Outlier);
+      v.label = ADDataInterface::EventType::Outlier;
       verboseStream << "!!!!!!!Detected outlier on data set " << dset_idx << " value " << val_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
     }else {
-      data_iface.setDataLabel(dset_idx, v.index, ad_score, ADDataInterface::EventType::Normal);
+      v.label = ADDataInterface::EventType::Normal;
       verboseStream << "Detected normal event on data set " << dset_idx << " value " << val_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
     }
   } //loop over data points
@@ -608,8 +607,9 @@ void ADOutlierCOPOD::run(ADDataInterface &data, int step) {
   updateGlobalModel();
 
   //Run anomaly detection algorithm
-  for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
-    labelData(data_vals[dset_idx], dset_idx, data);
+  for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){    
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    data.recordDataSetLabels(data_vals[dset_idx], dset_idx);   
   }
 }
 
@@ -657,14 +657,14 @@ inline double copod_score(const double value_i, const Histogram &hist, const His
 }
 
 
-void ADOutlierCOPOD::labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface){
+void ADOutlierCOPOD::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
   verboseStream << "Finding outliers in events for data set " << dset_idx << std::endl;
   verboseStream << "data Size: " << data_vals.size() << std::endl;
 
   if(data_vals.size() == 0) return;
 
   CopodParam& param = *(CopodParam*)m_param;
-  CopodFuncParam &fparam = param[data_iface.getDataSetParamIndex(dset_idx)];
+  CopodFuncParam &fparam = param[model_idx];
   Histogram &hist = fparam.getHistogram();
 
   auto const & bin_counts = hist.counts();
@@ -727,18 +727,17 @@ void ADOutlierCOPOD::labelData(const std::vector<ADDataInterface::Elem> &data_va
   verboseStream << "Performing outlier detection" << std::endl;
   //Perform outlier detection  
   unsigned long n_outliers = 0;
-  for (auto const &e : data_vals) {
-    const double val_i = e.value;
-    double ad_score = copod_score(val_i, hist, nhist, m_alpha, p_sign, n_sign, w, nw);
+  for (auto &e : data_vals) {
+    e.score = copod_score(e.value, hist, nhist, m_alpha, p_sign, n_sign, w, nw);
       
-    verboseStream << "value: " << val_i << " ad_score: " << ad_score << ", l_threshold: " << l_threshold << std::endl;
+    verboseStream << "value: " << e.value << " score: " << e.score << ", l_threshold: " << l_threshold << std::endl;
 
-    if (ad_score >= l_threshold) {
-      data_iface.setDataLabel(dset_idx, e.index, ad_score, ADDataInterface::EventType::Outlier);
-      verboseStream << "!!!!!!!Detected outlier on data set " << dset_idx << " value " << val_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
+    if (e.score >= l_threshold) {
+      e.label = ADDataInterface::EventType::Outlier;
+      verboseStream << "!!!!!!!Detected outlier on data set " << dset_idx << " value " << e.value << " score " << e.score << " (threshold " << l_threshold << ")" << std::endl;
     }else {
-      data_iface.setDataLabel(dset_idx, e.index, ad_score, ADDataInterface::EventType::Normal);
-      verboseStream << "Detected normal event on data set " << dset_idx << " value " << val_i << " score " << ad_score << " (threshold " << l_threshold << ")" << std::endl;
+      e.label = ADDataInterface::EventType::Normal;
+      verboseStream << "Detected normal event on data set " << dset_idx << " value " << e.value << " score " << e.score << " (threshold " << l_threshold << ")" << std::endl;
     }
   }//data loop
 }

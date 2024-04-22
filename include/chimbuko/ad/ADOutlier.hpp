@@ -22,12 +22,25 @@ namespace chimbuko {
     enum class EventType { Outlier, Normal };
 
     /**
+     * @brief Lightweight structure for passing data and results in/out of the AD implementation
+     */
+    struct Elem{
+      double value; /**< The value of the data point */
+      size_t index; /**< An arbitrary but unique identifier index for this element*/
+      
+      EventType label; /**< Label, assigned by AD alg*/
+      double score; /**< Outlier score, assigned by AD alg*/
+
+      Elem(double v, size_t i): value(v), index(i), label(EventType::Normal), score(-1){}
+      inline bool operator==(const Elem &r) const{ return value == r.value && index == r.index && label == r.label && score == r.score; }
+    };
+
+    /**
      * @brief Anomaly information for a given data set
      */
     class DataSetAnomalies{
-      std::vector<size_t> m_anomalies; /**< Indices of recorded anomalies*/
-      std::vector<size_t> m_normal_events; /**< The normal event (array max size 1 !) if present*/
-      double m_normal_event_score; /**< The score of the normal event recorded, if present*/
+      std::vector<Elem> m_anomalies; /**< Recorded anomalies*/
+      std::vector<Elem> m_normal_events; /**< The normal event (array max size 1 !) if present*/
       size_t m_labeled_events; /**< The number of events that were labeled, whether recorded or not*/
       
     public:
@@ -36,7 +49,7 @@ namespace chimbuko {
       /**
        * @brief Record an event. For normal events this will override the existing one (if present) if the associated score is lower (more normal)
        */
-      void recordEvent(size_t elem_idx, double score, EventType label);
+      void recordEvent(const Elem &event);
 
       /**
        * @brief Get number of outliers/normal events recorded
@@ -53,16 +66,9 @@ namespace chimbuko {
       /**
        * @brief Return an array of indices corresponding to events of the given type
        */
-      const std::vector<size_t> & getEventsRecorded(EventType type) const{ return type == EventType::Outlier ? m_anomalies : m_normal_events; }     
+      const std::vector<Elem> & getEventsRecorded(EventType type) const{ return type == EventType::Outlier ? m_anomalies : m_normal_events; }     
     };
     
-    struct Elem{
-      double value; /**< The value of the data point */
-      size_t index; /**< An arbitrary but unique identifier index for this element*/
-      Elem(double v, size_t i): value(v), index(i){}
-      inline bool operator==(const Elem &r) const{ return value == r.value && index == r.index; }
-    };
-
     ADDataInterface(size_t ndataset): m_dset_anom(ndataset){}
 
     /**
@@ -78,19 +84,19 @@ namespace chimbuko {
     virtual std::vector<Elem> getDataSet(size_t dset_index) const = 0;
 
     /**
-     * @brief Set the label for the given data point and the associated score
-     *
-     * This function also records the indices of all anomalies and a single normal event (if detected); that which has the lowest score (most likely) 
+     * @brief Record the labels and scores of data points associated with data set index 'dset_index' in implementation-internal format
      */
-    void setDataLabel(size_t dset_index, size_t elem_index, double score, EventType label);
+    virtual void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const = 0;
+    
+    /**
+     * @brief Record the labels and scores of data points associated with data set index 'dset_index'
+     * This function is called by the AD algorithms and records some metadata as well as calling recordDataSetLabelsInternal internally
+     */
+    void recordDataSetLabels(const std::vector<Elem> &data, size_t dset_index);
 
     /**
-     * @brief Apply the label to the data element in whatever its native format. This is called by setDataLabel
-     * @param dset_index The index of the dataset  0 <= idx < nDataSets()
-     * @param elem_index The index of the element, used as a key so the assigment is implementation dependent
+     * @brief Get the results for a particular dataset in a common format
      */
-    virtual void labelDataElement(size_t dset_index, size_t elem_index, double score, EventType label) = 0;
-
     const DataSetAnomalies & getResults(size_t dset_index) const{ return m_dset_anom[dset_index]; }
 
     /**
@@ -157,9 +163,12 @@ namespace chimbuko {
     CallListIterator_t getExecDataEntry(size_t dset_index, size_t elem_index) const;
     
     std::vector<ADDataInterface::Elem> getDataSet(size_t dset_index) const override;
-    
-    void labelDataElement(size_t dset_index, size_t elem_index, double score, EventType label) override;
 
+    /**
+     * @brief Record the labels and scores of data points associated with data set index 'dset_index' in implementation-internal format
+     */
+    void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) const override;
+    
     /**
      * @brief Return the function index associated with a given data set
      */
@@ -324,7 +333,7 @@ namespace chimbuko {
     /**
      * Run the anomaly detection algorithm on the array of data_vals associated with the provided data set index and apply the label through the interface
      */
-    void labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface);
+    void labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx);
 
     /**
      * @brief Compute the anomaly score (probability) for an event assuming a Gaussian distribution
@@ -404,7 +413,7 @@ namespace chimbuko {
     //const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
 
 
-    void labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface);
+    void labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx);
 
     /**
      * @brief Scott's rule for bin_width estimation during histogram formation
@@ -472,7 +481,7 @@ namespace chimbuko {
 
   protected:
 
-    void labelData(const std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, ADDataInterface &data_iface);
+    void labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx);
 
   private:
     double m_alpha; /**< Used to prevent log2 overflow */
