@@ -1,5 +1,4 @@
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
@@ -21,8 +20,7 @@ public:
 
   std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
 
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
+  unsigned long compute_outliers_test(const unsigned long func_id, std::vector<CallListIterator_t>& data){
     ExecDataMap_t execdata;
     execdata[func_id] = data;
     
@@ -31,8 +29,7 @@ public:
     this->labelData(dset,0,func_id);
     iface.recordDataSetLabels(dset,0);
 
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
+    return iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
   }
 };
 
@@ -153,9 +150,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 	glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
 
-
-        Anomalies outliers;
-        nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
+        nout = outlier.compute_outliers_test(0, call_list_its);
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
@@ -198,9 +193,7 @@ TEST(HBOSADOutlierTestSyncParamWithPSComputeOutliers, Works){
 
 	glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
 
-
-	Anomalies outliers;
-	nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+	nout2 = outlier.compute_outliers_test(0, call_list_its2);
 
 	std::cout << "# outliers detected: " << nout2 << std::endl;
 	std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;

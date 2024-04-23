@@ -1,11 +1,11 @@
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/param/copod_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "unit_test_ad_common.hpp"
 
 #include<thread>
 #include<chrono>
@@ -15,27 +15,6 @@
 #include <random>
 
 using namespace chimbuko;
-
-class ADOutlierCOPODTest: public ADOutlierCOPOD{
-public:
-  ADOutlierCOPODTest(): ADOutlierCOPOD(0){}
-
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierCOPOD::sync_param(param); }
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-};
 
 TEST(COPODADOutlierTestSyncParamWithoutPS, Works){
   CopodParam local_params_ps;
@@ -114,8 +93,7 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
-  Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+  unsigned long nout = outlier.compute_outliers_test(func_id, call_list_its);
 
   std::cout << "# outliers detected: " << nout << std::endl;
 
@@ -141,8 +119,7 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
     call_list_its2.push_back(it);
 
-  Anomalies outliers2;
-  unsigned long nout2 = outlier.compute_outliers_test(outliers2, func_id, call_list_its2);
+  unsigned long nout2 = outlier.compute_outliers_test(func_id, call_list_its2);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
 
@@ -169,8 +146,7 @@ TEST(COPODADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list3.begin(); it != call_list3.end(); ++it)
     call_list_its3.push_back(it);
 
-  Anomalies outliers3;
-  unsigned long nout3 = outlier.compute_outliers_test(outliers3, func_id, call_list_its3);
+  unsigned long nout3 = outlier.compute_outliers_test(func_id, call_list_its3);
 
   std::cout << "# outliers detected: " << nout3 << std::endl;
 

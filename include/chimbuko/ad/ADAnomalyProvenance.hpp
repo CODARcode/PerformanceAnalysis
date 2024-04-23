@@ -36,6 +36,23 @@ namespace chimbuko{
 			      const unsigned long last_event_ts);
 
     /**
+     * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
+     *
+     * @param anom_event_entries The provDB entries for anomalous events
+     * @param normal_event_entries The provDB entries for normal events
+     * @param iface The interface object containing references to labeled events on this io step
+     * @param step The io step
+     * @param first_event_ts The timestamp of the first event in the io step
+     * @param last_event_ts The timestamp of the last event in the io step
+     */
+    void getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
+			      std::vector<nlohmann::json> &normal_event_entries,
+			      const ADExecDataInterface &iface,
+			      const int step,
+			      const unsigned long first_event_ts,
+			      const unsigned long last_event_ts);
+
+    /**
      * @brief Extract the provenance information for a specific call
      * @param call The call
      * @param step The io step

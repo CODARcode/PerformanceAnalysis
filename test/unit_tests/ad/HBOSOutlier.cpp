@@ -1,11 +1,11 @@
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
 #include<chimbuko/verbose.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "unit_test_ad_common.hpp"
 
 #include<thread>
 #include<chrono>
@@ -15,27 +15,6 @@
 #include <random>
 
 using namespace chimbuko;
-
-class ADOutlierHBOSTest: public ADOutlierHBOS{
-public:
-  ADOutlierHBOSTest(): ADOutlierHBOS(0){}
-
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-};
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, CheckSyncParam){
   chimbuko::enableVerboseLogging() = false;
@@ -109,29 +88,22 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   }
   stats_r2.create_histogram(runtimes);
   outlier.sync_param_test(&stats2); //merge second data batch into global model
-
-  std::vector<CallListIterator_t> call_list_its;
+  
+  ExecDataMap_t exec_data;
+  std::vector<CallListIterator_t> &call_list_its = exec_data[func_id];
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
-  Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
+  ADExecDataInterface iface(&exec_data);
+  unsigned long nout = outlier.compute_outliers_test(iface, func_id);
 
   std::cout << "# outliers detected: " << nout << std::endl;
   EXPECT_GE(nout, 1);
+  EXPECT_EQ(iface.getDataSetParamIndex(0), func_id);
   //Check the expected outlier is present
-  std::vector<CallListIterator_t> out_check  = outliers.funcEventsRecorded(func_id, Anomalies::EventType::Outlier);
-  bool found = false;
-  for(auto c : out_check){
-    if(c->get_entry() == outlier_start && c->get_runtime() == outlier_runtime){
-      std::cout << "Found expected outlier" << std::endl;
-      found = true;
-      break;
-    }
-  }
-  EXPECT_TRUE(found);
-  
+  EXPECT_TRUE(outlier.findOutlier(outlier_start, outlier_runtime, 0, iface));
 
+ 
   //Generate some events with an outlier itr 2 same outlier val:800. 
   runtimes.clear();
   std::list<ExecData_t> call_list2;  //aka CallList_t
@@ -146,13 +118,13 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   outlier.sync_param_test(&stats3);
 
-
-  std::vector<CallListIterator_t> call_list_its2;
+  exec_data.clear();
+  std::vector<CallListIterator_t> &call_list_its2 = exec_data[func_id];
   for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
     call_list_its2.push_back(it);
 
-  Anomalies outliers2;
-  unsigned long nout2 = outlier.compute_outliers_test(outliers2, func_id, call_list_its2);
+  ADExecDataInterface iface2(&exec_data);
+  unsigned long nout2 = outlier.compute_outliers_test(iface2, func_id);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
 
@@ -174,30 +146,23 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   stats_r4.create_histogram(runtimes);
   outlier.sync_param_test(&stats4);
 
-  std::vector<CallListIterator_t> call_list_its3;
+  exec_data.clear();
+  std::vector<CallListIterator_t> &call_list_its3 = exec_data[func_id];
   for(CallListIterator_t it=call_list3.begin(); it != call_list3.end(); ++it)
     call_list_its3.push_back(it);
 
-  Anomalies outliers3;
-  unsigned long nout3 = outlier.compute_outliers_test(outliers3, func_id, call_list_its3);
+  ADExecDataInterface iface3(&exec_data); 
+  enableVerboseLogging() = true;
+  unsigned long nout3 = outlier.compute_outliers_test(iface3, func_id);
+  enableVerboseLogging() = false;
 
   std::cout << "# outliers detected: " << nout3 << std::endl;
   EXPECT_GE(nout, 1);
   //Check the expected outlier is present
-  out_check  = outliers3.funcEventsRecorded(func_id, Anomalies::EventType::Outlier);
-  found = false;
-  std::cout << "Outliers:" << std::endl;
-  for(auto c : out_check){
-    std::cout << c->get_entry() << " " << c->get_runtime() << std::endl;
-    if(c->get_entry() == outlier_start && c->get_runtime() == outlier_runtime){
-      std::cout << "Found expected outlier" << std::endl;
-      found = true;
-      break;
-    }
-  }
-  EXPECT_TRUE(found);
+  outlier.printOutliers(iface3);
+  std::cout << "EXPECT " << outlier_start << " " << outlier_runtime << std::endl;
 
-
+  EXPECT_TRUE(outlier.findOutlier(outlier_start, outlier_runtime, 0, iface3));
 }
 
 

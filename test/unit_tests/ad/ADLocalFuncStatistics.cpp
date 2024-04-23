@@ -10,7 +10,7 @@ using namespace chimbuko;
 struct TestSetup{
   CallList_t fake_execs;
   ExecDataMap_t fake_exec_map;
-  Anomalies anomalies;
+  ADExecDataInterface *iface;
 
   int pid;
   int rank;
@@ -27,20 +27,36 @@ struct TestSetup{
 	ExecData_t e = createFuncExecData_t(pid, rank, thread,
 					    i, "func"+anyToStr(i),
 					    100*i, 100);
-	double score = j + nevent*i;
-
 	auto it = fake_execs.insert(fake_execs.end(),e);
 	fake_exec_map[i].push_back(it);
+      }
+    }
+    iface = new ADExecDataInterface(&fake_exec_map);
+    //To avoid floating point differences in statistics, we loop over functions in the internal order used by the interface
+    for(size_t dset_idx=0;dset_idx<iface->nDataSets();dset_idx++){
+      int i = iface->getDataSetParamIndex(dset_idx); //function index here
+
+      auto events = iface->getDataSet(dset_idx);
+      assert(events.size() == nevent);
+      for(int j=0;j<nevent;j++){
+	double score = j + nevent*i;
 
 	if(j<nanomalies_per_func){
-	  it->set_outlier_score(score);
-	  it->set_label(-1); //label as outlier
 	  outlier_scores.push(score);	
-	  anomalies.recordAnomaly(it);
+	  events[j].score = score;
+	  events[j].label = ADDataInterface::EventType::Outlier;
+	}else{
+	  events[j].score = 0;
+	  events[j].label = ADDataInterface::EventType::Normal;
 	}
 
       }
+      iface->recordDataSetLabels(events,dset_idx);
     }
+  }
+
+  ~TestSetup(){
+    delete iface;
   }
 };
 
@@ -49,7 +65,7 @@ TEST(ADLocalFuncStatisticsTest, Serialization){
 
   ADLocalFuncStatistics loc(setup.pid,setup.rank,0);
   loc.gatherStatistics(&setup.fake_exec_map);
-  loc.gatherAnomalies(setup.anomalies);
+  loc.gatherAnomalies(*setup.iface);
 
   EXPECT_EQ( loc.getAnomalyData().get_outlier_score_stats().get_json().dump(), setup.outlier_scores.get_json().dump() );
   
@@ -82,7 +98,7 @@ TEST(ADLocalFuncStatisticsTest, TestUpdateGlobalStatisticsWithPS){
 
   ADLocalFuncStatistics loc(setup.pid,setup.rank,0);
   loc.gatherStatistics(&setup.fake_exec_map);
-  loc.gatherAnomalies(setup.anomalies);
+  loc.gatherAnomalies(*setup.iface);
 
   std::cout << "JSON size " << loc.get_json().dump().size() << std::endl;
   std::cout << "Binary size " << loc.net_serialize().size() << std::endl;

@@ -50,6 +50,24 @@ void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
 
 }
 
+void ADLocalFuncStatistics::gatherAnomalies(const ADExecDataInterface &iface){
+  //Gather information on the number of anomalies and stats on their scores
+  size_t nanom_tot = 0;
+  for(size_t dset_idx =0 ; dset_idx < iface.nDataSets(); dset_idx++){
+    size_t fid = iface.getDataSetParamIndex(dset_idx);
+    auto const & r = iface.getResults(dset_idx);
+    auto const &anom = r.getEventsRecorded(ADDataInterface::EventType::Outlier);
+    size_t nanom = anom.size();
+    nanom_tot += nanom;
+    m_funcstats[fid].n_anomaly += nanom; //increment func anomalies count                                                                                                                                                             
+    for(auto const &e : anom) m_anom_data.add_outlier_score(e.score);
+  }
+  m_anom_data.incr_n_anomalies(nanom_tot);
+}
+
+
+
+
 nlohmann::json ADLocalFuncStatistics::get_json() const{
   nlohmann::json g_info;
   g_info["func"] = nlohmann::json::array();

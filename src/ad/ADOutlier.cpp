@@ -73,6 +73,12 @@ void ADExecDataInterface::setIgnoreFunction(const std::string &func){
   m_func_ignore.insert(func);
 }
 
+size_t ADExecDataInterface::getDataSetIndexOfFunction(size_t fid) const{
+  for(size_t dset_idx = 0; dset_idx < m_dset_fid_map.size(); dset_idx++)
+    if(m_dset_fid_map[dset_idx] == fid) return dset_idx;
+  fatal_error("Could not find function index");
+}
+
 CallListIterator_t ADExecDataInterface::getExecDataEntry(size_t dset_index, size_t elem_index) const{
   auto it = m_execDataMap->find(m_dset_fid_map[dset_index]);
   if(it == m_execDataMap->end()){ fatal_error("Invalid dset_idx"); }
@@ -406,7 +412,7 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
 
 
 void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
-  verboseStream << "Finding outliers in events for data set " << dset_idx << std::endl;
+  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << std::endl;
 
   if(data_vals.size() == 0) return;
 

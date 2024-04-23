@@ -20,12 +20,7 @@ TEST(ADLocalAnomalyMetricsTest, TestGenerateAndState){
   ExecData_t 
     e1(id1, pid, rid, tid, fid, func, 100, 200),
     e2(id2, pid, rid, tid, fid, func, 300, 450);
-  
-  e1.set_label(-1);
-  e1.set_outlier_score(3.14);
-  e2.set_label(-1);
-  e2.set_outlier_score(6.28);
-  
+   
   RunStats expect_sev(true); //do accumulate
   expect_sev.push(100); //use runtime
   expect_sev.push(150); 
@@ -38,13 +33,22 @@ TEST(ADLocalAnomalyMetricsTest, TestGenerateAndState){
   calllist.push_back(e1);
   calllist.push_back(e2);
   
-  Anomalies anom;
-  anom.recordAnomaly(calllist.begin());
-  anom.recordAnomaly(std::next(calllist.begin(),1));
+  ExecDataMap_t exec_data;
+  exec_data[fid].push_back(calllist.begin());
+  exec_data[fid].push_back(std::next(calllist.begin()));
 
+  ADExecDataInterface iface(&exec_data);
+  {
+    auto events = iface.getDataSet(0);
+    events[0].label = events[1].label = ADDataInterface::EventType::Outlier;
+    events[0].score = 3.14;
+    events[1].score = 6.28;
+    iface.recordDataSetLabels(events,0);
+  }
+    
   unsigned long first_ts = 100, last_ts = 999;
   
-  ADLocalAnomalyMetrics met(pid,rid,step,first_ts,last_ts,anom);
+  ADLocalAnomalyMetrics met(pid,rid,step,first_ts,last_ts,iface);
 
   EXPECT_EQ(met.get_pid(), pid);
   EXPECT_EQ(met.get_rid(), rid);

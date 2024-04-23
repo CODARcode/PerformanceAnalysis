@@ -1,11 +1,8 @@
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/util/Anomalies.hpp>
-#include<chimbuko/param/sstd_param.hpp>
-#include<chimbuko/param/hbos_param.hpp>
-#include<chimbuko/param/copod_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "unit_test_ad_common.hpp"
 
 #include<thread>
 #include<chrono>
@@ -15,91 +12,6 @@
 #include <random>
 
 using namespace chimbuko;
-
-//Derived class to allow access to protected member functions
-class ADOutlierSSTDTest: public ADOutlierSSTD{
-public:
-  ADOutlierSSTDTest(): ADOutlierSSTD(0){}
-
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierSSTD::sync_param(param); }
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    ADExecDataInterface::FunctionsSeenType fseen;
-    iface.setIgnoreFirstFunctionCall(&fseen); //workaround for JIT compiled functions
-
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-
-  double computeScoreTest(CallListIterator_t ev, const SstdParam &stats) const{
-    return this->computeScore(ev->get_exclusive(),ev->get_fid(),stats);
-  }
-
-};
-
-class ADOutlierHBOSTest: public ADOutlierHBOS{
-public:
-  ADOutlierHBOSTest(): ADOutlierHBOS(0){}
-
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-
-  void setParams(const HbosParam &p){ 
-    ( (HbosParam*)m_param )->copy(p);
-  }
-
-  HbosParam & get_local_parameters() const{ return *((HbosParam*)m_local_param); }
-
-  void test_updateGlobalModel(){ this->updateGlobalModel(); }
-};
-
-class ADOutlierCOPODTest: public ADOutlierCOPOD{
-public:
-  ADOutlierCOPODTest(): ADOutlierCOPOD(0){}
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-
-  void setParams(const CopodParam &p){ 
-    ( (CopodParam*)m_param )->copy(p);
-  }
-
-};
-
-/*
 
 TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
   HbosParam local_params_ps;
@@ -142,8 +54,6 @@ TEST(ADOutlierHBOSTestSyncParamWithoutPS, Works){
 
   EXPECT_EQ(local_params_ps.get_hbosstats(), g->get_hbosstats());
 }
-
-
 
 
 TEST(ADOutlierHBOSTestSyncParamFrequencyWithoutPS, Works){
@@ -241,7 +151,6 @@ TEST(ADOutlierSSTDTestSyncParamWithoutPS, Works){
 }
 
 
-
 TEST(ADOutlierSSTDTestSyncParamWithPS, Works){
   SstdParam global_params_ps; //parameters held in the parameter server
   SstdParam local_params_ad; //parameters collected by AD
@@ -327,6 +236,7 @@ TEST(ADOutlierSSTDTestSyncParamWithPS, Works){
 #endif
 }
 
+  
 
 TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   //Generate statistics
@@ -355,24 +265,27 @@ TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   }
   long ts_end = 1000*N + 800;
 
-
-  std::vector<CallListIterator_t> call_list_its;
+  ExecDataMap_t exec_data;
+  std::vector<CallListIterator_t> &call_list_its = exec_data[func_id];
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
-  Anomalies outliers;
-  unsigned long nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
-
-  std::cout << "# outliers detected: " << nout << std::endl;
-
-  EXPECT_EQ(nout, 1);
-  EXPECT_EQ( (unsigned long)outliers.nEventsRecorded(Anomalies::EventType::Outlier), nout);
-
-  //Check that running again on the same data does not report new outliers
-  nout = outlier.compute_outliers_test(outliers, func_id, call_list_its);
-  EXPECT_EQ(nout, 0);
+  {
+    ADExecDataInterface iface(&exec_data);
+    unsigned long nout = outlier.compute_outliers_test(iface, func_id);
+    
+    std::cout << "# outliers detected: " << nout << std::endl;
+    
+    EXPECT_EQ(nout, 1);
+    EXPECT_EQ( (unsigned long)iface.nEventsRecorded(ADDataInterface::EventType::Outlier), nout);
+  }
+  {
+    //Check that running again on the same data does not report new outliers
+    ADExecDataInterface iface(&exec_data);
+    unsigned long nout = outlier.compute_outliers_test(iface, func_id);
+    EXPECT_EQ(nout, 0);
+  }
 }
-
 
 TEST(ADOutlierSSTDTestRunWithoutPS, Works){
   //Generate statistics
@@ -403,23 +316,20 @@ TEST(ADOutlierSSTDTestRunWithoutPS, Works){
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
   ADExecDataInterface iface(&data_map);
   outlier.run(iface,0);
-  Anomalies anomalies;
-  anomalies.import(iface);
 
-  size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
+  size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
   std::cout << "# outliers detected: " << nout << std::endl;
   EXPECT_EQ(nout, 1);
-  size_t nout_func = anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier);
-  EXPECT_EQ(nout_func, 1);
-  EXPECT_EQ( anomalies.allEventsRecorded(Anomalies::EventType::Outlier)[0], std::next(call_list.begin(), N-1) ); //last event
+  std::vector<CallListIterator_t> outliers_func = outlier.getEvents(func_id, ADDataInterface::EventType::Outlier, iface);
+
+  EXPECT_EQ(outliers_func.size(), 1);
+  EXPECT_EQ(outliers_func[0], std::next(call_list.begin(), N-1) ); //last event
 
   //It should also have captured exactly one normal event for comparison (we don't capture all normal events as that would defeat the purpose!)
   //This should be the event with the lowest score
-  size_t nnorm = anomalies.nEventsRecorded(Anomalies::EventType::Normal);
-  std::cout << "# normal events recorded: " << nnorm << std::endl;
-  EXPECT_EQ(nnorm, 1);
-  size_t nnorm_func = anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Normal);
-  EXPECT_EQ(nnorm_func, 1);
+  std::vector<CallListIterator_t> norm_func = outlier.getEvents(func_id, ADDataInterface::EventType::Normal, iface);
+  std::cout << "# normal events recorded: " << norm_func.size() << std::endl;
+  EXPECT_EQ(norm_func.size(), 1);
 
   //Find event with lowest score
   double lscore = 1e32;
@@ -435,9 +345,9 @@ TEST(ADOutlierSSTDTestRunWithoutPS, Works){
     i++;
   }
   std::cout << "Lowest score is on event " << i << " with value " << eit->get_json().dump(1) << std::endl;
-  std::cout << "Anomalies returned normal event " << anomalies.allEventsRecorded(Anomalies::EventType::Normal)[0]->get_json().dump(1) << std::endl;
+  std::cout << "Anomalies returned normal event " << norm_func[0]->get_json().dump(1) << std::endl;
  
-  EXPECT_EQ( anomalies.allEventsRecorded(Anomalies::EventType::Normal)[0], eit );
+  EXPECT_EQ( norm_func[0], eit );
 }
 
 
@@ -472,19 +382,14 @@ TEST(ADOutlierSSTDTestFuncIgnore, Works){
   EXPECT_FALSE(iface.ignoringFunction(fname2));
   
   outlier.run(iface,0);
-  Anomalies anomalies;
-  anomalies.import(iface);
 
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_EQ(outlier.getEvents(func_id,ADDataInterface::EventType::Outlier,iface).size(), 0);
+  EXPECT_EQ(outlier.getEvents(func_id2,ADDataInterface::EventType::Outlier,iface).size(), 1);
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
     if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
 }
-
-
-
 
 TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
   //Generate statistics
@@ -522,14 +427,13 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
     ADOutlierSSTDTest outlier;
     ADExecDataInterface iface(&data_map);
     outlier.run(iface, 0);
-    Anomalies anomalies; anomalies.import(iface);
 
-    size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
+    size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
     EXPECT_EQ(nout, 1);
-    size_t nout_par = anomalies.nFuncEventsRecorded(func_id_par, Anomalies::EventType::Outlier);
+    size_t nout_par = outlier.getEvents(func_id_par,ADDataInterface::EventType::Outlier,iface).size();
     EXPECT_EQ(nout_par, 0);
-    size_t nout_child = anomalies.nFuncEventsRecorded(func_id_child, Anomalies::EventType::Outlier);
+    size_t nout_child = outlier.getEvents(func_id_child,ADDataInterface::EventType::Outlier,iface).size();
     EXPECT_EQ(nout_child, 1);
   }
 
@@ -545,14 +449,13 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
     ADOutlierSSTDTest outlier;
     ADExecDataInterface iface(&data_map,ADExecDataInterface::InclusiveRuntime);
     outlier.run(iface, 0);
-    Anomalies anomalies; anomalies.import(iface);
 
-    size_t nout = anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
+    size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
     std::cout << "# outliers detected: " << nout << std::endl;
     EXPECT_EQ(nout, 2);
-    size_t nout_par = anomalies.nFuncEventsRecorded(func_id_par, Anomalies::EventType::Outlier);
+    size_t nout_par = outlier.getEvents(func_id_par,ADDataInterface::EventType::Outlier,iface).size();
     EXPECT_EQ(nout_par, 1);
-    size_t nout_child = anomalies.nFuncEventsRecorded(func_id_child, Anomalies::EventType::Outlier);
+    size_t nout_child = outlier.getEvents(func_id_child,ADDataInterface::EventType::Outlier,iface).size();
     EXPECT_EQ(nout_child, 1);
   }
 }
@@ -595,6 +498,8 @@ TEST(ADOutlierSSTDtest, TestAnomalyScore){
   EXPECT_NEAR(score, expect, 1e-7); //should be same probability
 }
 
+
+
 TEST(ADOutlierHBOSTest, TestAnomalyDetection){
   ADOutlierHBOSTest outlier;
   
@@ -624,97 +529,91 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
 
   outlier.setParams(p);
 
+#define RUN_TEST \
+    ExecDataMap_t exec_data; \
+    std::vector<CallListIterator_t> &data = exec_data[fid]; \
+    data.push_back(events.begin()); \
+    ADExecDataInterface iface(&exec_data); \
+    unsigned long n = outlier.compute_outliers_test(iface, fid);
 
   //Check data point in peak bin is not an outlier
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 250) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid,ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1); 
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[1], 1e-3);
   }
   //Check data point in the last bin is not an outlier
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 650) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
   }
   //Edge points within 5% of the bin width of the first and last bin should be included within that bin
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 96) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[0], 1e-3);
   }
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 704) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
     EXPECT_NEAR(data[0]->get_outlier_score(), scores[5], 1e-3);
   }
   //Points outside of the histogram should be outliers with score = 100
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 90) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 1);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 0);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 710) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 1);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 0);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
   //Points in bins with 0 count should be outliers with score = 100
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 550) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 1);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 0);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
     EXPECT_NEAR(data[0]->get_outlier_score(), 100., 1e-3);
   }
+  #undef RUN_TEST
 }
+
 
 TEST(ADOutlierHBOSTestFuncIgnore, Works){
   //Generate statistics
@@ -745,17 +644,14 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   EXPECT_FALSE(iface.ignoringFunction(fname2));
 
   outlier.run(iface, 0);
-  Anomalies anomalies;
-  anomalies.import(iface);
 
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_GE(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1); //depending on various tolerances (e.g. number of bins, number of data points), it may detect more than 1 outlier, but should detect at least the artificial one
+  EXPECT_EQ(outlier.getEvents(func_id, ADDataInterface::EventType::Outlier,iface).size(), 0);
+  EXPECT_GE(outlier.getEvents(func_id2, ADDataInterface::EventType::Outlier,iface).size(), 1); //depending on various tolerances (e.g. number of bins, number of data points), it may detect more than 1 outlier, but should detect at least the artificial one
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
     if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
 }
-
 
 
 
@@ -781,103 +677,58 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
 
   outlier.setParams(p);
 
+#define RUN_TEST \
+    ExecDataMap_t exec_data; \
+    std::vector<CallListIterator_t> &data = exec_data[fid]; \
+    data.push_back(events.begin()); \
+    ADExecDataInterface iface(&exec_data); \
+    unsigned long n = outlier.compute_outliers_test(iface, fid);
+
   //Histogram above is right-skewed
 
   //Check score for point left of histogram ; should be an outlier
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 95) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 1);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 0);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
   //Check score for point right of histogram ; should be an outlier
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 705) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 1);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 0);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),-1);
   }
 
   //Check data point in peak bin is not an outlier
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 250) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
   }
   //Check data point lying on top of the min value is not an outlier despite the naive CDF being 0
   {
     std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 101) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
+    RUN_TEST;
     EXPECT_EQ(n, 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 0);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 1);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Normal)[0], data[0]);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Outlier,iface).size(), 0);
+    ASSERT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface).size(), 1);
+    EXPECT_EQ(outlier.getEvents(fid, ADDataInterface::EventType::Normal,iface)[0], data[0]);
     EXPECT_EQ(data[0]->get_label(),1);
   }
-
-
-}
-
-
-
-//For a multi-modal distribution it is not clear how COPOD handles data in bins between peaks
-TEST(ADOutlierCOPODTest, TestAnomalyDetectionMultimodal){
-  ADOutlierCOPODTest outlier;
-  
-  //Generate a histogram
-  CopodFuncParam hp;
-  Histogram &h = hp.getHistogram();
-  h.set_histogram({      1,  2,  12, 1,  0,  0,  0,  0,  0,   2,   4,  16,   2}, 101,1400,100,100);
-
-  //Compute the expected scores
-  double alpha = 78.88e-32; //this is the default as of when the test was written! scores 0-100
-  outlier.set_alpha(alpha); 
-
-  int fid = 33;
-  std::unordered_map<unsigned long, CopodFuncParam> stats = { {fid, hp} }; 
-  
-  CopodParam p;
-  p.set_copodstats(stats);
-  EXPECT_EQ( p.get_copodstats(), stats );
-
-  outlier.setParams(p);
-
-  //Histogram above should not be strongly skewed
-  std::cout << "Histogram " << h << std::endl;
-  std::cout << "Skewness: " << h.skewness() << std::endl;
-
-  //Check score for point in middle of histogram ; should be an outlier
-  //   Interesting, it looks like COPOD does not work with multimodal distributions
-  if(0){
-    std::list<ExecData_t> events = { createFuncExecData_t(0,0,0,  fid, "myfunc", 1981, 750) };
-    std::vector<CallListIterator_t> data = {events.begin()};
-    Anomalies anom;
-    unsigned long n = outlier.compute_outliers_test(anom, fid, data);
-    EXPECT_EQ(n, 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Outlier), 1);
-    ASSERT_EQ(anom.nFuncEventsRecorded(fid, Anomalies::EventType::Normal), 0);
-    EXPECT_EQ(anom.funcEventsRecorded(fid, Anomalies::EventType::Outlier)[0], data[0]);
-    EXPECT_EQ(data[0]->get_label(),-1);
-  }
+  #undef RUN_TEST
 
 }
 
@@ -912,17 +763,12 @@ TEST(ADOutlierCOPODTestFuncIgnore, Works){
   EXPECT_FALSE(iface.ignoringFunction(fname2));
 
   outlier.run(iface, 0);
-  Anomalies anomalies;
-  anomalies.import(iface);
 
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id, Anomalies::EventType::Outlier), 0);
-  EXPECT_EQ(anomalies.nFuncEventsRecorded(func_id2, Anomalies::EventType::Outlier), 1);
+  EXPECT_EQ(outlier.getEvents(func_id, ADDataInterface::EventType::Outlier,iface).size(), 0);
+  EXPECT_EQ(outlier.getEvents(func_id2, ADDataInterface::EventType::Outlier,iface).size(), 1);
 
   //Check all fname events are labeled normal
   for(auto const &e : call_list)
     if(e.get_fid() == func_id) EXPECT_EQ( e.get_label(), 1 );
 }
 
-
-
-*/

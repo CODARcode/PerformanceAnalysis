@@ -30,6 +30,11 @@ namespace chimbuko{
     void gatherAnomalies(const Anomalies &anom);
 
     /**
+     * @brief Add anomalies to internal statistics
+     */
+    void gatherAnomalies(const ADExecDataInterface &iface);
+
+    /**
      * @brief update (send) function statistics (#anomalies, incl/excl run times) gathered during this io step to the connected parameter server
      * @param net_client The network client object
      * @return std::pair<size_t, size_t> [sent, recv] message size

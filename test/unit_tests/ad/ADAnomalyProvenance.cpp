@@ -1,8 +1,10 @@
 #include<chimbuko/ad/ADAnomalyProvenance.hpp>
+#include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/util/map.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "unit_test_ad_common.hpp"
 
 #include<thread>
 #include<chrono>
@@ -507,6 +509,30 @@ T & listEntry(std::list<T> &l, int i){
   return *it;
 }
 
+void add(ExecDataMap_t &exec_map, CallListIterator_t it){
+  exec_map[it->get_fid()].push_back(it);
+}
+
+bool checkOutliers(const std::vector<nlohmann::json> &got, const std::vector<CallListIterator_t> &expect){
+  std::unordered_set<std::string> not_found;
+  for(auto const &e : expect) not_found.insert(e->get_id().toString());
+  for(auto const &e : got){
+    const std::string &s = e["event_id"];
+    auto it = not_found.find(s);
+    if(it == not_found.end()){
+      std::cout << "checkOutliers FAILED: Found an outlier not in the expectation list or one that appeared twice" << std::endl;
+      return false;
+    }
+    not_found.erase(it);
+  }
+  if(not_found.size() > 0){
+    std::cout << "checkOutliers FAILED: Did not find all the expected outliers" << std::endl;
+    return false;
+  }
+  return true;
+}
+
+
 TEST(TestADAnomalyProvenance, getProvenanceEntries){
   std::vector<ExecData_t> events = {
     createFuncExecData_t(1,2,3, 55, "theparent", 800, 200),
@@ -516,91 +542,111 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
   };
   bindParentChild(events[0],events[1]);
   bindParentChild(events[2],events[3]);
-  events[1].set_label(-1);
-  events[3].set_label(-1);
   
   ADEvent event_man;
   std::vector<CallListIterator_t> event_its;
   for(auto &e :  events) event_its.push_back(event_man.addCall(e));
 
-  Anomalies anoms;
-  anoms.recordAnomaly(event_its[1]);
-  anoms.recordAnomaly(event_its[3]);
-  
-  std::vector<nlohmann::json> anom_entries, normal_entries;
-  {
-    ADAnomalyProvenance prov(event_man);
-    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
-  }
-
-  ASSERT_EQ(anom_entries.size(),2);
-  ASSERT_EQ(normal_entries.size(),0); //didn't put in normal events
 
   std::string got, expect;
-  
-  got = anom_entries[0]["event_id"]; expect = event_its[1]->get_id().toString();
-  EXPECT_EQ(got,expect);  
-  got = anom_entries[1]["event_id"]; expect = event_its[3]->get_id().toString();
-  EXPECT_EQ(got,expect);
+
+  std::unordered_map<eventID, int> labels;
+
+  ExecDataMap_t exec_data;
+
+  add(exec_data, event_its[1]);
+  add(exec_data, event_its[3]);
+  labels[event_its[1]->get_id()] = -1;
+  labels[event_its[3]->get_id()] = -1;
+
+  {
+    ADExecDataInterface iface(&exec_data);
+    ASSERT_EQ(iface.nDataSets(),2);
+    setDataLabels(iface,labels);    
+
+    std::vector<nlohmann::json> anom_entries, normal_entries;
+    {
+      ADAnomalyProvenance prov(event_man);
+      prov.getProvenanceEntries(anom_entries, normal_entries, iface, 0, 800, 1200);
+    }
+
+    ASSERT_EQ(anom_entries.size(),2);
+    ASSERT_EQ(normal_entries.size(),0); //didn't put in normal events
+
+    bool check = checkOutliers(anom_entries, std::vector<CallListIterator_t>({event_its[1],event_its[3]}) );
+    EXPECT_TRUE(check);
+  }
+
 
   //Repeat but add normal events for both
   events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 50) );
-  events.rbegin()->set_label(1);
   events.push_back( createFuncExecData_t(1,2,4, 22, "theotherfunc", 400, 25) );
-  events.rbegin()->set_label(1);
   event_its.push_back(event_man.addCall(events[4]));
   event_its.push_back(event_man.addCall(events[5]));
-  anoms.recordNormalEventConditional(event_its[4]);
-  anoms.recordNormalEventConditional(event_its[5]);
 
-  anom_entries.clear();
-  normal_entries.clear();
-
-  { //create prov anew to ensure normal event logic works as expected
-    ADAnomalyProvenance prov(event_man);
-    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
-  }
-  ASSERT_EQ(anom_entries.size(),2);
-  ASSERT_EQ(normal_entries.size(),2);
-
-  got = normal_entries[0]["event_id"]; expect = event_its[4]->get_id().toString();
-  EXPECT_EQ(got,expect);
-
-  got = normal_entries[1]["event_id"]; expect = event_its[5]->get_id().toString();
-  EXPECT_EQ(got,expect);
-
-  //Test the minimum runtime
-  anom_entries.clear();
-  normal_entries.clear();
-
-  { //create prov anew to ensure normal event logic works as expected
-    ADAnomalyProvenance prov(event_man);
-    prov.setMinimumAnomalyTime(60); //exclude second anomaly
-    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
-  }
-
-  ASSERT_EQ(anom_entries.size(),1);
-  ASSERT_EQ(normal_entries.size(),1);
+  add(exec_data, event_its[4]);
+  add(exec_data, event_its[5]);
+  labels[event_its[4]->get_id()] = 1;
+  labels[event_its[5]->get_id()] = 1;
   
-  got = anom_entries[0]["event_id"]; expect = event_its[1]->get_id().toString();
-  EXPECT_EQ(got,expect);  
-  got = normal_entries[0]["event_id"]; expect = event_its[4]->get_id().toString();
-  EXPECT_EQ(got,expect);  
+  {
+    //Need to unlabel everything again
+    for(auto &e : event_its) e->set_label(0);
 
+    ADExecDataInterface iface(&exec_data);
+    ASSERT_EQ(iface.nDataSets(),2);
+    setDataLabels(iface,labels);    
+   
+    std::vector<nlohmann::json> anom_entries, normal_entries;        
+    { //create prov anew to ensure normal event logic works as expected
+      ADAnomalyProvenance prov(event_man);
+      prov.getProvenanceEntries(anom_entries, normal_entries, iface, 0, 800, 1200);
+    }
+    ASSERT_EQ(anom_entries.size(),2);
+    ASSERT_EQ(normal_entries.size(),2);
+    
+    bool check = checkOutliers(normal_entries, std::vector<CallListIterator_t>({event_its[4],event_its[5]}) );
+    EXPECT_TRUE(check);
+  
+    //Test the minimum runtime
+    anom_entries.clear();
+    normal_entries.clear();
+    
+    { //create prov anew to ensure normal event logic works as expected
+      ADAnomalyProvenance prov(event_man);
+      prov.setMinimumAnomalyTime(60); //exclude second anomaly
+      prov.getProvenanceEntries(anom_entries, normal_entries, iface, 0, 800, 1200);
+    }
+    
+    ASSERT_EQ(anom_entries.size(),1);
+    ASSERT_EQ(normal_entries.size(),1);
+    
+    check = checkOutliers(anom_entries, std::vector<CallListIterator_t>({event_its[1]}));
+    EXPECT_TRUE(check);
+    check = checkOutliers(normal_entries, std::vector<CallListIterator_t>({event_its[4]}));
+    EXPECT_TRUE(check);
+  }
 
   //Check that if we have multiple anomalies for the same function we only get one normal event
   events.push_back( createFuncExecData_t(1,2,3, 33, "thefunc", 700, 75) );
-  events.rbegin()->set_label(-1);
   event_its.push_back(event_man.addCall(events.back()));
-  anoms.recordAnomaly(event_its.back());
-
-  anom_entries.clear();
-  normal_entries.clear();
+  add(exec_data, event_its.back());
   
+  labels[event_its.back()->get_id()] = -1;
+
   {
-    ADAnomalyProvenance prov(event_man);
-    prov.getProvenanceEntries(anom_entries, normal_entries, anoms, 0, 800, 1200);
+    //Need to unlabel everything again
+    for(auto &e : event_its) e->set_label(0);
+
+    ADExecDataInterface iface(&exec_data);
+    setDataLabels(iface,labels);    
+    
+    std::vector<nlohmann::json> anom_entries, normal_entries;        
+    {
+      ADAnomalyProvenance prov(event_man);
+      prov.getProvenanceEntries(anom_entries, normal_entries, iface, 0, 800, 1200);
+    }
+    ASSERT_EQ(anom_entries.size(),3);
+    ASSERT_EQ(normal_entries.size(),2);
   }
-  ASSERT_EQ(anom_entries.size(),3);
-  ASSERT_EQ(normal_entries.size(),2);
 }

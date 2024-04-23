@@ -251,6 +251,69 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
 }
 
 
+void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
+					       std::vector<nlohmann::json> &normal_event_entries,
+					       const ADExecDataInterface &iface,
+					       const int step,
+					       const unsigned long first_event_ts,
+					       const unsigned long last_event_ts){
+  constexpr bool do_delete = true;
+  constexpr bool add_outstanding = true;
+
+  PerfTimer timer,timer2;
+
+  size_t ndset = iface.nDataSets();
+
+  //Put new normal event provenance into m_normalevent_prov
+  timer.start();
+  for(size_t dset_idx = 0; dset_idx < ndset; dset_idx++){
+    for(auto const &e : iface.getResults(dset_idx).getEventsRecorded(ADDataInterface::EventType::Normal)){
+      timer2.start();
+      auto norm_it = iface.getExecDataEntry(dset_idx, e.index);
+      m_normalevents.addNormalEvent(norm_it->get_pid(), norm_it->get_rid(), norm_it->get_tid(), norm_it->get_fid(), getEventProvenance(*norm_it, step, first_event_ts, last_event_ts));
+      if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_update_per_event_ms", timer2.elapsed_ms());
+    }
+  } 
+  if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_update_total_ms", timer.elapsed_ms());
+
+  //Get any outstanding normal events from previous timesteps that we couldn't previously provide
+  timer.start();
+
+  normal_event_entries = m_normalevents.getOutstandingRequests(do_delete); //allow deletion of internal copy of events that are returned
+
+  if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_get_outstanding_ms", timer.elapsed_ms());
+
+  //Gather provenance of anomalies and for each one try to obtain a normal execution
+  timer.start();
+  std::unordered_set<unsigned long> normal_event_fids;
+
+  for(size_t dset_idx = 0; dset_idx < ndset; dset_idx++){
+    for(auto const &e : iface.getResults(dset_idx).getEventsRecorded(ADDataInterface::EventType::Outlier)){
+      timer2.start();
+      auto anom_it = iface.getExecDataEntry(dset_idx, e.index);
+      
+      if(anom_it->get_exclusive() < m_min_anom_time) continue; //skip executions with too short runtimes to avoid filling the database with irrelevant anomalies
+
+      anom_event_entries.push_back(getEventProvenance(*anom_it, step, first_event_ts, last_event_ts));
+      if(m_perf) m_perf->add("ad_extract_send_prov_anom_data_generation_per_anom_ms", timer2.elapsed_ms());
+
+      //Get the associated normal event if one has not been recorded for this function on this step
+      if(!normal_event_fids.count(anom_it->get_fid())){
+	timer2.start();
+	//if normal event not available put into the list of outstanding requests and it will be recorded next time a normal event for this function is obtained
+	//if normal event is available, delete internal copy within m_normalevent_prov so the normal event isn't added more than once
+	auto nev = m_normalevents.getNormalEvent(anom_it->get_pid(), anom_it->get_rid(), anom_it->get_tid(), anom_it->get_fid(), add_outstanding, do_delete);
+	if(nev.second) normal_event_entries.push_back(std::move(nev.first));
+	
+	normal_event_fids.insert(anom_it->get_fid()); //make sure we don't record more than one normal event for this fid
+	if(m_perf) m_perf->add("ad_extract_send_prov_normalevent_gather_per_anom_ms", timer2.elapsed_ms());
+      }      
+    }
+  }
+  if(m_perf) m_perf->add("ad_extract_send_prov_anomevent_update_total_ms", timer.elapsed_ms());
+}
+
+
 
 
 

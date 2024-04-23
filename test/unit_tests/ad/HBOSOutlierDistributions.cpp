@@ -1,10 +1,10 @@
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/util/Anomalies.hpp>
 #include<chimbuko/param/sstd_param.hpp>
 #include<chimbuko/param/hbos_param.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include "unit_test_ad_common.hpp"
 
 #include<thread>
 #include<chrono>
@@ -14,28 +14,6 @@
 #include <random>
 
 using namespace chimbuko;
-
-class ADOutlierHBOSTest: public ADOutlierHBOS{
-public:
-  ADOutlierHBOSTest(): ADOutlierHBOS(0){}
-
-  std::pair<size_t, size_t> sync_param_test(ParamInterface* param){ return this->ADOutlierHBOS::sync_param(param); }
-
-  unsigned long compute_outliers_test(Anomalies &anomalies,
-				      const unsigned long func_id, std::vector<CallListIterator_t>& data){
-    ExecDataMap_t execdata;
-    execdata[func_id] = data;
-    
-    ADExecDataInterface iface(&execdata);
-    auto dset = iface.getDataSet(0);
-    this->labelData(dset,0,func_id);
-    iface.recordDataSetLabels(dset,0);
-
-    anomalies.import(iface);
-    return anomalies.nEventsRecorded(Anomalies::EventType::Outlier);
-  }
-};
-
 
 TEST(HBOSADOutlierTestDistributions, Works) {
 
@@ -153,9 +131,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 
 	glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
 
-
-        Anomalies outliers;
-        nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
+        nout = outlier.compute_outliers_test(0, call_list_its);
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
@@ -197,9 +173,7 @@ TEST(HBOSADOutlierTestDistributions, Works) {
 
 	glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
 
-
-        Anomalies outliers;
-        nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+        nout2 = outlier.compute_outliers_test(0, call_list_its2);
 
         std::cout << "# outliers detected: " << nout << std::endl;
         std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;
@@ -352,9 +326,8 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
 
 	glob_params_comb_ad  = outlier.get_global_parameters()->serialize();
         //comb_params_serialize = combined_params_ps.serialize();
-
-        Anomalies outliers;
-        nout = outlier.compute_outliers_test(outliers, 0, call_list_its);
+        
+	nout = outlier.compute_outliers_test(0, call_list_its);
 
         std::cout << "# outliers detected: " << nout << std::endl;
 
@@ -393,10 +366,8 @@ TEST(HBOSADOutlierTestGammaDistribution, Works) {
         std::cout << local_params_ad2[0].get_json().dump();
 
 	glob_params_comb_ad2  = outlier.get_global_parameters()->serialize();
-
-
-        Anomalies outliers;
-        nout2 = outlier.compute_outliers_test(outliers, 0, call_list_its2);
+        
+        nout2 = outlier.compute_outliers_test(0, call_list_its2);
 
         std::cout << "# outliers detected: " << nout << std::endl;
         std::cout << "Global and local histograms after Outlier detection in AD 2" << std::endl;

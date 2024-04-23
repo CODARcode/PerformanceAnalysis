@@ -27,6 +27,7 @@ set -o pipefail
 ./ad/COPODOutlier
 ./ad/COPODOutlierADs
 ./ad/ADMonitoring
+./ad/ADExecDataInterface
 ./util/DispatchQueue
 ./util/commandLineParser
 ./util/RunStats

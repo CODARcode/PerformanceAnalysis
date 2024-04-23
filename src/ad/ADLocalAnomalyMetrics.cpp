@@ -16,6 +16,26 @@ ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsign
   }
 }
 
+ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const ADExecDataInterface &iface): 
+  m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
+  
+  for(size_t dset_idx =0 ; dset_idx < iface.nDataSets(); dset_idx++){
+    size_t fid = iface.getDataSetParamIndex(dset_idx);
+    auto const & r = iface.getResults(dset_idx);
+    auto const &anom = r.getEventsRecorded(ADExecDataInterface::EventType::Outlier);
+
+    if(anom.size()){
+      const std::string & fname = iface.getExecDataEntry(dset_idx,0)->get_funcname();
+      auto fit = m_func_anom_metrics.find(fid);
+      if(fit == m_func_anom_metrics.end())
+	fit = m_func_anom_metrics.emplace(fid, FuncAnomalyMetrics(fid, fname)).first;
+      
+      for(auto const &e : anom) fit->second.add(*iface.getExecDataEntry(dset_idx,e.index));
+    }
+  }
+}
+
+
 std::string ADLocalAnomalyMetrics::serialize_cerealpb() const{
   return cereal_serialize(*this);
 }

@@ -175,6 +175,13 @@ namespace chimbuko {
     size_t getDataSetParamIndex(size_t dset_index) const override{ return m_dset_fid_map[dset_index]; }
 
     /**
+     * @brief Return the data set index associated with a given function index
+     * 
+     * Not optimized, primarily for testing
+     */
+    size_t getDataSetIndexOfFunction(size_t fid) const;
+
+    /**
      * @brief Tell the interface to ignore the first call to a function on a given pid/rid/tid
      * @param functions_seen A pointer to a FunctionsSeenType instance where the functions that have been seen will be recorded
      */
