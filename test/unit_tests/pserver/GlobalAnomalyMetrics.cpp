@@ -29,23 +29,26 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
     ExecData_t 
       e1(id1, pid, rid, tid, fid, func, 100, 200),
       e2(id2, pid, rid, tid, fid, func, 300, 450);
-    
-    e1.set_label(-1);
-    e1.set_outlier_score(3.14);
-    e2.set_label(-1);
-    e2.set_outlier_score(6.28);
-    
+       
     std::list<ExecData_t> calllist;
     calllist.push_back(e1);
     calllist.push_back(e2);
     
-    Anomalies anom;
-    anom.recordAnomaly(calllist.begin());
-    anom.recordAnomaly(std::next(calllist.begin(),1));
+    ExecDataMap_t exec_data;
+    exec_data[fid].push_back(calllist.begin());
+    exec_data[fid].push_back(std::next(calllist.begin()));
+
+    
+    ADExecDataInterface iface(&exec_data);
+    auto d = iface.getDataSet(0);
+    d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
+    d[0].score = 3.14;
+    d[1].score = 6.28;
+    iface.recordDataSetLabels(d,0);
     
     unsigned long first_ts = 100, last_ts = 999;
     
-    ADLocalAnomalyMetrics lcl(pid,rid,step1,first_ts,last_ts,anom);
+    ADLocalAnomalyMetrics lcl(pid,rid,step1,first_ts,last_ts,iface);
     
     glb.add(lcl);
     lcl.send(net_client); //also send by net
@@ -103,22 +106,25 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
       e1(id1, pid, rid, tid, fid, func, 500, 200),
       e2(id2, pid, rid, tid, fid, func, 900, 450);
     
-    e1.set_label(-1);
-    e1.set_outlier_score(8.88);
-    e2.set_label(-1);
-    e2.set_outlier_score(21.71);
-    
     std::list<ExecData_t> calllist;
     calllist.push_back(e1);
     calllist.push_back(e2);
+
+    ExecDataMap_t exec_data;
+    exec_data[fid].push_back(calllist.begin());
+    exec_data[fid].push_back(std::next(calllist.begin()));
+
     
-    Anomalies anom;
-    anom.recordAnomaly(calllist.begin());
-    anom.recordAnomaly(std::next(calllist.begin(),1));
-    
+    ADExecDataInterface iface(&exec_data);
+    auto d = iface.getDataSet(0);
+    d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
+    d[0].score = 8.88;
+    d[1].score = 21.71;
+    iface.recordDataSetLabels(d,0);
+
     unsigned long first_ts = 1000, last_ts = 1999;
     
-    ADLocalAnomalyMetrics lcl(pid,rid,step2,first_ts,last_ts,anom);
+    ADLocalAnomalyMetrics lcl(pid,rid,step2,first_ts,last_ts,iface);
     
     glb.add(lcl);
     lcl.send(net_client);

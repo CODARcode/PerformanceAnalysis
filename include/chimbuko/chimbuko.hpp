@@ -252,7 +252,7 @@ namespace chimbuko {
     /**
      * @brief Extract provenance information about anomalies and store in buffer
      */
-    void extractProvenance(const Anomalies &anomalies,
+    void extractProvenance(const ADExecDataInterface &anomalies,
 			   const int step,
 			   const unsigned long first_event_ts,
 			   const unsigned long last_event_ts);
@@ -265,7 +265,7 @@ namespace chimbuko {
     /**
      * @brief Gather and buffer the required statistics data for the pserver
      */
-    void gatherPSdata(const Anomalies &anomalies,
+    void gatherPSdata(const ADExecDataInterface &anomalies,
 		      const int step,
 		      const unsigned long first_event_ts,
 		      const unsigned long last_event_ts);

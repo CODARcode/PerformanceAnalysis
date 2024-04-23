@@ -36,7 +36,6 @@ set -o pipefail
 ./util/memutils
 ./util/environment -hostname $(hostname)
 ./util/Histogram
-./util/Anomalies
 ./param/sstd_param
 ./param/hbos_param
 ./pserver/PSglobalFunctionIndexMap

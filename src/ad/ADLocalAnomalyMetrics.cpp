@@ -3,19 +3,6 @@
 
 using namespace chimbuko;
 
-ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const Anomalies &anom): 
-  m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
-  const std::vector<CallListIterator_t> & outliers = anom.allEventsRecorded(Anomalies::EventType::Outlier);
-  for(auto const &cit: outliers){
-    int fid = cit->get_fid();
-    auto fit = m_func_anom_metrics.find(fid);
-    if(fit == m_func_anom_metrics.end())
-      fit = m_func_anom_metrics.emplace(fid, FuncAnomalyMetrics(fid, cit->get_funcname())).first;
-    
-    fit->second.add(*cit);
-  }
-}
-
 ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const ADExecDataInterface &iface): 
   m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
   

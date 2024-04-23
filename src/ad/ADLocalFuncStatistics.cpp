@@ -38,18 +38,6 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
   m_anom_data.set_max_ts(max_ts);
 }
 
-void ADLocalFuncStatistics::gatherAnomalies(const Anomalies &anom){
-  //Gather information on the number of anomalies and stats on their scores
-  const std::vector<CallListIterator_t> &anomalies = anom.allEventsRecorded(Anomalies::EventType::Outlier);
-  m_anom_data.incr_n_anomalies(anomalies.size());
-  
-  for(auto const &it : anomalies){
-    m_anom_data.add_outlier_score(it->get_outlier_score());
-    ++m_funcstats[it->get_fid()].n_anomaly; //increment func anomalies count
-  }
-
-}
-
 void ADLocalFuncStatistics::gatherAnomalies(const ADExecDataInterface &iface){
   //Gather information on the number of anomalies and stats on their scores
   size_t nanom_tot = 0;

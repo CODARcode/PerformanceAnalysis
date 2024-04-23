@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
 #include <chimbuko/ad/ADNetClient.hpp>
-#include <chimbuko/util/Anomalies.hpp>
 #include <chimbuko/ad/FuncAnomalyMetrics.hpp>
+#include <chimbuko/ad/ADOutlier.hpp>
 
 namespace chimbuko{
  
@@ -11,16 +11,6 @@ namespace chimbuko{
    */
   class ADLocalAnomalyMetrics{
   public:   
-    /**
-     * @brief Constructor
-     * @param app Application index
-     * @param rank AD rank
-     * @param step IO step
-     * @param first_event_ts Timestamp of the first event on this step
-     * @param last_event_ts Timestamp of the last event on this step
-     * @param anom Anomalies instance
-     */
-    ADLocalAnomalyMetrics(int app, int rank, int step, unsigned long first_event_ts, unsigned long last_event_ts, const Anomalies &anom);
 
     /**
      * @brief Constructor

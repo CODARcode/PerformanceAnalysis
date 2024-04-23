@@ -492,7 +492,7 @@ void Chimbuko::extractNodeState(){
 
 
 
-void Chimbuko::extractProvenance(const Anomalies &anomalies,
+void Chimbuko::extractProvenance(const ADExecDataInterface &anomalies,
 				 const int step,
 				 const unsigned long first_event_ts,
 				 const unsigned long last_event_ts){
@@ -595,7 +595,7 @@ void Chimbuko::sendNewMetadataToProvDB(int step) const{
   }
 }
 
-void Chimbuko::gatherPSdata(const Anomalies &anomalies,
+void Chimbuko::gatherPSdata(const ADExecDataInterface &anomalies,
 			    const int step,
 			    const unsigned long first_event_ts,
 			    const unsigned long last_event_ts){
@@ -727,12 +727,9 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
     n_outliers += nout;
     m_accum_prd.n_outliers += nout;
 
-    Anomalies anomalies;
-    anomalies.import(data_iface);
-
     //Generate anomaly provenance for detected anomalies and send to DB
     timer.start();
-    extractProvenance(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    extractProvenance(data_iface, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
     m_perf.add("ad_run_extract_send_provenance_time_ms", timer.elapsed_ms());
       
     //Send any new metadata to the DB
@@ -742,7 +739,7 @@ bool Chimbuko::runFrame(unsigned long long& n_func_events,
 
     //Gather and send statistics and data to the pserver
     timer.start();
-    gatherPSdata(anomalies, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
+    gatherPSdata(data_iface, step, m_execdata_first_event_ts, m_execdata_last_event_ts);
     m_perf.add("ad_run_gather_send_ps_data_time_ms", timer.elapsed_ms());
 
     //Trim the call list

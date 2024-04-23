@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
-#include <chimbuko/util/Anomalies.hpp>
+#include <chimbuko/ad/ADOutlier.hpp>
 #include "chimbuko/util/PerfStats.hpp"
 
 #include <chimbuko/ad/AnomalyData.hpp>
@@ -23,11 +23,6 @@ namespace chimbuko{
      * @brief Add function executions to internal statistics
      */
     void gatherStatistics(const ExecDataMap_t* exec_data);
-
-    /**
-     * @brief Add anomalies to internal statistics
-     */
-    void gatherAnomalies(const Anomalies &anom);
 
     /**
      * @brief Add anomalies to internal statistics

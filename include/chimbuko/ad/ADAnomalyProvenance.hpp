@@ -6,7 +6,7 @@
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/ad/ADMonitoring.hpp"
-#include "chimbuko/util/Anomalies.hpp"
+#include "chimbuko/ad/ADOutlier.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 
 namespace chimbuko{
@@ -19,24 +19,7 @@ namespace chimbuko{
     ADAnomalyProvenance(const ADEventIDmap &event_man);
 
     /**
-     * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
-     *
-     * @param anom_event_entries The provDB entries for anomalous events
-     * @param normal_event_entries The provDB entries for normal events
-     * @param anomalies The Anomalies object containing anomalies and select normal events for this io step
-     * @param step The io step
-     * @param first_event_ts The timestamp of the first event in the io step
-     * @param last_event_ts The timestamp of the last event in the io step
-     */
-    void getProvenanceEntries(std::vector<nlohmann::json> &anom_event_entries,
-			      std::vector<nlohmann::json> &normal_event_entries,
-			      const Anomalies &anomalies,
-			      const int step,
-			      const unsigned long first_event_ts,
-			      const unsigned long last_event_ts);
-
-    /**
-     * @brief Extract the json provDB entries for the anomalies and normal events from an Anomalies collection
+     * @brief Extract the json provDB entries for the anomalies and normal events from an data interface after running the AD
      *
      * @param anom_event_entries The provDB entries for anomalous events
      * @param normal_event_entries The provDB entries for normal events

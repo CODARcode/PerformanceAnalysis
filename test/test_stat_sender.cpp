@@ -110,19 +110,21 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   CallList_t call_list;
   auto it1 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 100, 200) );
   auto it2 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 300, 400) );
-  it1->set_label(-1);
-  it2->set_label(-1);
-  Anomalies anom;
-  anom.recordAnomaly(it1);
-  anom.recordAnomaly(it2);
 
   ExecDataMap_t dmap;
   dmap[func_id].push_back(it1);
   dmap[func_id].push_back(it2);
 
+  ADExecDataInterface iface(&dmap);
+  {
+    auto d = iface.getDataSet(0);
+    d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
+    iface.recordDataSetLabels(d,0);
+  }
+
   ADLocalFuncStatistics loc(pid,rid,0);
   loc.gatherStatistics(&dmap);
-  loc.gatherAnomalies(anom);
+  loc.gatherAnomalies(iface);
 
   GlobalAnomalyStats glob;
   glob.add_anomaly_data(loc);

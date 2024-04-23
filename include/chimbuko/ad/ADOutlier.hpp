@@ -409,17 +409,12 @@ namespace chimbuko {
 
   protected:
     /**
-     * @brief compute outliers (or anomalies) of the list of function calls
+     * @brief compute outliers (or anomalies) of the list of data
      *
-     * @param[out] outliers Array of function calls that were tagged as outliers
-     * @param func_id function id
-     * @param data[in,out] a list of function calls to inspect
-     * @return unsigned long the number of outliers (or anomalies)
+     * @param[in,out] data_vals Array of data
+     * @param dset_idx The data set index
+     * @param model_idx The index of the data type in the model
      */
-    //    unsigned long compute_outliers(Anomalies &outliers,
-    //const unsigned long func_id, std::vector<CallListIterator_t>& data) override;
-
-
     void labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx);
 
     /**
