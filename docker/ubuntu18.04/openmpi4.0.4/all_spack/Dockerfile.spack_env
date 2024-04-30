@@ -1,0 +1,45 @@
+FROM ubuntu:18.04 as base
+
+SHELL ["/bin/bash", "-c"]
+
+RUN mkdir -p /Downloads
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+                        python3 python3-dev \
+                        curl psmisc iproute2 gfortran libssl-dev locales && \
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    locale-gen en_US.UTF-8 && dpkg-reconfigure locales 
+
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en  
+ENV LC_ALL en_US.UTF-8 
+
+from base as build
+
+RUN mkdir /spack && cd /spack && git clone https://github.com/spack/spack.git -b v0.21.2 --single-branch
+
+RUN cd /Downloads && git clone https://github.com/CODARcode/PerformanceAnalysis.git -b ckelly_develop --single-branch && cd PerformanceAnalysis && git checkout 9350a0f00dc6fb2b52f055d31177b3c3b4d61c88 && mkdir /sds && mv spack/repo/chimbuko /sds/ && cd /Downloads && rm -rf PerformanceAnalysis
+
+RUN cd /sds && git clone https://github.com/mochi-hpc/mochi-spack-packages.git && cd mochi-spack-packages && git checkout f82b74bf1eb55baf7a369c6c3031ec9bc96ed01f && echo "    depends_on('py-setuptools', type=('build'))" >> /sds/mochi-spack-packages/packages/py-mochi-sonata/package.py
+
+RUN mkdir -p /opt/spack-environment
+
+RUN echo "RESET 3" >> /dev/null
+
+COPY env.yaml /opt/spack-environment/spack.yaml
+
+RUN sed -i  '210i \\        options.append("-disable-no-pie-on-ubuntu")' /spack/spack/var/spack/repos/builtin/packages/tau/package.py
+
+COPY package.py /sds/chimbuko/packages/py-eventlet
+
+RUN source /spack/spack/share/spack/setup-env.sh && cd /opt/spack-environment && spack env activate . && spack concretize -f && spack install && spack gc -y && spack clean -a
+
+COPY modules.yaml /root/.spack
+
+ENTRYPOINT ["/bin/bash"]

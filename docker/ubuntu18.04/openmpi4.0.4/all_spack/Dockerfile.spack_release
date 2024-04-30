@@ -1,0 +1,46 @@
+FROM ubuntu:18.04 as base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y build-essential wget git-core libtool libtool-bin \ 
+                        curl psmisc iproute2 gfortran libssl-dev locales && \
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    locale-gen en_US.UTF-8 && dpkg-reconfigure locales 
+
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en  
+ENV LC_ALL en_US.UTF-8 
+
+FROM chimbuko/chimbuko-spack-env:ubuntu18.04 as chimbu_spack_env
+
+RUN source /spack/spack/share/spack/setup-env.sh && cd /opt/spack-environment && \
+    spack env activate --sh -d . >> /etc/profile.d/z10_spack_environment.sh
+
+RUN source /spack/spack/share/spack/setup-env.sh && cd /opt/spack-environment && spack env activate . && DIR=$(spack location -i chimbuko-visualization2) && echo "export CHIMBUKO_VIZ_ROOT=${DIR}" >> /etc/profile.d/z10_spack_environment.sh 
+
+from base
+
+COPY --from=chimbu_spack_env /opt/spack-environment /opt/spack-environment
+COPY --from=chimbu_spack_env /opt/software /opt/software
+COPY --from=chimbu_spack_env /opt/view /opt/view
+COPY --from=chimbu_spack_env /etc/profile.d/z10_spack_environment.sh /etc/profile.d/z10_spack_environment.sh
+
+#Fix broken soft links for python (known spack issue)
+RUN cd /opt/view/bin && rm idle3 2to3 python-config python3-config python3 python pydoc3 && \
+ln -s /opt/view/bin/idle3.8 /opt/view/bin/idle && \
+ln -s /opt/view/bin/2to3-3.8 /opt/view/bin/2to3 && \
+ln -s /opt/view/bin/python3.8-config /opt/view/bin/python-config && \
+ln -s /opt/view/bin/python3.8-config /opt/view/bin/python3-config && \
+ln -s /opt/view/bin/python3.8 /opt/view/bin/python3 && \
+ln -s /opt/view/bin/python3.8 /opt/view/bin/python && \
+ln -s /opt/view/bin/pydoc3.8 /opt/view/bin/pydoc3
+
+RUN sed -i '1s|.*|#!/opt/view/bin/python3|' /opt/view/bin/celery
+
+ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l"]
