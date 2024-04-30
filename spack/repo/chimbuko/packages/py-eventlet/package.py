@@ -10,16 +10,21 @@ class PyEventlet(PythonPackage):
     """Concurrent networking library for Python. Override builtin with more recent version"""
 
     homepage = "https://github.com/eventlet/eventlet"
-    url      = "https://github.com/eventlet/eventlet/archive/refs/tags/0.36.1.tar.gz"
+    url      = "https://github.com/eventlet/eventlet/archive/v0.30.0.tar.gz"
     git      = "https://github.com/eventlet/eventlet"
     
-    #version('0.36.1', sha256='d0c598ad3886c65a78452367cb25c37196d562588292bbdb82444eaaec14c2ea')
-    #version('0.30.0', sha256='20612435e2a4d35f41fc2af5d4c902410fab9d59da833de942188b12c52b51f7')
     version('0.36.1',tag='0.36.1')
+    version('0.30.0', sha256='20612435e2a4d35f41fc2af5d4c902410fab9d59da833de942188b12c52b51f7')
+    
     
     depends_on('py-setuptools', type='build')
-    depends_on('py-greenlet@1.0:')
-    depends_on('py-dnspython@1.15.0:', type=('build', 'run') )
+    depends_on('py-greenlet@1.0:', when='@0.36.1')
+    depends_on('py-greenlet@0.3:', when='@0.30.0')
+
+    #depends_on('py-dnspython@1.15.0:', type=('build', 'run'), when='@0.36.1')
+    #depends_on('py-dnspython@1.15.0:1.16.0', type=('build', 'run'), when='@0.30.0')
+    depends_on('py-dnspython@1.15.0:', type=('build', 'run'))
+
     depends_on('py-monotonic@1.4:', type=('build', 'run'), when='^python@:3.5')
-    depends_on('py-hatchling', type='build')
-    depends_on('py-hatch-vcs', type='build')
+    depends_on('py-hatchling', type='build', when='@0.36.1')
+    depends_on('py-hatch-vcs', type='build', when='@0.36.1')
