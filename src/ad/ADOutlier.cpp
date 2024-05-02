@@ -336,6 +336,10 @@ void ADOutlierSSTD::labelData(std::vector<ADDataInterface::Elem> &data_vals, siz
 
   if (fparam.count() < 2){
     verboseStream << "Less than 2 events in stats associated with data set, stats not complete" << std::endl;
+    for(auto &e : data_vals){ //still need to label all events
+      e.label = ADDataInterface::EventType::Normal;
+      e.score = 0;
+    }
     return;
   }
 

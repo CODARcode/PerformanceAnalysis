@@ -236,9 +236,6 @@ namespace chimbuko{
       os << m_help_str;
     }
   };
-
-
-
   
   /**
    * @brief The main parser class for a generic struct ArgsStruct
@@ -402,6 +399,10 @@ namespace chimbuko{
    * called with -set_2vals 1 2   will set the structure members a and b to 1 and 2, respectively
    */
 #define addOptionalCommandLineArgMultiValue(PARSER, ARG_NAME, HELP_STR, ...) PARSER.addOptionalArgMultiValue<GET_MEMBER_PTR_CONS(PARSER, __VA_ARGS__)>( "-" #ARG_NAME, HELP_STR )
+
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-OPT_ARG" on command line */
+#define addOptionalCommandLineArgOptArg(PARSER, NAME, OPT_ARG, HELP_STR) PARSER.addOptionalArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>("-" #OPT_ARG, HELP_STR)
+
 
 
   /**@brief Helper macro to add a mandatory command line arg to the parser PARSER with given name NAME and help string HELP_STR */

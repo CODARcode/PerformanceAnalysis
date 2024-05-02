@@ -67,20 +67,20 @@ TEST_F(ADTest, BpfileTest)
     };
 
     ChimbukoParams params;
-    params.rank = world_rank;
+    params.base_params.rank = world_rank;
 
     params.trace_data_dir = "./data";
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.prov_outputpath = "./temp"; //have to output somewhere if provdb not in use
+    params.base_params.prov_outputpath = "./temp"; //have to output somewhere if provdb not in use
 
-    params.outlier_sigma = 6.0;
-    params.only_one_frame = true; //just analyze first IO frame
+    params.base_params.outlier_sigma = 6.0;
+    params.base_params.only_one_frame = true; //just analyze first IO frame
 
     params.anom_win_size = 0;
 
-    params.ad_algorithm = "sstd";
+    params.base_params.ad_algorithm = "sstd";
 
     Chimbuko driver;
     int step;
@@ -100,35 +100,27 @@ TEST_F(ADTest, BpfileTest)
 
     while ( driver.get_status() )
     {
-        n_func_events = 0;
-        n_comm_events = 0;
-	n_counter_events = 0;
-        n_outliers = 0;
-
 	try{
-	  driver.run(n_func_events,
-		     n_comm_events,
-		     n_counter_events,
-		     n_outliers,
-		     frames);
+	  frames = driver.run();
 	}catch(const std::exception &e){
 	  std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
 	  throw e;
 	}
+	if(frames == 0) break; //last call to run will not analyze any frames
+        //if (driver.getStep() == -1)
+	//   break;
 
-        if (driver.get_step() == -1)
-            break;
-
-        step = driver.get_step();
+        step = driver.getStep()-1; //this is the index of the step just completed; the current step is the one after!
+	std::cout << "Checking results for step " << step << std::endl;
 
 	//FIXME: Add an expect for the counter events
-        EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
-        EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
-        EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
+        EXPECT_EQ(N_FUNC[world_rank][step], driver.getRunStats().n_func_events);
+        EXPECT_EQ(N_COMM[world_rank][step], driver.getRunStats().n_comm_events);
+        EXPECT_EQ(N_OUTLIERS[world_rank][step], driver.getBaseRunStats().n_outliers);
 
-	N_FUNC_ACTUAL[world_rank].push_back(n_func_events);
-	N_COMM_ACTUAL[world_rank].push_back(n_comm_events);
-	N_OUTLIERS_ACTUAL[world_rank].push_back(n_outliers);
+	N_FUNC_ACTUAL[world_rank].push_back(driver.getRunStats().n_func_events);
+	N_COMM_ACTUAL[world_rank].push_back(driver.getRunStats().n_comm_events);
+	N_OUTLIERS_ACTUAL[world_rank].push_back(driver.getBaseRunStats().n_outliers);
     }
 
     int nstep = step+1;
@@ -191,21 +183,11 @@ TEST_F(ADTest, BpfileTest)
 
     //Check an end-to-end run without breaking up into steps
     driver.finalize();
-    params.only_one_frame = false;
+    params.base_params.only_one_frame = false;
     driver.initialize(params); 
     
-    n_func_events = 0;
-    n_comm_events = 0;
-    n_counter_events = 0;
-    n_outliers = 0;
-    frames = 0;
-
     try{
-      driver.run(n_func_events,
-		 n_comm_events,
-		 n_counter_events,
-		 n_outliers,
-		 frames);
+      frames = driver.run();
     }catch(const std::exception &e){
       std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
       throw e;
@@ -219,9 +201,9 @@ TEST_F(ADTest, BpfileTest)
       comm_tot += N_COMM[world_rank][step];
       outlier_tot += N_OUTLIERS[world_rank][step];
     }
-    EXPECT_EQ(func_tot, n_func_events);
-    EXPECT_EQ(comm_tot, n_comm_events);
-    EXPECT_EQ(outlier_tot, n_outliers);
+    EXPECT_EQ(func_tot, driver.getRunStats().n_func_events);
+    EXPECT_EQ(comm_tot, driver.getRunStats().n_comm_events);
+    EXPECT_EQ(outlier_tot, driver.getBaseRunStats().n_outliers);
 }
 
 TEST_F(ADTest, BpfileWithNetTest)
@@ -250,28 +232,28 @@ TEST_F(ADTest, BpfileWithNetTest)
     };  //[rank][step]
 
     ChimbukoParams params;
-    params.rank = world_rank;
-    params.verbose = world_rank == 0;
+    params.base_params.rank = world_rank;
+    params.base_params.verbose = world_rank == 0;
 
     params.trace_data_dir = "./data";
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.prov_outputpath = "./temp";
+    params.base_params.prov_outputpath = "./temp";
 
     params.anom_win_size = 0;
 
-    params.pserver_addr = "tcp://localhost:5559"; //connect to the pserver
+    params.base_params.pserver_addr = "tcp://localhost:5559"; //connect to the pserver
 
 #ifdef _PERF_METRIC
-    params.perf_outputpath =  "./perf";
-    params.perf_step = 1;
+    params.base_params.perf_outputpath =  "./perf";
+    params.base_params.perf_step = 1;
 #endif
 
-    params.only_one_frame = true;
-    params.outlier_sigma = 6.0;
+    params.base_params.only_one_frame = true;
+    params.base_params.outlier_sigma = 6.0;
 
-    params.ad_algorithm = "sstd";
+    params.base_params.ad_algorithm = "sstd";
 
     Chimbuko driver;
 
@@ -290,13 +272,8 @@ TEST_F(ADTest, BpfileWithNetTest)
     std::vector<std::vector<unsigned long> > N_COMM_ACTUAL(4);
     std::vector<std::vector<unsigned long> > N_OUTLIERS_ACTUAL(4);
 
-    step = -1;
     while ( driver.get_status() )
     {
-        n_func_events = 0;
-        n_comm_events = 0;
-        n_outliers = 0;
-
         // for the test purpose, we serialize the excution for run()
         int token = 1;
         if (world_rank != 0) {
@@ -304,11 +281,7 @@ TEST_F(ADTest, BpfileWithNetTest)
         }
 
 	try{
-	  driver.run(n_func_events,
-		     n_comm_events,
-		     n_counter_events,
-		     n_outliers,
-		     frames);
+	  frames = driver.run();
 	}catch(const std::exception &e){
 	  std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
 	  throw e;
@@ -319,19 +292,19 @@ TEST_F(ADTest, BpfileWithNetTest)
             MPI_Recv(&token, 1, MPI_INT, world_size-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
-        if (driver.get_step() >= 0)
+        if (frames > 0)
         {
-            step = driver.get_step();
+	  step = driver.getStep() - 1; //the step that just completed; the current value is for the next step
 	    if(!world_rank) std::cout << "Checking data for step " << step << std::endl;
 
 	    //FIXME: Add expect for counter events
-            EXPECT_EQ(N_FUNC[world_rank][step], n_func_events);
-            EXPECT_EQ(N_COMM[world_rank][step], n_comm_events);
-            EXPECT_EQ(N_OUTLIERS[world_rank][step], n_outliers);
+            EXPECT_EQ(N_FUNC[world_rank][step], driver.getRunStats().n_func_events);
+            EXPECT_EQ(N_COMM[world_rank][step], driver.getRunStats().n_comm_events);
+            EXPECT_EQ(N_OUTLIERS[world_rank][step], driver.getBaseRunStats().n_outliers);
 
-	    N_FUNC_ACTUAL[world_rank].push_back(n_func_events);
-	    N_COMM_ACTUAL[world_rank].push_back(n_comm_events);
-	    N_OUTLIERS_ACTUAL[world_rank].push_back(n_outliers);
+	    N_FUNC_ACTUAL[world_rank].push_back(driver.getRunStats().n_func_events);
+	    N_COMM_ACTUAL[world_rank].push_back(driver.getRunStats().n_comm_events);
+	    N_OUTLIERS_ACTUAL[world_rank].push_back(driver.getBaseRunStats().n_outliers);
         }
     }
     int nstep = step+1;

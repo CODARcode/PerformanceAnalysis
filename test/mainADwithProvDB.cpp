@@ -19,21 +19,21 @@ int world_size;
 TEST(ADTestWithProvDB, BpfileTest)
 {
     ChimbukoParams params;
-    params.rank = world_rank;
+    params.base_params.rank = world_rank;
 
     params.trace_data_dir = "./data";
     params.trace_inputFile = "tau-metrics-" + std::to_string(world_rank) + ".bp";
     params.trace_engineType = "BPFile";
 
-    params.prov_outputpath = ""; //don't output
+    params.base_params.prov_outputpath = ""; //don't output
 
-    params.outlier_sigma = 6.0;
-    params.only_one_frame = true; //just analyze first IO frame
-    params.ad_algorithm = "sstd";
+    params.base_params.outlier_sigma = 6.0;
+    params.base_params.only_one_frame = true; //just analyze first IO frame
+    params.base_params.ad_algorithm = "sstd";
 
-    params.provdb_addr_dir = addr_file_dir;
-    params.nprovdb_shards = nshards;
-    params.nprovdb_instances = ninstances;
+    params.base_params.provdb_addr_dir = addr_file_dir;
+    params.base_params.nprovdb_shards = nshards;
+    params.base_params.nprovdb_instances = ninstances;
 
     Chimbuko driver;
     unsigned long n_outliers = 0, frames = 0;
@@ -51,11 +51,7 @@ TEST(ADTestWithProvDB, BpfileTest)
 
     //Just do one frame     
     try{
-      driver.run(n_func_events, 
-		 n_comm_events,
-		 n_counter_events,
-		 n_outliers, 
-		 frames);
+      frames = driver.run();
     }catch(const std::exception &e){
       std::cerr << "Caught exception in driver run: " << e.what() << std::endl;
       throw e;
@@ -65,6 +61,8 @@ TEST(ADTestWithProvDB, BpfileTest)
     driver.getProvenanceDBclient().waitForSendComplete();
 
 #ifdef USE_MPI
+    n_outliers = driver.getBaseRunStats().n_outliers;
+
     MPI_Barrier(MPI_COMM_WORLD);
     assert( MPI_Allreduce(MPI_IN_PLACE, &n_outliers, 1, MPI_UNSIGNED_LONG , MPI_SUM, MPI_COMM_WORLD) == MPI_SUCCESS);
 
