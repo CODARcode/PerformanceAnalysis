@@ -13,7 +13,7 @@
 #include <chimbuko/pserver/PSProvenanceDBclient.hpp>
 #endif
 
-#include <chimbuko/param/sstd_param.hpp>
+#include <chimbuko/core/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
 #include <chimbuko/util/error.hpp>
 #include <fstream>

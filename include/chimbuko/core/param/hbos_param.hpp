@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/param.hpp"
+#include "chimbuko/core/param.hpp"
 #include "chimbuko/util/RunStats.hpp"
 #include "chimbuko/util/Histogram.hpp"
 #include <unordered_map>
@@ -13,21 +13,22 @@ namespace chimbuko {
   /**
    * @brief The algorithm parameters for a given function
    */
-  class CopodFuncParam{
+  class HbosFuncParam{
   public:
-    CopodFuncParam();      
+    HbosFuncParam();      
 
     const Histogram &getHistogram() const{ return m_histogram; }
     Histogram &getHistogram(){ return m_histogram; }
-
+    
     double getInternalGlobalThreshold() const{ return m_internal_global_threshold; }
     void setInternalGlobalThreshold(double to){ m_internal_global_threshold = to; }
-    
+
     /**
      * @brief Merge another instance of HbosFuncParam into this one
      * @param other The other instance
+     * @param bw The specifier for the bin width used in the histogram merge
      */
-    void merge(const CopodFuncParam &other);
+    void merge(const HbosFuncParam &other, const binWidthSpecifier &bw);
 
     nlohmann::json get_json() const;
 
@@ -39,8 +40,8 @@ namespace chimbuko {
       archive(m_histogram, m_internal_global_threshold);
     }
 
-    bool operator==(const CopodFuncParam &other) const{ return m_histogram == other.m_histogram && m_internal_global_threshold == other.m_internal_global_threshold; }
-    bool operator!=(const CopodFuncParam &other) const{ return !(*this == other); }
+    bool operator==(const HbosFuncParam &other) const{ return m_histogram == other.m_histogram && m_internal_global_threshold == other.m_internal_global_threshold; }
+    bool operator!=(const HbosFuncParam &other) const{ return !(*this == other); }
 
   private:
     Histogram m_histogram; /**< The function runtime histogram */
@@ -49,38 +50,44 @@ namespace chimbuko {
 
 
   /**
-   * @@brief Implementation of ParamInterface for COPOD based anomaly detection
+   * @brief Implementation of ParamInterface for HBOS based anomaly detection
    */
-  class CopodParam : public ParamInterface {
+  class HbosParam : public ParamInterface {
   public:
-    CopodParam();
-    ~CopodParam();
+    HbosParam();
+    ~HbosParam();
+
+    /**
+     * @brief Copy an existing HbosParam
+     *
+     * Thread safe
+     */
+    void copy(const HbosParam &r);
+
     /**
      * @brief Clear all statistics
      */
     void clear() override;
 
     /**
-     * @brief Copy an existing HbosParam
+     * @bin Check if the statistics for a function exist in the histogram
      */
-    void copy(const CopodParam &r){ m_copodstats = r.m_copodstats; }
-
-    const int find(const unsigned long& func_id);
+    bool find(const unsigned long func_id) const;
 
     /**
      * @brief Get the internal map between global function index and statistics
      */
-    const std::unordered_map<unsigned long, CopodFuncParam> & get_copodstats() const{ return m_copodstats; }
+    const std::unordered_map<unsigned long, HbosFuncParam> & get_hbosstats() const{ return m_hbosstats; }
 
     /**
      * @brief Set the internal map between function index and statistics to the provided input
      */
-    void set_copodstats(const std::unordered_map<unsigned long, CopodFuncParam> &to){ m_copodstats = to; }
+    void set_hbosstats(const std::unordered_map<unsigned long, HbosFuncParam> &to){ m_hbosstats = to; }
 
     /**
      * @brief Get the number of functions for which statistics are being collected
     */
-    size_t size() const override { return m_copodstats.size(); }
+    size_t size() const override { return m_hbosstats.size(); }
 
     /**
      * @brief Convert internal Histogram to string format for IO
@@ -98,7 +105,7 @@ namespace chimbuko {
 
     /**
      * @brief Set the internal Histogram to match those included in the serialized input map. Overwrite performed only for those keys in input.
-     * @param parameters The serialized input map
+     * @param parameters The serialized input data
      */
     void assign(const std::string& parameters) override;
 
@@ -108,50 +115,50 @@ namespace chimbuko {
      * @brief Set the internal data to match those included in the input. Overwrite performed only for those keys in input.
      * @param params The input data
      */
-    void assign(const CopodParam &other);
+    void assign(const HbosParam & params);
 
     /**
-     * @brief Convert a CopodParam into a Cereal portable binary representration
-     * @param param The CopodParam instance
-     * @return Histogram in string format
+     * @brief Convert a HbosParam into a string representration
      */
-    static std::string serialize_cerealpb(const CopodParam &param);
+    static std::string serialize_cerealpb(const HbosParam &params);
 
     /**
      * @brief Get an element of the internal map
      * @param id The global function index
      */
-    CopodFuncParam& operator [](unsigned long id) { return m_copodstats[id]; }
+    HbosFuncParam& operator [](unsigned long id) { return m_hbosstats[id]; }
 
     /**
-     * @brief Deserialize a CopodParam instance
-     * @param[in] parameters The parameter string
-     * @param[out] p The CopodParam instance
+     * @brief Deserialize a serialized HbosParam object Histogram Cereal portable binary representation string into a map
+     * @param[in] parameters The serialized object
+     * @param[out] into The deserialized object
      */
-    static void deserialize_cerealpb(const std::string& parameters,  CopodParam &p);
+    static void deserialize_cerealpb(const std::string& parameters, HbosParam &into);
 
     /**
-     * @brief Update the internal Histogram with those included in another CopodParam instance.
-     * @param[in] other The other CopodParam instance
+     * @brief Update the internal histogram with those included in the input data
+     * @param[in] param The input HbosParam object
      *
      * The other instance is locked during the process
      */
-    void update(const CopodParam& other);
+    void update(const HbosParam &other);
 
     /**
      * @brief Update the internal run statistics with those from another instance
      *
      * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
      */
-    void update(const ParamInterface &other) override{ update(dynamic_cast<CopodParam const&>(other)); }
+    void update(const ParamInterface &other) override{ update(dynamic_cast<HbosParam const&>(other)); }
 
     /**
-     * @brief Update the internal histogram with those included in another CopodParam instance. Other CopodParam is then updated to reflect new state.
-     * @param[in,out] other The other CopodParam instance
+     * @brief Update the internal data with those included in the input. The input is then updated to reflect new state.
+     * @param[in,out] from_into The input/output data
      */
-    void update_and_return(CopodParam& other);
+    void update_and_return(HbosParam &from_into);
 
-
+    /**
+     * @brief Get the parameters (histogram) associated with a specific function in JSON format
+     */
     nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
 
     /**
@@ -159,6 +166,25 @@ namespace chimbuko {
      * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
      */
     nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
+
+    /**
+     * @brief Get the maximum number of bins
+     */
+    inline int getMaxBins() const{ return m_maxbins; }
+
+    /**
+     * @brief Set the maximum number of bins
+     */
+    inline void setMaxBins(const int b){ m_maxbins = b; }
+
+    /**
+     * @brief Generate the histogram for a particular function based on the batch of runtimes
+     * @param func_id The function index
+     * @param runtimes The function runtimes
+     * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
+     * @param global_threshold_init The initial value of the internal, global threshold
+     */
+    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init,  HbosParam const *global_param = nullptr);
 
     /**
      * @brief Get the algorithm parameters in JSON form
@@ -170,8 +196,17 @@ namespace chimbuko {
      */
     void set_json(const nlohmann::json &from) override;
 
+    bool operator==(const HbosParam &r) const;
+    inline bool operator!=(const HbosParam &r) const{ return !(*this == r); }
+   
   private:
-    std::unordered_map<unsigned long, CopodFuncParam> m_copodstats; /**< Map of func_id and corresponding Histogram*/
+    /**
+     * @brief Common functionality between update and update_and_return; assumed a mutex lock exists on this and other
+     */
+    void update_internal(const HbosParam &other);
+    
+    std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
+    int m_maxbins; /**< Maximum number of bins to use in the histograms */
   };
 
 

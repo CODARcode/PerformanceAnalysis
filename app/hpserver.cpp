@@ -16,7 +16,7 @@ int main(void){
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
-#include <chimbuko/param/sstd_param.hpp>
+#include <chimbuko/core/param/sstd_param.hpp>
 #include <chimbuko/util/commandLineParser.hpp>
 #include <chimbuko/verbose.hpp>
 #include <fstream>

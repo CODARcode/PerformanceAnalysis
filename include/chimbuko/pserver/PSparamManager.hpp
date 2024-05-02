@@ -1,7 +1,7 @@
 #pragma once
 
 #include<chimbuko_config.h>
-#include <chimbuko/param.hpp>
+#include <chimbuko/core/param.hpp>
 
 #include <shared_mutex>
 #include <thread>

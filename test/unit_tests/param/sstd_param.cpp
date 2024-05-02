@@ -1,4 +1,4 @@
-#include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
 #include "gtest/gtest.h"
 #include <sstream>
 

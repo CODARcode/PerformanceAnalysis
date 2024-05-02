@@ -1,4 +1,4 @@
-#include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/util/error.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>

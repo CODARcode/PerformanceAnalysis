@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include <chimbuko/ad/ADEvent.hpp>
-#include <chimbuko/param.hpp>
+#include <chimbuko/core/param.hpp>
 #include "chimbuko/ad/ADCounter.hpp"
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADNormalEventProvenance.hpp"

@@ -1,9 +1,9 @@
 #pragma once
 #include <chimbuko_config.h>
 #include<chimbuko/ad/ADOutlier.hpp>
-#include<chimbuko/param/sstd_param.hpp>
-#include<chimbuko/param/hbos_param.hpp>
-#include<chimbuko/param/copod_param.hpp>
+#include<chimbuko/core/param/sstd_param.hpp>
+#include<chimbuko/core/param/hbos_param.hpp>
+#include<chimbuko/core/param/copod_param.hpp>
 
 namespace chimbuko{
   

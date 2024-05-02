@@ -1,5 +1,5 @@
 #include<chimbuko_config.h>
-#include<chimbuko/param/hbos_param.hpp>
+#include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/util/serialize.hpp>
 #include "gtest/gtest.h"
 #include <sstream>

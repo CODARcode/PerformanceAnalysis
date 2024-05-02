@@ -1,4 +1,4 @@
-#include "chimbuko/param/hbos_param.hpp"
+#include "chimbuko/core/param/hbos_param.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/error.hpp"
 #include <sstream>

@@ -3,7 +3,7 @@
 #else
 #include "chimbuko/net/zmq_net.hpp"
 #endif
-#include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyData.hpp"
 #include "chimbuko/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/pserver/PSstatSender.hpp"

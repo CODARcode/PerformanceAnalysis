@@ -1,4 +1,4 @@
-#include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
