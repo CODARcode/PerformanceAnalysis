@@ -1,11 +1,11 @@
 #pragma once
 #include <chimbuko_config.h>
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #endif
-#include "chimbuko/net/local_net.hpp"
+#include "chimbuko/core/net/local_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/util/PerfStats.hpp"
 #include "chimbuko/util/string.hpp"

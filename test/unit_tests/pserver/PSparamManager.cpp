@@ -5,7 +5,7 @@
 #include<chimbuko/core/param/sstd_param.hpp>
 #include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/util/barrier.hpp>
-#include<chimbuko/net/zmq_net.hpp>
+#include<chimbuko/core/net/zmq_net.hpp>
 #include<chimbuko/ad/ADNetClient.hpp>
 #include<chimbuko/pserver/PSfunctions.hpp>
 

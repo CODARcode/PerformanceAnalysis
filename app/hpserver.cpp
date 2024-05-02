@@ -12,7 +12,7 @@ int main(void){
 #else
 
 #include <chimbuko/pserver.hpp>
-#include <chimbuko/net/zmqme_net.hpp>
+#include <chimbuko/core/net/zmqme_net.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif

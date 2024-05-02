@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 #ifdef _USE_ZMQNET
 
-#include <chimbuko/net.hpp>
+#include <chimbuko/core/net.hpp>
 #include <chimbuko/util/PerfStats.hpp>
 #include <zmq.h>
 #include <vector>

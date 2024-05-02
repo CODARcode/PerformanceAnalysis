@@ -1,7 +1,7 @@
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #endif
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/ad/AnomalyData.hpp"

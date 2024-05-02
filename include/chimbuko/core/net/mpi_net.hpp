@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 #ifdef _USE_MPINET
 
-#include "chimbuko/net.hpp"
+#include "chimbuko/core/net.hpp"
 #include <mpi.h>
 #include <iostream>
 #include <atomic>

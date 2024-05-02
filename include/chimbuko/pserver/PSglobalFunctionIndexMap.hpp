@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
-#include <chimbuko/net.hpp>
+#include <chimbuko/core/net.hpp>
 #include <chimbuko/util/string.hpp>
 #include <nlohmann/json.hpp>
 

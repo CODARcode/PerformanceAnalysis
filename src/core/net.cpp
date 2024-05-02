@@ -1,6 +1,6 @@
-#include "chimbuko/net.hpp"
-#include "chimbuko/net/mpi_net.hpp"
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #include "chimbuko/util/error.hpp"
 
 #include <iostream>

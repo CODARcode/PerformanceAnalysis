@@ -2,7 +2,7 @@
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/util/string.hpp"
 #include "chimbuko/util/error.hpp"
-#include "chimbuko/net/local_net.hpp"
+#include "chimbuko/core/net/local_net.hpp"
 #include <iostream>
 #include <string.h>
 

@@ -1,7 +1,7 @@
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #ifdef _USE_MPINET
 #include "chimbuko/message.hpp"
-#include "chimbuko/param/sstd_param.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
 // todo: replace with log
 #include <iostream> 
 #include <chrono>

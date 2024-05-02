@@ -4,9 +4,9 @@
 #include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
-#include <chimbuko/net/mpi_net.hpp>
+#include <chimbuko/core/net/mpi_net.hpp>
 #else
-#include <chimbuko/net/zmq_net.hpp>
+#include <chimbuko/core/net/zmq_net.hpp>
 #endif
 
 #ifdef ENABLE_PROVDB

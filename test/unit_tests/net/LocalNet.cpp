@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
-#include <chimbuko/net/local_net.hpp>
+#include <chimbuko/core/net/local_net.hpp>
 
 using namespace chimbuko;
 

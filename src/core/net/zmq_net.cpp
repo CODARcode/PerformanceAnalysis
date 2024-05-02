@@ -1,4 +1,4 @@
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #ifdef _USE_ZMQNET
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
