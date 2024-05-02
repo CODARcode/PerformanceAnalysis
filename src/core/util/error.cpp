@@ -1,6 +1,6 @@
-#include<chimbuko/util/error.hpp>
-#include<chimbuko/util/string.hpp>
-#include<chimbuko/util/time.hpp>
+#include<chimbuko/core/util/error.hpp>
+#include<chimbuko/core/util/string.hpp>
+#include<chimbuko/core/util/time.hpp>
 
 #include <iostream>
 #include <sstream>

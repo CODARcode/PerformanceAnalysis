@@ -1,7 +1,7 @@
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
-#include "chimbuko/util/map.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/map.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <iostream>
 #include <sstream>
 

@@ -1,5 +1,5 @@
-#include "chimbuko/util/threadPool.hpp"
-#include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/core/util/threadPool.hpp"
+#include "chimbuko/core/util/RunStats.hpp"
 #include "chimbuko/pserver/AggregateAnomalyData.hpp"
 #include <gtest/gtest.h>
 #include <chrono>

@@ -4,7 +4,7 @@
 #include <chrono>
 #include <sstream>
 #include <map>
-#include "chimbuko/util/RunMetric.hpp"
+#include "chimbuko/core/util/RunMetric.hpp"
 #endif
 #include<string>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chimbuko_config.h>
-#include <chimbuko/util/error.hpp>
+#include <chimbuko/core/util/error.hpp>
 #include <fstream>
 
 namespace chimbuko{

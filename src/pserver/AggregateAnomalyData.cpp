@@ -1,6 +1,6 @@
 #include "chimbuko/pserver/AggregateAnomalyData.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <sstream>
 
 using namespace chimbuko;

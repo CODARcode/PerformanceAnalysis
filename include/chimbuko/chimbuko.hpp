@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include "chimbuko/AD.hpp"
-#include "chimbuko/util/pointerRegistry.hpp"
+#include "chimbuko/core/util/pointerRegistry.hpp"
 
 namespace chimbuko {
 

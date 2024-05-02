@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include <chimbuko/util/commandLineParser.hpp>
+#include <chimbuko/core/util/commandLineParser.hpp>
 #include <sstream>
 using namespace chimbuko;
 

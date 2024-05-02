@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/util/RunStats.hpp>
+#include <chimbuko/core/util/RunStats.hpp>
 
 namespace chimbuko{
   /**

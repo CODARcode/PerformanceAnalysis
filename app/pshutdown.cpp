@@ -1,5 +1,5 @@
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include "chimbuko/ad/ADNetClient.hpp"
 
 using namespace chimbuko;

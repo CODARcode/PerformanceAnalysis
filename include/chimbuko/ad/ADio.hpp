@@ -3,7 +3,7 @@
 #include "chimbuko/ad/ADDefine.hpp"
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ADCounter.hpp"
-#include "chimbuko/util/DispatchQueue.hpp"
+#include "chimbuko/core/util/DispatchQueue.hpp"
 #include <fstream>
 
 namespace chimbuko {

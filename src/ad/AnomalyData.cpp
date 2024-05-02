@@ -1,6 +1,6 @@
 #include "chimbuko/ad/AnomalyData.hpp"
 #include <sstream>
-#include <chimbuko/util/serialize.hpp>
+#include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;
 

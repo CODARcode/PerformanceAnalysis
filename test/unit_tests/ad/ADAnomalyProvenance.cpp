@@ -1,7 +1,7 @@
 #include<chimbuko/ad/ADAnomalyProvenance.hpp>
 #include<chimbuko/ad/ADOutlier.hpp>
 #include<chimbuko/core/param/sstd_param.hpp>
-#include<chimbuko/util/map.hpp>
+#include<chimbuko/core/util/map.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 #include "unit_test_ad_common.hpp"

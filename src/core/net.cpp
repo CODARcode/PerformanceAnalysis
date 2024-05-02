@@ -1,7 +1,7 @@
 #include "chimbuko/core/net.hpp"
 #include "chimbuko/core/net/mpi_net.hpp"
 #include "chimbuko/core/net/zmq_net.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 
 #include <iostream>
 #include <chrono>

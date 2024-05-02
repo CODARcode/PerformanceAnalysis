@@ -4,12 +4,12 @@
 #include<unordered_set>
 #include "chimbuko/ad/ADEvent.hpp"
 #include "chimbuko/ad/ExecData.hpp"
-#include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/core/util/RunStats.hpp"
 #include "chimbuko/core/param.hpp"
 #include "chimbuko/core/param/sstd_param.hpp"
-#include "chimbuko/util/hash.hpp"
+#include "chimbuko/core/util/hash.hpp"
 #include "chimbuko/ad/ADNetClient.hpp"
-#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
 
 namespace chimbuko {
   /**

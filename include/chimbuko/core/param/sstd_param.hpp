@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include "chimbuko/core/param.hpp"
-#include "chimbuko/util/RunStats.hpp"
+#include "chimbuko/core/util/RunStats.hpp"
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 

@@ -1,8 +1,8 @@
 #include "chimbuko/ad/ADParser.hpp"
 #include "chimbuko/ad/utils.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/map.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/map.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>

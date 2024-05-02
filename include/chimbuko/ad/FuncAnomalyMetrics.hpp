@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ExecData.hpp>
-#include <chimbuko/util/RunStats.hpp>
+#include <chimbuko/core/util/RunStats.hpp>
 
 namespace chimbuko{
  

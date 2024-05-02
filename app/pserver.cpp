@@ -14,8 +14,8 @@
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>
-#include <chimbuko/util/commandLineParser.hpp>
-#include <chimbuko/util/error.hpp>
+#include <chimbuko/core/util/commandLineParser.hpp>
+#include <chimbuko/core/util/error.hpp>
 #include <fstream>
 #include "chimbuko/verbose.hpp"
 

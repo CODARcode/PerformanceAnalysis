@@ -1,7 +1,7 @@
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include "chimbuko/core/net/local_net.hpp"
 #include <iostream>
 #include <string.h>

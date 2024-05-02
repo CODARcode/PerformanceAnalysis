@@ -1,6 +1,6 @@
 #include<chimbuko/ad/ADEvent.hpp>
-#include<chimbuko/util/map.hpp>
-#include<chimbuko/util/error.hpp>
+#include<chimbuko/core/util/map.hpp>
+#include<chimbuko/core/util/error.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 

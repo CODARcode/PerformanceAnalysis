@@ -10,8 +10,8 @@
 #include <regex>
 #include <iostream>
 #include <cstring>
-#include <chimbuko/util/string.hpp>
-#include <chimbuko/util/ADIOS2parseUtils.hpp>
+#include <chimbuko/core/util/string.hpp>
+#include <chimbuko/core/util/ADIOS2parseUtils.hpp>
 
 using namespace chimbuko;  
 

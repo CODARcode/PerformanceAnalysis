@@ -4,7 +4,7 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/ad/ADCounter.hpp>
-#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
 
 namespace chimbuko{
 

@@ -1,4 +1,4 @@
-#include<chimbuko/util/chunkAllocator.hpp>
+#include<chimbuko/core/util/chunkAllocator.hpp>
 #include "gtest/gtest.h"
 #include <sstream>
 #include "../unit_test_common.hpp"

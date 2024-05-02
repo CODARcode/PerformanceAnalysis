@@ -1,5 +1,5 @@
-#include <chimbuko/util/PerfStats.hpp>
-#include <chimbuko/util/time.hpp>
+#include <chimbuko/core/util/PerfStats.hpp>
+#include <chimbuko/core/util/time.hpp>
 
 namespace chimbuko{
 

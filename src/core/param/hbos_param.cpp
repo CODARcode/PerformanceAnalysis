@@ -1,6 +1,6 @@
 #include "chimbuko/core/param/hbos_param.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/archives/json.hpp>

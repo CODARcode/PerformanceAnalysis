@@ -4,7 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <chimbuko/core/net.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 #include <nlohmann/json.hpp>
 
 namespace chimbuko{

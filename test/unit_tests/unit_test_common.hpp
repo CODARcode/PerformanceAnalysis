@@ -9,8 +9,8 @@
 #include <list>
 #include <chimbuko/message.hpp>
 #include <zmq.h>
-#include <chimbuko/util/barrier.hpp>
-#include <chimbuko/util/RunStats.hpp>
+#include <chimbuko/core/util/barrier.hpp>
+#include <chimbuko/core/util/RunStats.hpp>
 
 namespace chimbuko{
   /**

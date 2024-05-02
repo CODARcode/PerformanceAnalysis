@@ -1,7 +1,7 @@
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/ad/AnomalyData.hpp>
 
-#include <chimbuko/util/serialize.hpp>
+#include <chimbuko/core/util/serialize.hpp>
 #include <climits>
 #include <algorithm>
 

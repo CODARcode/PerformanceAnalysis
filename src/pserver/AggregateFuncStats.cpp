@@ -1,5 +1,5 @@
 #include "chimbuko/pserver/AggregateFuncStats.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
 

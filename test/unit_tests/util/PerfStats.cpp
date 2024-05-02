@@ -1,6 +1,6 @@
 #include <sstream>
 #include <cstdio>
-#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
 #include "gtest/gtest.h"
 
 using namespace chimbuko;

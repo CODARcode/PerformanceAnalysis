@@ -7,9 +7,9 @@
 #endif
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <chrono>
 #include <cstdlib>
 

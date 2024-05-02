@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include <chimbuko/util/RunStats.hpp>
+#include <chimbuko/core/util/RunStats.hpp>
 #include <chimbuko/core/net.hpp>
 
 namespace chimbuko {

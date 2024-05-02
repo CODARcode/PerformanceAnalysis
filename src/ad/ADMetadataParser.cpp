@@ -1,5 +1,5 @@
 #include <chimbuko/ad/ADMetadataParser.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 #include <regex>
 #include <chimbuko/verbose.hpp>
 

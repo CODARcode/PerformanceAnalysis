@@ -7,7 +7,7 @@
 #include <regex>
 #include <chimbuko/ad/utils.hpp>
 #include <chimbuko/verbose.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 
 namespace chimbuko{
 

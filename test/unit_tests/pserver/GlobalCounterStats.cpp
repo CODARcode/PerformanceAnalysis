@@ -2,7 +2,7 @@
 #include "../unit_test_common.hpp"
 
 #include <chimbuko/pserver/GlobalCounterStats.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 #include<random>
 
 using namespace chimbuko;

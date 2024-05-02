@@ -1,6 +1,6 @@
 #include <malloc.h>
 #include <sstream>
-#include "chimbuko/util/memutils.hpp"
+#include "chimbuko/core/util/memutils.hpp"
 #include "gtest/gtest.h"
 
 

@@ -8,8 +8,8 @@
 #include <regex>
 #include <algorithm>
 #include <climits>
-#include <chimbuko/util/string.hpp>
-#include <chimbuko/util/ADIOS2parseUtils.hpp>
+#include <chimbuko/core/util/string.hpp>
+#include <chimbuko/core/util/ADIOS2parseUtils.hpp>
 #include <chimbuko/verbose.hpp>
 
 using namespace chimbuko;

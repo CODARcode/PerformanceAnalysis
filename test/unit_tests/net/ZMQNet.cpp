@@ -3,8 +3,8 @@
 
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
-#include <chimbuko/util/barrier.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/barrier.hpp>
+#include <chimbuko/core/util/string.hpp>
 #include <chimbuko/core/net/zmq_net.hpp>
 #include <chimbuko/ad/ADNetClient.hpp>
 

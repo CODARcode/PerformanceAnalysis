@@ -1,5 +1,5 @@
 #include <sstream>
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include "gtest/gtest.h"
 
 using namespace chimbuko;

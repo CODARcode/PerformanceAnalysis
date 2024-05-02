@@ -5,9 +5,9 @@
 #error "Provenance DB build is not enabled"
 #endif
 #include "chimbuko/provdb/setup.hpp"
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/time.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/time.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>

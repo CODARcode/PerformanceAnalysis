@@ -3,7 +3,7 @@
 #include <chimbuko/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/ad/ADOutlier.hpp>
-#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
 
 #include <chimbuko/ad/AnomalyData.hpp>
 #include <chimbuko/ad/FuncStats.hpp>

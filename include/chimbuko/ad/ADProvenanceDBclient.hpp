@@ -7,7 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <list>
 #include <chimbuko/ad/ADProvenanceDBengine.hpp>
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/core/util/PerfStats.hpp>
 
 namespace chimbuko{
 

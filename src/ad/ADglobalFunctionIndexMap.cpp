@@ -1,5 +1,5 @@
 #include <chimbuko/ad/ADglobalFunctionIndexMap.hpp>
-#include <chimbuko/util/error.hpp>
+#include <chimbuko/core/util/error.hpp>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>

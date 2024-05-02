@@ -1,5 +1,5 @@
 #pragma once
-#include <chimbuko/util/chunkAllocator.hpp>
+#include <chimbuko/core/util/chunkAllocator.hpp>
 #include <vector>
 #include <nlohmann/json.hpp>
 #include <cstdint>

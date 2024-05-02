@@ -1,5 +1,5 @@
 #include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
-#include <chimbuko/util/serialize.hpp>
+#include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;
 

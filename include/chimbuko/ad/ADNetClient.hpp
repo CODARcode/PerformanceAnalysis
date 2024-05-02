@@ -7,10 +7,10 @@
 #endif
 #include "chimbuko/core/net/local_net.hpp"
 #include "chimbuko/message.hpp"
-#include "chimbuko/util/PerfStats.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/error.hpp"
-#include "chimbuko/util/time.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/error.hpp"
+#include "chimbuko/core/util/time.hpp"
 #include <thread>
 #include <mutex>
 #include <condition_variable>

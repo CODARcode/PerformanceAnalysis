@@ -1,5 +1,5 @@
 #include <sstream>
-#include "chimbuko/util/environment.hpp"
+#include "chimbuko/core/util/environment.hpp"
 #include "gtest/gtest.h"
 #include "../unit_test_cmdline.hpp"
 

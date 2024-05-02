@@ -3,7 +3,7 @@
 #include <cassert>
 #include <unordered_map>
 #include "ADNetClient.hpp"
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 #include <chimbuko/verbose.hpp>
 
 namespace chimbuko{

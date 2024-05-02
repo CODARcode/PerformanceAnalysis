@@ -4,7 +4,7 @@
 #include "chimbuko/core/param/copod_param.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>
 #include <boost/math/distributions/normal.hpp>

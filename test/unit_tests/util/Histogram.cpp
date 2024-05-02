@@ -1,6 +1,6 @@
 #include<chimbuko_config.h>
 #include<chimbuko/core/param/hbos_param.hpp>
-#include<chimbuko/util/serialize.hpp>
+#include<chimbuko/core/util/serialize.hpp>
 #include "gtest/gtest.h"
 #include <sstream>
 #include "../unit_test_common.hpp"

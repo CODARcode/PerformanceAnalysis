@@ -2,7 +2,7 @@
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/core/param/hbos_param.hpp"
 #include "chimbuko/core/param/copod_param.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <chrono>
 
 using namespace chimbuko;

@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include <chimbuko/core/net.hpp>
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/core/util/PerfStats.hpp>
 
 namespace chimbuko {
   

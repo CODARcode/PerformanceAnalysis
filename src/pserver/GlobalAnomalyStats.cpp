@@ -1,8 +1,8 @@
 #include <chimbuko/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/util/error.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/error.hpp>
+#include <chimbuko/core/util/string.hpp>
 
 using namespace chimbuko;
 

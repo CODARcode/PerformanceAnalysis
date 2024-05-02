@@ -7,7 +7,7 @@
 
 #include<nlohmann/json.hpp>
 #include<chimbuko/verbose.hpp>
-#include<chimbuko/util/string.hpp>
+#include<chimbuko/core/util/string.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/pserver/PSProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>

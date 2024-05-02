@@ -1,4 +1,4 @@
-#include "chimbuko/util/DispatchQueue.hpp"
+#include "chimbuko/core/util/DispatchQueue.hpp"
 #include "gtest/gtest.h"
 
 using namespace chimbuko;

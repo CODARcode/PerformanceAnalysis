@@ -7,7 +7,7 @@
 #include "chimbuko/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/ad/ADMonitoring.hpp"
 #include "chimbuko/ad/ADOutlier.hpp"
-#include "chimbuko/util/PerfStats.hpp"
+#include "chimbuko/core/util/PerfStats.hpp"
 
 namespace chimbuko{
 

@@ -1,6 +1,6 @@
 #include<chimbuko/pserver/PSProvenanceDBclient.hpp>
 #include<chimbuko/verbose.hpp>
-#include<chimbuko/util/string.hpp>
+#include<chimbuko/core/util/string.hpp>
 #include<chimbuko/provdb/setup.hpp>
 
 #ifdef ENABLE_PROVDB

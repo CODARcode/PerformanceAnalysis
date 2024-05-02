@@ -7,7 +7,7 @@
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/pserver/PSProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/util/string.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif

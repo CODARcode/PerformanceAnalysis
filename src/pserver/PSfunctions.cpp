@@ -1,5 +1,5 @@
 #include<chimbuko/pserver/PSfunctions.hpp>
-#include<chimbuko/util/error.hpp>
+#include<chimbuko/core/util/error.hpp>
 #include<chimbuko/verbose.hpp>
 #include<fstream>
 

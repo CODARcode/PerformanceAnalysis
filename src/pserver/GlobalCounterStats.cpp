@@ -1,5 +1,5 @@
 #include <chimbuko/pserver/GlobalCounterStats.hpp>
-#include <chimbuko/util/map.hpp>
+#include <chimbuko/core/util/map.hpp>
 
 using namespace chimbuko;
 

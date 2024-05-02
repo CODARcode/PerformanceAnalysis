@@ -1,4 +1,4 @@
-#include<chimbuko/util/string.hpp>
+#include<chimbuko/core/util/string.hpp>
 #include<cassert>
 
 namespace chimbuko{

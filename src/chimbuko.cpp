@@ -1,9 +1,9 @@
 #include <limits>
 #include "chimbuko/chimbuko.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/error.hpp"
-#include "chimbuko/util/time.hpp"
-#include "chimbuko/util/memutils.hpp"
+#include "chimbuko/core/util/error.hpp"
+#include "chimbuko/core/util/time.hpp"
+#include "chimbuko/core/util/memutils.hpp"
 
 using namespace chimbuko;
 

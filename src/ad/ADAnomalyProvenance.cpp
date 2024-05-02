@@ -1,7 +1,7 @@
 #include <chimbuko/ad/ADAnomalyProvenance.hpp>
 #include <chimbuko/verbose.hpp>
-#include <chimbuko/util/error.hpp>
-#include <chimbuko/util/environment.hpp>
+#include <chimbuko/core/util/error.hpp>
+#include <chimbuko/core/util/environment.hpp>
 
 using namespace chimbuko;
 

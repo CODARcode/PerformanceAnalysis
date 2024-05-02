@@ -1,5 +1,5 @@
 #include<chimbuko/pserver/AggregateFuncAnomalyMetrics.hpp>
-#include<chimbuko/util/error.hpp>
+#include<chimbuko/core/util/error.hpp>
 #include<cassert>
 #include<limits>
 #include<algorithm>

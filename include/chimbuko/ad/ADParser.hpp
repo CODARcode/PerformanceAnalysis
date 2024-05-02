@@ -6,7 +6,7 @@
 #include "ExecData.hpp"
 #include "ADDefine.hpp"
 #include "ADglobalFunctionIndexMap.hpp"
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/core/util/PerfStats.hpp>
 
 namespace chimbuko {
 

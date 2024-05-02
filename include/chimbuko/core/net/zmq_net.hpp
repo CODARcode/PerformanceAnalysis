@@ -3,7 +3,7 @@
 #ifdef _USE_ZMQNET
 
 #include <chimbuko/core/net.hpp>
-#include <chimbuko/util/PerfStats.hpp>
+#include <chimbuko/core/util/PerfStats.hpp>
 #include <zmq.h>
 #include <vector>
 #include <thread>

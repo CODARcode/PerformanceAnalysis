@@ -6,9 +6,9 @@
 #include "chimbuko/AD.hpp"
 #include <chrono>
 #include <map>
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
 using namespace std::chrono;

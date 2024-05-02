@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/util/threadPool.hpp"
+#include "chimbuko/core/util/threadPool.hpp"
 #include "chimbuko/message.hpp"
 #include <string>
 #include <thread>

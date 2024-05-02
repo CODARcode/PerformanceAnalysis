@@ -1,4 +1,4 @@
-#include <chimbuko/util/memutils.hpp>
+#include <chimbuko/core/util/memutils.hpp>
 
 #include <unistd.h>
 #include <fstream>

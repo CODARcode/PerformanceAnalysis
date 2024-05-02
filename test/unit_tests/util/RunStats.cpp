@@ -1,5 +1,5 @@
-#include "chimbuko/util/RunStats.hpp"
-#include "chimbuko/util/serialize.hpp"
+#include "chimbuko/core/util/RunStats.hpp"
+#include "chimbuko/core/util/serialize.hpp"
 #include "gtest/gtest.h"
 #include <cereal/archives/portable_binary.hpp>
 #include <sstream>

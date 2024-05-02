@@ -3,7 +3,7 @@
 #include "chimbuko/core/net/zmq_net.hpp"
 #include "chimbuko/message.hpp"
 #include "chimbuko/verbose.hpp"
-#include "chimbuko/util/string.hpp"
+#include "chimbuko/core/util/string.hpp"
 #include <iostream>
 #include <sstream>
 #include <string.h>
