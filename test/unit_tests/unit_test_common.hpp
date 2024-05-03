@@ -3,8 +3,8 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
-#include <chimbuko/ad/ADDefine.hpp>
-#include <chimbuko/ad/ExecData.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADDefine.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ExecData.hpp>
 #include <sstream>
 #include <list>
 #include <chimbuko/message.hpp>

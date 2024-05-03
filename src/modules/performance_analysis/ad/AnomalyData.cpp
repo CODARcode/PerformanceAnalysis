@@ -1,4 +1,4 @@
-#include "chimbuko/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
 #include <sstream>
 #include <chimbuko/core/util/serialize.hpp>
 

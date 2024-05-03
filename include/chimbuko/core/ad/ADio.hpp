@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/ad/ADDefine.hpp"
-#include "chimbuko/ad/ADEvent.hpp"
-#include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADDefine.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADEvent.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADCounter.hpp"
 #include "chimbuko/core/util/DispatchQueue.hpp"
 #include <fstream>
 

@@ -2,8 +2,8 @@
 #include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp"
 #include "chimbuko/core/pserver/PSstatSender.hpp"
-#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
-#include "chimbuko/ad/ADLocalCounterStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp"
 #include <gtest/gtest.h>
 #ifdef USE_MPI
 #include <mpi.h>

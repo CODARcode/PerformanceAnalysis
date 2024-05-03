@@ -1,5 +1,5 @@
-#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/ad/AnomalyData.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/AnomalyData.hpp>
 
 #include <chimbuko/core/util/serialize.hpp>
 #include <climits>

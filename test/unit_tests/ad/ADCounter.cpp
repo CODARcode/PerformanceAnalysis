@@ -1,4 +1,4 @@
-#include<chimbuko/ad/ADCounter.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADCounter.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 

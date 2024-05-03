@@ -1,4 +1,4 @@
-#include "chimbuko/ad/ADParser.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADParser.hpp"
 #include "chimbuko/core/ad/utils.hpp"
 #include "chimbuko/verbose.hpp"
 #include "chimbuko/core/util/map.hpp"

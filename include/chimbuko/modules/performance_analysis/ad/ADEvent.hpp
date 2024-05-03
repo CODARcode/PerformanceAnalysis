@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/ad/ADDefine.hpp"
-#include "chimbuko/ad/ExecData.hpp"
-#include "chimbuko/ad/ADMetadataParser.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADDefine.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ExecData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADMetadataParser.hpp"
 #include "chimbuko/core/util/map.hpp"
 #include <string>
 #include <vector>

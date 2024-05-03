@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/ad/FuncStats.hpp>
+#include <chimbuko/modules/performance_analysis/ad/FuncStats.hpp>
 
 namespace chimbuko {
 

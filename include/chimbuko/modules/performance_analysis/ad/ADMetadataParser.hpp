@@ -1,6 +1,6 @@
 #pragma once
 #include<chimbuko_config.h>
-#include<chimbuko/ad/ExecData.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ExecData.hpp>
 #include<unordered_map>
 
 namespace chimbuko{

@@ -1,4 +1,4 @@
-#include<chimbuko/ad/ADMetadataParser.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADMetadataParser.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 

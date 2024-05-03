@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADCounter.hpp"
 #include <set>
 
 namespace chimbuko {

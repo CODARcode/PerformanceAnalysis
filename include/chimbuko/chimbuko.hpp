@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/AD.hpp"
+#include "chimbuko/modules/performance_analysis/AD.hpp"
 #include "chimbuko/core/util/pointerRegistry.hpp"
 
 namespace chimbuko {

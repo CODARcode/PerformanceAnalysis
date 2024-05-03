@@ -1,6 +1,6 @@
 #include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/verbose.hpp>
-#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <chimbuko/core/util/string.hpp>
 

@@ -2,8 +2,8 @@
 #include <chimbuko_config.h>
 #include<array>
 #include<unordered_set>
-#include "chimbuko/ad/ADEvent.hpp"
-#include "chimbuko/ad/ExecData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADEvent.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ExecData.hpp"
 #include "chimbuko/core/util/RunStats.hpp"
 #include "chimbuko/core/param.hpp"
 #include "chimbuko/core/param/sstd_param.hpp"

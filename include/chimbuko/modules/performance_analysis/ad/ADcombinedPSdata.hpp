@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/ad/ADLocalCounterStatistics.hpp>
-#include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalAnomalyMetrics.hpp>
 
 namespace chimbuko{
   /** 

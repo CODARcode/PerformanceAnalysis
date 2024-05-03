@@ -10,7 +10,7 @@
 #include "chimbuko/modules/performance_analysis/pserver/AggregateFuncStats.hpp"
 #include <chimbuko/core/net.hpp>
 #include <chimbuko/core/pserver/PSstatSender.hpp>
-#include <chimbuko/ad/ADLocalFuncStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/modules/performance_analysis/pserver/FunctionProfile.hpp>
 
 namespace chimbuko{

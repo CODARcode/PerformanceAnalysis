@@ -3,8 +3,8 @@
 
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/message.hpp"
-#include "chimbuko/ad/AnomalyData.hpp"
-#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
 
 #ifdef _USE_MPINET
 #include "chimbuko/core/net/mpi_net.hpp"

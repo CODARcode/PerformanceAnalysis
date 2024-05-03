@@ -1,4 +1,4 @@
-#include<chimbuko/ad/FuncAnomalyMetrics.hpp>
+#include<chimbuko/modules/performance_analysis/ad/FuncAnomalyMetrics.hpp>
 #include<chimbuko/core/util/error.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"

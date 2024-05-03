@@ -1,4 +1,4 @@
-#include <chimbuko/ad/ADLocalCounterStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp>
 #include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;

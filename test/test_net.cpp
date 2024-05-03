@@ -4,7 +4,7 @@
 #include "chimbuko/core/net/zmq_net.hpp"
 #endif
 #include "chimbuko/core/param/sstd_param.hpp"
-#include "chimbuko/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
 #include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/core/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>

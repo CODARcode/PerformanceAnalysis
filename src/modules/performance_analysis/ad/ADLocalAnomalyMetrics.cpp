@@ -1,4 +1,4 @@
-#include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalAnomalyMetrics.hpp>
 #include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;

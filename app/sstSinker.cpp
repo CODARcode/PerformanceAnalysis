@@ -3,7 +3,7 @@
 #ifdef USE_MPI
 #include<mpi.h>
 #endif
-#include "chimbuko/AD.hpp"
+#include "chimbuko/modules/performance_analysis/AD.hpp"
 #include <chrono>
 #include <map>
 #include "chimbuko/core/util/commandLineParser.hpp"

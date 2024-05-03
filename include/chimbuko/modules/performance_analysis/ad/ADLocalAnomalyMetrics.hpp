@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include <chimbuko/core/ad/ADNetClient.hpp>
-#include <chimbuko/ad/FuncAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/FuncAnomalyMetrics.hpp>
 #include <chimbuko/core/ad/ADOutlier.hpp>
 
 namespace chimbuko{

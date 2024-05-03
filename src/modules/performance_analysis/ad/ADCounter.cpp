@@ -1,4 +1,4 @@
-#include "chimbuko/ad/ADCounter.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADCounter.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include <iostream>
 

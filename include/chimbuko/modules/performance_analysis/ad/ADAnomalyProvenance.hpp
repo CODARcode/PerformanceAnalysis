@@ -1,11 +1,11 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/ad/ADEvent.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADEvent.hpp>
 #include <chimbuko/core/param.hpp>
-#include "chimbuko/ad/ADCounter.hpp"
-#include "chimbuko/ad/ADMetadataParser.hpp"
-#include "chimbuko/ad/ADNormalEventProvenance.hpp"
-#include "chimbuko/ad/ADMonitoring.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADCounter.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADMetadataParser.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADNormalEventProvenance.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADMonitoring.hpp"
 #include "chimbuko/core/ad/ADOutlier.hpp"
 #include "chimbuko/core/util/PerfStats.hpp"
 

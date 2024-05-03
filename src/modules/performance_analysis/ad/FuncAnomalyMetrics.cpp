@@ -1,4 +1,4 @@
-#include <chimbuko/ad/FuncAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/FuncAnomalyMetrics.hpp>
 
 using namespace chimbuko;
 

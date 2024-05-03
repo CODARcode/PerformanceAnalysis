@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include <chimbuko/core/ad/ADNetClient.hpp>
-#include <chimbuko/ad/ExecData.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ExecData.hpp>
 #include <chimbuko/core/util/RunStats.hpp>
 
 namespace chimbuko{

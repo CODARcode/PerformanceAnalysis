@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
 
 namespace chimbuko {
 

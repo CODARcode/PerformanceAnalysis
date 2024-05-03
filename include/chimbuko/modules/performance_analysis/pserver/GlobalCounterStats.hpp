@@ -9,7 +9,7 @@
 #include <chimbuko/core/util/RunStats.hpp>
 #include <chimbuko/core/net.hpp>
 #include <chimbuko/core/pserver/PSstatSender.hpp>
-#include <chimbuko/ad/ADLocalCounterStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp>
 
 namespace chimbuko{
 
