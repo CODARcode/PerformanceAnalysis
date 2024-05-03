@@ -152,16 +152,6 @@ enum class EventError
 };
 
 /**
- * @brief Error kinds of the ADio class
- * 
- */
-enum class IOError
-{
-    OK = 0,            /**< OK (no error) */
-    OutIndexRange = 1  /**< Out of index range error */
-};
-
-/**
  * @brief I/O mode of the ADio class
  * 
  */

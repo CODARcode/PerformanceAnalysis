@@ -1,12 +1,21 @@
 #pragma once
 #include <chimbuko_config.h>
-#include "chimbuko/modules/performance_analysis/ad/ADDefine.hpp"
-#include "chimbuko/modules/performance_analysis/ad/ADEvent.hpp"
-#include "chimbuko/modules/performance_analysis/ad/ADCounter.hpp"
 #include "chimbuko/core/util/DispatchQueue.hpp"
 #include <fstream>
+#include <nlohmann/json.hpp>
 
 namespace chimbuko {
+
+  /**
+   * @brief Error kinds of the ADio class
+   * 
+   */
+  enum class IOError
+  {
+    OK = 0,            /**< OK (no error) */
+    OutIndexRange = 1  /**< Out of index range error */
+  };
+
 
   /**
    * @brief A class that manages communication of JSON-formatted data to disk

@@ -3,6 +3,7 @@
 #include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/modules/performance_analysis/ad/FuncAnomalyMetrics.hpp>
 #include <chimbuko/core/ad/ADOutlier.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADExecDataInterface.hpp>
 
 namespace chimbuko{
  

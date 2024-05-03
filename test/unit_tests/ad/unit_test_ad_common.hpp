@@ -4,6 +4,8 @@
 #include<chimbuko/core/param/sstd_param.hpp>
 #include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/core/param/copod_param.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADEvent.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADExecDataInterface.hpp>
 
 namespace chimbuko{
   

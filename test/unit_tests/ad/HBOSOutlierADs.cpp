@@ -4,6 +4,8 @@
 #include<chimbuko/core/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
+#include<chimbuko/modules/performance_analysis/ad/ADEvent.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADExecDataInterface.hpp>
 
 #include<thread>
 #include<chrono>

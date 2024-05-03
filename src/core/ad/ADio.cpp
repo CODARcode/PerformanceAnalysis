@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <experimental/filesystem>
+#include <iostream>
 
 using namespace chimbuko;
 namespace fs = std::experimental::filesystem;

@@ -3,6 +3,7 @@
 #include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/core/param/copod_param.hpp>
 #include<chimbuko/core/message.hpp>
+#include<chimbuko/modules/performance_analysis/ad/ADExecDataInterface.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 

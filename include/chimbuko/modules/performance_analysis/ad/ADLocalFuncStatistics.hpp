@@ -7,6 +7,7 @@
 
 #include <chimbuko/modules/performance_analysis/ad/AnomalyData.hpp>
 #include <chimbuko/modules/performance_analysis/ad/FuncStats.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADExecDataInterface.hpp>
 
 namespace chimbuko{
 

@@ -7,6 +7,7 @@
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/commandLineParser.hpp"
 #include "chimbuko/core/util/error.hpp"
+#include "chimbuko/modules/performance_analysis/module.hpp"
 #include <chrono>
 #include <cstdlib>
 
