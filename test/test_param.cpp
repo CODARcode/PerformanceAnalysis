@@ -1,6 +1,6 @@
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
 #include <nlohmann/json.hpp>

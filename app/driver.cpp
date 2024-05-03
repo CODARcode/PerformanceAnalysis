@@ -2,8 +2,8 @@
 #ifdef USE_MPI
 #include<mpi.h>
 #endif
-#include "chimbuko/chimbuko.hpp"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/chimbuko.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/commandLineParser.hpp"
 #include "chimbuko/core/util/error.hpp"

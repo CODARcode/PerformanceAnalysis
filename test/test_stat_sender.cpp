@@ -11,7 +11,7 @@
 #include <thread>
 #include <chrono>
 #include "unit_tests/unit_test_common.hpp"
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 

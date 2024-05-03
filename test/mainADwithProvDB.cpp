@@ -1,7 +1,7 @@
 #include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
-#include <chimbuko/chimbuko.hpp>
+#include <chimbuko/core/chimbuko.hpp>
 #ifdef USE_MPI
 #include<mpi.h>
 #endif

@@ -1,7 +1,7 @@
 #include<chimbuko_config.h>
 #include<chimbuko/core/util/Histogram.hpp>
 #include<chimbuko/core/util/error.hpp>
-#include<chimbuko/verbose.hpp>
+#include<chimbuko/core/verbose.hpp>
 #include <sstream>
 #include <limits>
 

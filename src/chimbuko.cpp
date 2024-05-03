@@ -1,6 +1,6 @@
 #include <limits>
-#include "chimbuko/chimbuko.hpp"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/chimbuko.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include "chimbuko/core/util/time.hpp"
 #include "chimbuko/core/util/memutils.hpp"

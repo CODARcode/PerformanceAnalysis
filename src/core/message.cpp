@@ -1,4 +1,4 @@
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/message.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/string.hpp>

@@ -6,7 +6,7 @@
 #include "chimbuko/core/net/zmq_net.hpp"
 #endif
 #include "chimbuko/core/net/local_net.hpp"
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/message.hpp"
 #include "chimbuko/core/util/PerfStats.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/error.hpp"

@@ -1,5 +1,5 @@
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
-#include<chimbuko/verbose.hpp>
+#include<chimbuko/core/verbose.hpp>
 #include <nlohmann/json.hpp>
 
 #ifdef ENABLE_PROVDB

@@ -1,6 +1,6 @@
 #include<chimbuko/modules/performance_analysis/pserver/PSfunctions.hpp>
 #include<chimbuko/core/util/error.hpp>
-#include<chimbuko/verbose.hpp>
+#include<chimbuko/core/verbose.hpp>
 #include<fstream>
 
 using namespace chimbuko;

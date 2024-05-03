@@ -10,7 +10,7 @@
 #include <climits>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/core/util/ADIOS2parseUtils.hpp>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 

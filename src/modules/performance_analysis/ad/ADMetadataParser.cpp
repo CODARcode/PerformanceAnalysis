@@ -1,7 +1,7 @@
 #include <chimbuko/modules/performance_analysis/ad/ADMetadataParser.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <regex>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 

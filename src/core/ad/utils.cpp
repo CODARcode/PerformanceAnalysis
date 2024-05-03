@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <regex>
 #include <chimbuko/core/ad/utils.hpp>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
 
 namespace chimbuko{

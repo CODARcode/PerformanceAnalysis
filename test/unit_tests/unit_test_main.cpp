@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "unit_test_cmdline.hpp"
 
 int _argc;

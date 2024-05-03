@@ -4,7 +4,7 @@
 #include<cassert>
 #include<csignal>
 #include<chimbuko/core/ad/ADProvenanceDBengine.hpp>
-#include<chimbuko/verbose.hpp>
+#include<chimbuko/core/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/util/commandLineParser.hpp>
 #include <thallium/serialization/stl/string.hpp>

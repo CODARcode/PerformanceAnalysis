@@ -1,5 +1,5 @@
 #include<chimbuko/core/ad/ADOutlier.hpp>
-#include<chimbuko/message.hpp>
+#include<chimbuko/core/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 #include "unit_test_ad_common.hpp"

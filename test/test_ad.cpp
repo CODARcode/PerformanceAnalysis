@@ -2,7 +2,7 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
-#include "chimbuko/chimbuko.hpp"
+#include "chimbuko/core/chimbuko.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <thread>

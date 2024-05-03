@@ -1,4 +1,4 @@
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include "chimbuko/core/ad/ADNetClient.hpp"
 

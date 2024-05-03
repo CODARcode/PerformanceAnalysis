@@ -18,7 +18,7 @@ int main(void){
 #endif
 #include <chimbuko/core/param/sstd_param.hpp>
 #include <chimbuko/core/util/commandLineParser.hpp>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 #include <fstream>
 
 using namespace chimbuko;

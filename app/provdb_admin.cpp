@@ -21,7 +21,7 @@
 #include <nlohmann/json.hpp>
 
 #include <spdlog/spdlog.h>
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include <thallium/serialization/stl/string.hpp>
 
 namespace tl = thallium;

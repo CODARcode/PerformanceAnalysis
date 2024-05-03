@@ -1,7 +1,7 @@
 #include "chimbuko/core/net/zmq_net.hpp"
 #ifdef _USE_ZMQNET
-#include "chimbuko/message.hpp"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/message.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include <iostream>

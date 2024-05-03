@@ -2,7 +2,7 @@
 #include<chimbuko/core/param/sstd_param.hpp>
 #include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/core/param/copod_param.hpp>
-#include<chimbuko/message.hpp>
+#include<chimbuko/core/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 #include "unit_test_ad_common.hpp"

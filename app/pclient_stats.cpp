@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 
 #include "chimbuko/core/param/sstd_param.hpp"
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/message.hpp"
 #include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
 

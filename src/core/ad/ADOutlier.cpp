@@ -2,8 +2,8 @@
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/core/param/hbos_param.hpp"
 #include "chimbuko/core/param/copod_param.hpp"
-#include "chimbuko/message.hpp"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/message.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include <mpi.h>
 #include <nlohmann/json.hpp>

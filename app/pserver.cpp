@@ -17,7 +17,7 @@
 #include <chimbuko/core/util/commandLineParser.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <fstream>
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 
 
 

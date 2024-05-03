@@ -1,7 +1,7 @@
 #include "chimbuko/core/param/copod_param.hpp"
 #include "chimbuko/core/param/hbos_param.hpp"
 #include "chimbuko/core/util/error.hpp"
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include <sstream>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/archives/json.hpp>

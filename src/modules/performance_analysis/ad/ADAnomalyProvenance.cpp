@@ -1,5 +1,5 @@
 #include <chimbuko/modules/performance_analysis/ad/ADAnomalyProvenance.hpp>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <chimbuko/core/util/environment.hpp>
 

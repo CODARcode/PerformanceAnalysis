@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/core/util/string.hpp>
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 namespace chimbuko{
 
