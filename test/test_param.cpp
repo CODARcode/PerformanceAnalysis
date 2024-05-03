@@ -1,5 +1,5 @@
 #include "chimbuko/core/param/sstd_param.hpp"
-#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
 #include "chimbuko/message.hpp"
 #include <gtest/gtest.h>
 #include <random>

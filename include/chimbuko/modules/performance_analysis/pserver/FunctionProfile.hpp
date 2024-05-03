@@ -2,8 +2,8 @@
 
 #include<chimbuko_config.h>
 
-#include<chimbuko/pserver/AggregateFuncStats.hpp>
-#include<chimbuko/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/AggregateFuncStats.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
 
 namespace chimbuko{
 

@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/pserver/AggregateFuncAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetrics.hpp>
 
 namespace chimbuko {
 

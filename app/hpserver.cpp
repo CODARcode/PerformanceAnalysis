@@ -11,7 +11,7 @@ int main(void){
 
 #else
 
-#include <chimbuko/pserver.hpp>
+#include <chimbuko/modules/performance_analysis/pserver.hpp>
 #include <chimbuko/core/net/zmqme_net.hpp>
 #ifdef USE_MPI
 #include <mpi.h>

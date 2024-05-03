@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/GlobalAnomalyStats.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/core/util/error.hpp>

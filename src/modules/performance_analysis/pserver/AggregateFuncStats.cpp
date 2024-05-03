@@ -1,4 +1,4 @@
-#include "chimbuko/pserver/AggregateFuncStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateFuncStats.hpp"
 #include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;

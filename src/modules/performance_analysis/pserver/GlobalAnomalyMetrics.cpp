@@ -1,9 +1,9 @@
-#include <chimbuko/pserver/GlobalAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyMetrics.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/core/util/map.hpp>
-#include <chimbuko/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
 
 using namespace chimbuko;
 

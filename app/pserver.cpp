@@ -1,7 +1,7 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
 #include <csignal>
 #include <chimbuko_config.h>
-#include <chimbuko/pserver.hpp>
+#include <chimbuko/modules/performance_analysis/pserver.hpp>
 
 #ifdef _USE_MPINET
 #include <chimbuko/core/net/mpi_net.hpp>

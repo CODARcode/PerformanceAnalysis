@@ -1,7 +1,7 @@
 #pragma once
 
 #include<chimbuko_config.h>
-#include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 #include <chimbuko/core/pserver/PSparamManager.hpp>
 
 namespace chimbuko{

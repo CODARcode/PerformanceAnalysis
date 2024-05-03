@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-#include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 
 using namespace chimbuko;
 

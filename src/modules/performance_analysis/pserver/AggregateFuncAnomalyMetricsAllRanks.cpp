@@ -1,4 +1,4 @@
-#include<chimbuko/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
 #include<chimbuko/core/util/error.hpp>
 #include<cassert>
 #include<limits>

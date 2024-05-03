@@ -2,7 +2,7 @@
 #include "../unit_test_common.hpp"
 
 #include <chimbuko/ad/ADglobalFunctionIndexMap.hpp>
-#include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 
 using namespace chimbuko;
 

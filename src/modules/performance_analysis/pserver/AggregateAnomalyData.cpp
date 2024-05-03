@@ -1,4 +1,4 @@
-#include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateAnomalyData.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/error.hpp"
 #include <sstream>

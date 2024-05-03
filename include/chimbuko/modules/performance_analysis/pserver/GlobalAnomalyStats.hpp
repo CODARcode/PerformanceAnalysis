@@ -6,12 +6,12 @@
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-#include "chimbuko/pserver/AggregateAnomalyData.hpp"
-#include "chimbuko/pserver/AggregateFuncStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateFuncStats.hpp"
 #include <chimbuko/core/net.hpp>
 #include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
-#include <chimbuko/pserver/FunctionProfile.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/FunctionProfile.hpp>
 
 namespace chimbuko{
 

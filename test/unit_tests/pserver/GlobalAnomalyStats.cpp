@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-#include <chimbuko/pserver/GlobalAnomalyStats.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include<random>
 

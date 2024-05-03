@@ -1,6 +1,6 @@
 #include <chimbuko_config.h>
-#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
-#include "chimbuko/pserver/GlobalCounterStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp"
 #include "chimbuko/core/pserver/PSstatSender.hpp"
 #include "chimbuko/ad/ADLocalFuncStatistics.hpp"
 #include "chimbuko/ad/ADLocalCounterStatistics.hpp"

@@ -1,4 +1,4 @@
-#include<chimbuko/pserver/FunctionProfile.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/FunctionProfile.hpp>
 
 using namespace chimbuko;
 

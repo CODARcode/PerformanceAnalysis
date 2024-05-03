@@ -1,6 +1,6 @@
 #include "chimbuko/core/util/threadPool.hpp"
 #include "chimbuko/core/util/RunStats.hpp"
-#include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateAnomalyData.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <random>

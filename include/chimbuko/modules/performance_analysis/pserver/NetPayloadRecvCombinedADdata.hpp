@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/pserver/GlobalAnomalyStats.hpp>
-#include <chimbuko/pserver/GlobalCounterStats.hpp>
-#include <chimbuko/pserver/GlobalAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyMetrics.hpp>
 
 namespace chimbuko{
   

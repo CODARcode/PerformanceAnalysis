@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-#include <chimbuko/pserver/GlobalAnomalyMetrics.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyMetrics.hpp>
 
 using namespace chimbuko;
 

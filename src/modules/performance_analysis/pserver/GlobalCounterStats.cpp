@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/GlobalCounterStats.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp>
 #include <chimbuko/core/util/map.hpp>
 
 using namespace chimbuko;

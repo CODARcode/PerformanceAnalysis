@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 #include <algorithm>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>
