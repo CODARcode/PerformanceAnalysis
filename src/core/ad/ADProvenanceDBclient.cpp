@@ -4,7 +4,7 @@
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/core/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
-#include<chimbuko/provdb/setup.hpp>
+#include<chimbuko/core/provdb/setup.hpp>
 #include<chimbuko/core/util/error.hpp>
 
 #ifdef ENABLE_PROVDB

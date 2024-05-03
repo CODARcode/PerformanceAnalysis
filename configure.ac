@@ -216,7 +216,7 @@ AC_CHECK_HEADERS([boost/math/distributions/normal.hpp], [],    [AC_MSG_ERROR(Boo
 AC_CONFIG_HEADERS([chimbuko_config.h])
 AC_SUBST([PS_FLAGS])
 
-AC_CONFIG_SRCDIR([src/chimbuko.cpp])
+AC_CONFIG_SRCDIR([src/dummy])
 AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py app/sst_view_parse.pl:app/sst_view_parse.pl])

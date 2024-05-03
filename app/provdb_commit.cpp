@@ -8,7 +8,7 @@
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/util/commandLineParser.hpp>
 #include <thallium/serialization/stl/string.hpp>
-#include<chimbuko/provdb/setup.hpp>
+#include<chimbuko/core/provdb/setup.hpp>
 
 using namespace chimbuko;
 

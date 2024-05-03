@@ -4,7 +4,7 @@
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif
-#include "chimbuko/provdb/setup.hpp"
+#include "chimbuko/core/provdb/setup.hpp"
 #include "chimbuko/core/util/commandLineParser.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/time.hpp"
