@@ -2,7 +2,7 @@
 
 #include<chimbuko_config.h>
 #include <chimbuko/pserver/PSglobalFunctionIndexMap.hpp>
-#include <chimbuko/pserver/PSparamManager.hpp>
+#include <chimbuko/core/pserver/PSparamManager.hpp>
 
 namespace chimbuko{
   

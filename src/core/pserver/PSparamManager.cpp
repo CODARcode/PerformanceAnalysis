@@ -1,4 +1,4 @@
-#include<chimbuko/pserver/PSparamManager.hpp>
+#include<chimbuko/core/pserver/PSparamManager.hpp>
 #include<chimbuko/core/util/error.hpp>
 #include<chimbuko/verbose.hpp>
 

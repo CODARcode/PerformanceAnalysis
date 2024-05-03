@@ -9,7 +9,7 @@
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/ad/ADProvenanceDBclient.hpp>
-#include<chimbuko/pserver/PSProvenanceDBclient.hpp>
+#include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<sstream>

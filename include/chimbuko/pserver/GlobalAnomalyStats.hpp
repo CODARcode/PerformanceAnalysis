@@ -9,7 +9,7 @@
 #include "chimbuko/pserver/AggregateAnomalyData.hpp"
 #include "chimbuko/pserver/AggregateFuncStats.hpp"
 #include <chimbuko/core/net.hpp>
-#include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/pserver/FunctionProfile.hpp>
 

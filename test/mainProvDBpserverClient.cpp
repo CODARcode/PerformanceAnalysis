@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/ad/ADProvenanceDBclient.hpp>
-#include <chimbuko/pserver/PSProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
 #ifdef USE_MPI

@@ -1,4 +1,4 @@
-#include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/core/util/curlJsonSender.hpp>
 #include <chimbuko/verbose.hpp>
 #include <sstream>

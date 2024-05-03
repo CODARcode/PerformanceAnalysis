@@ -10,7 +10,7 @@
 #endif
 
 #ifdef ENABLE_PROVDB
-#include <chimbuko/pserver/PSProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>

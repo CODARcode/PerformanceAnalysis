@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include "chimbuko/pserver/AggregateFuncAnomalyMetrics.hpp"
-#include <chimbuko/pserver/PSstatSender.hpp>
+#include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/ad/ADLocalAnomalyMetrics.hpp>
 #include <chimbuko/pserver/FunctionProfile.hpp>
 

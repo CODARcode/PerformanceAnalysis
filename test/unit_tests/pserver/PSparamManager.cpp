@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-#include<chimbuko/pserver/PSparamManager.hpp>
+#include<chimbuko/core/pserver/PSparamManager.hpp>
 #include<chimbuko/core/param/sstd_param.hpp>
 #include<chimbuko/core/param/hbos_param.hpp>
 #include<chimbuko/core/util/barrier.hpp>
