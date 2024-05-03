@@ -8,7 +8,7 @@
 #include<nlohmann/json.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
-#include<chimbuko/ad/ADProvenanceDBclient.hpp>
+#include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>

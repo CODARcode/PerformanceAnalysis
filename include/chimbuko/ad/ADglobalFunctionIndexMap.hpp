@@ -2,7 +2,7 @@
 #include <chimbuko_config.h>
 #include <cassert>
 #include <unordered_map>
-#include "ADNetClient.hpp"
+#include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/verbose.hpp>
 

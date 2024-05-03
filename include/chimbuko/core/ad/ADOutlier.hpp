@@ -8,7 +8,7 @@
 #include "chimbuko/core/param.hpp"
 #include "chimbuko/core/param/sstd_param.hpp"
 #include "chimbuko/core/util/hash.hpp"
-#include "chimbuko/ad/ADNetClient.hpp"
+#include "chimbuko/core/ad/ADNetClient.hpp"
 #include "chimbuko/core/util/PerfStats.hpp"
 
 namespace chimbuko {

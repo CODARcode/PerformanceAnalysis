@@ -1,4 +1,4 @@
-#include<chimbuko/ad/ADOutlier.hpp>
+#include<chimbuko/core/ad/ADOutlier.hpp>
 #include<chimbuko/message.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"

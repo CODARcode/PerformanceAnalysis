@@ -1,6 +1,6 @@
 #include <chimbuko_config.h>
 #include <cassert>
-#include <chimbuko/ad/ADProvenanceDBclient.hpp>
+#include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
 #ifdef USE_MPI

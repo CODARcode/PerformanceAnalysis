@@ -1,6 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/ad/ADNetClient.hpp>
+#include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ExecData.hpp>
 #include <chimbuko/core/util/RunStats.hpp>
 

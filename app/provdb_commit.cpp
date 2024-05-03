@@ -3,7 +3,7 @@
 #include<thread>
 #include<cassert>
 #include<csignal>
-#include<chimbuko/ad/ADProvenanceDBengine.hpp>
+#include<chimbuko/core/ad/ADProvenanceDBengine.hpp>
 #include<chimbuko/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/util/commandLineParser.hpp>

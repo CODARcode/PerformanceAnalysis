@@ -1,7 +1,7 @@
 #pragma once
 #include <chimbuko_config.h>
 #include<unordered_set>
-#include <chimbuko/ad/ADNetClient.hpp>
+#include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
 #include <chimbuko/ad/ADCounter.hpp>
 #include "chimbuko/core/util/PerfStats.hpp"

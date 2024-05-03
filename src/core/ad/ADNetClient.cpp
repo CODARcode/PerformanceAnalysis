@@ -1,4 +1,4 @@
-#include <chimbuko/ad/ADNetClient.hpp>
+#include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/verbose.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <mpi.h>

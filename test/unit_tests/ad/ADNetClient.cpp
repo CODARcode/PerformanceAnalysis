@@ -1,4 +1,4 @@
-#include<chimbuko/ad/ADNetClient.hpp>
+#include<chimbuko/core/ad/ADNetClient.hpp>
 #include<chimbuko/core/util/string.hpp>
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"

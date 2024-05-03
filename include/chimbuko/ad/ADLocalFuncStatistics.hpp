@@ -1,8 +1,8 @@
 #pragma once
 #include <chimbuko_config.h>
-#include <chimbuko/ad/ADNetClient.hpp>
+#include <chimbuko/core/ad/ADNetClient.hpp>
 #include <chimbuko/ad/ADEvent.hpp>
-#include <chimbuko/ad/ADOutlier.hpp>
+#include <chimbuko/core/ad/ADOutlier.hpp>
 #include "chimbuko/core/util/PerfStats.hpp"
 
 #include <chimbuko/ad/AnomalyData.hpp>

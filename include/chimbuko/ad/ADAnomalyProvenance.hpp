@@ -6,7 +6,7 @@
 #include "chimbuko/ad/ADMetadataParser.hpp"
 #include "chimbuko/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/ad/ADMonitoring.hpp"
-#include "chimbuko/ad/ADOutlier.hpp"
+#include "chimbuko/core/ad/ADOutlier.hpp"
 #include "chimbuko/core/util/PerfStats.hpp"
 
 namespace chimbuko{

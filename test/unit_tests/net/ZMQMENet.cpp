@@ -5,7 +5,7 @@
 #include <chimbuko/core/util/barrier.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/core/net/zmqme_net.hpp>
-#include <chimbuko/ad/ADNetClient.hpp>
+#include <chimbuko/core/ad/ADNetClient.hpp>
 
 using namespace chimbuko;
 
