@@ -93,7 +93,7 @@ ChimbukoBase::~ChimbukoBase(){
 void ChimbukoBase::init_provdb(const ProvDBmoduleSetupCore &pdb_setup){
   if(m_base_params.provdb_mercury_auth_key != ""){
     headProgressStream(m_base_params.rank) << "driver rank " << m_base_params.rank << " setting Mercury authorization key to \"" << m_base_params.provdb_mercury_auth_key << "\"" << std::endl;
-    ADProvenanceDBengine::setMercuryAuthorizationKey(m_base_params.provdb_mercury_auth_key);
+    ProvDBengine::setMercuryAuthorizationKey(m_base_params.provdb_mercury_auth_key);
   }
   
   m_provdb_client = new ADProvenanceDBclient(pdb_setup.getMainDBcollections(), m_base_params.rank);

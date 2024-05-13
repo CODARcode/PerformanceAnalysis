@@ -1,4 +1,4 @@
-#include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
+#include<chimbuko/core/provdb/ProvDBengine.hpp>
 #include<chimbuko/core/verbose.hpp>
 #include <nlohmann/json.hpp>
 
@@ -7,9 +7,9 @@
 using namespace chimbuko;
 
 
-void ADProvenanceDBengine::data_v::initialize(){
+void ProvDBengine::data_v::initialize(){
   if(!m_is_initialized){
-    verboseStream << "ADProvenanceDBengine initializing Thallium engine" << std::endl;
+    verboseStream << "ProvDBengine initializing Thallium engine" << std::endl;
 
     nlohmann::json cfgj;
     cfgj["use_progress_thread"] = true;
@@ -19,23 +19,23 @@ void ADProvenanceDBengine::data_v::initialize(){
     
     m_eng = new thallium::engine(m_protocol.first, m_protocol.second, config.c_str());
     m_is_initialized = true;
-    verboseStream << "ADProvenanceDBengine initialized Thallium engine" << std::endl;
+    verboseStream << "ProvDBengine initialized Thallium engine" << std::endl;
   }
 }
 
-void ADProvenanceDBengine::data_v::finalize(){
+void ProvDBengine::data_v::finalize(){
   if(m_eng != nullptr){	  
-    verboseStream << "ADProvenanceDBengine finalizing Thallium engine" << std::endl;
+    verboseStream << "ProvDBengine finalizing Thallium engine" << std::endl;
     m_eng->finalize();
-    verboseStream << "ADProvenanceDBengine deleting Thallium engine instance" << std::endl;
+    verboseStream << "ProvDBengine deleting Thallium engine instance" << std::endl;
     delete m_eng;
     m_eng = nullptr;
     m_is_initialized = false;
-    verboseStream << "ADProvenanceDBengine completed finalize" << std::endl;
+    verboseStream << "ProvDBengine completed finalize" << std::endl;
   }
 }
 
-std::string ADProvenanceDBengine::getProtocolFromAddress(const std::string &addr){
+std::string ProvDBengine::getProtocolFromAddress(const std::string &addr){
   size_t pos = addr.find(':');
   if(pos == std::string::npos) throw std::runtime_error("Address \"" + addr + "\" does not have expected form");
   std::string protocol = addr.substr(0,pos);

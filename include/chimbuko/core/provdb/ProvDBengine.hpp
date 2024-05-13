@@ -11,7 +11,7 @@ namespace chimbuko{
   /**
    * @Class for managing singleton instance of thallium engine
    */
-  class ADProvenanceDBengine{
+  class ProvDBengine{
   private:
     /**
      *@brief Internal structure containing engine and parameters

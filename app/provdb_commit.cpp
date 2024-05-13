@@ -3,7 +3,7 @@
 #include<thread>
 #include<cassert>
 #include<csignal>
-#include<chimbuko/core/ad/ADProvenanceDBengine.hpp>
+#include<chimbuko/core/provdb/ProvDBengine.hpp>
 #include<chimbuko/core/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/util/commandLineParser.hpp>
@@ -82,7 +82,7 @@ int main(int argc, char** argv){
 
   if(args.provdb_mercury_auth_key != ""){
     CprogressStream << "setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
-    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+    ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
   
   ProvDBsetup setup(args.nshards, args.ninstances);
@@ -91,15 +91,15 @@ int main(int argc, char** argv){
   int nshard_instance = setup.getNshardsInstance(args.instance);
   bool do_global_db = args.instance == setup.getGlobalDBinstance();
 
-  std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
-  if(ADProvenanceDBengine::getProtocol().first != protocol){
-    int mode = ADProvenanceDBengine::getProtocol().second;
+  std::string protocol = ProvDBengine::getProtocolFromAddress(addr);
+  if(ProvDBengine::getProtocol().first != protocol){
+    int mode = ProvDBengine::getProtocol().second;
     CverboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
-    ADProvenanceDBengine::finalize();
-    ADProvenanceDBengine::setProtocol(protocol,mode);      
+    ProvDBengine::finalize();
+    ProvDBengine::setProtocol(protocol,mode);      
   }      
 
-  thallium::engine &eng = ADProvenanceDBengine::getEngine();
+  thallium::engine &eng = ProvDBengine::getEngine();
 
   thallium::endpoint server = eng.lookup(addr);
 

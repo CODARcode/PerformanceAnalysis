@@ -119,8 +119,8 @@ int rebuildGlobalDB(int nargs, char** args){
   std::ifstream global_func_stats_strm(args[0]);
   std::ifstream global_counter_stats_strm(args[1]);
 
-  ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
-  auto &engine = ADProvenanceDBengine::getEngine();
+  ProvDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
+  auto &engine = ProvDBengine::getEngine();
   
   sonata::Provider *provider;
   sonata::Admin *admin;
@@ -244,8 +244,8 @@ int rebuildProvDB(int nargs, char** args){
 
   int nshards = std::stoi(args[0]);
 
-  ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
-  auto &engine = ADProvenanceDBengine::getEngine();
+  ProvDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
+  auto &engine = ProvDBengine::getEngine();
   
   sonata::Provider *provider;
   sonata::Admin *admin;

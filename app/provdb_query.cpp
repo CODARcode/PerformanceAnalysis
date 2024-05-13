@@ -203,8 +203,8 @@ int main(int argc, char** argv){
 
   std::string mode = argv[arg_offset++];
   
-  ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
-  thallium::engine & engine = ADProvenanceDBengine::getEngine();
+  ProvDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
+  thallium::engine & engine = ProvDBengine::getEngine();
 
   {
     sonata::Provider provider(engine);

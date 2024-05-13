@@ -163,7 +163,7 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
   if(args.provdb_mercury_auth_key != ""){
     progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
-    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+    ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
   ProvDBmoduleSetup pdb_setup;  
   PSProvenanceDBclient provdb_client(pdb_setup.getGlobalDBcollections());

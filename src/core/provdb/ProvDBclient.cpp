@@ -103,7 +103,7 @@ void ProvDBclient::disconnect(){
     if(m_stats) m_stats->add("provdb_client_disconnect_wait_all_ms", timer.elapsed_ms());
 
     if(m_perform_handshake){
-      this->handshakeGoodbye(ADProvenanceDBengine::getEngine(),m_server);
+      this->handshakeGoodbye(ProvDBengine::getEngine(),m_server);
     }
       
     delete_rpc(m_stop_server);
@@ -118,15 +118,15 @@ void ProvDBclient::disconnect(){
 void ProvDBclient::connect(const std::string &addr, const std::string &db_name, const int provider_idx){
   try{
     //Reset the protocol if necessary
-    std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
-    if(ADProvenanceDBengine::getProtocol().first != protocol){
-      int mode = ADProvenanceDBengine::getProtocol().second;
+    std::string protocol = ProvDBengine::getProtocolFromAddress(addr);
+    if(ProvDBengine::getProtocol().first != protocol){
+      int mode = ProvDBengine::getProtocol().second;
       verboseStream << "ProvDBclient " << m_instance_descr << " reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
-      ADProvenanceDBengine::finalize();
-      ADProvenanceDBengine::setProtocol(protocol,mode);      
+      ProvDBengine::finalize();
+      ProvDBengine::setProtocol(protocol,mode);      
     }      
 
-    thallium::engine &eng = ADProvenanceDBengine::getEngine();
+    thallium::engine &eng = ProvDBengine::getEngine();
     m_client = sonata::Client(eng);
     verboseStream << "ProvDBclient " << m_instance_descr << " connecting to database " << db_name << " on address " << addr << " and provider idx " << provider_idx << std::endl;
     
