@@ -34,7 +34,7 @@ struct TestSetup{
     iface = new ADExecDataInterface(&fake_exec_map);
     //To avoid floating point differences in statistics, we loop over functions in the internal order used by the interface
     for(size_t dset_idx=0;dset_idx<iface->nDataSets();dset_idx++){
-      int i = iface->getDataSetParamIndex(dset_idx); //function index here
+      int i = iface->getDataSetModelIndex(dset_idx); //function index here
 
       auto events = iface->getDataSet(dset_idx);
       assert(events.size() == nevent);

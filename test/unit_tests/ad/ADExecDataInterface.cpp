@@ -48,7 +48,7 @@ TEST(ADExecDataInterface, Works){
     ASSERT_EQ(iface.nDataSets(), 2);
 
     //As ExecDataMap_t is unordered, the mapping of the internal dset index to the fid cannot be known in advance
-    size_t dset_fids[2] = { iface.getDataSetParamIndex(0), iface.getDataSetParamIndex(1) };
+    size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
     size_t dsetidx_map[2];
     if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
       dsetidx_map[0] = 0; dsetidx_map[1] = 1;
@@ -59,8 +59,8 @@ TEST(ADExecDataInterface, Works){
     }
 
     //Check the dset_idx map correctly to fids
-    EXPECT_EQ(iface.getDataSetParamIndex(dsetidx_map[0]), fid1);
-    EXPECT_EQ(iface.getDataSetParamIndex(dsetidx_map[1]), fid2);
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[0]), fid1);
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[1]), fid2);
 
     //Check data sets are of the correct size
     auto set1 = iface.getDataSet(dsetidx_map[0]);
@@ -92,7 +92,7 @@ TEST(ADExecDataInterface, Works){
       ADExecDataInterface iface(&execdata);
       iface.setIgnoreFirstFunctionCall(&fseen);
       
-      size_t dset_fids[2] = { iface.getDataSetParamIndex(0), iface.getDataSetParamIndex(1) };
+      size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
       size_t dsetidx_map[2];
       if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
 	dsetidx_map[0] = 0; dsetidx_map[1] = 1;
@@ -122,7 +122,7 @@ TEST(ADExecDataInterface, Works){
       ADExecDataInterface iface(&execdata);
       iface.setIgnoreFirstFunctionCall(&fseen);
       
-      size_t dset_fids[2] = { iface.getDataSetParamIndex(0), iface.getDataSetParamIndex(1) };
+      size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
       size_t dsetidx_map[2];
       if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
 	dsetidx_map[0] = 0; dsetidx_map[1] = 1;
@@ -146,7 +146,7 @@ TEST(ADExecDataInterface, Works){
       ADExecDataInterface iface(&execdata);
       iface.setIgnoreFirstFunctionCall(&fseen);
       
-      size_t dset_fids[2] = { iface.getDataSetParamIndex(0), iface.getDataSetParamIndex(1) };
+      size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
       size_t dsetidx_map[2];
       if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
 	dsetidx_map[0] = 0; dsetidx_map[1] = 1;
@@ -183,7 +183,7 @@ TEST(ADExecDataInterface, anomalyRecording){
     EXPECT_EQ(iface.nEvents(), 0); //no events yet analyzed
     EXPECT_EQ(iface.nDataSets(), 2);
 
-    int d1idx = iface.getDataSetParamIndex(0) == fid1 ? 0 : 1;
+    int d1idx = iface.getDataSetModelIndex(0) == fid1 ? 0 : 1;
     int d2idx = !d1idx;
 
     std::vector<ADDataInterface::Elem> d1 = iface.getDataSet(d1idx);
@@ -229,7 +229,7 @@ TEST(ADExecDataInterface, anomalyRecording){
     EXPECT_EQ(iface.nEvents(), 0); //no events yet analyzed
     EXPECT_EQ(iface.nDataSets(), 2);
 
-    int d1idx = iface.getDataSetParamIndex(0) == fid1 ? 0 : 1;
+    int d1idx = iface.getDataSetModelIndex(0) == fid1 ? 0 : 1;
     int d2idx = !d1idx;
 
     std::vector<ADDataInterface::Elem> d1 = iface.getDataSet(d1idx);

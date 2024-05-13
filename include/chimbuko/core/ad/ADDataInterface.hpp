@@ -106,7 +106,7 @@ namespace chimbuko {
      *
      * The number of data sets available in a given batch may vary, and so the data set index is not a good identifier for the model parameters. Instead the implementation should maintain a map of dataset index to model index internally. For example, for function execution data this is the global function id, which is carefully ensured to be consistent between all instances of Chimbuko
      */
-    virtual size_t getDataSetParamIndex(size_t dset_index) const = 0;
+    virtual size_t getDataSetModelIndex(size_t dset_index) const = 0;
 
 
     virtual ~ADDataInterface(){}

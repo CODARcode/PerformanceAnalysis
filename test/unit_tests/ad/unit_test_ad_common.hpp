@@ -63,7 +63,7 @@ namespace chimbuko{
       bool found = false;
       size_t dset_idx;
       for(size_t dd=0;dd<iface.nDataSets();dd++) 
-	if(iface.getDataSetParamIndex(dd) == func_id){
+	if(iface.getDataSetModelIndex(dd) == func_id){
 	  dset_idx = dd;
 	  found = true;
 	  break;

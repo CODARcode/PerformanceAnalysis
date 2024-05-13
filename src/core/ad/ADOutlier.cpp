@@ -171,7 +171,7 @@ void ADOutlierSSTD::run(ADDataInterface &data, int step) {
   //Generate the statistics based on this IO step and also store data for use below to avoid having to call getDataSet more than once
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
     data_vals[dset_idx] = data.getDataSet(dset_idx);
-    auto &dset_params = param[data.getDataSetParamIndex(dset_idx)];
+    auto &dset_params = param[data.getDataSetModelIndex(dset_idx)];
     for(auto const &e : data_vals[dset_idx])
       dset_params.push(e.value);
   }
@@ -188,7 +188,7 @@ void ADOutlierSSTD::run(ADDataInterface &data, int step) {
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){
-    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetModelIndex(dset_idx));
     data.recordDataSetLabels(data_vals[dset_idx], dset_idx);
   }
 }
@@ -285,7 +285,7 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
 
     verboseStream << "Data set " << dset_idx << " has " << values.size() << " unlabeled data points" << std::endl;
 
-    param.generate_histogram(data.getDataSetParamIndex(dset_idx), values, 0, &global_param); //initialize global threshold to 0 so that it is overridden by the merge
+    param.generate_histogram(data.getDataSetModelIndex(dset_idx), values, 0, &global_param); //initialize global threshold to 0 so that it is overridden by the merge
   }
   HbosParam &local_param = *(HbosParam*)m_local_param;
   local_param.update(param); 
@@ -295,7 +295,7 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){    
-    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetModelIndex(dset_idx));
     data.recordDataSetLabels(data_vals[dset_idx], dset_idx);   
   }
 }
@@ -493,7 +493,7 @@ void ADOutlierCOPOD::run(ADDataInterface &data, int step) {
 
     verboseStream << "Data set " << dset_idx << " has " << values.size() << " unlabeled data points" << std::endl;
 
-    CopodFuncParam &fparam = param[data.getDataSetParamIndex(dset_idx)];
+    CopodFuncParam &fparam = param[data.getDataSetModelIndex(dset_idx)];
     Histogram &hist = fparam.getHistogram();
     if (values.size() > 0) {
       verboseStream << "Creating local histogram for data set " << dset_idx << " for " << values.size() << " data points" << std::endl;
@@ -508,7 +508,7 @@ void ADOutlierCOPOD::run(ADDataInterface &data, int step) {
 
   //Run anomaly detection algorithm
   for(size_t dset_idx=0; dset_idx < ndset; dset_idx++){    
-    labelData(data_vals[dset_idx], dset_idx, data.getDataSetParamIndex(dset_idx));
+    labelData(data_vals[dset_idx], dset_idx, data.getDataSetModelIndex(dset_idx));
     data.recordDataSetLabels(data_vals[dset_idx], dset_idx);   
   }
 }

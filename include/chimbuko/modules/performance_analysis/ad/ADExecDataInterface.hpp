@@ -54,7 +54,7 @@ namespace chimbuko {
     /**
      * @brief Return the function index associated with a given data set
      */
-    size_t getDataSetParamIndex(size_t dset_index) const override{ return m_dset_fid_map[dset_index]; }
+    size_t getDataSetModelIndex(size_t dset_index) const override{ return m_dset_fid_map[dset_index]; }
 
     /**
      * @brief Return the data set index associated with a given function index

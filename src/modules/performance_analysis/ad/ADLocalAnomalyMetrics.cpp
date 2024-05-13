@@ -7,7 +7,7 @@ ADLocalAnomalyMetrics::ADLocalAnomalyMetrics(int app, int rank, int step, unsign
   m_app(app), m_rank(rank), m_step(step), m_first_event_ts(first_event_ts), m_last_event_ts(last_event_ts), m_perf(nullptr){
   
   for(size_t dset_idx =0 ; dset_idx < iface.nDataSets(); dset_idx++){
-    size_t fid = iface.getDataSetParamIndex(dset_idx);
+    size_t fid = iface.getDataSetModelIndex(dset_idx);
     auto const & r = iface.getResults(dset_idx);
     auto const &anom = r.getEventsRecorded(ADExecDataInterface::EventType::Outlier);
 

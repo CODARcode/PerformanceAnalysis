@@ -42,7 +42,7 @@ void ADLocalFuncStatistics::gatherAnomalies(const ADExecDataInterface &iface){
   //Gather information on the number of anomalies and stats on their scores
   size_t nanom_tot = 0;
   for(size_t dset_idx =0 ; dset_idx < iface.nDataSets(); dset_idx++){
-    size_t fid = iface.getDataSetParamIndex(dset_idx);
+    size_t fid = iface.getDataSetModelIndex(dset_idx);
     auto const & r = iface.getResults(dset_idx);
     auto const &anom = r.getEventsRecorded(ADDataInterface::EventType::Outlier);
     size_t nanom = anom.size();

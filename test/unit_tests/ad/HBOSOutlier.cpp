@@ -99,7 +99,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
 
   std::cout << "# outliers detected: " << nout << std::endl;
   EXPECT_GE(nout, 1);
-  EXPECT_EQ(iface.getDataSetParamIndex(0), func_id);
+  EXPECT_EQ(iface.getDataSetModelIndex(0), func_id);
   //Check the expected outlier is present
   EXPECT_TRUE(outlier.findOutlier(outlier_start, outlier_runtime, 0, iface));
 
