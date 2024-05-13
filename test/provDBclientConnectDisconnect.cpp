@@ -3,6 +3,7 @@
 #include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/core/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
@@ -29,8 +30,8 @@ int main(int argc, char** argv) {
 #ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
-
-  ADProvenanceDBclient client(rank);
+  ProvDBmoduleSetup setup;
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client with rank " << rank << " attempting connection" << std::endl;
   client.connectSingleServer(addr, shards);
 

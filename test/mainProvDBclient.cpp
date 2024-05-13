@@ -4,6 +4,7 @@
 #include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/core/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
@@ -19,11 +20,12 @@ std::string addr;
 int rank;
 int nshards;
 std::string rank_str;
+ProvDBmoduleSetup setup;
 
 TEST(ADProvenanceDBclientTest, Connects){
 
-  bool connect_fail = false;
-  ADProvenanceDBclient client(rank);
+  bool connect_fail = false;  
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -36,7 +38,7 @@ TEST(ADProvenanceDBclientTest, Connects){
 TEST(ADProvenanceDBclientTest, ConnectsTwice){
 
   bool connect_fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection for second time" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -49,7 +51,7 @@ TEST(ADProvenanceDBclientTest, ConnectsTwice){
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -57,11 +59,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::AnomalyData);
+    uint64_t rid = client.sendData(obj, "anomalies");
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::AnomalyData), true );
+    EXPECT_EQ( client.retrieveData(check, rid, "anomalies"), true );
     
     std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
@@ -80,7 +82,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -88,11 +90,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::Metadata);
+    uint64_t rid = client.sendData(obj, "metadata");
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::Metadata), true );
+    EXPECT_EQ( client.retrieveData(check, rid, "metadata"), true );
     
     std::cout << "Testing retrieved metadata:" << check.dump() << std::endl;
 
@@ -111,7 +113,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveMetadata){
 TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -119,11 +121,11 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
     nlohmann::json obj;
     obj["hello"] = "world " + rank_str;
     std::cout << "Sending " << obj.dump() << std::endl;
-    uint64_t rid = client.sendData(obj, ProvenanceDataType::NormalExecData);
+    uint64_t rid = client.sendData(obj, "normalexecs");
     EXPECT_NE(rid, -1);
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::NormalExecData), true );
+    EXPECT_EQ( client.retrieveData(check, rid, "normalexecs"), true );
     
     std::cout << "Testing retrieved normal exec:" << check.dump() << std::endl;
 
@@ -144,7 +146,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveNormalExecData){
 TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -154,12 +156,12 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
     objs[1]["hello"] = "again " + rank_str;
 
     std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
-    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    std::vector<uint64_t> rid = client.sendMultipleData(objs, "anomalies");
     EXPECT_EQ(rid.size(), 2);
 
     for(int i=0;i<2;i++){    
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+      EXPECT_EQ( client.retrieveData(check, rid[i], "anomalies"), true );
     
       std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
@@ -177,7 +179,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -187,12 +189,12 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
     objs[1] = nlohmann::json::object({ {"hello","what? " + rank_str} });
 
     std::cout << "Sending " << std::endl << objs.dump() << std::endl;
-    std::vector<uint64_t> rid = client.sendMultipleData(objs, ProvenanceDataType::AnomalyData);
+    std::vector<uint64_t> rid = client.sendMultipleData(objs, "anomalies");
     EXPECT_EQ(rid.size(), 2);
 
     for(int i=0;i<2;i++){    
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, rid[i], ProvenanceDataType::AnomalyData), true );
+      EXPECT_EQ( client.retrieveData(check, rid[i], "anomalies"), true );
     
       std::cout << "Testing retrieved anomaly data:" << check.dump() << " with index " << rid[i] << std::endl;
 
@@ -210,7 +212,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyData){
 TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -221,13 +223,13 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 
     OutstandingRequest req;
 
-    client.sendDataAsync(obj, ProvenanceDataType::AnomalyData, &req);
+    client.sendDataAsync(obj, "anomalies", &req);
 
     req.wait(); //wait for completion
     int rid = req.ids[0];
     
     nlohmann::json check;
-    EXPECT_EQ( client.retrieveData(check, rid, ProvenanceDataType::AnomalyData), true );
+    EXPECT_EQ( client.retrieveData(check, rid, "anomalies"), true );
     
     std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
@@ -246,7 +248,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveAnomalyDataAsync){
 TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -258,14 +260,14 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
     OutstandingRequest req;
     
     std::cout << "Sending " << std::endl << objs[0].dump() << std::endl << objs[1].dump() << std::endl;
-    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData,&req);
+    client.sendMultipleDataAsync(objs, "anomalies",&req);
     EXPECT_EQ(req.ids.size(), 2);
 
     req.wait(); //wait for completion
     
     for(int i=0;i<2;i++){    
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], "anomalies"), true );
     
       std::cout << "Testing retrieved anomaly data:" << check.dump() << std::endl;
 
@@ -284,7 +286,7 @@ TEST(ADProvenanceDBclientTest, SendReceiveVectorAnomalyDataAsync){
 TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
 
   bool fail = false;
-  ADProvenanceDBclient client(rank);
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectSingleServer(addr,nshards);
@@ -296,14 +298,14 @@ TEST(ADProvenanceDBclientTest, SendReceiveJSONarrayAnomalyDataAsync){
     OutstandingRequest req;
 
     std::cout << "Sending " << std::endl << objs.dump() << std::endl;
-    client.sendMultipleDataAsync(objs, ProvenanceDataType::AnomalyData, &req);
+    client.sendMultipleDataAsync(objs, "anomalies", &req);
     EXPECT_EQ(req.ids.size(), 2);
 
     req.wait(); //wait for completion
 
     for(int i=0;i<2;i++){    
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, req.ids[i], ProvenanceDataType::AnomalyData), true );
+      EXPECT_EQ( client.retrieveData(check, req.ids[i], "anomalies"), true );
     
       std::cout << "Testing retrieved anomaly data:" << check.dump() << " with index " << req.ids[i] << std::endl;
 
@@ -363,7 +365,7 @@ TEST(ADProvenanceDBclientTest, TestStateDump){
       throw std::runtime_error("Existing file of form margo_dump.* found in test directory, these should be deleted!");
 
     bool fail = true;
-    ADProvenanceDBclient client(rank);
+    ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
     std::cout << "Client attempting connection" << std::endl;
     try{
       client.connectSingleServer(addr,nshards);

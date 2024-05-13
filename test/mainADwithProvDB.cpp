@@ -71,7 +71,7 @@ TEST(ADTestWithProvDB, BpfileTest)
     //Shards are assigned round-robin to ranks
     int rank_shard = world_rank % nshards;
     std::vector<unsigned long> noutliers_shard(nshards, 0);
-    noutliers_shard[rank_shard] = driver.getProvenanceDBclient().retrieveAllData(ProvenanceDataType::AnomalyData).size();
+    noutliers_shard[rank_shard] = driver.getProvenanceDBclient().retrieveAllData("anomalies").size();
    
     assert( MPI_Allreduce(MPI_IN_PLACE, noutliers_shard.data(), nshards, MPI_UNSIGNED_LONG , MPI_MAX, MPI_COMM_WORLD) == MPI_SUCCESS); //use max to fill in the array
 

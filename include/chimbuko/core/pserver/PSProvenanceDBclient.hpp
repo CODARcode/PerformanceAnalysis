@@ -3,49 +3,30 @@
 
 #ifdef ENABLE_PROVDB
 
-#include <sonata/Client.hpp>
-#include <nlohmann/json.hpp>
-#include <queue>
-#include <chimbuko/core/ad/ADProvenanceDBengine.hpp>
-#include <chimbuko/core/util/PerfStats.hpp>
+#include <chimbuko/core/provdb/ProvDBclient.hpp>
+
 
 namespace chimbuko{
 
   /**
-   * @brief The type of global provenance data
-   */
-  enum class GlobalProvenanceDataType { FunctionStats, CounterStats, ADModel };
-
-  /**
    * @Client for the pserver interaction with the provevance database
    */
-  class PSProvenanceDBclient{
+  class PSProvenanceDBclient: public ProvDBclient{
   private:
-    sonata::Client m_client; /**< Sonata client */
-    sonata::Database m_database; /**< Sonata database */
-    sonata::Collection m_coll_funcstats; /**< The function statistics collection */
-    sonata::Collection m_coll_counterstats; /**< The counter statistics collection */
-    sonata::Collection m_coll_admodel; /**< The AD model collection */
-    bool m_is_connected; /**< True if connection has been established to the provider */
-    
-    thallium::endpoint m_server; /**< Endpoint for provDB comms*/
     thallium::remote_procedure *m_client_hello; /**< RPC to register client with provDB */
     thallium::remote_procedure *m_client_goodbye; /**< RPC to deregister client with provDB */
-    bool m_perform_handshake; /**< Optionally disable the client->server registration */
-
-    PerfStats *m_stats; /**< Performance data gathering*/
 
   public:
-    PSProvenanceDBclient(): m_is_connected(false), m_client_hello(nullptr), m_client_goodbye(nullptr), m_stats(nullptr), m_perform_handshake(true){}
+    PSProvenanceDBclient(const std::vector<std::string> &collections): m_client_hello(nullptr), m_client_goodbye(nullptr), ProvDBclient(collections,"pserver"){}
 
     ~PSProvenanceDBclient();
-    
+
     /**
      * @brief Connect the client to the provenance database server
      * @param addr The server address
      * @param provider_idx The provider index on the server
      */
-    void connect(const std::string &addr, const int provider_idx = 0);
+    void connectServer(const std::string &addr, const int provider_idx = 0);
 
     /**
      * @brief Connect the client the appropriate provenance database server instance using the default setup
@@ -53,67 +34,15 @@ namespace chimbuko{
      */
     void connectMultiServer(const std::string &addr_file_dir);
 
+    /**
+     * @brief Perform an appropriate hello handshake with the server. This function is called automatically by connect
+     */
+    void handshakeHello(thallium::engine &eng, thallium::endpoint &server) override;
 
     /**
-     * @brief Check if connnection has been established to provider
+     * @brief Perform an appropriate goodbye handshake with the server. This function is called automatically by disconnect
      */
-    bool isConnected() const{ return m_is_connected; }
-    
-    /**
-     * @brief Disconnect if presently connected
-     */
-    void disconnect(); 
-
-    /**
-     * @brief Enable or disable the client<->server handshake (call before connecting)
-     */
-    void setEnableHandshake(const bool to){ m_perform_handshake = to; }
-
-    /**
-     * @brief Get the Sonata collection associated with the data type allowing access to more sophisticated functionality
-     */
-    sonata::Collection & getCollection(const GlobalProvenanceDataType type);
-    const sonata::Collection & getCollection(const GlobalProvenanceDataType type) const;
-		
-    /**
-     * @brief Send data JSON objects synchronously to the database (blocking)
-     * @param entry JSON data
-     * @param type The data type
-     * @return Entry index
-     */
-    uint64_t sendData(const nlohmann::json &entry, const GlobalProvenanceDataType type) const;
-
-    /**
-     * @brief Send *JSON array* of JSON objects synchronously to the database (blocking). This is intended for sending many independent data entries at once.
-     * @param entries JSON array of data
-     * @param type The data type
-     * @return Vector of entry indices. Array will have zero size if database not connected.
-     */
-    std::vector<uint64_t> sendMultipleData(const nlohmann::json &entries, const GlobalProvenanceDataType type) const;
-
-    /**
-     * @brief Retrieve an inserted JSON object synchronously from the database by index (blocking) (primarily for testing)
-     * @param[out] entry The JSON object (if valid)
-     * @param[in] index The entry index
-     * @param[in] type The data type
-     * @return True if the client was able to retrieve the object
-     */
-    bool retrieveData(nlohmann::json &entry, uint64_t index, const GlobalProvenanceDataType type) const;
-
-    /**
-     * @brief Retrieve all records from the database
-     */
-    std::vector<std::string> retrieveAllData(const GlobalProvenanceDataType type) const;
-
-    /**
-     * @brief Apply a jx9 filter to the database and retrieve all records that match
-     */
-    std::vector<std::string> filterData(const GlobalProvenanceDataType type, const std::string &query) const;
-
-    /**
-     * @brief Link a PerfStats instance to monitor performance
-     */
-    void linkPerf(PerfStats *stats){ m_stats = stats; }
+    void handshakeGoodbye(thallium::engine &eng, thallium::endpoint &server) override;
   };
 
 };

@@ -1,4 +1,5 @@
 #include "chimbuko/modules/performance_analysis/chimbuko.hpp"
+#include "chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp"
 
 using namespace chimbuko;
 
@@ -40,7 +41,12 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   if(m_is_initialized) finalize();
 
   //Always initialize base first
+#ifdef ENABLE_PROVDB
+  ProvDBmoduleSetup pdb_setup;
+  this->initializeBase(params.base_params, pdb_setup);
+#else
   this->initializeBase(params.base_params);
+#endif
 
   m_params = params;
 

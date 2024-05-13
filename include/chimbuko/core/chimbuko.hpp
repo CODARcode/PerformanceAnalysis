@@ -6,6 +6,7 @@
 #include <chimbuko/core/ad/ADOutlier.hpp>
 #include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include <chimbuko/core/ad/ADio.hpp>
+#include <chimbuko/core/provdb/ProvDBmoduleSetupCore.hpp>
 
 namespace chimbuko {
 
@@ -101,7 +102,16 @@ namespace chimbuko {
 
   class ChimbukoBase{
   protected:
-    void initializeBase(const ChimbukoBaseParams &params);
+    /**
+     * @brief Initialize the base class
+     * @param params The optional and mandatory parameters of the instance
+     * @param pdb_setup An object specify the list of collections for the provDB
+     */
+    void initializeBase(const ChimbukoBaseParams &params
+#ifdef ENABLE_PROVDB
+			, const ProvDBmoduleSetupCore &pdb_setup
+#endif
+			);
     void finalizeBase();
     /**
      * @brief Query whether to produce verbose report output for a given step
@@ -130,8 +140,12 @@ namespace chimbuko {
        
   public:
     ChimbukoBase();    
-    ChimbukoBase(const ChimbukoBaseParams &params): ChimbukoBase(){ initializeBase(params); }
-    ~ChimbukoBase();
+    ChimbukoBase(const ChimbukoBaseParams &params
+#ifdef ENABLE_PROVDB
+		 , const ProvDBmoduleSetupCore &pdb_setup
+#endif
+		 );
+    virtual ~ChimbukoBase();
     
     /**
      * @brief Read a step's worth of data, returning an interface to the data and the step index
@@ -256,7 +270,7 @@ namespace chimbuko {
     void init_io();
     void init_outlier();
 #ifdef ENABLE_PROVDB
-    void init_provdb();
+    void init_provdb(const ProvDBmoduleSetupCore &pdb_setup);
 #endif
     void init_net_client();
 

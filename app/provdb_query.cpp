@@ -10,6 +10,7 @@
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
+#include<chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<sstream>
@@ -97,15 +98,9 @@ void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
   std::string query = args[1];
   if(query == "DUMP") query = "function($a){ return true; }";
 
-  ProvenanceDataType coll;
-  if(coll_str == "anomalies") coll = ProvenanceDataType::AnomalyData;
-  else if(coll_str == "metadata") coll = ProvenanceDataType::Metadata;
-  else if(coll_str == "normalexecs") coll = ProvenanceDataType::NormalExecData;
-  else throw std::runtime_error("Invalid collection");
-
   nlohmann::json result = nlohmann::json::array();
   for(int s=0;s<nshards;s++){
-    std::vector<std::string> shard_results = clients[s]->filterData(coll, query);    
+    std::vector<std::string> shard_results = clients[s]->filterData(coll_str, query);    
     for(int i=0;i<shard_results.size();i++)
       result.push_back( nlohmann::json::parse(shard_results[i]) );
   }
@@ -170,18 +165,12 @@ void filter_global(PSProvenanceDBclient &client,
   std::string query = args[1];
   if(query == "DUMP") query = "function($a){ return true; }";
 
-  GlobalProvenanceDataType coll;
-  if(coll_str == "func_stats") coll = GlobalProvenanceDataType::FunctionStats;
-  else if(coll_str == "counter_stats") coll = GlobalProvenanceDataType::CounterStats;
-  else if(coll_str == "ad_model") coll = GlobalProvenanceDataType::ADModel;
-  else throw std::runtime_error("Invalid collection");
-
   nlohmann::json result = nlohmann::json::array();
-  std::vector<std::string> str_results = client.filterData(coll, query);    
+  std::vector<std::string> str_results = client.filterData(coll_str, query);    
   for(int i=0;i<str_results.size();i++)
     result.push_back( nlohmann::json::parse(str_results[i]) );
 
-  if(coll == GlobalProvenanceDataType::FunctionStats)
+  if(coll_str == "func_stats")
     sort(result, { {"anomaly_metrics","severity","accumulate"}, {"anomaly_metrics","score","accumulate"} });
   
   std::cout << result.dump(4) << std::endl;
@@ -223,9 +212,11 @@ int main(int argc, char** argv){
   
     std::string addr = (std::string)engine.self();
 
+    ProvDBmoduleSetup module_setup;
+
     //Actions on main sharded anomaly database
     if(mode == "filter" || mode == "execute"){
-
+      
       std::vector<std::string> db_shard_names(nshards);
       std::vector<std::unique_ptr<ADProvenanceDBclient> > clients(nshards);
       for(int s=0;s<nshards;s++){
@@ -233,7 +224,7 @@ int main(int argc, char** argv){
 	std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_shard_names[s].c_str());
 	admin.attachDatabase(addr, 0, db_shard_names[s], "unqlite", config);    
 
-	clients[s].reset(new ADProvenanceDBclient(s));
+	clients[s].reset(new ADProvenanceDBclient(module_setup.getMainDBcollections(), s));
 	clients[s]->setEnableHandshake(false);	      
 	clients[s]->connect(addr, db_shard_names[s], 0);
 	if(!clients[s]->isConnected()){
@@ -257,13 +248,13 @@ int main(int argc, char** argv){
     //Actions on global database
     else if(mode == "filter-global"){
       std::string db_name = "provdb.global";
-      PSProvenanceDBclient client;
+      PSProvenanceDBclient client(module_setup.getGlobalDBcollections());
       client.setEnableHandshake(false);
 
       std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
       admin.attachDatabase(addr, 0, db_name, "unqlite", config);    
     
-      client.connect(addr,0);
+      client.connectServer(addr,0);
       if(!client.isConnected()){
 	engine.finalize();
 	throw std::runtime_error("Could not connect to global database");

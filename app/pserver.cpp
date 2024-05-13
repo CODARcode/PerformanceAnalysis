@@ -11,6 +11,7 @@
 
 #ifdef ENABLE_PROVDB
 #include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
+#include "chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp"
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>
@@ -164,8 +165,8 @@ int main (int argc, char ** argv){
     progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
     ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
-  
-  PSProvenanceDBclient provdb_client;
+  ProvDBmoduleSetup pdb_setup;  
+  PSProvenanceDBclient provdb_client(pdb_setup.getGlobalDBcollections());
 #endif
 
   try {
@@ -251,9 +252,9 @@ int main (int argc, char ** argv){
 
       if(provdb_client.isConnected()){
 	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
-	provdb_client.sendMultipleData(profile_j, GlobalProvenanceDataType::FunctionStats);
-	provdb_client.sendMultipleData(global_counter_stats_j, GlobalProvenanceDataType::CounterStats);
-	provdb_client.sendMultipleData(ad_model_j, GlobalProvenanceDataType::ADModel);
+	provdb_client.sendMultipleData(profile_j, "func_stats");
+	provdb_client.sendMultipleData(global_counter_stats_j, "counter_stats");
+	provdb_client.sendMultipleData(ad_model_j, "ad_model");
 	progressStream << "Pserver: disconnecting from provDB" << std::endl;
 	provdb_client.disconnect();
       }

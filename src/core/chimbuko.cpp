@@ -5,6 +5,7 @@
 #include "chimbuko/core/util/time.hpp"
 #include "chimbuko/core/util/memutils.hpp"
 #include "chimbuko/core/ad/utils.hpp"
+#include "chimbuko/core/provdb/ProvDBmoduleSetupCore.hpp"
 
 using namespace chimbuko;
 
@@ -65,6 +66,17 @@ void ChimbukoBaseParams::print() const{
 }
 
 
+ChimbukoBase::ChimbukoBase(const ChimbukoBaseParams &params
+#ifdef ENABLE_PROVDB
+			, const ProvDBmoduleSetupCore &pdb_setup
+#endif
+			   ): ChimbukoBase(){ initializeBase(params
+#ifdef ENABLE_PROVDB
+							     , pdb_setup
+#endif
+							     ); }
+
+
 ChimbukoBase::ChimbukoBase(): 
   m_outlier(nullptr), m_io(nullptr), m_net_client(nullptr),
 #ifdef ENABLE_PROVDB
@@ -78,13 +90,13 @@ ChimbukoBase::~ChimbukoBase(){
 
 
 #ifdef ENABLE_PROVDB
-void ChimbukoBase::init_provdb(){
+void ChimbukoBase::init_provdb(const ProvDBmoduleSetupCore &pdb_setup){
   if(m_base_params.provdb_mercury_auth_key != ""){
     headProgressStream(m_base_params.rank) << "driver rank " << m_base_params.rank << " setting Mercury authorization key to \"" << m_base_params.provdb_mercury_auth_key << "\"" << std::endl;
     ADProvenanceDBengine::setMercuryAuthorizationKey(m_base_params.provdb_mercury_auth_key);
   }
   
-  m_provdb_client = new ADProvenanceDBclient(m_base_params.rank);
+  m_provdb_client = new ADProvenanceDBclient(pdb_setup.getMainDBcollections(), m_base_params.rank);
   if(m_base_params.provdb_addr_dir.length() > 0){
     headProgressStream(m_base_params.rank) << "driver rank " << m_base_params.rank << " connecting to provenance database" << std::endl;
     m_provdb_client->connectMultiServer(m_base_params.provdb_addr_dir, m_base_params.nprovdb_shards, m_base_params.nprovdb_instances);
@@ -164,7 +176,11 @@ void ChimbukoBase::init_outlier(){
 
 
 
-void ChimbukoBase::initializeBase(const ChimbukoBaseParams &params){
+void ChimbukoBase::initializeBase(const ChimbukoBaseParams &params
+#ifdef ENABLE_PROVDB
+, const ProvDBmoduleSetupCore &pdb_setup
+#endif
+){
   if(m_base_is_initialized) fatal_error("Cannot reinitialized base without finalizing"); //expect the derived class to call finalizeBase
   m_base_params = params;
 
@@ -197,7 +213,7 @@ void ChimbukoBase::initializeBase(const ChimbukoBaseParams &params){
   //Connect to the provenance database and/or initialize provenance IO
 #ifdef ENABLE_PROVDB
   timer.start();
-  init_provdb();
+  init_provdb(pdb_setup);
   m_perf.add("ad_initialize_provdb_ms", timer.elapsed_ms());
 #endif
   init_io(); //will write provenance info if provDB not in use
@@ -267,42 +283,22 @@ void ChimbukoBase::sendProvenance(bool force){
     
     PerfTimer timer;
     //Write and send provenance data
-    if(m_provdata_buf["anomalies"].size() > 0){
-      timer.start();
-      m_io->writeJSON(m_provdata_buf["anomalies"], m_step, "anomalies");
-      m_perf.add("ad_extract_send_prov_anom_data_io_write_ms", timer.elapsed_ms());
-
-#ifdef ENABLE_PROVDB
-      timer.start();
-      m_provdb_client->sendMultipleDataAsync(m_provdata_buf["anomalies"], ProvenanceDataType::AnomalyData); //non-blocking send
-      m_perf.add("ad_extract_send_prov_anom_data_send_async_ms", timer.elapsed_ms());
-#endif
-    }
-
-    if(m_provdata_buf["normalexecs"].size() > 0){
-      timer.start();
-      m_io->writeJSON(m_provdata_buf["normalexecs"], m_step, "normalexecs");
-      m_perf.add("ad_extract_send_prov_normalexec_data_io_write_ms", timer.elapsed_ms());
+    for(auto const &b: m_provdata_buf){
+      const std::string &coll = b.first;
+      auto const &data = b.second;
+      if(data.size()){
+	timer.start();
+	m_io->writeJSON(data, m_step, coll);
+	m_perf.add("ad_send_prov_"+coll+"_data_io_write_ms", timer.elapsed_ms());
 	
 #ifdef ENABLE_PROVDB
-      timer.start();
-      m_provdb_client->sendMultipleDataAsync(m_provdata_buf["normalexecs"], ProvenanceDataType::NormalExecData); //non-blocking send
-      m_perf.add("ad_extract_send_prov_normalexec_data_send_async_ms", timer.elapsed_ms());
+	timer.start();
+	m_provdb_client->sendMultipleDataAsync(data, coll); //non-blocking send
+	m_perf.add("ad_send_prov_"+coll+"_data_send_async_ms", timer.elapsed_ms());
+	m_perf.add("ad_send_prov_"+coll+"_data_count", data.size());
 #endif
-    }
-
-    if(m_provdata_buf["metadata"].size() > 0){
-      timer.start();
-      m_io->writeJSON(m_provdata_buf["metadata"], m_step, "metadata");
-      m_perf.add("ad_send_new_metadata_to_provdb_io_write_ms", timer.elapsed_ms());
-
-#ifdef ENABLE_PROVDB
-      timer.start();
-      m_provdb_client->sendMultipleDataAsync(m_provdata_buf["metadata"], ProvenanceDataType::Metadata); //non-blocking send
-      m_perf.add("ad_send_new_metadata_to_provdb_metadata_count", m_provdata_buf["metadata"].size());
-      m_perf.add("ad_send_new_metadata_to_provdb_send_async_ms", timer.elapsed_ms());
-#endif
-    }
+      }
+    }     
     
     m_provdata_buf.clear();
   }//isConnected

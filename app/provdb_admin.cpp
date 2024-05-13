@@ -8,6 +8,7 @@
 #include "chimbuko/core/util/commandLineParser.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/time.hpp"
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -388,14 +389,14 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
+	  ProvDBmoduleSetup pdb_module_setup; //put this under a factory
 
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(nshard_instance);
 	  for(int s=0;s<nshard_instance;s++){
 	    db[s] = client.open(addr, shard_provider_indices[s], db_shard_names[s]);
-	    db[s].create("anomalies");
-	    db[s].create("metadata");
-	    db[s].create("normalexecs");
+	    for(auto const &c : pdb_module_setup.getMainDBcollections())
+	      db[s].create(c);
 	  }
 
 	  PSprogressStream << "initialized shard collections" << std::endl;
@@ -404,9 +405,8 @@ int main(int argc, char** argv) {
 	  std::unique_ptr<sonata::Database> glob_db;
 	  if(instance_do_global_db){
 	    glob_db.reset(new sonata::Database(client.open(addr, glob_provider_idx, glob_db_name)));
-	    glob_db->create("func_stats");
-	    glob_db->create("counter_stats");
-	    glob_db->create("ad_model");
+	    for(auto const &c : pdb_module_setup.getGlobalDBcollections())
+	      glob_db->create(c);
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
 

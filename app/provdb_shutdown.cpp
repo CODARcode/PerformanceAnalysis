@@ -8,7 +8,7 @@ int main(int argc, char** argv){
     std::cout << "Usage: provdb_shutdown <server address e.g. ofi+tcp;ofi_rxm://172.17.0.4:5000>" << std::endl;
     return 1;
   }
-  ADProvenanceDBclient ad(0);
+  ADProvenanceDBclient ad({},0);
   ad.setEnableHandshake(false);
   ad.connectSingleServer(argv[1], 1);
   ad.stopServer();
