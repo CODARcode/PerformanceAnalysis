@@ -32,7 +32,7 @@ std::pair<size_t, size_t> ADcombinedPSdata::send(ADNetClient &net_client) const{
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, step);
-  msg.set_msg(net_serialize());
+  msg.setContent(net_serialize());
   
   size_t sent_sz = msg.size();
   net_client.async_send(msg);
@@ -87,7 +87,7 @@ std::pair<size_t, size_t> ADcombinedPSdataArray::send(ADNetClient &net_client) c
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, latest_step);
-  msg.set_msg(net_serialize());
+  msg.setContent(net_serialize());
   
   size_t sent_sz = msg.size();
   net_client.async_send(msg);

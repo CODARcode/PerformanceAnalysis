@@ -34,8 +34,8 @@ public:
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
-    std::cout << "Bounce received: '" << message.buf() << "'" << std::endl;
-    response.set_msg(message.buf(), false);
+    std::cout << "Bounce received: '" << message.getContent() << "'" << std::endl;
+    response.setContent(message.getContent());
   };
 };
 
@@ -58,13 +58,13 @@ TEST(TestLocalNet, SendAndReceive){
   std::string the_message = "Hello!";
   Message msg;
   msg.set_info(0,0, MessageType::REQ_ECHO, MessageKind::CMD);
-  msg.set_msg(the_message);
+  msg.setContent(the_message);
 
-  std::string str_reply = LocalNet::send_and_receive(msg.data());
+  std::string str_reply = LocalNet::send_and_receive(msg.serializeMessage());
   Message reply;
-  reply.set_msg(str_reply, true);
+  reply.deserializeMessage(str_reply);
 
-  EXPECT_EQ(reply.buf(), the_message);
+  EXPECT_EQ(reply.getContent(), the_message);
 }
 
 

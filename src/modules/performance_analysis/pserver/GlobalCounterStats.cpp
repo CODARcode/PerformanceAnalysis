@@ -56,9 +56,9 @@ void NetPayloadUpdateCounterStats::action(Message &response, const Message &mess
   if(m_global_counter_stats == nullptr) throw std::runtime_error("Cannot update global counter statistics as stats object has not been linked");
 
   ADLocalCounterStatistics loc(0,0,nullptr);
-  loc.net_deserialize(message.buf());
+  loc.net_deserialize(message.getContent());
   m_global_counter_stats->add_counter_data(loc); //note, this uses a mutex lock internally
-  response.set_msg("", false);
+  response.setContent("");
 }
 
 void PSstatSenderGlobalCounterStatsPayload::add_json(nlohmann::json &into) const{ 

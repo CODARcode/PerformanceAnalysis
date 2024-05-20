@@ -259,15 +259,15 @@ namespace chimbuko{
 	zmq_msg_close(&msg);
       }
       Message rmsg;
-      rmsg.set_msg(strmsg,true);
-      EXPECT_EQ(rmsg.buf(), "Hello!");
+      rmsg.deserializeMessage(strmsg);
+      EXPECT_EQ(rmsg.getContent(), "Hello!");
 
       std::cout << "Mock PS sending response" << std::endl;
       //Send a response back to the AD
       {
 	Message msg_t;
-	msg_t.set_msg(std::string("Hello!I am NET!"), false);
-	strmsg = msg_t.data();
+	msg_t.setContent(std::string("Hello!I am NET!"));
+	strmsg = msg_t.serializeMessage();
 
 	zmq_msg_t msg;
 	int ret;
@@ -309,8 +309,8 @@ namespace chimbuko{
       //Send a response back to the AD
       {
 	Message msg_t;
-	msg_t.set_msg(std::string(""), false); //apparently it doesn't expect the message to have content
-	strmsg = msg_t.data();
+	msg_t.setContent(""); //apparently it doesn't expect the message to have content
+	strmsg = msg_t.serializeMessage();
 
 	zmq_msg_t msg;
 	int ret;
@@ -345,8 +345,8 @@ namespace chimbuko{
       std::cout << "Mock PS received string: " << strmsg << std::endl;
 
       Message rmsg;
-      rmsg.set_msg(strmsg, true);
-      EXPECT_EQ(rmsg.buf(), test_msg);
+      rmsg.deserializeMessage(strmsg);
+      EXPECT_EQ(rmsg.getContent(), test_msg);
       EXPECT_EQ(rmsg.type(), REQ_ADD);
       EXPECT_EQ(rmsg.kind(), COUNTER_STATS);
 
@@ -355,8 +355,8 @@ namespace chimbuko{
       {
 	Message msg_t;
 	msg_t.set_info(0,0,REP_ECHO,DEFAULT);
-	msg_t.set_msg(std::string(""), false);
-	strmsg = msg_t.data();
+	msg_t.setContent("");
+	strmsg = msg_t.serializeMessage();
 
 	zmq_msg_t msg;
 	int ret;
@@ -378,16 +378,16 @@ namespace chimbuko{
 	zmq_msg_close(&msg);
       }
       Message rmsg;
-      rmsg.set_msg(strmsg, true);
-      EXPECT_EQ(rmsg.buf(), "");
+      rmsg.deserializeMessage(strmsg);
+      EXPECT_EQ(rmsg.getContent(), "");
       EXPECT_EQ(rmsg.type(), REQ_QUIT);
 
       std::cout << "Mock PS received disconnect message, sending response" << std::endl;
       {
 	Message msg_t;
 	msg_t.set_info(0,0,REP_QUIT,DEFAULT);
-	msg_t.set_msg(std::string(""), false);
-	strmsg = msg_t.data();
+	msg_t.setContent("");
+	strmsg = msg_t.serializeMessage();
 
 	zmq_msg_t msg;
 	int ret;

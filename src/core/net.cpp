@@ -53,9 +53,9 @@ void NetInterface::find_and_perform_action(int worker_id, Message &msg_reply, co
 
 void NetInterface::find_and_perform_action(Message &msg_reply, const Message &msg, const NetInterface::PayloadMapType &payloads){  
   auto kit = payloads.find((MessageKind)msg.kind());
-  if(kit == payloads.end()) fatal_error("No payload associated with the message kind provided. Message: " + msg.buf() + " (did you add the payload to the server?)");
+  if(kit == payloads.end()) fatal_error("No payload associated with the message kind provided. Message: " + msg.getContent() + " (did you add the payload to the server?)");
   auto pit = kit->second.find((MessageType)msg.type());
-  if(pit == kit->second.end()) fatal_error("No payload associated with the message type provided. Mesage: " + msg.buf() + " (did you add the payload to the server?)");
+  if(pit == kit->second.end()) fatal_error("No payload associated with the message type provided. Mesage: " + msg.getContent() + " (did you add the payload to the server?)");
 
   msg_reply = msg.createReply();
   pit->second->action(msg_reply, msg);

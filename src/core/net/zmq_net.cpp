@@ -32,7 +32,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg(std::string("Hello!I am NET!"), false);
+    response.setContent(std::string("Hello!I am NET!"));
     std::lock_guard<std::mutex> _(m);
     clients++;
     client_has_connected = true;
@@ -53,7 +53,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg("", false);
+    response.setContent("");
     std::lock_guard<std::mutex> _(m);
     clients--;
     if(clients < 0) fatal_error("ZMQNet registered clients < 0! Likely a client did not perform a handshake");
@@ -76,7 +76,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg("", false);
+    response.setContent("");
     std::lock_guard<std::mutex> _(m);
     register_stop_cmd = true;
     verboseStream << "ZMQNet received remote stop command" << std::endl;
@@ -176,7 +176,7 @@ void doWork(void* context,
     //Parse the message and instantiate a reply message with appropriate sender
     timer.start();
     Message msg, msg_reply;
-    msg.set_msg(strmsg, true);
+    msg.deserializeMessage(strmsg);
     parse_time = timer.elapsed_ms();
 
     MessageKind kind = (MessageKind)msg.kind();
@@ -187,7 +187,7 @@ void doWork(void* context,
     perf_time = timer.elapsed_ms();
 
     //Send the reply
-    strmsg = msg_reply.data();
+    strmsg = msg_reply.serializeMessage();
     verboseStream << "ZMQNet worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
 
     timer.start();

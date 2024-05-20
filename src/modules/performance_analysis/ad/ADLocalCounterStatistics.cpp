@@ -69,7 +69,7 @@ std::pair<size_t, size_t> ADLocalCounterStatistics::updateGlobalStatistics(ADThr
 
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::COUNTER_STATS, step);
-  msg.set_msg(l_stats);
+  msg.setContent(l_stats);
   
   size_t sent_sz = msg.size();
   net_client.async_send(msg);

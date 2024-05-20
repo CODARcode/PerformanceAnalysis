@@ -129,8 +129,8 @@ public:
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
-    std::cout << "Bounce received: '" << message.buf() << "'" << std::endl;
-    response.set_msg(message.buf(), false);
+    std::cout << "Bounce received: '" << message.getContent() << "'" << std::endl;
+    response.setContent(message.getContent());
   };
 };
 
@@ -171,7 +171,7 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
 
 			  Message msg;
 			  msg.set_info(0,0,REQ_ECHO,CMD);
-			  msg.set_msg("Hello!!");
+			  msg.setContent("Hello!!");
 
 			  try{
 			    net_client.send_and_receive(msg, msg);
@@ -179,7 +179,7 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
 			    std::cout << "Got unexpected error: " << e.what();
 			    success = false;
 			  }
-			  if(success) response = msg.buf();
+			  if(success) response = msg.getContent();
 
 			  std::cout << "AD thread terminating connection" << std::endl;
 			  net_client.disconnect_ps();
@@ -213,7 +213,7 @@ public:
   void action(Message &response, const Message &message) override{
     check(message);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    response.set_msg(message.buf(), false);
+    response.setContent(message.getContent());
   };
 };
 
@@ -255,7 +255,7 @@ TEST(ADNetClientTestConnectPS, TestSendRecvTimeoutZMQnet){
 
 			  Message msg;
 			  msg.set_info(0,0,REQ_ECHO,CMD);
-			  msg.set_msg("Hello!!");
+			  msg.setContent("Hello!!");
 
 			  try{
 			    net_client.send_and_receive(msg, msg);
@@ -369,7 +369,7 @@ public:
   void action(Message &response, const Message &message) override{
     check(message);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    response.set_msg(std::to_string(val), false);
+    response.setContent(std::to_string(val));
   };
 };
 
@@ -415,7 +415,7 @@ TEST(ADNetClientTestConnectPS, SendRecvThreadZMQnet){
 	for(int i=0;i<4;i++){
 	  Message msg;
 	  msg.set_info(0,0,REQ_ECHO,CMD);
-	  msg.set_msg("Hello!!");
+	  msg.setContent("Hello!!");
 
 	  try{
 	    net_client.send_and_receive(msg, msg);
@@ -423,7 +423,7 @@ TEST(ADNetClientTestConnectPS, SendRecvThreadZMQnet){
 	    std::cout << "Got unexpected error: " << e.what();
 	    success = false;
 	  }
-	  if(success) responses.insert(msg.buf());
+	  if(success) responses.insert(msg.getContent());
 	  else break;
 	}
 
@@ -480,11 +480,11 @@ TEST(ADLocalNetClientTest, SendRecv){
   
   Message msg, msg_reply;
   msg.set_info(0,0,REQ_ECHO,CMD);
-  msg.set_msg("Hello!!");
+  msg.setContent("Hello!!");
 
   client.send_and_receive(msg_reply, msg);
 
-  EXPECT_EQ(msg_reply.buf(), "Hello!!");
+  EXPECT_EQ(msg_reply.getContent(), "Hello!!");
 
   client.disconnect_ps();
   EXPECT_EQ(client.use_ps(), false);

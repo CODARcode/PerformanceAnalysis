@@ -66,12 +66,12 @@ void NetPayloadGlobalFunctionIndexMap::action(Message &response, const Message &
 
   std::pair<unsigned long, std::string> pid_fname;
   {
-    std::stringstream ss; ss << message.buf();
+    std::stringstream ss; ss << message.getContent();
     cereal::PortableBinaryInputArchive rd(ss);
     rd(pid_fname);
   }
   unsigned long idx = m_idxmap->lookup(pid_fname.first, pid_fname.second); //uses a mutex lock
-  response.set_msg(anyToStr(idx), false);
+  response.setContent(anyToStr(idx));
 }
 
 
@@ -82,7 +82,7 @@ void NetPayloadGlobalFunctionIndexMapBatched::action(Message &response, const Me
   unsigned long pid;
   std::vector<std::string> func_names;
   {
-    std::stringstream ss; ss << message.buf();
+    std::stringstream ss; ss << message.getContent();
     cereal::PortableBinaryInputArchive rd(ss);
     rd(pid);
     rd(func_names);
@@ -95,7 +95,7 @@ void NetPayloadGlobalFunctionIndexMapBatched::action(Message &response, const Me
     std::stringstream ss;
     cereal::PortableBinaryOutputArchive wr(ss);
     wr(global_indices);
-    response.set_msg(ss.str(), false);
+    response.setContent(ss.str());
   }    
 }
 

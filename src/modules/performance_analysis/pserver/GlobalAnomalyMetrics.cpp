@@ -134,10 +134,10 @@ void NetPayloadUpdateAnomalyMetrics::action(Message &response, const Message &me
   if(m_global_anom_metrics == nullptr) throw std::runtime_error("Cannot update global anomaly metrics as stats object has not been linked");
   
   ADLocalAnomalyMetrics loc;
-  loc.net_deserialize(message.buf());
+  loc.net_deserialize(message.getContent());
   
   m_global_anom_metrics->add(loc);
-  response.set_msg("", false);
+  response.setContent("");
 }
 
 void PSstatSenderGlobalAnomalyMetricsPayload::add_json(nlohmann::json &into) const{ 

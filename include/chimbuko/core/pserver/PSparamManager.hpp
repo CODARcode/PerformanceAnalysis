@@ -139,7 +139,7 @@ namespace chimbuko{
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(m_freeze ? m_manager->getSerializedGlobalModel() : m_manager->updateWorkerModel(message.buf(), m_worker_id), false);
+      response.setContent(m_freeze ? m_manager->getSerializedGlobalModel() : m_manager->updateWorkerModel(message.getContent(), m_worker_id));
     }
   };
   /**
@@ -153,7 +153,7 @@ namespace chimbuko{
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(m_param->getSerializedGlobalModel(), false);
+      response.setContent(m_param->getSerializedGlobalModel());
     }
   };
 

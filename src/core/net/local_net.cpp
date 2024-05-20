@@ -23,8 +23,8 @@ std::string LocalNet::send_and_receive(const std::string &send_str){
   if(globalInstance() == nullptr){ fatal_error("An instance of LocalNet must exist"); }
 
   Message msg, msg_reply;
-  msg.set_msg(send_str, true);
+  msg.deserializeMessage(send_str);
   
   NetInterface::find_and_perform_action(0, msg_reply, msg, globalInstance()->m_payloads);
-  return msg_reply.data();
+  return msg_reply.serializeMessage();
 }

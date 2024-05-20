@@ -52,7 +52,7 @@ namespace chimbuko {
     MessageType type() const override{ return MessageType::REQ_ECHO; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(std::string("Hello!I am NET!"), false);
+      response.setContent(std::string("Hello!I am NET!"));
     };
   };
   /**
@@ -64,7 +64,7 @@ namespace chimbuko {
     MessageType type() const override{ return MessageType::REQ_ECHO; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(std::string("pong"), false);
+      response.setContent(std::string("pong"));
     };
   };
 

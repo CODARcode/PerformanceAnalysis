@@ -84,12 +84,12 @@ std::pair<size_t,size_t> ADOutlier::sync_param(ParamInterface* param)
   else {
     Message msg;
     msg.set_info(m_net_client->get_client_rank(), m_net_client->get_server_rank(), MessageType::REQ_ADD, MessageKind::PARAMETERS);
-    msg.set_msg(param->serialize(), false);
+    msg.setContent(param->serialize());
     size_t sent_sz = msg.size();
 
     m_net_client->send_and_receive(msg, msg);
     size_t recv_sz = msg.size();
-    m_param->assign(msg.buf());
+    m_param->assign(msg.getContent());
     return std::make_pair(sent_sz, recv_sz);
   }
 }

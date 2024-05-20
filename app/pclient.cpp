@@ -61,9 +61,9 @@ s     */
     {
       Message msg;
       msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
-      msg.set_msg("");
+      msg.setContent("");
       std::string strmsg;
-      ZMQNet::send(socket, msg.data());
+      ZMQNet::send(socket, msg.serializeMessage());
       ZMQNet::recv(socket, strmsg);
     }
 #endif
@@ -93,11 +93,11 @@ s     */
         // set message
         msg.clear();
         msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS, iFrame);
-        msg.set_msg(l_param.serialize(), false);
+        msg.setContent(l_param.serialize());
 
 #ifdef _USE_MPINET
         // send to server
-        MPINet::send(server, msg.data(), 0, MessageType::REQ_ADD, msg.count());
+        MPINet::send(server, msg.serializeMessage(), 0, MessageType::REQ_ADD, msg.count());
         
     	// receive reply
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
@@ -105,17 +105,14 @@ s     */
         std::cout << "receive reply from server\n";
     	MPI_Get_count(&status, MPI_BYTE, &count);
         msg.clear();
-        msg.set_msg(
-            MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count),
-            true
-        );
+        msg.deserializeMessage(MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count));
 #else
-        ZMQNet::send(socket, msg.data());
+        ZMQNet::send(socket, msg.serializeMessage());
 
         msg.clear();
         std::string strmsg;
         ZMQNet::recv(socket, strmsg);
-        msg.set_msg(strmsg, true);
+        msg.deserializeMessage(strmsg);
 #endif
         //g_param.assign(msg.data_buffer());
     }
@@ -128,7 +125,7 @@ s     */
     if (rank == 0) {
         msg.clear();
         msg.set_info(rank, 0, (int)MessageType::REQ_GET, MessageKind::SSTD);
-        MPINet::send(server, msg.data(), 0, MessageType::REQ_GET, msg.count());
+        MPINet::send(server, msg.serializeMessage(), 0, MessageType::REQ_GET, msg.count());
 
         // receive reply
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
@@ -149,10 +146,10 @@ s     */
 #else
     msg.clear();
     msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
-    msg.set_msg("");
+    msg.setContent("");
     std::string strmsg;
     std::cout << "pclient rank " << rank << " sending disconnect notification" << std::endl;
-    ZMQNet::send(socket, msg.data());
+    ZMQNet::send(socket, msg.serializeMessage());
     std::cout << "pclient rank " << rank << " waiting for disconnect notification response" << std::endl;
     ZMQNet::recv(socket, strmsg);
     std::cout << "pclient rank " << rank << " exiting" << std::endl;

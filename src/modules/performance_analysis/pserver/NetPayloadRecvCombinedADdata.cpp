@@ -14,13 +14,13 @@ void NetPayloadRecvCombinedADdata::action(Message &response, const Message &mess
   ADLocalAnomalyMetrics locm;
 
   ADcombinedPSdata comb(locf,locc,locm);
-  comb.net_deserialize(message.buf());
+  comb.net_deserialize(message.getContent());
 
   m_global_anom_stats->add_anomaly_data(locf);
   m_global_counter_stats->add_counter_data(locc);
   m_global_anom_metrics->add(locm);
 
-  response.set_msg("", false);
+  response.setContent("");
 }
 
 void NetPayloadRecvCombinedADdataArray::action(Message &response, const Message &message){
@@ -34,7 +34,7 @@ void NetPayloadRecvCombinedADdataArray::action(Message &response, const Message 
   std::vector<ADLocalAnomalyMetrics> locm;
 
   ADcombinedPSdataArray comb(locf,locc,locm);
-  comb.net_deserialize(message.buf());
+  comb.net_deserialize(message.getContent());
 
   int N = locf.size();
   if(locc.size() != N || locm.size() != N) fatal_error("Expect consistent size for arrays");
@@ -45,6 +45,6 @@ void NetPayloadRecvCombinedADdataArray::action(Message &response, const Message 
     m_global_anom_metrics->add(locm[i]);
   }
 
-  response.set_msg("", false);
+  response.setContent("");
 }
   

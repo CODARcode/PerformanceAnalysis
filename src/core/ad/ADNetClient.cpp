@@ -10,7 +10,7 @@ ADNetClient::ADNetClient() : m_use_ps(false), m_perf(nullptr){}
 ADNetClient::~ADNetClient(){}
 
 void ADNetClient::send_and_receive(Message &recv,  const Message &send){
-  recv.set_msg( send_and_receive(send), true );
+  recv.deserializeMessage( send_and_receive(send) );
 }
 
 void ADNetClient::async_send(const Message &send){
@@ -52,10 +52,10 @@ void ADZMQNetClient::connect_ps(int rank, int srank, std::string sname) {
   std::string strmsg;
 
   msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
-  msg.set_msg("Hello!");
+  msg.setContent("Hello!");
 
   verboseStream << "ADNetClient sending handshake message to server" << std::endl;
-  ZMQNet::send(m_socket, msg.data());
+  ZMQNet::send(m_socket, msg.serializeMessage());
 
   msg.clear();
 
@@ -69,10 +69,10 @@ void ADZMQNetClient::connect_ps(int rank, int srank, std::string sname) {
 
   verboseStream << "ADNetClient handshake response received" << std::endl;
 
-  msg.set_msg(strmsg, true);
+  msg.deserializeMessage(strmsg);
 
-  if (msg.buf().compare("Hello!I am NET!") != 0){
-    recoverable_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.buf());
+  if (msg.getContent().compare("Hello!I am NET!") != 0){
+    recoverable_error("Connect error to parameter server: response message not as expected (ZMQNET)! Got:" + msg.getContent());
     return;
   }
 
@@ -86,7 +86,7 @@ void ADZMQNetClient::disconnect_ps() {
   verboseStream << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl;
   Message msg;
   msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::DEFAULT);
-  msg.set_msg("");
+  msg.setContent("");
   send_and_receive(msg);
   verboseStream << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl;
   m_use_ps = false;
@@ -95,7 +95,7 @@ void ADZMQNetClient::disconnect_ps() {
 
 std::string ADZMQNetClient::send_and_receive(const Message &msg){
   PerfTimer timer;
-  std::string send_msg = msg.data(), recv_msg;
+  std::string send_msg = msg.serializeMessage(), recv_msg;
   //Send local parameters to PS
   ZMQNet::send(m_socket, send_msg);
 
@@ -117,7 +117,7 @@ void ADZMQNetClient::stopServer(){
   verboseStream << "Client is sending stop request to server" << std::endl;
   Message msg;
   msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::CMD);
-  msg.set_msg("");
+  msg.setContent("");
   send_and_receive(msg);
 }
 
@@ -255,7 +255,7 @@ std::string ADLocalNetClient::send_and_receive(const Message &msg){
   if(!m_use_ps) fatal_error("User should call connect_ps prior to sending/receiving messages");
 
   PerfTimer timer;    
-  std::string send_msg = msg.data();
+  std::string send_msg = msg.serializeMessage();
   std::string recv_msg = LocalNet::send_and_receive(send_msg);
 
 #ifdef _PERF_METRIC

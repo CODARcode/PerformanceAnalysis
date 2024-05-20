@@ -53,7 +53,7 @@ std::pair<size_t, size_t> ADLocalAnomalyMetrics::send(ADNetClient &net_client) c
   
   Message msg;
   msg.set_info(m_rank, net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::ANOMALY_METRICS, m_step);
-  msg.set_msg(net_serialize());
+  msg.setContent(net_serialize());
   
   size_t sent_sz = msg.size();
   net_client.async_send(msg);

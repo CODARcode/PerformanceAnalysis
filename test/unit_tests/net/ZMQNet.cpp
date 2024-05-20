@@ -57,7 +57,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_GET; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg(std::string("pong2"), false);
+    response.setContent(std::string("pong2"));
   };
 };
 

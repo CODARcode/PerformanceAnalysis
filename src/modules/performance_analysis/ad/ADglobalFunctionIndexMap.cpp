@@ -27,11 +27,11 @@ unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, co
       cereal::PortableBinaryOutputArchive wr(ss);
       std::pair<unsigned long, std::string> towr(m_pid, func_name);
       wr(towr);
-      msg.set_msg(ss.str(), false);
+      msg.setContent(ss.str());
     }
 
     m_net_client->send_and_receive(msg, msg);
-    unsigned long global_idx = strToAny<unsigned long>(msg.buf());
+    unsigned long global_idx = strToAny<unsigned long>(msg.getContent());
 
     m_idxmap[local_idx] = global_idx;
     verboseStream << "ADglobalFunctionIndexMap rank " << rank << " local index " << local_idx << " maps to global idx " << global_idx << std::endl;
@@ -77,14 +77,14 @@ std::vector<unsigned long> ADglobalFunctionIndexMap::lookup(const std::vector<un
       cereal::PortableBinaryOutputArchive wr(ss);
       wr(m_pid);
       wr(get_remote_func_names);
-      msg.set_msg(ss.str(), false);
+      msg.setContent(ss.str());
     }
     
     m_net_client->send_and_receive(msg, msg);
     
     std::vector<unsigned long> global_indices;
     {
-      std::stringstream ss; ss << msg.buf();
+      std::stringstream ss; ss << msg.getContent();
       cereal::PortableBinaryInputArchive rd(ss);
       rd(global_indices);
     }    

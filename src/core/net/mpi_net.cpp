@@ -104,7 +104,7 @@ void MPINet::run()
             
             _recv_buffer = this->recv(client, _source, _tag, _count);
             if (_recv_buffer.size()) {
-                _msg.set_msg(_recv_buffer, true);
+                _msg.deserializeMessage(_recv_buffer);
             }
 
             _msg_reply = _msg.createReply();

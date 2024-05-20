@@ -37,7 +37,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg(std::string("Hello!I am NET!"), false);
+    response.setContent(std::string("Hello!I am NET!"));
     clients++;
     client_has_connected = 1;
     verboseStream << "ZMQMENet thread " << thr_idx << " received handshake, #clients is now " << clients << std::endl;
@@ -54,7 +54,7 @@ public:
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
-    response.set_msg("", false);
+    response.setContent("");
     clients--;
     if(clients < 0) throw std::runtime_error("ZMQMENet registered clients < 0! Likely a client did not perform a handshake");
     verboseStream << "ZMQMENet thread " << thr_idx << " received disconnect notification, #clients is now " << clients << std::endl;
@@ -131,7 +131,7 @@ void doWork(std::unordered_map<int,
     
       //Parse the message and instantiate a reply message with appropriate sender
       Message msg, msg_reply;
-      msg.set_msg(strmsg, true);
+      msg.deserializeMessage(strmsg);
 
       MessageKind kind = (MessageKind)msg.kind();
       MessageType type = (MessageType)msg.type();
@@ -140,7 +140,7 @@ void doWork(std::unordered_map<int,
       NetInterface::find_and_perform_action(msg_reply, msg, payloads_t);
       perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
       
-      strmsg = msg_reply.data();
+      strmsg = msg_reply.serializeMessage();
       verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;
 
       //Send the reply

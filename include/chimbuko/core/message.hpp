@@ -160,27 +160,25 @@ public:
      */
     void set_info(int src, int dst, int type, int kind, int frame = 0, int size = 0);
 
+    /**
+     * @brief Return the message in string serialized form
+     */
+    std::string serializeMessage() const;
+
+    /**
+     * @brief Unpack the string into this object, setting the header and content as appropriate
+     */
+    void deserializeMessage(const std::string &from);
+
     /** 
      * @brief Set the message contents. 
-     *
-     * If 'include_head' is true, the string 'msg' will be interpreted as a serialized message and it will be unpacked into this object (use to parse received messages)
-     * If 'include_head' is false, the message contents will be set to 'msg' and the header will be set to contain the length of the string as its size entry (use to generate new messages to send)
      */
-    void set_msg(const std::string& msg, bool include_head=false); 
-  
-    /**
-     * @brief Set the message contents to an integer; equivalent to set_msg(int_as_string, false)
-     */
-    void set_msg(int cmd);
+    void setContent(const std::string &to);
 
     /**
      * @brief Return the message contents as a string
      */
-    const std::string& buf() const { return m_buf; }; 
-    /**
-     * @brief Return the message in serialized form
-     */
-    std::string data() const;
+    const std::string& getContent() const { return m_buf; }; 
 
     /**
      * @brief Get the origin rank

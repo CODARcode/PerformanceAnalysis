@@ -97,24 +97,18 @@ void Message::set_info(int src, int dst, int type, int kind, int frame, int size
     m_head.frame() = (int)frame;
 }
 
-void Message::set_msg(const std::string& msg, bool include_head)
-{
-  if(include_head){
-    std::stringstream ss; ss << msg;
-    cereal::PortableBinaryInputArchive rd(ss);
-    rd(*this);
-  }else{
-    m_buf = msg;
-    m_head.size() = m_buf.size();
-  }
+void Message::deserializeMessage(const std::string& from){
+  std::stringstream ss; ss << from;
+  cereal::PortableBinaryInputArchive rd(ss);
+  rd(*this);
 }
 
-void Message::set_msg(int cmd)
-{
-    set_msg(std::to_string(cmd));
+void Message::setContent(const std::string& msg){
+  m_buf = msg;
+  m_head.size() = m_buf.size();
 }
 
-std::string Message::data() const 
+std::string Message::serializeMessage() const 
 {
   std::stringstream ss;
   {

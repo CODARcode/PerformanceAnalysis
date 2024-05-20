@@ -120,10 +120,10 @@ namespace chimbuko {
     void action(Message &response, const Message &message) override{
       check(message);
       //Response message is a copy of the updated statistics in JSON form
-      response.set_msg(m_freeze ?
+      response.setContent(m_freeze ?
 		       m_param->serialize() :
-		       m_param->update(message.buf(), true),  //second argument indicates that a serialized copy of the updated params should be returned
-		       false);
+		       m_param->update(message.getContent(), true)  //second argument indicates that a serialized copy of the updated params should be returned
+		       );
     }
   };
   /**
@@ -137,7 +137,7 @@ namespace chimbuko {
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override{
       check(message);
-      response.set_msg(m_param->serialize(), false);
+      response.setContent(m_param->serialize());
     }
   };
 

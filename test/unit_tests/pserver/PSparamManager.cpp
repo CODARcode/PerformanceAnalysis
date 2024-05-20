@@ -304,20 +304,20 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
 
   Message msg;
   msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
-  msg.set_msg(w1.serialize(), false);
+  msg.setContent(w1.serialize());
   net_client.send_and_receive(msg, msg);
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     
   msg.clear();
   msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
-  msg.set_msg(w2.serialize(), false);
+  msg.setContent(w2.serialize());
   net_client.send_and_receive(msg, msg);
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   msg.clear();
   msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
-  msg.set_msg(w3.serialize(), false);
+  msg.setContent(w3.serialize());
   net_client.send_and_receive(msg, msg);
 
 
@@ -332,7 +332,7 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   net_client.send_and_receive(msg, msg);
 
   HbosParam glob;
-  glob.assign(msg.buf());
+  glob.assign(msg.getContent());
 
   ASSERT_TRUE(combined.find(fid));
   ASSERT_TRUE(glob.find(fid));
