@@ -25,20 +25,17 @@ enum MessageType {
 std::string toString(const MessageType m);
 
 /**
- * @brief Enum of the message "kind" describing the context of the action
+ * @brief Enum of the message "kind" describing the context of the action for builtin actions
+ * 
+ * NOTE: Builtin actions will reserve the range -1 .. -infty for values; modules *must* use range 0...+infty for defined functionality
  */
-enum MessageKind {
-    DEFAULT = 0,
-    CMD     = 1,
-    PARAMETERS    = 2,
-    ANOMALY_STATS = 3,
-    COUNTER_STATS = 4,
-    FUNCTION_INDEX = 5,
-    ANOMALY_METRICS = 6,
-    AD_PS_COMBINED_STATS = 7
+enum BuiltinMessageKind {
+    DEFAULT = -1,
+    CMD     = -2,
+    PARAMETERS    = -3,
 };
 
-std::string toString(const MessageKind m);
+std::string toString(const BuiltinMessageKind m);
 
 
 enum MessageCmd {
@@ -201,11 +198,6 @@ public:
     int kind() const { return m_head.kind(); }
 
     /**
-     * @brief Get the message kind in string form
-     */
-    std::string kind_str() const;
-
-   /**
     * @brief Get the message size in bytes
     */
     int size() const { return m_head.size(); }

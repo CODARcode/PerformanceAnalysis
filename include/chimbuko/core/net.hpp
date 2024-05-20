@@ -20,8 +20,10 @@ namespace chimbuko {
   public:
     /**
      * @brief The message kind to which the payload is to be bound
+     *
+     * Chimbuko core reserves range -1...-infty, modules *must* use range 0..+infty
      */
-    virtual MessageKind kind() const = 0;
+    virtual int kind() const = 0;
 
     /**
      * @brief The message type to which the payload is to be bound
@@ -48,7 +50,7 @@ namespace chimbuko {
    */
   class NetPayloadHandShake: public NetPayloadBase{
   public:
-    MessageKind kind() const override{ return MessageKind::DEFAULT; }
+    int kind() const override{ return BuiltinMessageKind::DEFAULT; }
     MessageType type() const override{ return MessageType::REQ_ECHO; }
     void action(Message &response, const Message &message) override{
       check(message);
@@ -60,7 +62,7 @@ namespace chimbuko {
    */
   class NetPayloadPing: public NetPayloadBase{
   public:
-    MessageKind kind() const override{ return MessageKind::CMD; }
+    int kind() const override{ return BuiltinMessageKind::CMD; }
     MessageType type() const override{ return MessageType::REQ_ECHO; }
     void action(Message &response, const Message &message) override{
       check(message);
@@ -144,7 +146,7 @@ namespace chimbuko {
      */
     void list_payloads(std::ostream &os) const;
 
-    typedef std::unordered_map<MessageKind, std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> > > PayloadMapType; /**< Map of message kind/type to payloads */
+    typedef std::unordered_map<int, std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> > > PayloadMapType; /**< Map of message kind/type to payloads */
     typedef std::unordered_map<int, PayloadMapType> WorkerPayloadMapType; /**< Map of worker index and message type to payloads */
 
     /**

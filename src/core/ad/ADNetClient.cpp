@@ -51,7 +51,7 @@ void ADZMQNetClient::connect_ps(int rank, int srank, std::string sname) {
   Message msg;
   std::string strmsg;
 
-  msg.set_info(rank, srank, MessageType::REQ_ECHO, MessageKind::DEFAULT);
+  msg.set_info(rank, srank, MessageType::REQ_ECHO, BuiltinMessageKind::DEFAULT);
   msg.setContent("Hello!");
 
   verboseStream << "ADNetClient sending handshake message to server" << std::endl;
@@ -85,7 +85,7 @@ void ADZMQNetClient::disconnect_ps() {
   verboseStream << "ADNetClient rank " << m_rank << " disconnecting from PS" << std::endl;
   verboseStream << "ADNetClient rank " << m_rank << " sending disconnect message" << std::endl;
   Message msg;
-  msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::DEFAULT);
+  msg.set_info(0, 0, MessageType::REQ_QUIT, BuiltinMessageKind::DEFAULT);
   msg.setContent("");
   send_and_receive(msg);
   verboseStream << "ADNetClient rank " << m_rank << " disconnected from PS" << std::endl;
@@ -116,7 +116,7 @@ std::string ADZMQNetClient::send_and_receive(const Message &msg){
 void ADZMQNetClient::stopServer(){
   verboseStream << "Client is sending stop request to server" << std::endl;
   Message msg;
-  msg.set_info(0, 0, MessageType::REQ_QUIT, MessageKind::CMD);
+  msg.set_info(0, 0, MessageType::REQ_QUIT, BuiltinMessageKind::CMD);
   msg.setContent("");
   send_and_receive(msg);
 }

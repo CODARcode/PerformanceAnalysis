@@ -303,20 +303,20 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   std::cout << "Main thread sending data to PS" << std::endl;
 
   Message msg;
-  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_info(0,0, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS);
   msg.setContent(w1.serialize());
   net_client.send_and_receive(msg, msg);
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     
   msg.clear();
-  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_info(0,0, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS);
   msg.setContent(w2.serialize());
   net_client.send_and_receive(msg, msg);
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   msg.clear();
-  msg.set_info(0,0, MessageType::REQ_ADD, MessageKind::PARAMETERS);
+  msg.set_info(0,0, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS);
   msg.setContent(w3.serialize());
   net_client.send_and_receive(msg, msg);
 
@@ -328,7 +328,7 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
   //Get the global model
   std::cout << "Main thread getting global model" << std::endl;
   msg.clear();
-  msg.set_info(0,0, MessageType::REQ_GET, MessageKind::PARAMETERS);
+  msg.set_info(0,0, MessageType::REQ_GET, BuiltinMessageKind::PARAMETERS);
   net_client.send_and_receive(msg, msg);
 
   HbosParam glob;

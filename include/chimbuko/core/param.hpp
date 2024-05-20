@@ -115,7 +115,7 @@ namespace chimbuko {
      * @param freeze If true the state will not be modified by the update command
      */
     NetPayloadUpdateParams(ParamInterface *param, bool freeze = false): m_param(param), m_freeze(freeze){}
-    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    int kind() const override{ return BuiltinMessageKind::PARAMETERS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
@@ -133,7 +133,7 @@ namespace chimbuko {
     ParamInterface const* m_param;
   public:
     NetPayloadGetParams(ParamInterface const* param): m_param(param){}
-    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    int kind() const override{ return BuiltinMessageKind::PARAMETERS; }
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override{
       check(message);

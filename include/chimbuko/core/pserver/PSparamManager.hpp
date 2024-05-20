@@ -135,7 +135,7 @@ namespace chimbuko{
      */
     NetPayloadUpdateParamManager(PSparamManager* manager, int worker_id, bool freeze = false): m_manager(manager), m_worker_id(worker_id), m_freeze(freeze){}
 
-    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    int kind() const override{ return BuiltinMessageKind::PARAMETERS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override{
       check(message);
@@ -149,7 +149,7 @@ namespace chimbuko{
     PSparamManager const* m_param;
   public:
     NetPayloadGetParamsFromManager(PSparamManager const* param): m_param(param){}
-    MessageKind kind() const override{ return MessageKind::PARAMETERS; }
+    int kind() const override{ return BuiltinMessageKind::PARAMETERS; }
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override{
       check(message);

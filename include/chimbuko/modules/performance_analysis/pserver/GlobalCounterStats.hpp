@@ -10,6 +10,7 @@
 #include <chimbuko/core/net.hpp>
 #include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 
 namespace chimbuko{
 
@@ -82,7 +83,7 @@ namespace chimbuko{
     GlobalCounterStats * m_global_counter_stats;
   public:
     NetPayloadUpdateCounterStats(GlobalCounterStats * global_counter_stats): m_global_counter_stats(global_counter_stats){}
-    MessageKind kind() const override{ return MessageKind::COUNTER_STATS; }
+    int kind() const override{ return MessageKind::COUNTER_STATS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override;
   };

@@ -5,6 +5,7 @@
 #include "chimbuko/core/message.hpp"
 #include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/PScommon.hpp"
 
 #ifdef _USE_MPINET
 #include "chimbuko/core/net/mpi_net.hpp"
@@ -52,7 +53,7 @@ int main (int argc, char** argv)
     //Handshake
     {
       Message msg;
-      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)BuiltinMessageKind::DEFAULT);
       msg.setContent("");
       std::string strmsg;
       ZMQNet::send(socket, msg.serializeMessage());
@@ -115,7 +116,7 @@ int main (int argc, char** argv)
     throw std::runtime_error("Not implemented yet.");
 #else
     msg.clear();
-    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
     msg.setContent("");
     std::cout << "pclient_stats rank " << rank << " sending disconnect notification" << std::endl;
     ZMQNet::send(socket, msg.serializeMessage());

@@ -18,7 +18,7 @@ namespace chimbuko{
 				 GlobalAnomalyMetrics * global_anom_metrics): m_global_anom_stats(global_anom_stats),
 									      m_global_counter_stats(global_counter_stats),
 									      m_global_anom_metrics(global_anom_metrics){}
-    MessageKind kind() const override{ return MessageKind::AD_PS_COMBINED_STATS; }
+    int kind() const override{ return MessageKind::AD_PS_COMBINED_STATS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override;
   };
@@ -35,7 +35,7 @@ namespace chimbuko{
 				      GlobalAnomalyMetrics * global_anom_metrics): m_global_anom_stats(global_anom_stats),
 										   m_global_counter_stats(global_counter_stats),
 										   m_global_anom_metrics(global_anom_metrics){}
-    MessageKind kind() const override{ return MessageKind::AD_PS_COMBINED_STATS; }
+    int kind() const override{ return MessageKind::AD_PS_COMBINED_STATS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override;
   };

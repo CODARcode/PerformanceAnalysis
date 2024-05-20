@@ -10,6 +10,7 @@
 #include <chimbuko/core/pserver/PSstatSender.hpp>
 #include <chimbuko/modules/performance_analysis/ad/ADLocalAnomalyMetrics.hpp>
 #include <chimbuko/modules/performance_analysis/pserver/FunctionProfile.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 
 namespace chimbuko{
 
@@ -118,7 +119,7 @@ namespace chimbuko{
     GlobalAnomalyMetrics * m_global_anom_metrics;
   public:
     NetPayloadUpdateAnomalyMetrics(GlobalAnomalyMetrics * global_anom_metrics): m_global_anom_metrics(global_anom_metrics){}
-    MessageKind kind() const override{ return MessageKind::ANOMALY_METRICS; }
+    int kind() const override{ return MessageKind::ANOMALY_METRICS; }
     MessageType type() const override{ return MessageType::REQ_ADD; }
     void action(Message &response, const Message &message) override;
   };

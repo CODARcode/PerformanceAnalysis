@@ -33,7 +33,7 @@ public:
 
   NetPayloadHandShakeWithCountME(int thr_idx, int &clients, int &client_has_connected): clients(clients), thr_idx(thr_idx), client_has_connected(client_has_connected){}
   
-  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  int kind() const override{ return BuiltinMessageKind::DEFAULT; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -50,7 +50,7 @@ public:
   int thr_idx;
   NetPayloadClientDisconnectWithCountME(int thr_idx, int &clients): clients(clients), thr_idx(thr_idx){}
   
-  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  int kind() const override{ return BuiltinMessageKind::DEFAULT; }
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -75,7 +75,7 @@ void ZMQMENet::init(int* /*argc*/, char*** /*argv*/, int nt){
 }
 
 void doWork(std::unordered_map<int,
-	    std::unordered_map<MessageKind,
+	    std::unordered_map<int,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> > 
 	    >
 	    > &payloads,
@@ -133,12 +133,12 @@ void doWork(std::unordered_map<int,
       Message msg, msg_reply;
       msg.deserializeMessage(strmsg);
 
-      MessageKind kind = (MessageKind)msg.kind();
+      int kind = msg.kind();
       MessageType type = (MessageType)msg.type();
       
       timer.start();
       NetInterface::find_and_perform_action(msg_reply, msg, payloads_t);
-      perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
+      perf.add(perf_prefix + "find_and_perform_action_kind"+std::to_string(kind)+"_"+toString(type)+"_ms", timer.elapsed_ms());
       
       strmsg = msg_reply.serializeMessage();
       verboseStream << "ZMQMENet Worker thread " << thr_idx << " sending response of size " << strmsg.size() << std::endl;

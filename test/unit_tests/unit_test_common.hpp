@@ -5,6 +5,7 @@
 #include <mutex>
 #include <chimbuko/modules/performance_analysis/ad/ADDefine.hpp>
 #include <chimbuko/modules/performance_analysis/ad/ExecData.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include <sstream>
 #include <list>
 #include <chimbuko/core/message.hpp>

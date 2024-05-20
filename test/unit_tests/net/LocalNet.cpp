@@ -30,7 +30,7 @@ TEST(TestLocalNet, TestSingleton){
 
 class NetPayloadBounceback: public NetPayloadBase{
 public:
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -57,7 +57,7 @@ TEST(TestLocalNet, SendAndReceive){
 
   std::string the_message = "Hello!";
   Message msg;
-  msg.set_info(0,0, MessageType::REQ_ECHO, MessageKind::CMD);
+  msg.set_info(0,0, MessageType::REQ_ECHO, BuiltinMessageKind::CMD);
   msg.setContent(the_message);
 
   std::string str_reply = LocalNet::send_and_receive(msg.serializeMessage());

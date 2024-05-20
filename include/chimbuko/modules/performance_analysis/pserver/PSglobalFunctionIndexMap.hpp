@@ -1,5 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include <string>
 #include <iostream>
 #include <unordered_map>
@@ -58,7 +59,7 @@ namespace chimbuko{
     PSglobalFunctionIndexMap* m_idxmap;
   public:
     NetPayloadGlobalFunctionIndexMap(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
-    MessageKind kind() const override{ return MessageKind::FUNCTION_INDEX; }
+    int kind() const override{ return MessageKind::FUNCTION_INDEX; }
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override;
   };
@@ -70,7 +71,7 @@ namespace chimbuko{
     PSglobalFunctionIndexMap* m_idxmap;
   public:
     NetPayloadGlobalFunctionIndexMapBatched(PSglobalFunctionIndexMap* idxmap): m_idxmap(idxmap){}
-    MessageKind kind() const override{ return MessageKind::FUNCTION_INDEX; }
+    int kind() const override{ return MessageKind::FUNCTION_INDEX; }
     MessageType type() const override{ return MessageType::REQ_GET; }
     void action(Message &response, const Message &message) override;
   };

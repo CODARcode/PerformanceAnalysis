@@ -28,7 +28,7 @@ public:
   std::mutex &m;
   NetPayloadHandShakeWithCount(int &clients, bool &client_has_connected, std::mutex &m): clients(clients), m(m), client_has_connected(client_has_connected){}
 
-  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  int kind() const override{ return BuiltinMessageKind::DEFAULT; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -49,7 +49,7 @@ public:
   std::mutex &m;
   NetPayloadClientDisconnectWithCount(int &clients, std::mutex &m): clients(clients), m(m){}
 
-  MessageKind kind() const override{ return MessageKind::DEFAULT; }
+  int kind() const override{ return BuiltinMessageKind::DEFAULT; }
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -72,7 +72,7 @@ public:
   std::mutex &m;
   NetPayloadClientRemoteStop(bool &register_stop_cmd, std::mutex &m): register_stop_cmd(register_stop_cmd), m(m){}
   
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_QUIT; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -99,11 +99,11 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
       fatal_error("ZMQNet::init couldn't set number of io threads to requested amount");
 
     //Because ZMQNet workers are interchangeable, added a check to ensure all workers have a work item associated with a given message kind/type
-    std::set<std::pair<MessageKind, MessageType> > mtypes;
+    std::set<std::pair<int, MessageType> > mtypes;
     for(auto const &t: m_payloads)
       for(auto const &k : t.second)
 	for(auto const &t: k.second)
-	  mtypes.insert(std::pair<MessageKind, MessageType>(k.first,t.first));
+	  mtypes.insert(std::pair<int, MessageType>(k.first,t.first));
     if(mtypes.size()){ //only do the check if work items have actually been assigned
       for(int t=0; t<nt; t++){
 	auto thrit = m_payloads.find(t);
@@ -111,9 +111,9 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 	auto const &tloads = thrit->second;
 
 	for(auto const &kt: mtypes){
-	  verboseStream << "ZMQNet::init checking thread " << t << " payloads for " << toString(kt.first) << "," << toString(kt.second) << std::endl;
+	  verboseStream << "ZMQNet::init checking thread " << t << " payloads for " << kt.first << "," << toString(kt.second) << std::endl;
 	  auto kit = tloads.find(kt.first);
-	  if(kit == tloads.end()) fatal_error(stringize("Thread %d does not have a payload for message kind %s",t,toString(kt.first).c_str()));
+	  if(kit == tloads.end()) fatal_error(stringize("Thread %d does not have a payload for message kind %d",t,kt.first));
 	  auto tit = kit->second.find(kt.second);
 	  if(tit == kit->second.end()) fatal_error(stringize("Thread %d does not have a payload for message type %s",t,toString(kt.second).c_str()));
 	}
@@ -131,7 +131,7 @@ void ZMQNet::init(int* /*argc*/, char*** /*argv*/, int nt)
 }
 
 void doWork(void* context,
-	    std::unordered_map<MessageKind,
+	    std::unordered_map<int,
 	    std::unordered_map<MessageType,  std::unique_ptr<NetPayloadBase> >
 	    > &payloads,
 	    PerfStats &perf, int thr_idx,
@@ -179,7 +179,7 @@ void doWork(void* context,
     msg.deserializeMessage(strmsg);
     parse_time = timer.elapsed_ms();
 
-    MessageKind kind = (MessageKind)msg.kind();
+    int kind = msg.kind();
     MessageType type = (MessageType)msg.type();
 
     timer.start();
@@ -198,7 +198,7 @@ void doWork(void* context,
     perf.add(perf_prefix + "poll_time_ms", poll_time);
     perf.add(perf_prefix + "receive_from_front_ms", recv_time);
     perf.add(perf_prefix + "message_parse_ms", parse_time);
-    perf.add(perf_prefix + "find_and_perform_action_"+toString(kind)+"_"+toString(type)+"_ms", perf_time);
+    perf.add(perf_prefix + "find_and_perform_action_kind"+std::to_string(kind)+"_"+toString(type)+"_ms", perf_time);
     perf.add(perf_prefix + "send_to_front_ms", send_time);
   }//while(<receiving messages>)
 

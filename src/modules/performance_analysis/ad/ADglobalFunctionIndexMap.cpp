@@ -1,4 +1,5 @@
 #include <chimbuko/modules/performance_analysis/ad/ADglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <cereal/archives/portable_binary.hpp>
 #include <cereal/types/vector.hpp>

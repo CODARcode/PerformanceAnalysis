@@ -69,13 +69,13 @@ TEST_F(ParamTest, MessageTest)
     Message::Header c_head;
     std::string dummy{"Hello World!"}, dummy2;
 
-    msg.set_info(0, 1, MessageType::REQ_ADD, MessageKind::PARAMETERS, 10);
+    msg.set_info(0, 1, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS, 10);
     msg.setContent(dummy);
 
     EXPECT_EQ(0, msg.src());
     EXPECT_EQ(1, msg.dst());
     EXPECT_EQ(MessageType::REQ_ADD, msg.type());
-    EXPECT_EQ(MessageKind::PARAMETERS, msg.kind());
+    EXPECT_EQ(BuiltinMessageKind::PARAMETERS, msg.kind());
     EXPECT_EQ(10, msg.frame());
     EXPECT_EQ((int)dummy.size(), msg.size());
  
@@ -84,7 +84,7 @@ TEST_F(ParamTest, MessageTest)
     EXPECT_EQ(1, c_msg.src());
     EXPECT_EQ(0, c_msg.dst());
     EXPECT_EQ(MessageType::REP_ADD, c_msg.type());
-    EXPECT_EQ(MessageKind::PARAMETERS, c_msg.kind());
+    EXPECT_EQ(BuiltinMessageKind::PARAMETERS, c_msg.kind());
     EXPECT_EQ(10, c_msg.frame());
 
     dummy2 = msg.getContent();
@@ -121,13 +121,13 @@ TEST_F(ParamTest, SstdMessageTest)
         // set message
         msg.set_info(1, 2, 
             (int)chimbuko::MessageType::REQ_ADD, 
-            (int)chimbuko::MessageKind::PARAMETERS, iFrame);
+            (int)chimbuko::BuiltinMessageKind::PARAMETERS, iFrame);
         msg.setContent(l_param.serialize());
         
         EXPECT_EQ(1, msg.src());
         EXPECT_EQ(2, msg.dst());
         EXPECT_EQ(chimbuko::MessageType::REQ_ADD, msg.type());
-        EXPECT_EQ(chimbuko::MessageKind::PARAMETERS, msg.kind());
+        EXPECT_EQ(chimbuko::BuiltinMessageKind::PARAMETERS, msg.kind());
         EXPECT_EQ((int)l_param.serialize().size(), msg.size());
         EXPECT_EQ(iFrame, msg.frame());
 

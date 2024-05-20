@@ -60,7 +60,7 @@ s     */
     //Handshake
     {
       Message msg;
-      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)BuiltinMessageKind::DEFAULT);
       msg.setContent("");
       std::string strmsg;
       ZMQNet::send(socket, msg.serializeMessage());
@@ -92,7 +92,7 @@ s     */
         }
         // set message
         msg.clear();
-        msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS, iFrame);
+        msg.set_info(rank, 0, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS, iFrame);
         msg.setContent(l_param.serialize());
 
 #ifdef _USE_MPINET
@@ -124,7 +124,7 @@ s     */
 #ifdef _USE_MPINET
     if (rank == 0) {
         msg.clear();
-        msg.set_info(rank, 0, (int)MessageType::REQ_GET, MessageKind::SSTD);
+        msg.set_info(rank, 0, (int)MessageType::REQ_GET, BuiltinMessageKind::SSTD);
         MPINet::send(server, msg.serializeMessage(), 0, MessageType::REQ_GET, msg.count());
 
         // receive reply
@@ -139,13 +139,13 @@ s     */
         c_param.update(msg.data_buffer(), false);
 
         msg.clear();
-        msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+        msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(server, msg.data(), 0, MessageType::REQ_QUIT, msg.count());
     }
 #else
     msg.clear();
-    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
     msg.setContent("");
     std::string strmsg;
     std::cout << "pclient rank " << rank << " sending disconnect notification" << std::endl;

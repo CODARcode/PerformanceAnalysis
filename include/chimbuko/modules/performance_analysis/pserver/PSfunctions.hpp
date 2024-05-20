@@ -4,8 +4,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 #include <chimbuko/core/pserver/PSparamManager.hpp>
 
-namespace chimbuko{
-  
+namespace chimbuko{ 
   /**
    * @brief Write the algorithm model and the mapping between global function index and name to a file
    */

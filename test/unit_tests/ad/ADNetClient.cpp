@@ -125,7 +125,7 @@ TEST(ADNetClientTestConnectPS, ConnectsZMQnet){
 
 class NetPayloadBounceback: public NetPayloadBase{
 public:
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -208,7 +208,7 @@ TEST(ADNetClientTestConnectPS, SendRecvZMQnet){
 
 class NetPayloadBouncebackDelayed: public NetPayloadBase{
 public:
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);
@@ -364,7 +364,7 @@ class NetPayloadGetValue: public NetPayloadBase{
 public:
   NetPayloadGetValue(int val): val(val){}
 
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_ECHO; }
   void action(Message &response, const Message &message) override{
     check(message);

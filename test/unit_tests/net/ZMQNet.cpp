@@ -53,7 +53,7 @@ TEST(TestZMQNet, StopsWhenAsked){
 
 class NetPayloadPing2: public NetPayloadBase{
 public:
-  MessageKind kind() const override{ return MessageKind::CMD; }
+  int kind() const override{ return BuiltinMessageKind::CMD; }
   MessageType type() const override{ return MessageType::REQ_GET; }
   void action(Message &response, const Message &message) override{
     check(message);

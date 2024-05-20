@@ -1,6 +1,6 @@
 #include <chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp>
 #include <chimbuko/modules/performance_analysis/ad/AnomalyData.hpp>
-
+#include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include <chimbuko/core/util/serialize.hpp>
 #include <climits>
 #include <algorithm>

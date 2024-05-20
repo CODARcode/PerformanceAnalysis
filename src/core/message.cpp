@@ -25,18 +25,13 @@ std::string chimbuko::toString(const MessageType m){
 #undef KSTR
 }
 
-std::string chimbuko::toString(const MessageKind m){
+std::string chimbuko::toString(const BuiltinMessageKind m){
 #define KSTR(A) case A: return #A
 
   switch(m){
     KSTR(DEFAULT);
     KSTR(CMD);
     KSTR(PARAMETERS);
-    KSTR(ANOMALY_STATS);
-    KSTR(COUNTER_STATS);
-    KSTR(FUNCTION_INDEX);
-    KSTR(ANOMALY_METRICS);
-    KSTR(AD_PS_COMBINED_STATS);
     default: return "UNKNOWN";
   }
 #undef KSTR
@@ -129,8 +124,4 @@ Message Message::createReply() const
     reply.m_head.size() = m_head.size();
     reply.m_head.frame() = m_head.frame();
     return reply;
-}
-
-std::string Message::kind_str() const {
-  return toString((MessageKind)m_head.kind());
 }
