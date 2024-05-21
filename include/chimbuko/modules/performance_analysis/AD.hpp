@@ -18,6 +18,3 @@
 #include "chimbuko/modules/performance_analysis/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADMonitoring.hpp"
 #include "chimbuko/core/ad/utils.hpp"
-#include <queue>
-
-typedef std::priority_queue<chimbuko::Event_t, std::vector<chimbuko::Event_t>, std::greater<std::vector<chimbuko::Event_t>::value_type>> PQUEUE;

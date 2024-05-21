@@ -3,6 +3,11 @@
 
 #IMPORTANT NOTE: Variables that cannot be left as default are marked as <------------ ***SET ME***
 
+###################################
+#General options
+###################################
+module="performance_analysis"
+
 ####################################
 #Options for visualization module
 ####################################

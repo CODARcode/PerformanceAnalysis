@@ -74,6 +74,11 @@ ps_dir=${base}/chimbuko/pserver
 #Run the Chimbuko head node services
 ####################################
 
+echo "==========================================="
+echo "Starting Chimbuko services with module: ${module}"
+echo "==========================================="
+
+
 #Provenance database
 extra_args=${ad_extra_args}
 ps_extra_args=${pserver_extra_args}
@@ -453,7 +458,7 @@ if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
     echo "The user has specified a workflow comprising multiple components. Chimbuko will generate separate files containing pre-generated launch commands."
     for i in ${!EXE_NAME[@]}; do
 	exe=${EXE_NAME[$i]}
-	ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i} ${ad_opts} 2>&1 | tee ${log_dir}/ad.${exe}.log"
+	ad_cmd="driver ${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i} ${ad_opts} 2>&1 | tee ${log_dir}/ad.${exe}.log"
 	echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.${exe}.var
 
 	echo "---------------------------"
@@ -464,12 +469,12 @@ if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
 	echo "Or equivalent"
 
 	#For use in other scripts, output the AD cmdline options to file
-	echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i}" > ${var_dir}/chimbuko_ad_args.${exe}.var
+	echo "${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i}" > ${var_dir}/chimbuko_ad_args.${exe}.var
     done
     #AD option set is generic
     echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var    
 else
-    ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
+    ad_cmd="driver ${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
     echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
     echo "Command to launch AD module: " ${ad_cmd}
@@ -479,7 +484,7 @@ else
     echo "Or equivalent"
 
     #For use in other scripts, output the AD cmdline options to file
-    echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
+    echo "${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
     echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
 fi
 

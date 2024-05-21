@@ -362,6 +362,10 @@ namespace chimbuko{
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME, PARENT struct instance, and help string HELP_STR. Option enabled by "-NAME" on command line */
 #define addOptionalCommandLineArg(PARSER, PARENT, NAME, HELP_STR) PARSER.addOptionalArg(PARENT.NAME, "-" #NAME, HELP_STR)
+
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME default value DEFAULT, PARENT struct instance, and help string HELP_STR. Option enabled by "-NAME" on command line */
+#define addOptionalCommandLineArgWithDefault(PARSER, PARENT, NAME, DEFAULT, HELP_STR) PARSER.addOptionalArg(PARENT.NAME=DEFAULT, "-" #NAME, HELP_STR)
+
   /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME, PARENT struct instance, and default help string "Provide the value for NAME" */
 #define addOptionalCommandLineArgDefaultHelpString(PARSER, PARENT, NAME) addOptionalCommandLineArg(PARSER, PARENT, NAME, "Provide the value for " #NAME)
 
@@ -379,6 +383,9 @@ namespace chimbuko{
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with given member name NAME, PARENT struct instance, and help string HELP_STR. Option enabled by "-OPT_ARG" on command line */
 #define addOptionalCommandLineArgOptArg(PARSER, PARENT, NAME, OPT_ARG, HELP_STR) PARSER.addOptionalArg(PARENT.NAME, "-" #OPT_ARG, HELP_STR)
+
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given member name NAME, default value DEFAULT, PARENT struct instance, and help string HELP_STR. Option enabled by "-OPT_ARG" on command line */
+#define addOptionalCommandLineArgOptArgWithDefault(PARSER, PARENT, NAME, OPT_ARG, DEFAULT, HELP_STR) PARSER.addOptionalArg(PARENT.NAME=DEFAULT, "-" #OPT_ARG, HELP_STR)
 
 
 

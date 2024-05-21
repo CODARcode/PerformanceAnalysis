@@ -238,4 +238,11 @@ namespace chimbuko {
     ADEvent::purgeReport m_purge_report; /**< Report information from last event purge*/
   };
 
+  /**
+   * @brief Parse the cmdline arguments and return an instantiated instance of the OAD module
+   * @param argc The number of remaining cmdline arguments
+   * @param argv Remaining cmdline arguments
+   */
+  std::unique_ptr<ChimbukoBase> moduleInstantiateChimbuko(int argc, char ** argv);
+
 };

@@ -1,5 +1,10 @@
 #include "chimbuko/modules/performance_analysis/chimbuko.hpp"
 #include "chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/ad/ADcmdLineArgs.hpp"
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 
 using namespace chimbuko;
 
@@ -481,3 +486,116 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
    //m_perf_prd.add("call_list_carryover_size", m_event->getCallListSize());
    perf_prd.add("n_unmatched_correlation_id", m_event->getUnmatchCorrelationIDevents().size());
  }
+
+
+
+void mainOptArgs(commandLineParser &parser, ChimbukoParams &into, int &input_data_rank){
+  addOptionalCommandLineArgWithDefault(parser, into, func_threshold_file, "", "Provide the path to a file containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: \"[ { \"fname\": <FUNC>, \"threshold\": <THRES> },... ]\". Empty string (default) uses default threshold for all funcs");
+  addOptionalCommandLineArgWithDefault(parser, into, ignored_func_file, "", "Provide the path to a file containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events.");
+  addOptionalCommandLineArgWithDefault(parser, into, anom_win_size, 10, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
+  addOptionalCommandLineArgWithDefault(parser, into, trace_connect_timeout, 60, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
+  addOptionalCommandLineArgWithDefault(parser, into, outlier_statistic, "exclusive_runtime", "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
+  addOptionalCommandLineArgWithDefault(parser, into, prov_min_anom_time, 0, "Set the minimum exclusive runtime (in microseconds) for anomalies to recorded in the provenance output (default 0)");
+  addOptionalCommandLineArgWithDefault(parser, into, monitoring_watchlist_file, "", "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");
+  addOptionalCommandLineArgWithDefault(parser, into, monitoring_counter_prefix, "", "Provide an optional prefix marking a set of monitoring plugin counters to be captured, on top of or superseding the watchlist. Empty string (default) is ignored.");
+  addOptionalCommandLineArgWithDefault(parser, into, parser_beginstep_timeout, 30, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
+  parser.addOptionalArgWithFlag(input_data_rank, into.override_rank=false, "-override_rank", "Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank.");
+}
+
+void printHelp(){
+  std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n"
+	    << "Where <Trace engine type> : BPFile or SST\n"
+	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
+	    << "      <Trace file prefix> : The prefix of the file (the trace file name without extension e.g. \"tau-metrics-mybinary\" for \"tau-metrics-mybinary.bp\")\n"
+	    << "      <Options>           : Optional arguments as described below.\n";
+  commandLineParser p; ChimbukoParams pp; int r;
+  setupBaseOptionalArgs(p, pp.base_params);
+  mainOptArgs(p, pp, r);
+  p.help(std::cout);
+}
+
+ChimbukoParams getParamsFromCommandLine(int argc, char** argv
+#ifdef USE_MPI
+, const int mpi_world_rank
+#endif
+){
+  if(argc < 3){
+    std::cerr << "Expected at least 3 arguments: <BPFile/SST> <.bp location> <bp file prefix>" << std::endl;
+    exit(-1);
+  }
+
+  // -----------------------------------------------------------------------
+  // Parse command line arguments (cf chimbuko.hpp for detailed description of parameters)
+  // -----------------------------------------------------------------------
+  ChimbukoParams params;
+
+  //Parameters for the connection to the instrumented binary trace output
+  params.trace_engineType = argv[0]; // BPFile or SST
+  params.trace_data_dir = argv[1]; // *.bp location
+  std::string bp_prefix = argv[2]; // bp file prefix (e.g. tau-metrics-[nwchem])
+
+  commandLineParser parser;
+  int input_data_rank;
+  setupBaseOptionalArgs(parser, params.base_params);
+  mainOptArgs(parser, params, input_data_rank);
+  
+  parser.parse(argc-3, (const char**)(argv+3));
+
+  //By default assign the rank index of the trace data as the MPI rank of the AD process
+  //Allow override by user
+  if(params.base_params.rank < 0){
+#ifdef USE_MPI
+    params.base_params.rank = mpi_world_rank;
+#else
+    params.base_params.rank = 0; //default to 0 for non-MPI applications
+#endif
+  }
+
+  params.base_params.verbose = params.base_params.rank == 0; //head node produces verbose output
+
+  //Assume the rank index of the data is the same as the driver rank parameter
+  params.trace_inputFile = bp_prefix + "-" + std::to_string(params.base_params.rank) + ".bp";
+
+  //If we are forcing the parsed data rank to match the driver rank parameter, this implies it was not originally
+  //Thus we need to obtain the input data rank also from the command line and modify the filename accordingly
+  if(params.override_rank)
+    params.trace_inputFile = bp_prefix + "-" + std::to_string(input_data_rank) + ".bp";
+
+  //If neither the provenance database or the provenance output path are set, default to outputting to pwd
+  if(params.base_params.prov_outputpath.size() == 0
+#ifdef ENABLE_PROVDB
+     && params.base_params.provdb_addr_dir.size() == 0
+#endif
+     ){
+    params.base_params.prov_outputpath = ".";
+  }
+
+  return params;
+}
+
+
+std::unique_ptr<ChimbukoBase> chimbuko::moduleInstantiateChimbuko(int argc, char ** argv){
+  if(argc == 0 || (argc == 1 && std::string(argv[0]) == "-help") ){
+    printHelp();
+    return 0;
+  }
+
+#ifdef USE_MPI
+  int mpi_world_rank, mpi_world_size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_world_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpi_world_size);
+#endif
+
+  //Parse Chimbuko parameters
+  ChimbukoParams params = getParamsFromCommandLine(argc, argv
+#ifdef USE_MPI
+    , mpi_world_rank
+#endif
+    );
+
+  if(params.base_params.rank == progressHeadRank()) params.print();
+
+  headProgressStream(params.base_params.rank) << "Initializing PerformanceAnalysis module" << std::endl;
+
+  return std::unique_ptr<ChimbukoBase>(new Chimbuko(params));
+}
