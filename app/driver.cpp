@@ -15,157 +15,68 @@
 using namespace chimbuko;
 using namespace std::chrono;
 
-template<typename T>
-bool optArg(T &into, const std::string &opt, char** argv_p){
-  if(*argv_p == opt){
-    try{
-      into = strToAny<T>(*(argv_p+1));
-    }catch(const std::exception &exc){
-      return false;
-    }
-    return true;
-  }else{
-    return false;
-  }
-}
-
-bool baseOptArgs(ChimbukoParams &into, char** argv_p){
-#define OPT(A) if(optArg(into.base_params.A, "-" #A, argv_p)) return true;
-  OPT(ad_algorithm);
-  OPT(hbos_threshold);
-  OPT(hbos_use_global_threshold);
-  OPT(hbos_max_bins);
-  if(optArg(into.base_params.ana_obj_idx, "-program_idx", argv_p)) return true;
-  OPT(outlier_sigma);
-  OPT(net_recv_timeout);
-  OPT(pserver_addr);
-  OPT(hpserver_nthr);
-  OPT(interval_msec);
-  OPT(prov_outputpath);
+void baseOptArgs(commandLineParser &parser, ChimbukoParams &into){
+  addOptionalCommandLineArg(parser, into.base_params, ad_algorithm="hbos", "Set an AD algorithm to use: hbos or sstd (default \"hbos\").");
+  addOptionalCommandLineArg(parser, into.base_params, hbos_threshold=0.99, "Set Threshold for HBOS anomaly detection filter (default 0.99).");
+  addOptionalCommandLineArg(parser, into.base_params, hbos_use_global_threshold=true, "Set true to use a global threshold in HBOS algorithm (default true).");
+  addOptionalCommandLineArg(parser, into.base_params, hbos_max_bins=200, "Set the maximum number of bins for histograms in the HBOS algorithm (default 200).");
+  addOptionalCommandLineArgOptArg(parser, into.base_params, ana_obj_idx=0, program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
+  addOptionalCommandLineArg(parser, into.base_params, outlier_sigma=6.0, "Set the number of standard deviations that defines an anomalous event (default 6)");
+  addOptionalCommandLineArg(parser, into.base_params, net_recv_timeout=30000, "Timeout (in ms) for blocking receives on client from parameter server (default 30000)");
+  addOptionalCommandLineArg(parser, into.base_params, pserver_addr="", "Set the address of the parameter server. If empty (default) the pserver will not be used.");
+  addOptionalCommandLineArg(parser, into.base_params, hpserver_nthr=1, "Set the number of threads used by the hierarchical PS. This parameter is used to compute a port offset for the particular endpoint that this AD rank connects to (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, interval_msec=0, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
+  addOptionalCommandLineArg(parser, into.base_params, prov_outputpath="", "Output provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
 #ifdef ENABLE_PROVDB
-  OPT(provdb_addr_dir);
-  OPT(nprovdb_shards);
-  OPT(nprovdb_instances);
-  OPT(provdb_mercury_auth_key);
+  addOptionalCommandLineArg(parser, into.base_params, provdb_addr_dir="", "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
+  addOptionalCommandLineArg(parser, into.base_params, nprovdb_shards=1, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, nprovdb_instances=1, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, provdb_mercury_auth_key="", "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
 #ifdef _PERF_METRIC
-  OPT(perf_outputpath);
-  OPT(perf_step);
+  addOptionalCommandLineArg(parser, into.base_params, perf_outputpath="", "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
+  addOptionalCommandLineArg(parser, into.base_params, perf_step=10, "How frequently (in IO steps) the performance data is dumped (default 10)");
 #endif
-  OPT(err_outputpath);
-  OPT(rank);
-  OPT(global_model_sync_freq);
-  OPT(ps_send_stats_freq);
-  OPT(step_report_freq);
-  OPT(prov_record_startstep);
-  OPT(prov_record_stopstep);
-  OPT(prov_io_freq);
-  OPT(analysis_step_freq);
-
-  if(std::string(*argv_p) == "-logging_head_rank"){
-    try{
-      int v = strToAny<int>(*(argv_p+1));
-      progressHeadRank() = v;
-      verboseStream << "Driver: Set global head rank for log output to " << v << std::endl;
-      return true;
-    }catch(const std::exception &exc){
-    }
-  }
-    
-  return false;
-#undef OPT
-}
-
-void printHelpBase(){
-#define HELP(CMD,STR) std::cout << "-" << #CMD << ": " << STR << std::endl;
-
-  HELP(ad_algorithm, "Set an AD algorithm to use: hbos or sstd.");
-  HELP(hbos_threshold, "Set Threshold for HBOS anomaly detection filter.");
-  HELP(hbos_use_global_threshold, "Set true to use a global threshold in HBOS algorithm. Default is true.");
-  HELP(hbos_max_bins, "Set the maximum number of bins for histograms in the HBOS algorithm. Default 200.");
-  HELP(program_idx, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
-  HELP(outlier_sigma, "Set the number of standard deviations that defines an anomalous event (default 6)");
-  HELP(net_recv_timeout, "Timeout (in ms) for blocking receives on client from parameter server (default 30000)");
-  HELP(pserver_addr, "Set the address of the parameter server. If empty (default) the pserver will not be used.");
-  HELP(hpserver_nthr, "Set the number of threads used by the hierarchical PS. This parameter is used to compute a port offset for the particular endpoint that this AD rank connects to (default 1)");
-  HELP(interval_msec, "Force the AD to pause for this number of ms at the end of each IO step (default 0)");
-  HELP(prov_outputpath, "Output provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
-#ifdef ENABLE_PROVDB
-  HELP(provdb_addr_dir, "Directory in which the provenance database outputs its address files. If empty (default) the provenance DB will not be used.");
-  HELP(nprovdb_shards, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
-  HELP(nprovdb_instances, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
-  HELP(provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
-#endif
-#ifdef _PERF_METRIC
-  HELP(perf_outputpath, "Output path for AD performance monitoring data. If an empty string (default) no output is written.");
-  HELP(perf_step, "How frequently (in IO steps) the performance data is dumped (default 10)");
-#endif
-  HELP(err_outputpath, "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
+  addOptionalCommandLineArg(parser, into.base_params, err_outputpath="", "Directory in which to place error logs. If an empty string (default) the errors will be piped to std::cerr");
 #ifdef USE_MPI
-  HELP(rank, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
+  addOptionalCommandLineArg(parser, into.base_params, rank=-1234, "Set the rank index of the trace data. Used for verification unless override_rank is set. A value < 0 signals the value to be equal to the MPI rank of Chimbuko driver (default)");
 #else
-  HELP(rank, "Set the rank index of the trace data (default 0)");
+  addOptionalCommandLineArg(parser, into.base_params, rank=-1234, "Set the rank index of the trace data (default 0)");
 #endif
-  HELP(global_model_sync_freq, "Set the frequency in steps between updates of the global model (default 1)");
-  HELP(ps_send_stats_freq, "Set how often in steps the statistics data is uploaded to the pserver (default 1)");
-  HELP(step_report_freq, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
-  HELP(prov_record_startstep, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
-  HELP(prov_record_stopstep, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
-  HELP(prov_io_freq, "Set the frequency in steps at which provenance data is writen/sent to the provDB (default 1)");
-  HELP(analysis_step_freq, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");
-  HELP(logging_head_rank, "Set the head rank upon which progress logging will be output (default 0)");
-#undef HELP
+  addOptionalCommandLineArg(parser, into.base_params, global_model_sync_freq=1, "Set the frequency in steps between updates of the global model (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, ps_send_stats_freq=1, "Set how often in steps the statistics data is uploaded to the pserver (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, step_report_freq=1, "Set the steps between Chimbuko reporting IO step progress. Use 0 to deactivate this logging entirely (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, prov_record_startstep=-1, "If != -1, the IO step on which to start recording provenance information for anomalies (for testing, default -1)");
+  addOptionalCommandLineArg(parser, into.base_params, prov_record_stopstep=-1, "If != -1, the IO step on which to stop recording provenance information for anomalies (for testing, default -1)");
+  addOptionalCommandLineArg(parser, into.base_params, prov_io_freq=1, "Set the frequency in steps at which provenance data is writen/sent to the provDB (default 1)");
+  addOptionalCommandLineArg(parser, into.base_params, analysis_step_freq=1, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");
+  parser.addOptionalArg(progressHeadRank()=0, "-logging_head_rank", "Set the head rank upon which progress logging will be output (default 0)");
 }
 
-bool mainOptArgs(ChimbukoParams &into, int &input_data_rank, char** argv_p){
-#define OPT(A) if(optArg(into.A, "-" #A, argv_p)) return true;
-  OPT(func_threshold_file);
-  OPT(ignored_func_file);
-  OPT(anom_win_size);
-  OPT(trace_connect_timeout);
-  OPT(outlier_statistic);
-  OPT(prov_min_anom_time);
-  OPT(monitoring_watchlist_file);
-  OPT(monitoring_counter_prefix);
-  OPT(parser_beginstep_timeout);
-  
-  if(std::string(*argv_p) == "-override_rank"){    
-    try{
-      int v = strToAny<int>(*(argv_p+1));
-      input_data_rank = v;
-      into.override_rank = true;
-      verboseStream << "Driver: Override rank set to true, input data rank is " << input_data_rank << std::endl;
-      return true;
-    }catch(const std::exception &exc){
-    }
-  }
-  return false;
-#undef OPT
+
+void mainOptArgs(commandLineParser &parser, ChimbukoParams &into, int &input_data_rank){
+  addOptionalCommandLineArg(parser, into, func_threshold_file="", "Provide the path to a file containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: \"[ { \"fname\": <FUNC>, \"threshold\": <THRES> },... ]\". Empty string (default) uses default threshold for all funcs");
+  addOptionalCommandLineArg(parser, into, ignored_func_file="", "Provide the path to a file containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events.");
+  addOptionalCommandLineArg(parser, into, anom_win_size=10, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
+  addOptionalCommandLineArg(parser, into, trace_connect_timeout=60, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
+  addOptionalCommandLineArg(parser, into, outlier_statistic="exclusive_runtime", "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
+  addOptionalCommandLineArg(parser, into, prov_min_anom_time=0, "Set the minimum exclusive runtime (in microseconds) for anomalies to recorded in the provenance output (default 0)");
+  addOptionalCommandLineArg(parser, into, monitoring_watchlist_file="", "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");
+  addOptionalCommandLineArg(parser, into, monitoring_counter_prefix="", "Provide an optional prefix marking a set of monitoring plugin counters to be captured, on top of or superseding the watchlist. Empty string (default) is ignored.");
+  addOptionalCommandLineArg(parser, into, parser_beginstep_timeout=30, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
+  parser.addOptionalArgWithFlag(input_data_rank, into.override_rank=false, "-override_rank", "Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank.");
 }
 
-void printHelpMain(){
-#define HELP(CMD,STR) std::cout << "-" << #CMD << ": " << STR << std::endl;
-  HELP(parser_beginstep_timeout, "Set the timeout in seconds on waiting for the next ADIOS2 timestep (default 30s)");
-  HELP(func_threshold_file, "Provide the path to a file containing HBOS/COPOD algorithm threshold overrides for specified functions. Format is JSON: \"[ { \"fname\": <FUNC>, \"threshold\": <THRES> },... ]\". Empty string (default) uses default threshold for all funcs");
-  HELP(ignored_func_file, "Provide the path to a file containing function names (one per line) which the AD algorithm will ignore. All such events are labeled as normal. Empty string (default) performs AD on all events.");    
-  HELP(anom_win_size, "When anomaly data are recorded a window of this size (in units of function execution events) around the anomalous event are also recorded (default 10)");
-  HELP(trace_connect_timeout, "(For SST mode) Set the timeout in seconds on the connection to the TAU-instrumented binary (default 60s)");
-  HELP(override_rank, "Set Chimbuko to overwrite the rank index in the parsed data with its own internal rank parameter. The value provided should be the original rank index of the data. This disables verification of the data rank.");
-  HELP(outlier_statistic, "Set the statistic used for outlier detection. Options: exclusive_runtime (default), inclusive_runtime");
-  HELP(prov_min_anom_time, "Set the minimum exclusive runtime (in microseconds) for anomalies to recorded in the provenance output (default 0)");
-  HELP(monitoring_watchlist_file, "Provide a filename containing the counter watchlist for the integration with the monitoring plugin. Empty string (default) uses the default subset. File format is JSON: \"[ [<COUNTER NAME>, <FIELD NAME>], ... ]\" where COUNTER NAME is the name of the counter in the input data stream and FIELD NAME the name of the counter in the provenance output.");
-  HELP(monitoring_counter_prefix, "Provide an optional prefix marking a set of monitoring plugin counters to be captured, on top of or superseding the watchlist. Empty string (default) is ignored.");
-#undef HELP
-}
- 
 void printHelp(){
   std::cout << "Usage: driver <Trace engine type> <Trace directory> <Trace file prefix> <Options>\n"
 	    << "Where <Trace engine type> : BPFile or SST\n"
 	    << "      <Trace directory>   : The directory in which the BPFile or SST file is located\n"
 	    << "      <Trace file prefix> : The prefix of the file (the trace file name without extension e.g. \"tau-metrics-mybinary\" for \"tau-metrics-mybinary.bp\")\n"
 	    << "      <Options>           : Optional arguments as described below.\n";
-  printHelpBase();
-  printHelpMain();
+  commandLineParser p; ChimbukoParams pp; int r;
+  baseOptArgs(p, pp);
+  mainOptArgs(p, pp, r);
+  p.help(std::cout);
 }
 
 ChimbukoParams getParamsFromCommandLine(int argc, char** argv
@@ -188,46 +99,12 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv
   params.trace_data_dir = argv[2]; // *.bp location
   std::string bp_prefix = argv[3]; // bp file prefix (e.g. tau-metrics-[nwchem])
 
-  //The remainder are optional arguments. Enable using the appropriate command line switch
-  params.base_params.ad_algorithm = "hbos";
-  params.base_params.hbos_threshold = 0.99;
-  params.base_params.hbos_use_global_threshold = true;
-  params.base_params.hbos_max_bins = 200;
-  params.base_params.net_recv_timeout = 30000;
-  params.base_params.pserver_addr = "";  //don't use pserver by default
-  params.base_params.hpserver_nthr = 1;
-  params.base_params.outlier_sigma = 6.0;     // anomaly detection algorithm parameter
-  params.anom_win_size = 10; // size of window of events captured around anomaly
-  params.base_params.perf_outputpath = ""; //don't use perf output by default
-  params.base_params.perf_step = 10;   // make output every 10 steps
-  params.base_params.prov_outputpath = "";
-#ifdef ENABLE_PROVDB
-  params.base_params.nprovdb_shards = 1;
-  params.base_params.nprovdb_instances = 1;
-  params.base_params.provdb_addr_dir = ""; //don't use provDB by default
-#endif
-  params.base_params.err_outputpath = ""; //use std::cerr for errors by default
-  params.trace_connect_timeout = 60;
-  params.parser_beginstep_timeout = 30;
-  params.base_params.rank = -1234; //assign an invalid value as default for use below
-  params.outlier_statistic = "exclusive_runtime";
-  params.base_params.step_report_freq = 1;
-
-  //getOptionalArgsParser().parse(params, argc-4, (const char**)(argv+4));
-
-  //getOptionalBaseArgsParser().parse(params, argc-4, (const char**)(argv+4));
+  commandLineParser parser;
   int input_data_rank;
-
-  char** argv_p = argv+4;
-  int arg = 0;
-  while(arg < argc-4){
-    if(baseOptArgs(params,argv_p) || mainOptArgs(params,input_data_rank,argv_p)){
-      arg += 2;
-      argv_p += 2;
-    }else{
-      fatal_error("Unknown argument: "+std::string(*argv_p));
-    }
-  }
+  baseOptArgs(parser, params);
+  mainOptArgs(parser, params, input_data_rank);
+  
+  parser.parse(argc-4, (const char**)(argv+4));
 
   //By default assign the rank index of the trace data as the MPI rank of the AD process
   //Allow override by user
