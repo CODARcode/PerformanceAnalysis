@@ -45,19 +45,19 @@ struct hpserverArgs{
   hpserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), base_port(5559)
   {}
 
-  static commandLineParser<hpserverArgs> &getParser(){
+  static commandLineParser &getParser(hpserverArgs &instance){
     static bool init = false;
-    static commandLineParser<hpserverArgs> p;
+    static commandLineParser p;
     if(!init){
-      addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
-      addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
-      addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
-      addOptionalCommandLineArg(p, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
-      addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
-      addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
-      addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
-      addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
-      addOptionalCommandLineArg(p, base_port, "The base port. Thread worker ports are base_port+thread_index (default 5559)");
+      addOptionalCommandLineArg(p, instance, nt, "Set the number of RPC handler threads (max-2 by default)");
+      addOptionalCommandLineArg(p, instance, logdir, "Set the output log directory (default: job directory)");
+      addOptionalCommandLineArg(p, instance, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
+      addOptionalCommandLineArg(p, instance, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
+      addOptionalCommandLineArgWithFlag(p, instance, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
+      addOptionalCommandLineArgWithFlag(p, instance, save_params, save_params_set, "Save anomaly algorithm parameters to file");
+      addOptionalCommandLineArg(p, instance, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
+      addOptionalCommandLineArg(p, instance, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
+      addOptionalCommandLineArg(p, instance, base_port, "The base port. Thread worker ports are base_port+thread_index (default 5559)");
       init = true;
     }
     return p;
@@ -75,11 +75,11 @@ int main (int argc, char ** argv){
 
 
   hpserverArgs args;
-  if(argc < hpserverArgs::getParser().nMandatoryArgs()+1 || (argc == 2 && std::string(argv[1]) == "-help") ){
-    hpserverArgs::getParser().help(std::cout);
-    return argc < hpserverArgs::getParser().nMandatoryArgs()+1 ? 1 : 0;
+  if(argc < hpserverArgs::getParser(args).nMandatoryArgs()+1 || (argc == 2 && std::string(argv[1]) == "-help") ){
+    hpserverArgs::getParser(args).help(std::cout);
+    return argc < hpserverArgs::getParser(args).nMandatoryArgs()+1 ? 1 : 0;
   }
-  hpserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
+  hpserverArgs::getParser(args).parse(argc-1, (const char**)(argv+1));
 
   if (args.nt <= 0) {
     args.nt = std::max(

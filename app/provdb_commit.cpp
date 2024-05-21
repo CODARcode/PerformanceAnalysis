@@ -58,20 +58,21 @@ struct Args{
 int main(int argc, char** argv){  
 #ifdef ENABLE_PROVDB
 
-  commandLineParser<Args> parser;
-  addMandatoryCommandLineArg(parser, addr_file_dir, "Specify the directory containing the address file");
-  addOptionalCommandLineArg(parser, instance, "Specify the server instance (default 0)");
-  addOptionalCommandLineArg(parser, ninstances, "Specify the number of server instances (default 1)");
-  addOptionalCommandLineArg(parser, nshards, "Specify the total number of database shards (default 1)");
-  addOptionalCommandLineArg(parser, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
-  addOptionalCommandLineArg(parser, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+  commandLineParser parser;
+  Args args;
+  addMandatoryCommandLineArg(parser, args, addr_file_dir, "Specify the directory containing the address file");
+  addOptionalCommandLineArg(parser, args, instance, "Specify the server instance (default 0)");
+  addOptionalCommandLineArg(parser, args, ninstances, "Specify the number of server instances (default 1)");
+  addOptionalCommandLineArg(parser, args, nshards, "Specify the total number of database shards (default 1)");
+  addOptionalCommandLineArg(parser, args, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
+  addOptionalCommandLineArg(parser, args, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
   
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
     return 0;    
   }
-  Args args;
-  parser.parseCmdLineArgs(args, argc, argv);
+
+  parser.parseCmdLineArgs(argc, argv);
 
   instance = args.instance;
 

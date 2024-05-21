@@ -167,30 +167,30 @@ int main(int argc, char** argv) {
     //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
     //Using an empty string will cause it to default to Mochi's default ip/port
-    commandLineParser<ProvdbArgs> parser;
-    addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
-    addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
-    addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
-    addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-    addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
-    addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
-    addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
-    addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
-    addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
-    addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
-    addOptionalCommandLineArgMultiValue(parser, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
+    ProvdbArgs args;
+    commandLineParser parser;
+    addMandatoryCommandLineArg(parser, args, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
+    addOptionalCommandLineArg(parser, args, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
+    addOptionalCommandLineArg(parser, args, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
+    addOptionalCommandLineArg(parser, args, nshards, "Specify the number of database shards (default 1)");
+    addOptionalCommandLineArg(parser, args, db_type, "Specify the Sonata database type (default \"unqlite\")");
+    addOptionalCommandLineArg(parser, args, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
+    addOptionalCommandLineArg(parser, args, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
+    addOptionalCommandLineArg(parser, args, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
+    addOptionalCommandLineArg(parser, args, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
+    addOptionalCommandLineArg(parser, args, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
+    addOptionalCommandLineArg(parser, args, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
+    addOptionalCommandLineArgMultiValue(parser, args, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
     if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
       return 0;
     }
 
-    ProvdbArgs args;
-    parser.parseCmdLineArgs(args, argc, argv);
+    parser.parseCmdLineArgs(argc, argv);
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");

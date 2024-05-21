@@ -27,18 +27,16 @@ namespace chimbuko{
   /**
    * @brief Base class for optional arg parsing structs
    */
-  template<typename ArgsStruct>
   class optionalCommandLineArgBase{
   public:
     /**
      * @brief If the first string matches the internal arg string (eg "-help"), a number of strings are consumed from the array 'vals' and that number returned. 
      * A value of -1 indicates the argument did not match.
      *
-     * @param into The output structure
      * @param vals An array of strings
      * @param vals_size The length of the string array
      */
-    virtual int parse(ArgsStruct &into, const std::string &arg, const char** vals, const int vals_size) = 0;
+    virtual int parse(const std::string &arg, const char** vals, const int vals_size) = 0;
     /**
      * @brief Print the help string for this argument to the ostream
      */
@@ -50,29 +48,27 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct
    */
-  template<typename ArgsStruct, typename PtrType, PtrType P>
-  class optionalCommandLineArg: public optionalCommandLineArgBase<ArgsStruct>{
+  template<typename MemberType>
+  class optionalCommandLineArg: public optionalCommandLineArgBase{
   private:
     std::string m_arg; /**< The argument, format "-a" */
     std::string m_help_str; /**< The help string */
+    MemberType &member;
   public:
     /**
      * @brief Create an instance with the provided argument and help string
      */
-    optionalCommandLineArg(const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str){}
+    optionalCommandLineArg(MemberType &member, const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str), member(member){}
     
-    int parse(ArgsStruct &into, const std::string &arg, const char** vals, const int vals_size) override{
+    int parse(const std::string &arg, const char** vals, const int vals_size) override{
       if(arg == m_arg){
 	if(vals_size < 1) return -1;
 
-	typedef typename get_member_ptr_data_type<PtrType>::type T;
-	T v;
 	try{
-	  v = strToAny<T>(vals[0]);
+	  member = strToAny<MemberType>(vals[0]);
 	}catch(const std::exception &exc){
 	  return -1;
 	}
-	into.*P = std::move(v);	
 	return 1;
       }
       return -1;
@@ -85,30 +81,29 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct and sets a bool flag argument to true
    */
-  template<typename ArgsStruct, typename PtrType, PtrType P, bool ArgsStruct::* Flag>
-  class optionalCommandLineArgWithFlag: public optionalCommandLineArgBase<ArgsStruct>{
+  template<typename MemberType>
+  class optionalCommandLineArgWithFlag: public optionalCommandLineArgBase{
   private:
     std::string m_arg; /**< The argument, format "-a" */
     std::string m_help_str; /**< The help string */
+    MemberType &member;
+    bool &flag;
   public:
     /**
      * @brief Create an instance with the provided argument and help string
      */
-    optionalCommandLineArgWithFlag(const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str){}
+    optionalCommandLineArgWithFlag(MemberType &member, bool &flag, const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str), member(member), flag(flag){}
     
-    int parse(ArgsStruct &into, const std::string &arg, const char** vals, const int vals_size) override{
+    int parse(const std::string &arg, const char** vals, const int vals_size) override{
       if(arg == m_arg){
 	if(vals_size < 1) return -1;
 
-	typedef typename get_member_ptr_data_type<PtrType>::type T;
-	T v;
 	try{
-	  v = strToAny<T>(vals[0]);
+	  member = strToAny<MemberType>(vals[0]);
 	}catch(const std::exception &exc){
 	  return -1;
 	}
-	into.*P = std::move(v);	
-	into.*Flag = true;
+	flag = true;
 	return 1;
       }
       return -1;
@@ -120,32 +115,27 @@ namespace chimbuko{
 
 
   /**
-   * @brief A class containing a member function pointer
-   */
-  template<typename PtrType, PtrType P>
-  struct MemberPtrContainer{
-    typedef typename get_member_ptr_class<PtrType>::type class_type;
-    typedef typename get_member_ptr_data_type<PtrType>::type type;
-    static constexpr PtrType value = P;
-  };
-
-  
-  /**
    * @brief Recursive template class for parsing multiple values
    */
-  template<typename ArgsStruct, typename TheMemberPtrContainer, class... RemainingMemberPtrContainers>
-  struct optionalCommandLineArgMultiValue_parse{
-    static void parse(ArgsStruct &into, const char** vals){
-      auto v = strToAny<typename TheMemberPtrContainer::type>(vals[0]); //will throw if can't parse
-      into.*TheMemberPtrContainer::value = std::move(v);	
-      optionalCommandLineArgMultiValue_parse<ArgsStruct, RemainingMemberPtrContainers...>::parse(into, vals+1);
+  template<typename MemberType, class... RemainingMemberTypes>
+  struct optionalCommandLineArgMultiValue_parse: public optionalCommandLineArgMultiValue_parse<RemainingMemberTypes...>{
+    MemberType &member;
+    
+    optionalCommandLineArgMultiValue_parse(MemberType &member, RemainingMemberTypes&... rem): member(member), optionalCommandLineArgMultiValue_parse<RemainingMemberTypes...>(rem...){}
+
+    void parse(const char** vals){
+      member = strToAny<MemberType>(vals[0]); //will throw if can't parse
+      this->optionalCommandLineArgMultiValue_parse<RemainingMemberTypes...>::parse(vals+1);
     }
   };
-  template<typename ArgsStruct, typename TheMemberPtrContainer>
-  struct optionalCommandLineArgMultiValue_parse<ArgsStruct, TheMemberPtrContainer>{
-    static void parse(ArgsStruct &into, const char** vals){
-      auto v = strToAny<typename TheMemberPtrContainer::type>(vals[0]); //will throw if can't parse
-      into.*TheMemberPtrContainer::value = std::move(v);	
+  template<typename MemberType>
+  struct optionalCommandLineArgMultiValue_parse<MemberType>{
+    MemberType &member;
+
+    optionalCommandLineArgMultiValue_parse(MemberType &member): member(member){}
+
+    void parse(const char** vals){
+      member = strToAny<MemberType>(vals[0]); //will throw if can't parse
     }
   };
     
@@ -154,29 +144,29 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct with multiple values
    */
-  template<typename ArgsStruct, class... MemberPtrContainers>
-  class optionalCommandLineArgMultiValue: public optionalCommandLineArgBase<ArgsStruct>{
+  template<class... MemberTypes>
+  class optionalCommandLineArgMultiValue: public optionalCommandLineArgBase{
   private:
     std::string m_arg; /**< The argument, format "-a" */
     std::string m_help_str; /**< The help string */
-
+    optionalCommandLineArgMultiValue_parse<MemberTypes...> pp;
   public:
-    static constexpr int NValues = std::tuple_size<std::tuple<MemberPtrContainers...>>::value;
+    static constexpr int NValues = std::tuple_size<std::tuple<MemberTypes...>>::value;
     
     /**
      * @brief Create an instance with the provided argument and help string
      */
-    optionalCommandLineArgMultiValue(const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str){}
+    optionalCommandLineArgMultiValue(MemberTypes&... members, const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str), pp(members...){}
     
-    int parse(ArgsStruct &into, const std::string &arg, const char** vals, const int vals_size) override{
+    int parse(const std::string &arg, const char** vals, const int vals_size) override{
       if(arg == m_arg){
-	if(vals_size < NValues) return -1;
-	try{
-	  optionalCommandLineArgMultiValue_parse<ArgsStruct, MemberPtrContainers...>::parse(into, vals);
-	}catch(const std::exception &exc){
-	  return -1;
-	}
-	return NValues;
+  	if(vals_size < NValues) return -1;
+  	try{
+	  pp.parse(vals);
+  	}catch(const std::exception &exc){
+  	  return -1;
+  	}
+  	return NValues;
       }
       return -1;
     }
@@ -193,13 +183,12 @@ namespace chimbuko{
   /**
    * @brief Base class for mandatory arg parsing structs
    */
-  template<typename ArgsStruct>
   class mandatoryCommandLineArgBase{
   public:
     /**
      * @brief Parse the value into the struct. Return false val is unable to be parsed
      */
-    virtual bool parse(ArgsStruct &into, const std::string &val) = 0;
+    virtual bool parse(const std::string &val) = 0;
     /**
      * @brief Print the help string for this argument to the ostream
      */
@@ -211,25 +200,23 @@ namespace chimbuko{
   /**
    * @brief A class that parses an argument of a given type into the struct
    */
-  template<typename ArgsStruct, typename PtrType, PtrType P>
-  class mandatoryCommandLineArg: public mandatoryCommandLineArgBase<ArgsStruct>{
+  template<typename MemberType>
+  class mandatoryCommandLineArg: public mandatoryCommandLineArgBase{
   private:
     std::string m_help_str; /**< The help string */
+    MemberType &member;
   public:
     /**
      * @brief Create an instance with the provided argument and help string
      */
-    mandatoryCommandLineArg(const std::string &help_str): m_help_str(help_str){}
+    mandatoryCommandLineArg(MemberType &member, const std::string &help_str): m_help_str(help_str), member(member){}
     
-    bool parse(ArgsStruct &into, const std::string &val) override{
-      typedef typename get_member_ptr_data_type<PtrType>::type T;
-      T v;
+    bool parse(const std::string &val) override{
       try{
-	v = strToAny<T>(val);
+	member = strToAny<MemberType>(val);
       }catch(const std::exception &exc){
 	return false;
       }
-      into.*P = std::move(v);	
       return true;
     }
     void help(std::ostream &os) const override{
@@ -240,55 +227,52 @@ namespace chimbuko{
   /**
    * @brief The main parser class for a generic struct ArgsStruct
    */
-  template<typename ArgsStruct>
   class commandLineParser{
   private:
-    std::vector<std::unique_ptr<mandatoryCommandLineArgBase<ArgsStruct> > > m_man_args; /**< Container for the individual mandatory arg parsers */
-    std::vector<std::unique_ptr<optionalCommandLineArgBase<ArgsStruct> > > m_opt_args; /**< Container for the individual optional arg parsers */
+    std::vector<std::unique_ptr<mandatoryCommandLineArgBase> > m_man_args; /**< Container for the individual mandatory arg parsers */
+    std::vector<std::unique_ptr<optionalCommandLineArgBase> > m_opt_args; /**< Container for the individual optional arg parsers */
   public:
-    typedef ArgsStruct StructType;
 
     /**
      * @brief Add an optional argument parser object. Assumes ownership of pointer
      */
-    void addOptionalArg(optionalCommandLineArgBase<ArgsStruct>* arg_parser){
+    void addOptionalArg(optionalCommandLineArgBase* arg_parser){
       m_opt_args.emplace_back(arg_parser);
     }
 
 
     /**
-     * @brief Add an optional argument with the given type, member pointer (eg &ArgsStruct::a) with provided argument (eg "-a") and help string
+     * @brief Add an optional argument bound to the given member object with provided argument (eg "-a") and help string
      */
-    template<typename PtrType, PtrType P>
-    void addOptionalArg(const std::string &arg, const std::string &help_str){
-      m_opt_args.emplace_back(new optionalCommandLineArg<ArgsStruct,PtrType,P>(arg, help_str));
+    template<typename MemberType>
+    void addOptionalArg(MemberType &member, const std::string &arg, const std::string &help_str){
+      m_opt_args.emplace_back(new optionalCommandLineArg<MemberType>(member,arg, help_str));
     }
 
 
     /**
-     * @brief Add an optional argument with the given type, member pointer (eg &ArgsStruct::a), a bool flag member pointer (eg &ArgsStruct::got_value), with provided argument (eg "-a") and help string
+     * @brief Add an optional argument bound to the given member object and a bool flag, with provided argument (eg "-a") and help string
      */
-    template<typename PtrType, PtrType P, bool ArgsStruct::* Flag>
-    void addOptionalArgWithFlag(const std::string &arg, const std::string &help_str){
-      m_opt_args.emplace_back(new optionalCommandLineArgWithFlag<ArgsStruct,PtrType,P,Flag>(arg, help_str));
+    template<typename MemberType>
+    void addOptionalArgWithFlag(MemberType &member, bool &flag, const std::string &arg, const std::string &help_str){
+      m_opt_args.emplace_back(new optionalCommandLineArgWithFlag<MemberType>(member, flag, arg, help_str));
     }
 
 
     /**
-     * @brief Add an optional argument that has multiple associated values. Template parameters should be a list of specializations of MemberPtrContainer,
-     * e.g  MemberPtrContainer<ArgsStruct, A, &ArgsStruct::a>, MemberPtrContainer<ArgsStruct, B, &ArgsStruct::b>
+     * @brief Add an optional argument that has multiple associated values
      */
-    template<class... MemberPtrContainers>
-    void addOptionalArgMultiValue(const std::string &arg, const std::string &help_str){
-      m_opt_args.emplace_back(new optionalCommandLineArgMultiValue<ArgsStruct,MemberPtrContainers...>(arg, help_str));
+    template<class... MemberTypes>
+    void addOptionalArgMultiValue(const std::string &arg, const std::string &help_str, MemberTypes&... members){
+      m_opt_args.emplace_back(new optionalCommandLineArgMultiValue<MemberTypes...>(members..., arg, help_str));
     }
 
     /**
      * @brief Add an mandatory argument with the given type, member pointer (eg &ArgsStruct::a) and help string
      */
-    template<typename PtrType, PtrType P>
-    void addMandatoryArg(const std::string &help_str){
-      m_man_args.emplace_back(new mandatoryCommandLineArg<ArgsStruct,PtrType,P>(help_str));
+    template<typename MemberType>
+    void addMandatoryArg(MemberType &member, const std::string &help_str){
+      m_man_args.emplace_back(new mandatoryCommandLineArg<MemberType>(member,help_str));
     }
 
     /**
@@ -301,11 +285,11 @@ namespace chimbuko{
      *
      * Parsing will commence with first entry of args
      */
-    void parse(ArgsStruct &into, const int narg, const char** args){
+    void parse(const int narg, const char** args){
       if(narg < m_man_args.size()) throw std::runtime_error("Not enough arguments provided: expect " + anyToStr(m_man_args.size()) );
       size_t i=0;
       for(;i<m_man_args.size();i++){
-	if(!m_man_args[i]->parse(into, args[i])) throw std::runtime_error("Could not parse mandatory argument " + anyToStr(i));
+	if(!m_man_args[i]->parse(args[i])) throw std::runtime_error("Could not parse mandatory argument " + anyToStr(i));
       }
 
       while(i < narg){
@@ -314,7 +298,7 @@ namespace chimbuko{
 
 	bool success = false;
 	for(size_t a=0;a<m_opt_args.size();a++){
-	  int consumed = m_opt_args[a]->parse(into, arg,vals, narg-i-1);
+	  int consumed = m_opt_args[a]->parse(arg,vals, narg-i-1);
 	  if(consumed >= 0){
 	    success = true;
 	    i+=consumed;
@@ -331,8 +315,8 @@ namespace chimbuko{
      *
      * Parsing will commence with second entry of argv
      */
-    void parseCmdLineArgs(ArgsStruct &into, int argc, char** argv){
-      parse(into, argc-1, (const char**)(argv+1));
+    void parseCmdLineArgs(int argc, char** argv){
+      parse(argc-1, (const char**)(argv+1));
     }
 
     /**
@@ -361,54 +345,47 @@ namespace chimbuko{
   /**
    * @brief Macros for generating the structure list needed for addOptionalArgMultiArg
    */
-#define _GMP_GET_TYPE(T) std::decay<decltype(T)>::type::StructType
-#define _GMP_GET_MEMBER_TYPE(T, NAME) decltype( _GMP_GET_TYPE(T)::NAME )
-#define _GMP_GET_MEMBER_PTR_TYPE(T, NAME) decltype( &_GMP_GET_TYPE(T)::NAME )
-#define _GMP_GET_MEMBER_PTR(T, NAME) & _GMP_GET_TYPE(T)::NAME
+#define _WRP_P_0(PARENT, CHILD)
+#define _WRP_P_1(PARENT, CHILD) PARENT.CHILD
+#define _WRP_P_2(PARENT, CHILD, ...) PARENT.CHILD, _WRP_P_1(PARENT, __VA_ARGS__)
+#define _WRP_P_3(PARENT, CHILD, ...) PARENT.CHILD, _WRP_P_2(PARENT, __VA_ARGS__)
+#define _WRP_P_4(PARENT, CHILD, ...) PARENT.CHILD, _WRP_P_3(PARENT, __VA_ARGS__)
+#define _WRP_P_5(PARENT, CHILD, ...) PARENT.CHILD, _WRP_P_4(PARENT, __VA_ARGS__)
 
-#define GET_MEMBER_PTR_CON(T, NAME) MemberPtrContainer< _GMP_GET_MEMBER_PTR_TYPE(T,NAME), _GMP_GET_MEMBER_PTR(T,NAME) >
-
-#define _GMP_GE_0(T, NAME)
-#define _GMP_GE_1(T, NAME) GET_MEMBER_PTR_CON(T,NAME)
-#define _GMP_GE_2(T, NAME, ...) GET_MEMBER_PTR_CON(T,NAME), _GMP_GE_1(T, __VA_ARGS__)
-#define _GMP_GE_3(T, NAME, ...) GET_MEMBER_PTR_CON(T,NAME), _GMP_GE_2(T, __VA_ARGS__)
-#define _GMP_GE_4(T, NAME, ...) GET_MEMBER_PTR_CON(T,NAME), _GMP_GE_3(T, __VA_ARGS__)
-#define _GMP_GE_5(T, NAME, ...) GET_MEMBER_PTR_CON(T,NAME), _GMP_GE_4(T, __VA_ARGS__)
-
-#define _GMP_GET_MACRO(_0,_1,_2,_3,_4,_5,NAME,...) NAME
-#define GET_MEMBER_PTR_CONS(T,...) \
-  _GMP_GET_MACRO(_0,__VA_ARGS__,_GMP_GE_5,_GMP_GE_4,_GMP_GE_3,_GMP_GE_2,_GMP_GE_1,_GMP_GE_0)(T,__VA_ARGS__)
+#define _WRP_P_GET_MACRO(_0,_1,_2,_3,_4,_5,NAME,...) NAME
+#define WRAP_PARENT(PARENT,...)					\
+  _WRP_P_GET_MACRO(_0,__VA_ARGS__,_WRP_P_5,_WRP_P_4,_WRP_P_3,_WRP_P_2,_WRP_P_1,_WRP_P_0)(PARENT,__VA_ARGS__)
 
 
 
 
 
-  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-NAME" on command line */
-#define addOptionalCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addOptionalArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>("-" #NAME, HELP_STR)
-  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and default help string "Provide the value for NAME" */
-#define addOptionalCommandLineArgDefaultHelpString(PARSER, NAME) addOptionalCommandLineArg(PARSER, NAME, "Provide the value for " #NAME)
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME, PARENT struct instance, and help string HELP_STR. Option enabled by "-NAME" on command line */
+#define addOptionalCommandLineArg(PARSER, PARENT, NAME, HELP_STR) PARSER.addOptionalArg(PARENT.NAME, "-" #NAME, HELP_STR)
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME, PARENT struct instance, and default help string "Provide the value for NAME" */
+#define addOptionalCommandLineArgDefaultHelpString(PARSER, PARENT, NAME) addOptionalCommandLineArg(PARSER, PARENT, NAME, "Provide the value for " #NAME)
 
-  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-NAME" on command line. A bool field FLAGNAME will be set to true if parsed */
-#define addOptionalCommandLineArgWithFlag(PARSER, NAME, FLAGNAME, HELP_STR) PARSER.addOptionalArgWithFlag< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,FLAGNAME)>("-" #NAME, HELP_STR)
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER for member with given name NAME and flag with FLAGNAME both belonging to PARENT struct instance, and help string HELP_STR. Option enabled by "-NAME" on command line. FLAGNAME will be set true if parsed */
+#define addOptionalCommandLineArgWithFlag(PARSER, PARENT, NAME, FLAGNAME, HELP_STR) PARSER.addOptionalArgWithFlag(PARENT.NAME, PARENT.FLAGNAME, "-" #NAME, HELP_STR)
 
   /**@brief Helper macro to add an optional command line arg to the parser PARSER with argument name  -${ARG_NAME} which sets multiple variables
    *
-   * Supports up to 5 variables
+   * Macro supports up to 5 members
    *
-   * Example usage:  addOptionalCommandLineArgMultiValue(parser_instance, set_2vals, "the help", a, b)
-   * called with -set_2vals 1 2   will set the structure members a and b to 1 and 2, respectively
+   * Example usage:  addOptionalCommandLineArgMultiValue(parser_instance, struct_instance, set_2vals, "the help", a, b)
+   * called with -set_2vals 1 2   will set structure_instance members a and b to 1 and 2, respectively
    */
-#define addOptionalCommandLineArgMultiValue(PARSER, ARG_NAME, HELP_STR, ...) PARSER.addOptionalArgMultiValue<GET_MEMBER_PTR_CONS(PARSER, __VA_ARGS__)>( "-" #ARG_NAME, HELP_STR )
+#define addOptionalCommandLineArgMultiValue(PARSER, PARENT, ARG_NAME, HELP_STR, ...) PARSER.addOptionalArgMultiValue( "-" #ARG_NAME, HELP_STR, WRAP_PARENT(PARENT, __VA_ARGS__) )
 
-  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and help string HELP_STR. Option enabled by "-OPT_ARG" on command line */
-#define addOptionalCommandLineArgOptArg(PARSER, NAME, OPT_ARG, HELP_STR) PARSER.addOptionalArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>("-" #OPT_ARG, HELP_STR)
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given member name NAME, PARENT struct instance, and help string HELP_STR. Option enabled by "-OPT_ARG" on command line */
+#define addOptionalCommandLineArgOptArg(PARSER, PARENT, NAME, OPT_ARG, HELP_STR) PARSER.addOptionalArg(PARENT.NAME, "-" #OPT_ARG, HELP_STR)
 
 
 
-  /**@brief Helper macro to add a mandatory command line arg to the parser PARSER with given name NAME and help string HELP_STR */
-#define addMandatoryCommandLineArg(PARSER, NAME, HELP_STR) PARSER.addMandatoryArg< _GMP_GET_MEMBER_PTR_TYPE(PARSER,NAME), _GMP_GET_MEMBER_PTR(PARSER,NAME)>(HELP_STR)
-  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given name NAME and default help string "Provide the value for NAME" */
-#define addMandatoryCommandLineArgDefaultHelpString(PARSER, NAME) addMandatoryCommandLineArg(PARSER, NAME, "Provide the value for " #NAME)
+  /**@brief Helper macro to add a mandatory command line arg to the parser PARSER with given member name NAME, PARENT struct instance, and help string HELP_STR */
+#define addMandatoryCommandLineArg(PARSER, PARENT, NAME, HELP_STR) PARSER.addMandatoryArg(PARENT.NAME, HELP_STR)
+  /**@brief Helper macro to add an optional command line arg to the parser PARSER with given member name NAME, PARENT struct instance, and default help string "Provide the value for NAME" */
+#define addMandatoryCommandLineArgDefaultHelpString(PARSER, PARENT, NAME) addMandatoryCommandLineArg(PARSER, PARENT.NAME, "Provide the value for " #NAME)
 
 
 };

@@ -69,32 +69,32 @@ struct pserverArgs{
 #endif
   {}
 
-  static commandLineParser<pserverArgs> &getParser(){
+  static commandLineParser &getParser(pserverArgs &instance){
     static bool init = false;
-    static commandLineParser<pserverArgs> p;
+    static commandLineParser p;
     if(!init){
-      addOptionalCommandLineArg(p, ad, "Set AD algorithm to use.");
-      addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
-      addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
-      addOptionalCommandLineArg(p, port, "Set the pserver port (default: 5559)");
-      addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
-      addOptionalCommandLineArg(p, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
-      addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
-      addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
-      addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
-      addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
+      addOptionalCommandLineArg(p, instance, ad, "Set AD algorithm to use.");
+      addOptionalCommandLineArg(p, instance, nt, "Set the number of RPC handler threads (max-2 by default)");
+      addOptionalCommandLineArg(p, instance, logdir, "Set the output log directory (default: job directory)");
+      addOptionalCommandLineArg(p, instance, port, "Set the pserver port (default: 5559)");
+      addOptionalCommandLineArg(p, instance, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
+      addOptionalCommandLineArg(p, instance, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
+      addOptionalCommandLineArgWithFlag(p, instance, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
+      addOptionalCommandLineArgWithFlag(p, instance, save_params, save_params_set, "Save anomaly algorithm parameters to file");
+      addOptionalCommandLineArg(p, instance, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
+      addOptionalCommandLineArg(p, instance, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
 #ifdef _USE_ZMQNET
-      addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
-      addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
-      addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
+      addOptionalCommandLineArg(p, instance, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
+      addOptionalCommandLineArg(p, instance, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
+      addOptionalCommandLineArg(p, instance, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
-      addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+      addOptionalCommandLineArg(p, instance, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
+      addOptionalCommandLineArg(p, instance, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
 #endif
-      addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
-      addOptionalCommandLineArg(p, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
-      addOptionalCommandLineArg(p, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
+      addOptionalCommandLineArg(p, instance, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
+      addOptionalCommandLineArg(p, instance, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
+      addOptionalCommandLineArg(p, instance, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
 
       init = true;
     }
@@ -112,10 +112,10 @@ void termSignalHandler( int signum ){
 int main (int argc, char ** argv){
   pserverArgs args;
   if(argc == 2 && std::string(argv[1]) == "-help"){
-    pserverArgs::getParser().help(std::cout);
+    pserverArgs::getParser(args).help(std::cout);
     return 0;
   }
-  pserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
+  pserverArgs::getParser(args).parse(argc-1, (const char**)(argv+1));
 
   //If number of threads is not specified, choose a sensible number
   if (args.nt <= 0){
