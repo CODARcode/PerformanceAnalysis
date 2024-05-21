@@ -167,7 +167,7 @@ if (( ${use_provdb} == 1 )); then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
 	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address '${provdb_addr}' and engine '${provdb_engine}'"
-	cmd="provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine '${provdb_engine}' -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &"
+	cmd="provdb_admin ${module} "${provdb_addr}" ${provdb_extra_args} -engine '${provdb_engine}' -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &"
 	if [[ ${do_numa_bind} -eq 1 ]]; then
 	    numa=${numas[i]}
 	    echo "Chimbuko services binding provDB instance ${i} to NUMA domain ${numa}"

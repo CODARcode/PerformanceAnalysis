@@ -8,7 +8,7 @@
 #include "chimbuko/core/util/commandLineParser.hpp"
 #include "chimbuko/core/util/string.hpp"
 #include "chimbuko/core/util/time.hpp"
-#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
+#include "chimbuko/modules/factory.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
       spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
     }
 
-    //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
+    //argv[2] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
     //Using an empty string will cause it to default to Mochi's default ip/port
     ProvdbArgs args;
@@ -185,12 +185,14 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, args, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
     addOptionalCommandLineArgMultiValue(parser, args, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
-    if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+    if(argc < 2 || argc-2 < parser.nMandatoryArgs() || (argc == 3 && std::string(argv[2]) == "-help")){
       parser.help(std::cout);
       return 0;
     }
 
-    parser.parseCmdLineArgs(argc, argv);
+    std::string module = argv[1];   
+
+    parser.parseCmdLineArgs(argc-1, argv+1);
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
@@ -389,13 +391,13 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
-	  ProvDBmoduleSetup pdb_module_setup; //put this under a factory
+	  std::unique_ptr<ProvDBmoduleSetupCore> pdb_module_setup = factoryInstantiateProvDBmoduleSetup(module);
 
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(nshard_instance);
 	  for(int s=0;s<nshard_instance;s++){
 	    db[s] = client.open(addr, shard_provider_indices[s], db_shard_names[s]);
-	    for(auto const &c : pdb_module_setup.getMainDBcollections())
+	    for(auto const &c : pdb_module_setup->getMainDBcollections())
 	      db[s].create(c);
 	  }
 
@@ -405,7 +407,7 @@ int main(int argc, char** argv) {
 	  std::unique_ptr<sonata::Database> glob_db;
 	  if(instance_do_global_db){
 	    glob_db.reset(new sonata::Database(client.open(addr, glob_provider_idx, glob_db_name)));
-	    for(auto const &c : pdb_module_setup.getGlobalDBcollections())
+	    for(auto const &c : pdb_module_setup->getGlobalDBcollections())
 	      glob_db->create(c);
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
