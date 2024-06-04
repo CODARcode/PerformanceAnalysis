@@ -7,7 +7,7 @@
 #include<chimbuko/core/util/barrier.hpp>
 #include<chimbuko/core/net/zmq_net.hpp>
 #include<chimbuko/core/ad/ADNetClient.hpp>
-#include<chimbuko/modules/performance_analysis/pserver/PSfunctions.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/PSmoduleDataManager.hpp>
 
 #include<stdio.h>
 
@@ -370,12 +370,12 @@ TEST(TestPSparamManager, AutoUpdatePSthread){
 
 TEST(TestPSparamManager, ModelSaveRestore){
   PSparamManagerTest man1(1, "hbos");
-  PSglobalFunctionIndexMap idx_map1;
+  PSmoduleDataManager dm1(0);
 
   std::string fname = "my_func";
 
   HbosParam w1;
-  unsigned fid = idx_map1.lookup(0,fname); //populate index manager
+  unsigned fid = dm1.getIndexMap().lookup(0,fname); //populate index manager
 
 
     //Some fake data
@@ -401,17 +401,18 @@ TEST(TestPSparamManager, ModelSaveRestore){
   std::string file = "model_save_restore_test.json";
   remove(file.c_str());
   std::cout << "Writing model to disk" << std::endl;
-  writeModel(file, idx_map1, man1);
+  dm1.writeModel(file, man1);
   
   PSparamManagerTest man2(2, "hbos");
-  PSglobalFunctionIndexMap idx_map2;
+  
+  PSmoduleDataManager dm2(0);
   std::cout << "Restoring model from disk" << std::endl;
-  restoreModel(idx_map2,man2,file);
+  dm2.restoreModel(man2,file);
 
   std::cout << "Running tests" << std::endl;
 
-  ASSERT_TRUE(idx_map2.contains(0,fname));
-  EXPECT_EQ(idx_map2.lookup(0,fname), fid);
+  ASSERT_TRUE(dm2.getIndexMap().contains(0,fname));
+  EXPECT_EQ(dm2.getIndexMap().lookup(0,fname), fid);
 
   {
     //Check restored global model is as expected

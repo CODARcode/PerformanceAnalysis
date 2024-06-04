@@ -9,4 +9,3 @@
 #include "pserver/GlobalAnomalyMetrics.hpp"
 #include "pserver/AggregateFuncAnomalyMetrics.hpp"
 #include "pserver/FunctionProfile.hpp"
-#include "pserver/PSfunctions.hpp"

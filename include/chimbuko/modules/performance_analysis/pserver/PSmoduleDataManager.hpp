@@ -40,6 +40,11 @@ namespace chimbuko{
      */
     void writeModel(const std::string &filename, const PSparamManager &model) override;
     void restoreModel(PSparamManager &model, const std::string &filename) override;
+
+    /**
+     * @brief External access to the index map, for testing
+     */
+    PSglobalFunctionIndexMap & getIndexMap(){ return m_global_func_index_map; }
   };
 
 };
