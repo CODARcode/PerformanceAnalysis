@@ -318,8 +318,9 @@ void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, siz
   //Check that the histogram contains bins
   if(nbin == 0){
     //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this data set
-    //Given that the model at this stage is unreliable anyway, we simply skip the set
+    //Given that the model at this stage is unreliable anyway, we simply skip the set and label the data as normal
     verboseStream << "Global model is empty, skipping outlier evaluation for data set " << dset_idx << std::endl;
+    for(auto &e : data_vals) e.label = ADDataInterface::EventType::Normal;
     return;
   }
 
@@ -578,8 +579,9 @@ void ADOutlierCOPOD::labelData(std::vector<ADDataInterface::Elem> &data_vals, si
   //Check that the histogram contains bins
   if(nbin == 0){
     //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this function
-    //Given that the model at this stage is unreliable anyway, we simply skip the function
+    //Given that the model at this stage is unreliable anyway, we simply skip the function and label the data as normal
     verboseStream << "Global model is empty, skipping outlier evaluation for data set " << dset_idx << std::endl;
+    for(auto &e : data_vals) e.label = ADDataInterface::EventType::Normal;
     return;
   }
 
