@@ -60,6 +60,12 @@ void PSparamManager::restoreGlobalModelJSON(const nlohmann::json &from){
   for(int i=1;i<m_worker_params.size();i++) m_worker_params[i]->clear();
 }
 
+std::unique_ptr<ParamInterface> PSparamManager::getGlobalParamsCopy() const{
+  //Without a deep-copy, the easiest way to do this is to serialize the global model and unserialize into a new object
+  std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(m_ad_algorithm));
+  p->assign(this->getSerializedGlobalModel());
+  return p;
+}
 
 void PSparamManager::startUpdaterThread(){
   if(m_updater_thread != nullptr) return;

@@ -1,7 +1,6 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
 #include <csignal>
 #include <chimbuko_config.h>
-#include <chimbuko/modules/performance_analysis/pserver.hpp>
 
 #ifdef _USE_MPINET
 #include <chimbuko/core/net/mpi_net.hpp>
@@ -11,7 +10,6 @@
 
 #ifdef ENABLE_PROVDB
 #include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
-#include "chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp"
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>
@@ -20,7 +18,7 @@
 #include <fstream>
 #include "chimbuko/core/verbose.hpp"
 
-
+#include <chimbuko/modules/factory.hpp>
 
 using namespace chimbuko;
 
@@ -111,11 +109,17 @@ void termSignalHandler( int signum ){
 
 int main (int argc, char ** argv){
   pserverArgs args;
-  if(argc == 2 && std::string(argv[1]) == "-help"){
+  bool do_help = argc < 2;
+  for(int i=1;i<argc;i++) if(std::string(argv[i])=="-help"){ do_help = true; break; }
+
+  if(do_help){
     pserverArgs::getParser(args).help(std::cout);
     return 0;
   }
-  pserverArgs::getParser(args).parse(argc-1, (const char**)(argv+1));
+  
+  std::string module = argv[1];
+
+  pserverArgs::getParser(args).parse(argc-2, (const char**)(argv+2));
 
   //If number of threads is not specified, choose a sensible number
   if (args.nt <= 0){
@@ -131,15 +135,13 @@ int main (int argc, char ** argv){
   PSparamManager param(args.nt, args.ad); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
   param.enableForceUpdate(args.model_force_update); //decide whether the model is forced to be updated every time a worker updates its model
 
-  std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
-  std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
-  std::vector<GlobalAnomalyMetrics> global_anom_metrics(args.nt); //global anomaly metrics
-  PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
-
+  std::unique_ptr<ProvDBmoduleSetupCore> pdb_setup = factoryInstantiateProvDBmoduleSetup(module);
+  std::unique_ptr<PSmoduleDataManagerCore> ps_module_data_man = factoryInstantiatePSmoduleDataManager(module, args.nt);
+  
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
-    restoreModel(global_func_index_map,  param, args.load_params);
+    ps_module_data_man->restoreModel(param, args.load_params);
   }
 
   //Start the aggregator thread for the global model
@@ -165,8 +167,7 @@ int main (int argc, char ** argv){
     progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
     ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
-  ProvDBmoduleSetup pdb_setup;  
-  PSProvenanceDBclient provdb_client(pdb_setup.getGlobalDBcollections());
+  PSProvenanceDBclient provdb_client(pdb_setup->getGlobalDBcollections());
 #endif
 
   try {
@@ -195,19 +196,17 @@ int main (int argc, char ** argv){
     for(int i=0;i<args.nt;i++){
       net.add_payload(new NetPayloadUpdateParamManager(&param, i, args.freeze_params), i);
       net.add_payload(new NetPayloadGetParamsFromManager(&param),i);
-      net.add_payload(new NetPayloadRecvCombinedADdataArray(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
-      net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
       net.add_payload(new NetPayloadPing,i);
+      ps_module_data_man->appendNetWorkerPayloads(net, i);
     }
 
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsCombinePayload(global_func_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalCounterStatsCombinePayload(global_counter_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsCombinePayload(global_anom_metrics));
     stat_sender.add_payload(new PSstatSenderCreatedAtTimestampPayload); //add 'created_at' timestamp
-    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'created_at' timestamp
+    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'version' timestamp
+    ps_module_data_man->appendStatSenderPayloads(stat_sender);
+
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully
@@ -232,41 +231,12 @@ int main (int argc, char ** argv){
 
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
-    if(provdb_client.isConnected() || args.prov_outputpath.size() > 0){
-      GlobalCounterStats tmp_cstats; for(int i=0;i<args.nt;i++) tmp_cstats += global_counter_stats[i];
-      nlohmann::json global_counter_stats_j = tmp_cstats.get_json_state();
-
-      GlobalAnomalyStats tmp_fstats; for(int i=0;i<args.nt;i++) tmp_fstats += global_func_stats[i];
-      GlobalAnomalyMetrics tmp_metrics; for(int i=0;i<args.nt;i++) tmp_metrics += global_anom_metrics[i];
-
-      //Generate the function profile
-      FunctionProfile profile;
-      tmp_fstats.get_profile_data(profile);
-      tmp_metrics.get_profile_data(profile);
-      nlohmann::json profile_j = profile.get_json();
-      
-      //Get the AD model
-      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
-      p->assign(param.getSerializedGlobalModel());
-      nlohmann::json ad_model_j = p->get_algorithm_params(global_func_index_map.getFunctionIndexMap());
-
-      if(provdb_client.isConnected()){
-	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
-	provdb_client.sendMultipleData(profile_j, "func_stats");
-	provdb_client.sendMultipleData(global_counter_stats_j, "counter_stats");
-	provdb_client.sendMultipleData(ad_model_j, "ad_model");
-	progressStream << "Pserver: disconnecting from provDB" << std::endl;
-	provdb_client.disconnect();
-      }
-      if(args.prov_outputpath.size() > 0){
-	progressStream << "Pserver: writing final statistics to disk at path " << args.prov_outputpath << std::endl;
-	std::ofstream gf(args.prov_outputpath + "/global_func_stats.json");
-	std::ofstream gc(args.prov_outputpath + "/global_counter_stats.json");
-	std::ofstream ad(args.prov_outputpath + "/ad_model.json");
-	gf << profile_j.dump();
-	gc << global_counter_stats_j.dump();
-	ad << ad_model_j.dump();
-      }
+    if(provdb_client.isConnected() || args.prov_outputpath.size() > 0) 
+      ps_module_data_man->sendFinalModuleDataToProvDB(provdb_client, args.prov_outputpath, param);
+    
+    if(provdb_client.isConnected()){
+      progressStream << "Pserver: disconnecting from provDB" << std::endl;
+      provdb_client.disconnect();
     }
 #endif
 
@@ -275,9 +245,7 @@ int main (int argc, char ** argv){
     //Write params to a file
     std::ofstream o(args.logdir + "/parameters.txt");
     if (o.is_open()){
-      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
-      p->assign(param.getSerializedGlobalModel());
-      p->show(o);
+      param.getGlobalParamsCopy()->show(o);
     }
   }
   catch (std::invalid_argument &e)
@@ -301,7 +269,7 @@ int main (int argc, char ** argv){
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
     progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
-    writeModel(args.save_params, global_func_index_map, param);
+    ps_module_data_man->writeModel(args.save_params, param);
   }
 
   progressStream << "Pserver: finished" << std::endl;

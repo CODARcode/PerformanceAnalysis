@@ -82,12 +82,21 @@ namespace chimbuko{
 
     /**
      * @brief Access the global model interface
+     *
+     * This is NOT thread safe    
      */
     ParamInterface const* getGlobalParamsPtr() const{ return m_global_params; }
     /**
      * @brief Access the worker model interface
+     *
+     * This is NOT thread safe
      */
     ParamInterface const* getWorkerParamsPtr(const int w) const{ return m_worker_params[w]; }
+
+    /**
+     * @brief Return a copy of the current global params. This is thread safe
+     */
+    std::unique_ptr<ParamInterface> getGlobalParamsCopy() const;
 
   protected:
     /**
