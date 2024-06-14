@@ -11,6 +11,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(ADLocalCounterStatisticsTest, TestJSONstate){
   RunStats a,b, c;

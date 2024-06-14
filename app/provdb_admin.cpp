@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
-	  std::unique_ptr<ProvDBmoduleSetupCore> pdb_module_setup = factoryInstantiateProvDBmoduleSetup(module);
+	  std::unique_ptr<ProvDBmoduleSetupCore> pdb_module_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
 
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(nshard_instance);

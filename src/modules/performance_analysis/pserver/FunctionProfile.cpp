@@ -1,6 +1,7 @@
 #include<chimbuko/modules/performance_analysis/pserver/FunctionProfile.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 nlohmann::json & FunctionProfile::getFunction(const int pid, const int fid, const std::string &func){
   auto pit = m_profile.find(pid);

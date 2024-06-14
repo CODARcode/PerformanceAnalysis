@@ -5,7 +5,7 @@
 #include<fstream>
 
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 void PSmoduleDataManager::appendNetWorkerPayloads(NetInterface &net, int worker_id){
   net.add_payload(new NetPayloadRecvCombinedADdataArray(&m_global_func_stats[worker_id], 

@@ -7,6 +7,7 @@
 #endif
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 ChimbukoParams::ChimbukoParams(): trace_engineType("BPFile"), trace_data_dir("."), trace_inputFile("TAU_FILENAME-BINARYNAME"),
 				  trace_connect_timeout(60), override_rank(false),
@@ -574,7 +575,7 @@ ChimbukoParams getParamsFromCommandLine(int argc, char** argv
 }
 
 
-std::unique_ptr<ChimbukoBase> chimbuko::moduleInstantiateChimbuko(int argc, char ** argv){
+std::unique_ptr<ChimbukoBase> chimbuko::modules::performance_analysis::moduleInstantiateChimbuko(int argc, char ** argv){
   if(argc == 0 || (argc == 1 && std::string(argv[0]) == "-help") ){
     printHelp();
     return 0;

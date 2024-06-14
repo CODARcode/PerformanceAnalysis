@@ -5,6 +5,7 @@
 #include<algorithm>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 AggregateFuncAnomalyMetricsAllRanks::AggregateFuncAnomalyMetricsAllRanks(int pid, int fid, const std::string &func): m_pid(pid), m_fid(fid), m_func(func),
 														     m_count(true), m_score(true), m_severity(true),

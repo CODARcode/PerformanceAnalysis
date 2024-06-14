@@ -5,6 +5,7 @@
 #include <fstream>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 CountersByIndex_t getIndexCounterMap(std::list<CounterData_t> &clist){
   CountersByIndex_t out;

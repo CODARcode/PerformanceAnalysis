@@ -17,6 +17,7 @@
 #include<memory>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void printUsageAndExit(){
   std::cout << "Usage: provdb_query <options> <instruction> <instruction args...>\n"

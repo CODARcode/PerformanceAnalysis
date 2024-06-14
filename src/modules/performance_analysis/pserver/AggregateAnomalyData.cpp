@@ -4,6 +4,7 @@
 #include <sstream>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 AggregateAnomalyData::AggregateAnomalyData(bool do_accumulate)
 {

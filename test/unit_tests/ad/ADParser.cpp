@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 struct SSTrw{
   //Common variables accessed by both writer and reader threads
@@ -362,7 +363,7 @@ TEST(ADParserTestFuncDataIO, funcDataCommunicated){
     
     rw.parser->beginStep();
     ParserError perr = rw.parser->fetchFuncData();    
-    EXPECT_EQ(perr , chimbuko::ParserError::OK );
+    EXPECT_EQ(perr , ParserError::OK );
     rw.parser->endStep();
 
     EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
@@ -450,7 +451,7 @@ TEST(ADParserTestFuncDataIO, checkProgramIndexSubstitution){
     //Check func
     {
       ParserError perr = rw.parser->fetchFuncData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(perr , ParserError::OK );
       EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
       
       unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
@@ -464,7 +465,7 @@ TEST(ADParserTestFuncDataIO, checkProgramIndexSubstitution){
     //Check comm
     {
       ParserError perr = rw.parser->fetchCommData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(perr , ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCommData(), 1 );
       
       unsigned long expect_data[COMM_EVENT_DIM]; for(int i=0;i<COMM_EVENT_DIM;i++) expect_data[i] = i;
@@ -478,7 +479,7 @@ TEST(ADParserTestFuncDataIO, checkProgramIndexSubstitution){
     //Check counter
     {
       ParserError perr = rw.parser->fetchCounterData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );     
+      EXPECT_EQ(perr , ParserError::OK );     
       EXPECT_EQ(rw.parser->getNumCounterData(), 1 );
       
       unsigned long expect_data[COUNTER_EVENT_DIM]; for(int i=0;i<COUNTER_EVENT_DIM;i++) expect_data[i] = i;
@@ -768,7 +769,7 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
     //Check func
     {
       ParserError perr = rw.parser->fetchFuncData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(perr , ParserError::OK );
       EXPECT_EQ(rw.parser->getNumFuncData(), 1 );
       
       unsigned long expect_data[FUNC_EVENT_DIM]; for(int i=0;i<FUNC_EVENT_DIM;i++) expect_data[i] = i;
@@ -783,7 +784,7 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
     //Check comm
     {
       ParserError perr = rw.parser->fetchCommData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );
+      EXPECT_EQ(perr , ParserError::OK );
       EXPECT_EQ(rw.parser->getNumCommData(), 1 );
       
       unsigned long expect_data[COMM_EVENT_DIM]; for(int i=0;i<COMM_EVENT_DIM;i++) expect_data[i] = i;
@@ -798,7 +799,7 @@ TEST(ADParserTestFuncDataIO, checkRankOverride){
     //Check counter
     {
       ParserError perr = rw.parser->fetchCounterData();    
-      EXPECT_EQ(perr , chimbuko::ParserError::OK );     
+      EXPECT_EQ(perr , ParserError::OK );     
       EXPECT_EQ(rw.parser->getNumCounterData(), 1 );
       
       unsigned long expect_data[COUNTER_EVENT_DIM]; for(int i=0;i<COUNTER_EVENT_DIM;i++) expect_data[i] = i;

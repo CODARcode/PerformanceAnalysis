@@ -22,6 +22,7 @@ int main(void){
 #include <fstream>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 struct hpserverArgs{
   int nt;

@@ -1,8 +1,9 @@
 #include<chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
-std::string chimbuko::toString(const MessageKind m){
+std::string chimbuko::modules::performance_analysis::toString(const MessageKind m){
 #define KSTR(A) case A: return #A
 
   switch(m){

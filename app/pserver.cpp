@@ -135,8 +135,8 @@ int main (int argc, char ** argv){
   PSparamManager param(args.nt, args.ad); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
   param.enableForceUpdate(args.model_force_update); //decide whether the model is forced to be updated every time a worker updates its model
 
-  std::unique_ptr<ProvDBmoduleSetupCore> pdb_setup = factoryInstantiateProvDBmoduleSetup(module);
-  std::unique_ptr<PSmoduleDataManagerCore> ps_module_data_man = factoryInstantiatePSmoduleDataManager(module, args.nt);
+  std::unique_ptr<ProvDBmoduleSetupCore> pdb_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
+  std::unique_ptr<PSmoduleDataManagerCore> ps_module_data_man = modules::factoryInstantiatePSmoduleDataManager(module, args.nt);
   
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){

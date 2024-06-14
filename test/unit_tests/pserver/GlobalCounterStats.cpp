@@ -6,6 +6,7 @@
 #include<random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 bool near(const RunStats &a, const RunStats &b, double tol){
   return fabs( a.mean() - b.mean() ) < tol && fabs( a.stddev() - b.stddev() ) < tol;

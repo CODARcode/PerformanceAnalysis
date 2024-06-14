@@ -4,8 +4,8 @@
 #include "../unit_test_common.hpp"
 #include<chimbuko/core/util/string.hpp>
 
-
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 struct TestSetup{
   CallList_t fake_execs;

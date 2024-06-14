@@ -1,6 +1,7 @@
 #include<chimbuko/modules/performance_analysis/ad/ADNormalEventProvenance.hpp>
 
-namespace chimbuko{
+using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void ADNormalEventProvenance::addNormalEvent(const unsigned long pid, const unsigned long rid, const unsigned long tid, const unsigned long fid, const nlohmann::json &event){
   m_normal_events[pid][rid][tid][fid] = event;
@@ -87,6 +88,4 @@ std::vector<nlohmann::json> ADNormalEventProvenance::getOutstandingRequests(bool
   return out;
 }
 
-
-}
 

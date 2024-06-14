@@ -1,6 +1,7 @@
 #include<chimbuko/modules/performance_analysis/ad/FuncStats.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 nlohmann::json FuncStats::get_json() const{
   nlohmann::json obj;

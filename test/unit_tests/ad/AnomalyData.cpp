@@ -3,9 +3,8 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(AnomalyDataTest, TestSerialization){
   int pid = 0, rid=1, step=2,  min_ts=500,  max_ts=600,  n_anom = 1234;  

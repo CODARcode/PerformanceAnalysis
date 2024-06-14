@@ -5,6 +5,7 @@
 #include <chimbuko/core/util/string.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 GlobalAnomalyStats::GlobalAnomalyStats(const GlobalAnomalyStats & r){
   {

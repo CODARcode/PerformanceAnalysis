@@ -5,6 +5,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyMetrics.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(GlobalAnomalyMetricsTest, TestAggregation){  
   int pid = 0;

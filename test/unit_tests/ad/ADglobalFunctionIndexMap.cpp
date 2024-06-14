@@ -5,8 +5,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
 
 using namespace chimbuko;
-
-
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){  
 #ifdef _USE_MPINET

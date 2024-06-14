@@ -3,6 +3,7 @@
 #include<chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 std::string ADcombinedPSdata::serialize_cerealpb() const{
   return cereal_serialize(*this);

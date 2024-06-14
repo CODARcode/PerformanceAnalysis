@@ -13,6 +13,7 @@
 #include <cstring>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(TestADAnomalyProvenance, extractsCallInformation){
   ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theroot", 100, 0);  //0 runtime indicates it has yet to complete

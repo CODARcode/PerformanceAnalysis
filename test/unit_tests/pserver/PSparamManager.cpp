@@ -12,6 +12,7 @@
 #include<stdio.h>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class PSparamManagerTest: public PSparamManager{
 public:

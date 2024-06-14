@@ -5,7 +5,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
 
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(TestAggregateFuncStats, AggregationAndJSON){  
   //Generate some stats representing the inclusive and exclusive runtimes collected over 2 different io steps

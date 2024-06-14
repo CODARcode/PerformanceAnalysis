@@ -2,6 +2,7 @@
 #include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 /* ---------------------------------------------------------------------------
  * Implementation of ExecData_t class
@@ -242,12 +243,12 @@ bool Event_t::operator==(const Event_t &r) const{
 }
 
 
-bool chimbuko::operator<(const Event_t& lhs, const Event_t& rhs) {
+bool chimbuko::modules::performance_analysis::operator<(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() < rhs.idx();
     return lhs.ts() < rhs.ts();
 }
 
-bool chimbuko::operator>(const Event_t& lhs, const Event_t& rhs) {
+bool chimbuko::modules::performance_analysis::operator>(const Event_t& lhs, const Event_t& rhs) {
     if (lhs.ts() == rhs.ts()) return lhs.idx() > rhs.idx();
     return lhs.ts() > rhs.ts();
 }

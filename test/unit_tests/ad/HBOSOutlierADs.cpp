@@ -15,6 +15,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class ADOutlierHBOSTest: public ADOutlierHBOS{
 public:

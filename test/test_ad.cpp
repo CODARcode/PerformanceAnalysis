@@ -7,6 +7,9 @@
 #include <chrono>
 #include <thread>
 
+using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
+
 #ifdef USE_MPI
 
 class ADTest : public ::testing::Test
@@ -42,8 +45,6 @@ TEST_F(ADTest, EnvTest)
 
 TEST_F(ADTest, BpfileTest)
 {
-    using namespace chimbuko;
-
     const std::vector<int> N_STEPS{7, 7, 7, 7};
 
     //Below indexed by [rank][step]  for 4 ranks
@@ -208,8 +209,6 @@ TEST_F(ADTest, BpfileTest)
 
 TEST_F(ADTest, BpfileWithNetTest)
 {
-    using namespace chimbuko;
-
     const std::vector<int> N_STEPS{7, 7, 7, 7};
 
     const std::vector<std::vector<size_t>> N_FUNC{
@@ -371,9 +370,6 @@ TEST_F(ADTest, ReadExecDataTest)
   //TODO: Update to check provenance data dump
 
 #if 0
-
-    using namespace chimbuko;
-
     const std::vector<int> N_STEPS{6, 6, 6, 6};
 
     const std::vector<std::vector<unsigned long>> N_OUTLIERS{

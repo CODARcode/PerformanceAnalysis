@@ -22,6 +22,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 int main (int argc, char** argv)
 {

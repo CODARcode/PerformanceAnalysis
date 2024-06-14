@@ -3,6 +3,7 @@
 #include <iostream>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void ADCounter::addCounter(const Event_t& event){
   if(!m_counterMap) fatal_error("Counter mapping not linked");

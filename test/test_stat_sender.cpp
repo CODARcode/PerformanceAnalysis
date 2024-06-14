@@ -14,6 +14,7 @@
 #include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 namespace chimbuko{
 /**
@@ -78,26 +79,31 @@ TEST(PSstatSenderTest, StatSenderPseudoTestBounce)
 
 
 namespace chimbuko{
-/**
- * @brief A payload used to test the data sent by CURL is correctly formatted
- */
-struct PSstatSenderGlobalAnomalyStatsCallbackPayload: public PSstatSenderGlobalAnomalyStatsPayload{
-  int *calls;
-  PSstatSenderGlobalAnomalyStatsCallbackPayload(GlobalAnomalyStats *stats, int *_calls): PSstatSenderGlobalAnomalyStatsPayload(stats), calls(_calls){}
+  namespace modules{
+    namespace performance_analysis{
 
-  bool do_fetch() const override{ return true; }
-  void process_callback(const std::string &packet, const std::string &returned) const override{
-    ++(*calls);
-    std::cout << "CALLBACK PROCESS" << std::endl;
-    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
-    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
-    nlohmann::json p = nlohmann::json::parse(packet);
-    nlohmann::json r = nlohmann::json::parse(returned);
+      /**
+       * @brief A payload used to test the data sent by CURL is correctly formatted
+       */
+      struct PSstatSenderGlobalAnomalyStatsCallbackPayload: public PSstatSenderGlobalAnomalyStatsPayload{
+	int *calls;
+	PSstatSenderGlobalAnomalyStatsCallbackPayload(GlobalAnomalyStats *stats, int *_calls): PSstatSenderGlobalAnomalyStatsPayload(stats), calls(_calls){}
 
-    if(p != r) throw std::runtime_error("test failed");
+	bool do_fetch() const override{ return true; }
+	void process_callback(const std::string &packet, const std::string &returned) const override{
+	  ++(*calls);
+	  std::cout << "CALLBACK PROCESS" << std::endl;
+	  std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+	  std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+	  nlohmann::json p = nlohmann::json::parse(packet);
+	  nlohmann::json r = nlohmann::json::parse(returned);
+
+	  if(p != r) throw std::runtime_error("test failed");
+	}
+      };
+
+    }
   }
-};
-
 }
 
 TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
@@ -144,26 +150,31 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
 
 
 namespace chimbuko{
-/**
- * @brief A payload used to test the data sent by CURL is correctly formatted
- */
-struct PSstatSenderGlobalCounterStatsCallbackPayload: public PSstatSenderGlobalCounterStatsPayload{
-  int *calls;
-  PSstatSenderGlobalCounterStatsCallbackPayload(GlobalCounterStats *stats, int *_calls): PSstatSenderGlobalCounterStatsPayload(stats), calls(_calls){}
+  namespace modules{
+    namespace performance_analysis{
 
-  bool do_fetch() const override{ return true; }
-  void process_callback(const std::string &packet, const std::string &returned) const override{
-    ++(*calls);
-    std::cout << "CALLBACK PROCESS" << std::endl;
-    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
-    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
-    nlohmann::json p = nlohmann::json::parse(packet);
-    nlohmann::json r = nlohmann::json::parse(returned);
+      /**
+       * @brief A payload used to test the data sent by CURL is correctly formatted
+       */
+      struct PSstatSenderGlobalCounterStatsCallbackPayload: public PSstatSenderGlobalCounterStatsPayload{
+	int *calls;
+	PSstatSenderGlobalCounterStatsCallbackPayload(GlobalCounterStats *stats, int *_calls): PSstatSenderGlobalCounterStatsPayload(stats), calls(_calls){}
 
-    if(p != r) throw std::runtime_error("test failed");
+	bool do_fetch() const override{ return true; }
+	void process_callback(const std::string &packet, const std::string &returned) const override{
+	  ++(*calls);
+	  std::cout << "CALLBACK PROCESS" << std::endl;
+	  std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+	  std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+	  nlohmann::json p = nlohmann::json::parse(packet);
+	  nlohmann::json r = nlohmann::json::parse(returned);
+
+	  if(p != r) throw std::runtime_error("test failed");
+	}
+      };
+
+    }
   }
-};
-
 }
 
 TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)

@@ -5,6 +5,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetrics.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(AggregateFuncAnomalyMetrics, Aggregation){  
   int pid = 0;

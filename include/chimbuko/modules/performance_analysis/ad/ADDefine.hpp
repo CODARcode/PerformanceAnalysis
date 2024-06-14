@@ -127,73 +127,78 @@
 #define IO_VERSION 1
 
 namespace chimbuko {
-
-/** Error kinds of the ADParser class
- */
-enum class ParserError
-{
-    OK = 0,          /**< OK (no error) */
-    NoFuncData = 1,  /**< Failed to fetch function data */
-    NoCommData = 2,  /**< Failed to fetch communication data */
-    NoCountData = 3  /**< Failed to fetch counter data */
-};
-
-/**
- * @brief Error kinds of the ADEvent class
- * 
- */
-enum class EventError
-{
-    OK = 0,                 /**< OK (no error) */
-    UnknownEvent = 1,       /**< unknown event error */
-    UnknownFunc = 2,        /**< unknown function (timer) error */
-    CallStackViolation = 3, /**< call stack violoation error */
-    EmptyCallStack = 4      /**< empty call stack error (i.e. exit before entry ) */
-};
-
-/**
- * @brief I/O mode of the ADio class
- * 
- */
-enum class IOMode
-{
-    Off = 0,        /**< no I/O */
-    Offline = 1,    /**< offline mode, dump to files */
-    Online = 2,     /**< online mode, stream data */
-    Both = 3        /**< both, dump to files and stream it */
-};
-
-/**
- * @brief I/O open mode of the ADio class
- * 
- */
-enum class IOOpenMode
-{
-    Read = 0,   /**< Read */
-    Write = 1   /**< Write */
-};
-
-/**
- * @brief event type in performance trace data 
- * 
- */
-enum class EventDataType {
-    Unknown = 0,  /**< unknown */
-    FUNC = 1,     /**< function (timer) */
-    COMM = 2,     /**< communication */
-    COUNT = 3     /**< counters */
-};
+  namespace modules{
+    namespace performance_analysis{
 
 
-/**
- * @brief Which end of a list/deque
- * 
- */
-enum class ListEnd {
-    Back = 0,
-    Front = 1
-};
+
+      /** Error kinds of the ADParser class
+       */
+      enum class ParserError
+      {
+	OK = 0,          /**< OK (no error) */
+	  NoFuncData = 1,  /**< Failed to fetch function data */
+	  NoCommData = 2,  /**< Failed to fetch communication data */
+	  NoCountData = 3  /**< Failed to fetch counter data */
+	  };
+
+      /**
+       * @brief Error kinds of the ADEvent class
+       * 
+       */
+      enum class EventError
+      {
+	OK = 0,                 /**< OK (no error) */
+	  UnknownEvent = 1,       /**< unknown event error */
+	  UnknownFunc = 2,        /**< unknown function (timer) error */
+	  CallStackViolation = 3, /**< call stack violoation error */
+	  EmptyCallStack = 4      /**< empty call stack error (i.e. exit before entry ) */
+	  };
+
+      /**
+       * @brief I/O mode of the ADio class
+       * 
+       */
+      enum class IOMode
+      {
+	Off = 0,        /**< no I/O */
+	  Offline = 1,    /**< offline mode, dump to files */
+	  Online = 2,     /**< online mode, stream data */
+	  Both = 3        /**< both, dump to files and stream it */
+	  };
+
+      /**
+       * @brief I/O open mode of the ADio class
+       * 
+       */
+      enum class IOOpenMode
+      {
+	Read = 0,   /**< Read */
+	  Write = 1   /**< Write */
+	  };
+
+      /**
+       * @brief event type in performance trace data 
+       * 
+       */
+      enum class EventDataType {
+	Unknown = 0,  /**< unknown */
+	  FUNC = 1,     /**< function (timer) */
+	  COMM = 2,     /**< communication */
+	  COUNT = 3     /**< counters */
+	  };
+
+
+      /**
+       * @brief Which end of a list/deque
+       * 
+       */
+      enum class ListEnd {
+	Back = 0,
+	  Front = 1
+	  };
 
  
-  
+    }
+  }
 } // end of AD namespace

@@ -2,6 +2,7 @@
 #include <chimbuko/core/util/map.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 GlobalCounterStats::GlobalCounterStats(const GlobalCounterStats &r){
   std::lock_guard<std::mutex> _(r.m_mutex);

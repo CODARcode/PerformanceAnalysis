@@ -6,6 +6,7 @@
 #include <sstream>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 ADEvent::ADEvent(bool verbose)
   : m_funcMap(nullptr), m_eventType(nullptr), m_counterMap(nullptr), m_gpu_thread_Map(nullptr), m_verbose(verbose),

@@ -15,6 +15,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(COPODADOutlierTestSyncParamWithPSComputeOutliers, Works){
   CopodParam global_params_ps; //parameters held in the parameter server

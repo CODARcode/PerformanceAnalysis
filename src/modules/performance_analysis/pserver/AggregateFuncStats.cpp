@@ -2,6 +2,7 @@
 #include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 AggregateFuncStats::AggregateFuncStats(int pid, int fid, const std::string &func): m_pid(pid), m_fid(fid), m_func(func){
   m_func_anomaly.set_do_accumulate(true); //accumulate number of anomalies as 'accumulate' field

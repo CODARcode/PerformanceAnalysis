@@ -3,6 +3,7 @@
 #include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 AnomalyData::AnomalyData()
 : m_app(0), m_rank(0), m_step(0), m_min_timestamp(0), m_max_timestamp(0),
@@ -40,7 +41,7 @@ nlohmann::json AnomalyData::get_json() const
     };
 }
 
-bool chimbuko::operator==(const AnomalyData& a, const AnomalyData& b){
+bool chimbuko::modules::performance_analysis::operator==(const AnomalyData& a, const AnomalyData& b){
     return 
       a.m_app == b.m_app &&
       a.m_rank == b.m_rank &&
@@ -51,7 +52,7 @@ bool chimbuko::operator==(const AnomalyData& a, const AnomalyData& b){
       a.m_outlier_scores == b.m_outlier_scores;
 }
 
-bool chimbuko::operator!=(const AnomalyData& a, const AnomalyData& b){
+bool chimbuko::modules::performance_analysis::operator!=(const AnomalyData& a, const AnomalyData& b){
   return !(a == b);
 }
 

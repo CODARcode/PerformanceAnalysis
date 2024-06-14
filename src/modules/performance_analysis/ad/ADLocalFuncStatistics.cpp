@@ -6,6 +6,7 @@
 #include <algorithm>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 ADLocalFuncStatistics::ADLocalFuncStatistics(const unsigned long program_idx, const unsigned long rank, const int step, PerfStats* perf): 
   m_perf(nullptr), m_anom_data(program_idx, rank, step, 0,0,0){}

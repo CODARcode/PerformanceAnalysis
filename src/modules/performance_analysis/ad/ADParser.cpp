@@ -14,6 +14,7 @@
 #include <experimental/filesystem>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 ADParser::ADParser(std::string inputFile, unsigned long program_idx, int rank, std::string engineType, int openTimeoutSeconds)
   : m_engineType(engineType), m_status(false), m_opened(false), m_attr_once(false), m_current_step(-1),

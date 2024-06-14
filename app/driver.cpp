@@ -24,7 +24,7 @@ int main(int argc, char ** argv){
     enableVerboseLogging() = true;
 
   //Instantiate Chimbuko
-  std::unique_ptr<ChimbukoBase> driver = factoryInstantiateChimbuko(argv[1], argc-2, argv+2);
+  std::unique_ptr<ChimbukoBase> driver = modules::factoryInstantiateChimbuko(argv[1], argc-2, argv+2);
 
   const ChimbukoBaseParams &base_params = driver->getBaseParams();
   int rank = base_params.rank;

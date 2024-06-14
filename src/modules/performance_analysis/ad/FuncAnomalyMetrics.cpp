@@ -1,6 +1,7 @@
 #include <chimbuko/modules/performance_analysis/ad/FuncAnomalyMetrics.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void FuncAnomalyMetrics::add(const ExecData_t &event){
   if(event.get_label() != -1) fatal_error("Attempting to push an event that is not an outlier!");

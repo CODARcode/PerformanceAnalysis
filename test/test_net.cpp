@@ -12,8 +12,8 @@
 #include <thread>
 #include <chrono>
 
-
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class NetTest : public ::testing::Test
 {

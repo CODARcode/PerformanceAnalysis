@@ -2,8 +2,8 @@
 #include <chimbuko/core/util/error.hpp>
 #include <fstream>
 using namespace chimbuko;
-
-  
+using namespace chimbuko::modules::performance_analysis;
+ 
 
 void ADMonitoring::extractCounters(const CountersByIndex_t &counters){
   //First step is to check if new counters have appeared from the search list and mark them

@@ -4,6 +4,7 @@
 #include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 GPUvirtualThreadInfo & getGPUthreadInfoStruct(const unsigned long virtual_thread, std::unordered_map<unsigned long, GPUvirtualThreadInfo> &map){
   auto it = map.find(virtual_thread);

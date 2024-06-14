@@ -4,27 +4,25 @@
 #include<chimbuko/modules/performance_analysis/pserver/PSmoduleDataManager.hpp>
 #include<chimbuko/core/util/error.hpp>
 
-using namespace chimbuko;
-
-std::unique_ptr<ChimbukoBase> chimbuko::factoryInstantiateChimbuko(const std::string &module, int argc, char** argv){
+std::unique_ptr<chimbuko::ChimbukoBase> chimbuko::modules::factoryInstantiateChimbuko(const std::string &module, int argc, char** argv){
   if(module == "performance_analysis"){    
-    return moduleInstantiateChimbuko(argc,argv);
+    return performance_analysis::moduleInstantiateChimbuko(argc,argv);
   }else{
     fatal_error("Unknown module");
   }
 }
 
-std::unique_ptr<ProvDBmoduleSetupCore> chimbuko::factoryInstantiateProvDBmoduleSetup(const std::string &module){
+std::unique_ptr<chimbuko::ProvDBmoduleSetupCore> chimbuko::modules::factoryInstantiateProvDBmoduleSetup(const std::string &module){
   if(module == "performance_analysis"){
-    return std::unique_ptr<ProvDBmoduleSetupCore>(new ProvDBmoduleSetup);
+    return std::unique_ptr<ProvDBmoduleSetupCore>(new performance_analysis::ProvDBmoduleSetup);
   }else{
     fatal_error("Unknown module");
   }
 }
 
-std::unique_ptr<PSmoduleDataManagerCore> chimbuko::factoryInstantiatePSmoduleDataManager(const std::string &module, int net_nworker){
+std::unique_ptr<chimbuko::PSmoduleDataManagerCore> chimbuko::modules::factoryInstantiatePSmoduleDataManager(const std::string &module, int net_nworker){
   if(module == "performance_analysis"){
-    return std::unique_ptr<PSmoduleDataManagerCore>(new PSmoduleDataManager(net_nworker));
+    return std::unique_ptr<PSmoduleDataManagerCore>(new performance_analysis::PSmoduleDataManager(net_nworker));
   }else{
     fatal_error("Unknown module");
   }

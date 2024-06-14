@@ -14,6 +14,7 @@
 #endif
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 //For these tests the provenance DB admin must be running
 std::string addr;

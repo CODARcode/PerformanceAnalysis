@@ -6,6 +6,9 @@
 #include <nlohmann/json.hpp>
 #include <unordered_map>
 
+using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
+
 class ParamTest : public ::testing::Test
 {
 protected:
@@ -22,8 +25,6 @@ protected:
 
 TEST_F(ParamTest, SstdUpdateTest)
 {
-    using namespace chimbuko;
-
     const int n_functions = 1000;
     const int n_rolls = 10000;
 
@@ -63,8 +64,6 @@ TEST_F(ParamTest, SstdUpdateTest)
 
 TEST_F(ParamTest, MessageTest)
 {
-    using namespace chimbuko;
-
     Message msg, c_msg;
     Message::Header c_head;
     std::string dummy{"Hello World!"}, dummy2;
@@ -94,8 +93,6 @@ TEST_F(ParamTest, MessageTest)
 
 TEST_F(ParamTest, SstdMessageTest)
 {
-    using namespace chimbuko;
-
     const int n_functions = 4;
     const double mean[n_functions] = {1.0, 10.0, 100.0, 1000.0};
     const double std[n_functions] = {0.1, 1.0, 10.0, 100.0};
@@ -152,8 +149,6 @@ TEST_F(ParamTest, SstdMessageTest)
 
 TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
-    using namespace chimbuko;
-
     GlobalAnomalyStats param;
 
     // empty case
@@ -280,8 +275,6 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 
 TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 {
-    using namespace chimbuko;
-
     GlobalAnomalyStats param;
 
     // empty case

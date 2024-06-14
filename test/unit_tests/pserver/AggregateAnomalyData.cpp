@@ -5,7 +5,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/AggregateAnomalyData.hpp>
 
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(TestAggregateAnomalyData, Combine){  
   AnomalyData anom1(11, 12, 13, 14, 15, 16);

@@ -3,8 +3,8 @@
 #include "gtest/gtest.h"
 #include "../unit_test_common.hpp"
 
-
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(FuncAnomalyMetricsTest, TestAddAndState){
   int pid = 0;

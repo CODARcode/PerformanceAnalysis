@@ -6,8 +6,8 @@
 #include <cereal/types/string.hpp>
 #include <cereal/types/utility.hpp>
 
-
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 unsigned long ADglobalFunctionIndexMap::lookup(const unsigned long local_idx, const std::string &func_name){
   if(!connectedToPS()) return local_idx;

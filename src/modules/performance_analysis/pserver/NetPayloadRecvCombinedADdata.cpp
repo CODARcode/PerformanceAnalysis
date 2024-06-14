@@ -2,6 +2,7 @@
 #include<chimbuko/modules/performance_analysis/ad/ADcombinedPSdata.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void NetPayloadRecvCombinedADdata::action(Message &response, const Message &message){
   check(message);

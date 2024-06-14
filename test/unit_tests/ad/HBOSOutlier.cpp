@@ -15,6 +15,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(HBOSADOutlierTestSyncParamWithoutPS, CheckSyncParam){
   chimbuko::enableVerboseLogging() = false;

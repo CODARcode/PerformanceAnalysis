@@ -11,6 +11,7 @@
 #include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 using namespace std::chrono;
 
 struct SinkerArgs{

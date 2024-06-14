@@ -11,6 +11,7 @@
 #include <thread>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 //This test program just connects to the provDB, waits a short period and disconnects
 //It is used to test options of the provdb_admin

@@ -6,6 +6,7 @@
 #include <cereal/types/utility.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 unsigned long PSglobalFunctionIndexMap::lookup(unsigned long pid, const std::string &func_name){
   std::lock_guard<std::mutex> _(m_mutex);

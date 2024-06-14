@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(TestADNormalEventProvenance, works){
   nlohmann::json entry1 = { {"hello","world"} };

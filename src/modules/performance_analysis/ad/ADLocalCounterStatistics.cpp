@@ -3,6 +3,7 @@
 #include <chimbuko/core/util/serialize.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 void ADLocalCounterStatistics::gatherStatistics(const CountersByIndex_t &cntrs_by_idx){
   for(auto it : cntrs_by_idx){

@@ -3,7 +3,7 @@
 #include "../unit_test_common.hpp"
 
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 TEST(ADCounterTest, CounterAddedCorrectly){
   ADCounter counters;

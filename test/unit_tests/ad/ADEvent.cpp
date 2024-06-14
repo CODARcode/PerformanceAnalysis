@@ -8,7 +8,7 @@
 #include<vector>
 
 using namespace chimbuko;
-
+using namespace chimbuko::modules::performance_analysis;
 
 //Unit testing for ADEvent::addFunc
 struct FuncEvent{

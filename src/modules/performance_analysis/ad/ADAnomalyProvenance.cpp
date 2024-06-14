@@ -4,6 +4,7 @@
 #include <chimbuko/core/util/environment.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 ADAnomalyProvenance::ADAnomalyProvenance(const ADEventIDmap &event_man): m_perf(nullptr), m_event_man(&event_man), m_monitoring(nullptr), m_metadata(nullptr), m_algo_params(nullptr), m_window_size(5), m_min_anom_time(0){}
 

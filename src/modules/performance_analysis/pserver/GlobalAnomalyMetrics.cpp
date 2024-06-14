@@ -6,6 +6,7 @@
 #include <chimbuko/modules/performance_analysis/pserver/AggregateFuncAnomalyMetricsAllRanks.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 GlobalAnomalyMetrics::GlobalAnomalyMetrics(const GlobalAnomalyMetrics &r){
   std::lock_guard<std::mutex> _(m_mutex);
