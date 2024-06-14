@@ -48,10 +48,10 @@ TEST(TestCopodParam, serializeJSON){
   l[fid].getHistogram() = Histogram(runtimes);
   l[fid].setInternalGlobalThreshold(1234);
 
-  nlohmann::json ser = l.get_json();
+  nlohmann::json ser = l.serialize_json();
   
   CopodParam r;
-  r.set_json(ser);
+  r.deserialize_json(ser);
 
   EXPECT_EQ(l.get_copodstats(),r.get_copodstats());
 }

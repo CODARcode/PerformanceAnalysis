@@ -199,10 +199,10 @@ TEST(TestHbosParam, serializeJSON){
   l.setMaxBins(maxbins);
   l.generate_histogram(fid, runtimes, init_global_threshold);
   
-  nlohmann::json ser = l.get_json();
+  nlohmann::json ser = l.serialize_json();
   
   HbosParam r;
-  r.set_json(ser);
+  r.deserialize_json(ser);
   
   EXPECT_EQ(l.get_hbosstats(),r.get_hbosstats());
   EXPECT_EQ(l.getMaxBins(), r.getMaxBins());

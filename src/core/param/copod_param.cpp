@@ -102,7 +102,7 @@ void CopodFuncParam::merge(const CopodFuncParam &other){
  }
 
 
-nlohmann::json CopodParam::get_json() const{
+nlohmann::json CopodParam::serialize_json() const{
   std::stringstream ss;
   {
     cereal::JSONOutputArchive wr(ss);
@@ -111,7 +111,7 @@ nlohmann::json CopodParam::get_json() const{
   return nlohmann::json::parse(ss.str());
 }  
   
-void CopodParam::set_json(const nlohmann::json &from){
+void CopodParam::deserialize_json(const nlohmann::json &from){
   std::stringstream ss; ss << from.dump();
   {
     cereal::JSONInputArchive rd(ss);

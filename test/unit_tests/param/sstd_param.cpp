@@ -41,10 +41,10 @@ TEST(TestSstdParam, serializeJSON){
       stats.push(s);
   }
 
-  nlohmann::json ser = param.get_json();
+  nlohmann::json ser = param.serialize_json();
 
   SstdParamAcc rparam;
-  rparam.set_json(ser);
+  rparam.deserialize_json(ser);
   
   EXPECT_EQ( param.get_runstats().size(), rparam.get_runstats().size() );
   for(auto const &e: param.get_runstats()){

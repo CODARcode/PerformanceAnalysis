@@ -115,7 +115,7 @@ HbosParam::HbosParam(): m_maxbins(200){
    }
  }
 
-nlohmann::json HbosParam::get_json() const{
+nlohmann::json HbosParam::serialize_json() const{
   std::stringstream ss;
   {
     cereal::JSONOutputArchive wr(ss);
@@ -125,7 +125,7 @@ nlohmann::json HbosParam::get_json() const{
   return nlohmann::json::parse(ss.str());
 }  
   
-void HbosParam::set_json(const nlohmann::json &from){
+void HbosParam::deserialize_json(const nlohmann::json &from){
   std::stringstream ss; ss << from.dump();
   {
     cereal::JSONInputArchive rd(ss);

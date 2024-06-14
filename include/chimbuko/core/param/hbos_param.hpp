@@ -186,14 +186,14 @@ namespace chimbuko {
     void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init,  HbosParam const *global_param = nullptr);
 
     /**
-     * @brief Get the algorithm parameters in JSON form
+     * @brief Serialize the set of algorithm parameters in JSON form for purpose of inter-run persistence, format may differ from the above
      */
-    nlohmann::json get_json() const override;
-    
+    nlohmann::json serialize_json() const override;
+
     /**
-     * @brief Set the algorithm parameters from the input JSON structure
+     * @brief De-serialize the set of algorithm parameters from JSON form created by serialize_json
      */
-    void set_json(const nlohmann::json &from) override;
+    void deserialize_json(const nlohmann::json &from) override;
 
     bool operator==(const HbosParam &r) const;
     inline bool operator!=(const HbosParam &r) const{ return !(*this == r); }

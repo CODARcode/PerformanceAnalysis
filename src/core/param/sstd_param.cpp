@@ -44,7 +44,7 @@ void SstdParam::deserialize_cerealpb(const std::string& parameters,  std::unorde
   }
 }
 
-nlohmann::json SstdParam::get_json() const{
+nlohmann::json SstdParam::serialize_json() const{
   std::stringstream ss;
   {
     cereal::JSONOutputArchive wr(ss);
@@ -53,7 +53,7 @@ nlohmann::json SstdParam::get_json() const{
   return nlohmann::json::parse(ss.str());
 }  
   
-void SstdParam::set_json(const nlohmann::json &from){
+void SstdParam::deserialize_json(const nlohmann::json &from){
   std::stringstream ss; ss << from.dump();
   {
     cereal::JSONInputArchive rd(ss);
