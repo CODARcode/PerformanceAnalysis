@@ -51,7 +51,7 @@ void CopodFuncParam::merge(const CopodFuncParam &other){
 
      for (auto stat: m_copodstats)
      {
-         os << "Function " << stat.first << std::endl;
+         os << "Model " << stat.first << std::endl;
          os << stat.second.get_json().dump(2) << std::endl;
      }
 
@@ -155,7 +155,7 @@ void CopodParam::update(const CopodParam& other) {
 
  nlohmann::json CopodParam::get_algorithm_params(const unsigned long model_idx) const{
    auto it = m_copodstats.find(model_idx);
-   if(it == m_copodstats.end()) throw std::runtime_error("Invalid function index in CopodParam::get_algorithm_params");
+   if(it == m_copodstats.end()) throw std::runtime_error("Invalid model index in CopodParam::get_algorithm_params");
    return it->second.get_json();
  }
 
@@ -167,9 +167,6 @@ std::unordered_map<unsigned long, nlohmann::json> CopodParam::get_all_algorithm_
 }
 
 
- const int CopodParam::find(const unsigned long& func_id) {
-   if(m_copodstats.find(func_id) == m_copodstats.end()) { // func_id not in map
-     return 0;
-   }
-   return 1;
+ const int CopodParam::find(const unsigned long model_id) {
+   return !(m_copodstats.find(model_id) == m_copodstats.end());
  }

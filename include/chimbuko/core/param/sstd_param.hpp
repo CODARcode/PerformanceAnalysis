@@ -22,7 +22,7 @@ namespace chimbuko {
     void clear() override;
 
     /**
-     * @brief Get the number of functions for which statistics are being collected
+     * @brief Get the number of models for which statistics are being collected
     */
     size_t size() const override { return m_runstats.size(); }
 
@@ -104,12 +104,12 @@ namespace chimbuko {
 
     /**
      * @brief Get an element of the internal map
-     * @param id The global function index
+     * @param id The model index
      */
     RunStats& operator [](unsigned long id) { return m_runstats[id]; }
 
     /**
-     * @brief Get the internal map between global function index and statistics
+     * @brief Get the internal map between model index and statistics
      */
     const std::unordered_map<unsigned long, RunStats> & get_runstats() const{ return m_runstats; }
 
@@ -135,12 +135,12 @@ namespace chimbuko {
 
   protected:
     /**
-     * @brief Get the internal map of global function index to statistics
+     * @brief Get the internal map of model index to statistics
      */
     std::unordered_map<unsigned long, RunStats> & access_runstats(){ return m_runstats; }
 
   private:
-    std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of global function index to statistics*/
+    std::unordered_map<unsigned long, RunStats> m_runstats; /**< Map of model index to statistics*/
   };
 
 } // end of chimbuko namespace

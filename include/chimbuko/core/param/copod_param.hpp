@@ -11,7 +11,7 @@
 namespace chimbuko {
 
   /**
-   * @brief The algorithm parameters for a given function
+   * @brief The algorithm parameters for a given model
    */
   class CopodFuncParam{
   public:
@@ -65,15 +65,18 @@ namespace chimbuko {
      */
     void copy(const CopodParam &r){ m_copodstats = r.m_copodstats; }
 
-    const int find(const unsigned long& func_id);
+    /**
+     * @brief Check if the statistics for a model exist in the histogram
+     */
+    const int find(const unsigned long model_id);
 
     /**
-     * @brief Get the internal map between global function index and statistics
+     * @brief Get the internal map between model index and statistics
      */
     const std::unordered_map<unsigned long, CopodFuncParam> & get_copodstats() const{ return m_copodstats; }
 
     /**
-     * @brief Set the internal map between function index and statistics to the provided input
+     * @brief Set the internal map between model index and statistics to the provided input
      */
     void set_copodstats(const std::unordered_map<unsigned long, CopodFuncParam> &to){ m_copodstats = to; }
 
@@ -119,7 +122,7 @@ namespace chimbuko {
 
     /**
      * @brief Get an element of the internal map
-     * @param id The global function index
+     * @param id The model index
      */
     CopodFuncParam& operator [](unsigned long id) { return m_copodstats[id]; }
 
@@ -139,7 +142,7 @@ namespace chimbuko {
     void update(const CopodParam& other);
 
     /**
-     * @brief Update the internal run statistics with those from another instance
+     * @brief Update the internal model from another instance
      *
      * The instance will be dynamically cast to the derived type internally, and will throw an error if the types do not match
      */
@@ -172,7 +175,7 @@ namespace chimbuko {
     void deserialize_json(const nlohmann::json &from) override;
 
   private:
-    std::unordered_map<unsigned long, CopodFuncParam> m_copodstats; /**< Map of func_id and corresponding Histogram*/
+    std::unordered_map<unsigned long, CopodFuncParam> m_copodstats; /**< Map of model index and corresponding Histogram*/
   };
 
 

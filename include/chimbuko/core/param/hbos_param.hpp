@@ -11,7 +11,7 @@
 namespace chimbuko {
 
   /**
-   * @brief The algorithm parameters for a given function
+   * @brief The algorithm parameters for a given model
    */
   class HbosFuncParam{
   public:
@@ -70,22 +70,22 @@ namespace chimbuko {
     void clear() override;
 
     /**
-     * @bin Check if the statistics for a function exist in the histogram
+     * @brief Check if the statistics for a model exist in the histogram
      */
-    bool find(const unsigned long func_id) const;
+    bool find(const unsigned long model_id) const;
 
     /**
-     * @brief Get the internal map between global function index and statistics
+     * @brief Get the internal map between model index and statistics
      */
     const std::unordered_map<unsigned long, HbosFuncParam> & get_hbosstats() const{ return m_hbosstats; }
 
     /**
-     * @brief Set the internal map between function index and statistics to the provided input
+     * @brief Set the internal map between model index and statistics to the provided input
      */
     void set_hbosstats(const std::unordered_map<unsigned long, HbosFuncParam> &to){ m_hbosstats = to; }
 
     /**
-     * @brief Get the number of functions for which statistics are being collected
+     * @brief Get the number of models for which statistics are being collected
     */
     size_t size() const override { return m_hbosstats.size(); }
 
@@ -124,7 +124,7 @@ namespace chimbuko {
 
     /**
      * @brief Get an element of the internal map
-     * @param id The global function index
+     * @param id The model index
      */
     HbosFuncParam& operator [](unsigned long id) { return m_hbosstats[id]; }
 
@@ -178,12 +178,12 @@ namespace chimbuko {
 
     /**
      * @brief Generate the histogram for a particular function based on the batch of runtimes
-     * @param func_id The function index
-     * @param runtimes The function runtimes
-     * @param global_param A pointer to the current global histogram. If non-null both the global model and the runtimes dataset will be used to determine the optimal bin width
+     * @param model_id The model index
+     * @param values The data used to generate the model
+     * @param global_param A pointer to the current global histogram. If non-null both the global model and the values dataset will be used to determine the optimal bin width
      * @param global_threshold_init The initial value of the internal, global threshold
      */
-    void generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init,  HbosParam const *global_param = nullptr);
+    void generate_histogram(const unsigned long model_id, const std::vector<double> &values, double global_threshold_init,  HbosParam const *global_param = nullptr);
 
     /**
      * @brief Serialize the set of algorithm parameters in JSON form for purpose of inter-run persistence, format may differ from the above
@@ -204,7 +204,7 @@ namespace chimbuko {
      */
     void update_internal(const HbosParam &other);
     
-    std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of func_id and corresponding Histogram*/
+    std::unordered_map<unsigned long, HbosFuncParam> m_hbosstats; /**< Map of model id and corresponding Histogram*/
     int m_maxbins; /**< Maximum number of bins to use in the histograms */
   };
 

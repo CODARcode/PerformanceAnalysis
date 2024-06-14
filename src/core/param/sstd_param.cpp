@@ -128,7 +128,7 @@ void SstdParam::show(std::ostream& os) const
 
     for (auto stat: m_runstats)
     {
-        os << "Function " << stat.first << std::endl;
+        os << "Model " << stat.first << std::endl;
         os << stat.second.get_json().dump(2) << std::endl;
     }
 

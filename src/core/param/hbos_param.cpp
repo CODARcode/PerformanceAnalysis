@@ -62,7 +62,7 @@ HbosParam::HbosParam(): m_maxbins(200){
 
      for (auto stat: m_hbosstats)
      {
-         os << "Function " << stat.first << std::endl;
+         os << "Model " << stat.first << std::endl;
          os << stat.second.get_json().dump(2) << std::endl;
      }
 
@@ -153,7 +153,7 @@ void HbosParam::update_internal(const HbosParam &from){
   binWidthFixedNbin bwspec(m_maxbins);    
   
   for (auto& pair: from.m_hbosstats) {
-    verboseStream << "Histogram merge of func " << pair.first << std::endl;   
+    verboseStream << "Histogram merge of model " << pair.first << std::endl;   
     m_hbosstats[pair.first].merge(pair.second, bwspec);
   }
 } 
@@ -188,29 +188,29 @@ std::unordered_map<unsigned long, nlohmann::json> HbosParam::get_all_algorithm_p
   return out;
 }
 
-bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
+bool HbosParam::find(const unsigned long model_id) const{ return m_hbosstats.find(model_id) != m_hbosstats.end(); }
 
 
-void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init, HbosParam const *global_param){
-  if (runtimes.size() > 0) {
-    verboseStream << "Creating local histogram for func " << func_id << " for " << runtimes.size() << " data points" << std::endl;
+void HbosParam::generate_histogram(const unsigned long model_id, const std::vector<double> &values, double global_threshold_init, HbosParam const *global_param){
+  if (values.size() > 0) {
+    verboseStream << "Creating local histogram for model " << model_id << " for " << values.size() << " data points" << std::endl;
 
     Histogram const* global_hist = nullptr;
     if(global_param != nullptr){
-      auto hit = global_param->get_hbosstats().find(func_id);
+      auto hit = global_param->get_hbosstats().find(model_id);
       if(hit != global_param->get_hbosstats().end()) global_hist = &hit->second.getHistogram();
     }
 
-    HbosFuncParam &fparam = m_hbosstats[func_id];
+    HbosFuncParam &fparam = m_hbosstats[model_id];
     Histogram &hist = fparam.getHistogram();
 
     //Always use the max number of bins for finest resolution
     binWidthFixedNbin bwspec(m_maxbins);
-    hist.create_histogram(runtimes, bwspec);
+    hist.create_histogram(values, bwspec);
 
     fparam.setInternalGlobalThreshold(global_threshold_init);
 
-    verboseStream << "Function " << func_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
+    verboseStream << "Model " << model_id << " generated histogram has " << hist.counts().size() << " bins:" << std::endl;
     verboseStream << hist << std::endl;
   }
 }
