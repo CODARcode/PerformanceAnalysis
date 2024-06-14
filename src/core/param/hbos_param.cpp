@@ -175,30 +175,20 @@ void HbosParam::update_internal(const HbosParam &from){
  }
 
 
- nlohmann::json HbosParam::get_algorithm_params(const unsigned long func_id) const{
-   auto it = m_hbosstats.find(func_id);
-   if(it == m_hbosstats.end()) throw std::runtime_error("Invalid function index in HbosParam::get_algorithm_params");
+ nlohmann::json HbosParam::get_algorithm_params(const unsigned long model_idx) const{
+   auto it = m_hbosstats.find(model_idx);
+   if(it == m_hbosstats.end()) throw std::runtime_error("Invalid model index in HbosParam::get_algorithm_params");
    return it->second.get_json();
  }
 
-nlohmann::json HbosParam::get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const{
-  nlohmann::json out = nlohmann::json::array();
-  for(auto const &r : m_hbosstats){
-    auto fit = func_id_map.find(r.first);
-    if(fit == func_id_map.end()) fatal_error("Could not find function in input map");
-    nlohmann::json entry = nlohmann::json::object();
-    entry["fid"] = r.first;
-    entry["pid"] = fit->second.first;
-    entry["func_name"] = fit->second.second;
-    entry["model"] = r.second.get_json();
-    out.push_back(std::move(entry));
-  }
+std::unordered_map<unsigned long, nlohmann::json> HbosParam::get_all_algorithm_params() const{
+  std::unordered_map<unsigned long, nlohmann::json> out;
+  for(auto const &r : m_hbosstats)
+    out[r.first] = r.second.get_json();
   return out;
 }
 
-
-
- bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
+bool HbosParam::find(const unsigned long func_id) const{ return m_hbosstats.find(func_id) != m_hbosstats.end(); }
 
 
 void HbosParam::generate_histogram(const unsigned long func_id, const std::vector<double> &runtimes, double global_threshold_init, HbosParam const *global_param){

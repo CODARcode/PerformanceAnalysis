@@ -77,15 +77,14 @@ namespace chimbuko {
     virtual void show(std::ostream& os) const = 0;
 
     /**
-     * @brief Get the algorithm parameters associated with a given function. Format is algorithm dependent
+     * @brief Get the algorithm parameters associated with a given model index. Format is algorithm dependent
      */
-    virtual nlohmann::json get_algorithm_params(const unsigned long func_id) const = 0;
+    virtual nlohmann::json get_algorithm_params(const unsigned long model_idx) const = 0;
 
     /**
-     * @brief Get the algorithm parameters for all functions. 
-     * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
+     * @brief Get the algorithm parameters for all model indices. Returns a map of model index to JSON-formatted parameters. Parameter format is algorithm dependent
      */
-    virtual nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const = 0;
+    virtual std::unordered_map<unsigned long, nlohmann::json> get_all_algorithm_params() const = 0;
 
     /**
      * @brief Get the algorithm parameters in JSON form

@@ -34,8 +34,22 @@ void PSmoduleDataManager::sendFinalModuleDataToProvDB(PSProvenanceDBclient &pdb_
   tmp_metrics.get_profile_data(profile);
   nlohmann::json profile_j = profile.get_json();
   
-  //Get the AD model
-  nlohmann::json ad_model_j = model.getGlobalParamsCopy()->get_algorithm_params(m_global_func_index_map.getFunctionIndexMap());
+  //Get the AD model in a human-readable format
+  nlohmann::json ad_model_j = nlohmann::json::array();
+  {
+    auto model_map = model.getGlobalParamsCopy()->get_all_algorithm_params();
+    auto const &fidx_map = m_global_func_index_map.getFunctionIndexMap();
+    for(auto const &r : model_map){
+      auto fit = fidx_map.find(r.first);
+      if(fit == fidx_map.end()) fatal_error("Could not find function in input map");
+      nlohmann::json entry = nlohmann::json::object();
+      entry["fid"] = r.first;
+      entry["pid"] = fit->second.first;
+      entry["func_name"] = fit->second.second;
+      entry["model"] = std::move(r.second);
+      ad_model_j.push_back(std::move(entry));
+    }
+  }
 
   if(pdb_client.isConnected()){
     progressStream << "Pserver: sending final statistics to provDB" << std::endl;

@@ -153,11 +153,19 @@ void CopodParam::update(const CopodParam& other) {
 }
 
 
- nlohmann::json CopodParam::get_algorithm_params(const unsigned long func_id) const{
-   auto it = m_copodstats.find(func_id);
+ nlohmann::json CopodParam::get_algorithm_params(const unsigned long model_idx) const{
+   auto it = m_copodstats.find(model_idx);
    if(it == m_copodstats.end()) throw std::runtime_error("Invalid function index in CopodParam::get_algorithm_params");
    return it->second.get_json();
  }
+
+std::unordered_map<unsigned long, nlohmann::json> CopodParam::get_all_algorithm_params() const{
+  std::unordered_map<unsigned long, nlohmann::json> out;
+  for(auto const &r : m_copodstats)
+    out[r.first] = r.second.get_json();
+  return out;
+}
+
 
  const int CopodParam::find(const unsigned long& func_id) {
    if(m_copodstats.find(func_id) == m_copodstats.end()) { // func_id not in map
@@ -165,18 +173,3 @@ void CopodParam::update(const CopodParam& other) {
    }
    return 1;
  }
-
-nlohmann::json CopodParam::get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const{
-  nlohmann::json out = nlohmann::json::array();
-  for(auto const &r : m_copodstats){
-    auto fit = func_id_map.find(r.first);
-    if(fit == func_id_map.end()) fatal_error("Could not find function in input map");
-    nlohmann::json entry = nlohmann::json::object();
-    entry["fid"] = r.first;
-    entry["pid"] = fit->second.first;
-    entry["func_name"] = fit->second.second;
-    entry["model"] = r.second.get_json();
-    out.push_back(std::move(entry));
-  }
-  return out;
-}

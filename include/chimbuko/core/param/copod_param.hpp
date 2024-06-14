@@ -151,14 +151,15 @@ namespace chimbuko {
      */
     void update_and_return(CopodParam& other);
 
-
-    nlohmann::json get_algorithm_params(const unsigned long func_id) const override;
+    /**
+     * @brief Get the parameters (histogram) associated with a specific model index in JSON format
+     */
+    nlohmann::json get_algorithm_params(const unsigned long model_idx) const override;
 
     /**
-     * @brief Get the algorithm parameters for all functions. 
-     * @param func_id_map A map of function index -> (program index, function name) used to populate fields in the output
+     * @brief Get the algorithm parameters for all model indices. Returns a map of model index to JSON-formatted parameters. Parameter format is algorithm dependent
      */
-    nlohmann::json get_algorithm_params(const std::unordered_map<unsigned long, std::pair<unsigned long, std::string> > & func_id_map) const override;
+    std::unordered_map<unsigned long, nlohmann::json> get_all_algorithm_params() const override;
 
     /**
      * @brief Get the algorithm parameters in JSON form
