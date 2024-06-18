@@ -8,33 +8,50 @@
 #include<nlohmann/json.hpp>
 #include<chimbuko/core/verbose.hpp>
 #include<chimbuko/core/util/string.hpp>
+#include<chimbuko/core/util/json.hpp>
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
 #include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
-#include<chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
+#include<chimbuko/modules/factory.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<sstream>
 #include<memory>
 
 using namespace chimbuko;
-using namespace chimbuko::modules::performance_analysis;
 
 void printUsageAndExit(){
-  std::cout << "Usage: provdb_query <options> <instruction> <instruction args...>\n"
+  std::stringstream main_colls, glob_colls;
+
+  for(auto const &mod : modules::factoryListModules()){
+    auto minfo = modules::factoryInstantiateProvDBmoduleSetup(mod);
+    auto colls = minfo->getMainDBcollections();
+    main_colls << mod << " : ";
+    for(auto const &c : colls) main_colls << '\'' << c << "\' ";
+    main_colls << std::endl;
+
+    colls = minfo->getGlobalDBcollections();
+    glob_colls << mod << " : ";
+    for(auto const &c : colls) glob_colls << '\'' << c << "\' ";
+    glob_colls << std::endl;
+  }
+
+  std::cout << "Usage: provdb_query <module> <options> <instruction> <instruction args...>\n"
 	    << "options: -verbose    Enable verbose output\n"
 	    << "         -nshards    Specify the number of shards (default 1)\n"
 	    << "instruction = 'filter', 'filter-global', 'execute'\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter: Apply a filter to a collection of anomaly provenance data.\n"
 	    << "Arguments: <collection> <query>\n"
-	    << "where collection = 'anomalies', 'metadata', 'normalexecs'\n"
+	    << "where the collections for each module are as follows:\n"
+	    << main_colls.str()
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << "query can also be set to 'DUMP', which will return all entries, equivalent to \"function(\\$a){ return true; }\"\n"
 	    << "-------------------------------------------------------------------------\n"
 	    << "filter-global: Apply a filter to a collection of global data.\n"
 	    << "Arguments: <collection> <query>\n"
-	    << "where collection = 'func_stats', 'counter_stats', 'ad_model'\n"
+	    << "where collections for each module are as follows:\n"
+	    << glob_colls.str()
 	    << "query is a jx9 filter function returning a bool that is true for entries that are filtered in, eg \"function(\\$a){ return \\$a < 3; }\"\n"
 	    << "NOTE: Dollar signs ($) must be prefixed with a backslash (eg \\$a) to prevent the shell from expanding it\n"
 	    << "query can also be set to 'DUMP', which will return all entries, equivalent to \"function(\\$a){ return true; }\"\n"
@@ -56,41 +73,7 @@ void printUsageAndExit(){
   exit(0);
 }
 
-
-inline nlohmann::json const* get_elem(const std::vector<std::string> &key, const nlohmann::json &j){
-  nlohmann::json const* e = &j;
-  for(auto const &k: key){
-    if(!e->contains(k)) return nullptr;
-    e = & (*e)[k];
-  }
-  return e;
-}
-
-
-void sort(nlohmann::json &j, const std::vector<std::vector<std::string> > &by_keys){
-  if(!j.is_array()) throw std::runtime_error("Sorting only works on arrays");
-  if(by_keys.size() == 0) throw std::runtime_error("Keys size is zero");
-
-  std::sort(j.begin(), j.end(), [&](const nlohmann::json &a, const nlohmann::json &b){
-      //Return true if a goes before b
-      //We want to sort in descending value
-      for(auto const &key : by_keys){
-	nlohmann::json const *aj = get_elem(key,a);
-	nlohmann::json const *bj = get_elem(key,b);
-	//if entry doesn't exist it is moved lower
-	if(aj == nullptr) return false;
-	else if(bj == nullptr) return true; 
-
-	if( *aj > *bj) return true;
-	else if( *aj < *bj) return false;
-	//continue if equal
-      }
-      return false;
-    });
-}
-
-
-void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
+void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients, const ProvDBmoduleSetupCore &setup,
 	    int nargs, char** args){
   if(nargs != 2) throw std::runtime_error("Filter received unexpected number of arguments");
 
@@ -105,6 +88,10 @@ void filter(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
     for(int i=0;i<shard_results.size();i++)
       result.push_back( nlohmann::json::parse(shard_results[i]) );
   }
+
+  auto sort_keys = setup.getCollectionFilterKeys(coll_str, false);
+  if(sort_keys.size()) sort_json(result, sort_keys);
+
   std::cout << result.dump(4) << std::endl;
 }
 
@@ -158,7 +145,7 @@ void execute(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
   std::cout << result.dump(4) << std::endl;
 }
 
-void filter_global(PSProvenanceDBclient &client,
+void filter_global(PSProvenanceDBclient &client, const ProvDBmoduleSetupCore &setup,
 		   int nargs, char** args){
   if(nargs != 2) throw std::runtime_error("Filter received unexpected number of arguments");
 
@@ -171,15 +158,15 @@ void filter_global(PSProvenanceDBclient &client,
   for(int i=0;i<str_results.size();i++)
     result.push_back( nlohmann::json::parse(str_results[i]) );
 
-  if(coll_str == "func_stats")
-    sort(result, { {"anomaly_metrics","severity","accumulate"}, {"anomaly_metrics","score","accumulate"} });
+  auto sort_keys = setup.getCollectionFilterKeys(coll_str, true);
+  if(sort_keys.size()) sort_json(result, sort_keys);
   
   std::cout << result.dump(4) << std::endl;
 }
 
 
 int main(int argc, char** argv){
-  if(argc < 2) printUsageAndExit();
+  if(argc < 3) printUsageAndExit();
 
   //Parse environment variables
   if(const char* env_p = std::getenv("CHIMBUKO_VERBOSE")){
@@ -187,8 +174,10 @@ int main(int argc, char** argv){
     enableVerboseLogging() = true;
   }       
 
-  int arg_offset = 1;
-  int a=1;
+  std::string module = argv[1];
+
+  int arg_offset = 2;
+  int a=2;
   int nshards=1;
   while(a < argc){
     std::string arg = argv[a];
@@ -213,7 +202,7 @@ int main(int argc, char** argv){
   
     std::string addr = (std::string)engine.self();
 
-    ProvDBmoduleSetup module_setup;
+    std::unique_ptr<ProvDBmoduleSetupCore> module_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
 
     //Actions on main sharded anomaly database
     if(mode == "filter" || mode == "execute"){
@@ -225,7 +214,7 @@ int main(int argc, char** argv){
 	std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_shard_names[s].c_str());
 	admin.attachDatabase(addr, 0, db_shard_names[s], "unqlite", config);    
 
-	clients[s].reset(new ADProvenanceDBclient(module_setup.getMainDBcollections(), s));
+	clients[s].reset(new ADProvenanceDBclient(module_setup->getMainDBcollections(), s));
 	clients[s]->setEnableHandshake(false);	      
 	clients[s]->connect(addr, db_shard_names[s], 0);
 	if(!clients[s]->isConnected()){
@@ -235,7 +224,7 @@ int main(int argc, char** argv){
       }
 
       if(mode == "filter"){
-	filter(clients, argc-arg_offset, argv+arg_offset);
+	filter(clients, *module_setup, argc-arg_offset, argv+arg_offset);
       }else if(mode == "execute"){
 	execute(clients, argc-arg_offset, argv+arg_offset);
       }else throw std::runtime_error("Invalid mode");
@@ -249,7 +238,7 @@ int main(int argc, char** argv){
     //Actions on global database
     else if(mode == "filter-global"){
       std::string db_name = "provdb.global";
-      PSProvenanceDBclient client(module_setup.getGlobalDBcollections());
+      PSProvenanceDBclient client(module_setup->getGlobalDBcollections());
       client.setEnableHandshake(false);
 
       std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
@@ -262,7 +251,7 @@ int main(int argc, char** argv){
       }
 
       if(mode == "filter-global"){
-	filter_global(client, argc-arg_offset, argv+arg_offset);
+	filter_global(client, *module_setup, argc-arg_offset, argv+arg_offset);
       }else throw std::runtime_error("Invalid mode");
 
       client.disconnect();

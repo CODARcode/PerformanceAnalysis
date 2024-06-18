@@ -27,3 +27,7 @@ std::unique_ptr<chimbuko::PSmoduleDataManagerCore> chimbuko::modules::factoryIns
     fatal_error("Unknown module");
   }
 }
+
+std::vector<std::string> chimbuko::modules::factoryListModules(){
+  return { "performance_analysis" };
+};

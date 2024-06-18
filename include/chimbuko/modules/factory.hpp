@@ -21,5 +21,10 @@ namespace chimbuko{
      *@param net_nworker The number of worker threads used by the NetInterface
      */
     std::unique_ptr<PSmoduleDataManagerCore> factoryInstantiatePSmoduleDataManager(const std::string &module, int net_nworker);
+
+    /**
+     * @brief Return an array of available modules
+     */
+    std::vector<std::string> factoryListModules();
   }
 }
