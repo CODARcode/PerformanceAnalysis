@@ -31,18 +31,18 @@ namespace chimbuko {
     virtual void clear() = 0;
 
     /**
-     * @brief Get the number of functions for which statistics are being collected
+     * @brief Get the number of models for which statistics are being collected
     */
     virtual size_t size() const = 0;
 
     /**
-     * @brief Convert internal run statistics to string format for IO
+     * @brief Convert internal models to string format for IO
      * @return Run statistics in string format
      */
     virtual std::string serialize() const = 0;
 
     /**
-     * @brief Update the internal run statistics with those included in the serialized input map
+     * @brief Update the internal models with those included in the serialized input map
      * @param parameters The parameters in serialized format
      * @param return_update Indicates that the function should return a serialized copy of the updated parameters
      * @return An empty string or a serialized copy of the updated parameters depending on return_update
@@ -69,8 +69,8 @@ namespace chimbuko {
     virtual void update(const std::vector<ParamInterface*> &other);
 
     /**
-     * @brief Set the internal run statistics to match those included in the serialized input map. Overwrite performed only for those keys in input.
-     * @param runstats The serialized input map
+     * @brief Set the internal run statistics to match those included in the serialized input model. Overwrite performed only for those model indices in te input.
+     * @param parameters The serialized input model
      */
     virtual void assign(const std::string& parameters) = 0;
 

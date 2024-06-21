@@ -100,7 +100,7 @@ void ADOutlier::updateGlobalModel()
   PerfTimer timer;
   timer.start();
   
-  if ( m_sync_call_count == 0 || (m_sync_call_count + m_rank) %  m_global_model_sync_freq == 0 ){ //apart from on first step, stagger updates over ranks by rank index
+  if ( m_global_model_sync_freq > 0 && ( m_sync_call_count == 0 || (m_sync_call_count + m_rank) %  m_global_model_sync_freq == 0 ) ){ //apart from on first step, stagger updates over ranks by rank index
     verboseStream << "ADOutlier rank " << m_rank << " performing synchronization of local and global model on call count " << m_sync_call_count << std::endl;
     PerfTimer utimer;
     utimer.start();
@@ -120,6 +120,11 @@ void ADOutlier::updateGlobalModel()
   ++m_sync_call_count;
 
   if(m_perf != nullptr) m_perf->add("update_global_model_call_ms", timer.elapsed_ms());
+}
+
+void ADOutlier::setGlobalParameters(const std::string &to){
+  m_param->clear();
+  m_param->assign(to);
 }
 
 

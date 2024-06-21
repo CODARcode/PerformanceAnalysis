@@ -169,11 +169,11 @@ namespace chimbuko {
     bool equiv(const RunStats &b) const;
 
     /**
-     * @brief Set the eta parameter
+     * @brief Set the eta (mean) parameter
      */
     void set_eta(double to){ m_eta = to; }
     /**
-     * @brief Set the rho parameter
+     * @brief Set the rho parameter (variance * [count-1])
      */
     void set_rho(double to){ m_rho = to; }
     /**

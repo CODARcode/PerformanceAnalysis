@@ -85,7 +85,14 @@ namespace chimbuko {
     ParamInterface const* get_global_parameters() const{ return m_param; }
 
     /**
-     * @brief Set how often (in steps, or equivalently calls to "run") the global model is updated
+     * @brief Set the global parameters, overwriting the existing global model. Here the input is in serialized form
+     *
+     * Use in conjunction with setGlobalModelSyncFrequency(0) to set and freeze the model, not allowing it to be modified by the data
+     */
+    void setGlobalParameters(const std::string &to);
+
+    /**
+     * @brief Set how often (in steps, or equivalently calls to "run") the global model is updated. If  to <= 0, the global model will never be updated
      */
     void setGlobalModelSyncFrequency(int to){ m_global_model_sync_freq = to; }
 
@@ -114,7 +121,7 @@ namespace chimbuko {
     int m_sync_call_count;                   /**< count of calls to sync_param */
     int m_global_model_sync_freq;            /**< how often the local model is pushed and synchronized with the globel model (default 1)*/
 
-    int m_rank;                              /**< rank index*/
+    int m_rank;                              /**< rank index, used only for staggering pserver sync events*/
     PerfStats *m_perf;
   };
 

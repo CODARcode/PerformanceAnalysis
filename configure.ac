@@ -217,7 +217,7 @@ AC_CONFIG_HEADERS([chimbuko_config.h])
 AC_SUBST([PS_FLAGS])
 
 AC_CONFIG_SRCDIR([src/dummy])
-AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile test/unit_tests/provdb/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py app/sst_view_parse.pl:app/sst_view_parse.pl])
 AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/run_provdb_autoshutdown_test.sh:test/run_provdb_autoshutdown_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh test/run_ad_with_provdb.sh:test/run_ad_with_provdb.sh test/run_stat_sender.sh:test/run_stat_sender.sh scripts/launch/run_services.sh:scripts/launch/run_services.sh], [chmod u+x $(echo $ac_tag | sed s/.*\://)])

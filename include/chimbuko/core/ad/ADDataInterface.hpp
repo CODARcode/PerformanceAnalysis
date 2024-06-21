@@ -62,6 +62,12 @@ namespace chimbuko {
     };
     
     ADDataInterface(size_t ndataset): m_dset_anom(ndataset){}
+    ADDataInterface(){}
+    
+    /**
+     * @brief Set the number of datasets, designed for use if instance was default-constructed
+     */
+    inline void setNdataSets(size_t ndataset){ m_dset_anom.resize(ndataset); }
 
     /**
      * @brief Return the number of data sets
