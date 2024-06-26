@@ -3,7 +3,7 @@
 #include "gtest/gtest.h"
 #include <cereal/archives/portable_binary.hpp>
 #include <sstream>
-#include "../../../unit_tests/unit_test_common.hpp"
+#include "../../unit_test_common.hpp"
 
 using namespace chimbuko;
 

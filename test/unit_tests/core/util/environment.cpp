@@ -1,7 +1,7 @@
 #include <sstream>
 #include "chimbuko/core/util/environment.hpp"
 #include "gtest/gtest.h"
-#include "../../../unit_tests/unit_test_cmdline.hpp"
+#include "../../unit_test_cmdline.hpp"
 
 using namespace chimbuko;
 
