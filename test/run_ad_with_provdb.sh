@@ -20,7 +20,7 @@ if [ -f "../bin/provdb_admin" ]; then
     ip=$(hostname -i)
     port=1234
 
-    ../bin/provdb_admin ${ip}:${port} -engine "$protocol" &
+    ../bin/provdb_admin performance_analysis ${ip}:${port} -engine "$protocol" &
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
@@ -33,7 +33,7 @@ if [ -f "../bin/provdb_admin" ]; then
     #Do a run with 2 shards and 1 server instance
     rm -f provdb.*.unqlite*  provider.address*
 
-    ../bin/provdb_admin ${ip}:${port} -engine "$protocol" -nshards 2 &
+    ../bin/provdb_admin performance_analysis ${ip}:${port} -engine "$protocol" -nshards 2 &
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
 	sleep 1;
@@ -48,8 +48,8 @@ if [ -f "../bin/provdb_admin" ]; then
 
     port2=1235
 
-    ../bin/provdb_admin ${ip}:${port} -engine "$protocol" -nshards 2 -server_instance 0 2 &
-    ../bin/provdb_admin ${ip}:${port2} -engine "$protocol" -nshards 2 -server_instance 1 2 &
+    ../bin/provdb_admin performance_analysis ${ip}:${port} -engine "$protocol" -nshards 2 -server_instance 0 2 &
+    ../bin/provdb_admin performance_analysis ${ip}:${port2} -engine "$protocol" -nshards 2 -server_instance 1 2 &
 
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address 0"

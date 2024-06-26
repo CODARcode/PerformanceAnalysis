@@ -112,6 +112,8 @@ void GlobalAnomalyMetrics::get_profile_data(FunctionProfile &into) const{
 
   for(auto const &pelem : m_anomaly_metrics_full){
     int pid = pelem.first;
+
+    //Combine anomaly statistics over all ranks
     std::map<int, AggregateFuncAnomalyMetricsAllRanks> func_metrics_all_ranks; //fid -> global metrics
     for(auto const &relem : pelem.second){
       for(auto const &felem : relem.second){
