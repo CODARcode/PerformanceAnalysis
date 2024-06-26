@@ -4,32 +4,32 @@ LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs
 testdir = $(prefix)/test/unit_tests/util
 test_PROGRAMS = DispatchQueue commandLineParser RunStats error memutils PerfStats environment Histogram pointerRegistry chunkAllocator
 
-DispatchQueue_SOURCES = DispatchQueue.cpp ../unit_test_main.cpp
+DispatchQueue_SOURCES = DispatchQueue.cpp ../unit_test_main_mpi.cpp
 DispatchQueue_LDADD = $(LDADD)
 
-commandLineParser_SOURCES = commandLineParser.cpp ../unit_test_main.cpp
+commandLineParser_SOURCES = commandLineParser.cpp ../unit_test_main_mpi.cpp
 commandLineParser_LDADD = $(LDADD)
 
-RunStats_SOURCES = RunStats.cpp ../unit_test_main.cpp
+RunStats_SOURCES = RunStats.cpp ../unit_test_main_mpi.cpp
 RunStats_LDADD = $(LDADD)
 
-error_SOURCES = error.cpp ../unit_test_main.cpp
+error_SOURCES = error.cpp ../unit_test_main_mpi.cpp
 error_LDADD = $(LDADD)
 
-memutils_SOURCES = memutils.cpp ../unit_test_main.cpp
+memutils_SOURCES = memutils.cpp ../unit_test_main_mpi.cpp
 memutils_LDADD = $(LDADD)
 
-PerfStats_SOURCES = PerfStats.cpp ../unit_test_main.cpp
+PerfStats_SOURCES = PerfStats.cpp ../unit_test_main_mpi.cpp
 PerfStats_LDADD = $(LDADD)
 
-environment_SOURCES = environment.cpp ../unit_test_main.cpp
+environment_SOURCES = environment.cpp ../unit_test_main_mpi.cpp
 environment_LDADD = $(LDADD)
 
-Histogram_SOURCES = Histogram.cpp ../unit_test_main.cpp
+Histogram_SOURCES = Histogram.cpp ../unit_test_main_mpi.cpp
 Histogram_LDADD = $(LDADD)
 
-pointerRegistry_SOURCES = pointerRegistry.cpp ../unit_test_main.cpp
+pointerRegistry_SOURCES = pointerRegistry.cpp ../unit_test_main_mpi.cpp
 pointerRegistry_LDADD = $(LDADD)
 
-chunkAllocator_SOURCES = chunkAllocator.cpp ../unit_test_main.cpp
+chunkAllocator_SOURCES = chunkAllocator.cpp ../unit_test_main_mpi.cpp
 chunkAllocator_LDADD = $(LDADD)

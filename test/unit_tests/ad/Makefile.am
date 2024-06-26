@@ -19,10 +19,10 @@ COPODOutlierADs_LDADD = $(LDADD)
 HBOSOutlierDistributions_SOURCES = HBOSOutlierDistributions.cpp ../unit_test_main_mpi.cpp
 HBOSOutlierDistributions_LDADD = $(LDADD)
 
-ADEvent_SOURCES = ADEvent.cpp ../unit_test_main.cpp
+ADEvent_SOURCES = ADEvent.cpp ../unit_test_main_mpi.cpp
 ADEvent_LDADD = $(LDADD)
 
-ADio_SOURCES = ADio.cpp ../unit_test_main.cpp
+ADio_SOURCES = ADio.cpp ../unit_test_main_mpi.cpp
 ADio_LDADD = $(LDADD)
 
 ADParser_SOURCES = ADParser.cpp ../unit_test_main_mpi.cpp
@@ -37,41 +37,41 @@ ADNetClient_LDADD = $(LDADD)
 ADLocalFuncStatistics_SOURCES = ADLocalFuncStatistics.cpp ../unit_test_main_mpi.cpp
 ADLocalFuncStatistics_LDADD = $(LDADD)
 
-ADMetadataParser_SOURCES = ADMetadataParser.cpp ../unit_test_main.cpp
+ADMetadataParser_SOURCES = ADMetadataParser.cpp ../unit_test_main_mpi.cpp
 ADMetadataParser_LDADD = $(LDADD)
 
-ADCounter_SOURCES = ADCounter.cpp ../unit_test_main.cpp
+ADCounter_SOURCES = ADCounter.cpp ../unit_test_main_mpi.cpp
 ADCounter_LDADD = $(LDADD)
 
 ADLocalCounterStatistics_SOURCES = ADLocalCounterStatistics.cpp ../unit_test_main_mpi.cpp
 ADLocalCounterStatistics_LDADD = $(LDADD)
 
-ADAnomalyProvenance_SOURCES = ADAnomalyProvenance.cpp ../unit_test_main.cpp
+ADAnomalyProvenance_SOURCES = ADAnomalyProvenance.cpp ../unit_test_main_mpi.cpp
 ADAnomalyProvenance_LDADD = $(LDADD)
 
 ADglobalFunctionIndexMap_SOURCES = ADglobalFunctionIndexMap.cpp ../unit_test_main_mpi.cpp
 ADglobalFunctionIndexMap_LDADD = $(LDADD)
 
-ADNormalEventProvenance_SOURCES = ADNormalEventProvenance.cpp ../unit_test_main.cpp
+ADNormalEventProvenance_SOURCES = ADNormalEventProvenance.cpp ../unit_test_main_mpi.cpp
 ADNormalEventProvenance_LDADD = $(LDADD)
 
-utils_SOURCES = utils.cpp ../unit_test_main.cpp
+utils_SOURCES = utils.cpp ../unit_test_main_mpi.cpp
 utils_LDADD = $(LDADD)
 
-AnomalyData_SOURCES = AnomalyData.cpp ../unit_test_main.cpp
+AnomalyData_SOURCES = AnomalyData.cpp ../unit_test_main_mpi.cpp
 AnomalyData_LDADD = $(LDADD)
 
-ADcombinedPSdata_SOURCES = ADcombinedPSdata.cpp ../unit_test_main.cpp
+ADcombinedPSdata_SOURCES = ADcombinedPSdata.cpp ../unit_test_main_mpi.cpp
 ADcombinedPSdata_LDADD = $(LDADD)
 
-FuncAnomalyMetrics_SOURCES = FuncAnomalyMetrics.cpp ../unit_test_main.cpp
+FuncAnomalyMetrics_SOURCES = FuncAnomalyMetrics.cpp ../unit_test_main_mpi.cpp
 FuncAnomalyMetrics_LDADD = $(LDADD)
 
-ADLocalAnomalyMetrics_SOURCES = ADLocalAnomalyMetrics.cpp ../unit_test_main.cpp
+ADLocalAnomalyMetrics_SOURCES = ADLocalAnomalyMetrics.cpp ../unit_test_main_mpi.cpp
 ADLocalAnomalyMetrics_LDADD = $(LDADD)
 
-ADMonitoring_SOURCES = ADMonitoring.cpp ../unit_test_main.cpp
+ADMonitoring_SOURCES = ADMonitoring.cpp ../unit_test_main_mpi.cpp
 ADMonitoring_LDADD = $(LDADD)
 
-ADExecDataInterface_SOURCES = ADExecDataInterface.cpp ../unit_test_main.cpp
+ADExecDataInterface_SOURCES = ADExecDataInterface.cpp ../unit_test_main_mpi.cpp
 ADExecDataInterface_LDADD = $(LDADD)
