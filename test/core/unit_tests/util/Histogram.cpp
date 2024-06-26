@@ -3,7 +3,7 @@
 #include<chimbuko/core/util/serialize.hpp>
 #include "gtest/gtest.h"
 #include <sstream>
-#include "../unit_test_common.hpp"
+#include "../../../unit_tests/unit_test_common.hpp"
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/distributions/empirical_cumulative_distribution_function.hpp>
 

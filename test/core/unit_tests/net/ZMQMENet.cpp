@@ -1,7 +1,7 @@
 #ifdef _USE_ZMQNET
 
 #include "gtest/gtest.h"
-#include "../unit_test_common.hpp"
+#include "../../../unit_tests/unit_test_common.hpp"
 #include <chimbuko/core/util/barrier.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/core/net/zmqme_net.hpp>

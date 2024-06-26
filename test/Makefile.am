@@ -1,4 +1,4 @@
-SUBDIRS = unit_tests
+SUBDIRS = unit_tests core
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = ../src/libchimbuko.la -lgtest -lstdc++fs 

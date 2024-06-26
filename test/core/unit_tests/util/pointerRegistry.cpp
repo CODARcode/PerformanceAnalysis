@@ -1,7 +1,7 @@
 #include<chimbuko_config.h>
 #include<chimbuko/core/util/pointerRegistry.hpp>
 #include "gtest/gtest.h"
-#include "../unit_test_common.hpp"
+#include "../../../unit_tests/unit_test_common.hpp"
 
 using namespace chimbuko;
 
