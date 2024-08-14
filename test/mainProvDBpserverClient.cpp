@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <cassert>
 #include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
-#include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
 #include <chimbuko/core/verbose.hpp>
 #include <chimbuko/core/util/string.hpp>
 #include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
@@ -22,9 +22,9 @@ int rank;
 std::string rank_str;
 ProvDBmoduleSetup setup;
 
-TEST(PSProvenanceDBclientTest, Connects){
+TEST(PSglobalProvenanceDBclientTest, Connects){
   bool connect_fail = false;
-  PSProvenanceDBclient client(setup.getGlobalDBcollections());
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectServer(addr);
@@ -34,10 +34,10 @@ TEST(PSProvenanceDBclientTest, Connects){
   EXPECT_EQ(connect_fail, false);
 }
 
-TEST(PSProvenanceDBclientTest, SendReceiveData){
+TEST(PSglobalProvenanceDBclientTest, SendReceiveData){
 
   bool fail = false;
-  PSProvenanceDBclient client(setup.getGlobalDBcollections());
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectServer(addr);
@@ -76,10 +76,10 @@ TEST(PSProvenanceDBclientTest, SendReceiveData){
 }
 
 
-TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
+TEST(PSglobalProvenanceDBclientTest, SendReceiveMultipleData){
 
   bool fail = false;
-  PSProvenanceDBclient client(setup.getGlobalDBcollections());
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
     client.connectServer(addr);

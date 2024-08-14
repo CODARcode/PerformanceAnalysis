@@ -70,6 +70,11 @@ namespace chimbuko{
     }
 
     /**
+     * @brief Return the total number of shards across all instances
+     */
+    inline int getNshards() const{ return m_nshards; }
+
+    /**
      * @brief Get the number of shards serviced by a given instance
      */
     inline int getNshardsInstance(const int instance) const{

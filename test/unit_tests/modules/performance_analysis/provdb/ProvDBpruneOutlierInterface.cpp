@@ -1,7 +1,6 @@
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneOutlierInterface.hpp>
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
-#include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
 
 #include "gtest/gtest.h"
 #include "../../../unit_test_common.hpp"
@@ -16,9 +15,7 @@ TEST(TestProvDBpruneOutlierInterface, basic){
   ProvDBtester pdb(nshards, setup);
 
   ADProvenanceDBclient main_client(setup.getMainDBcollections(), 0);
-  //PSProvenanceDBclient ps_client(setup.getGlobalDBcollections());
   main_client.connectSingleServer(pdb.getAddr(),nshards);
-  //ps_client.connectServer(pdb.getAddr());
 
   nlohmann::json anom;
   anom["runtime_exclusive"] = 100;

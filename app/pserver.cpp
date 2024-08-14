@@ -9,7 +9,7 @@
 #endif
 
 #ifdef ENABLE_PROVDB
-#include <chimbuko/core/pserver/PSProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>
@@ -167,7 +167,7 @@ int main (int argc, char ** argv){
     progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
     ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
-  PSProvenanceDBclient provdb_client(pdb_setup->getGlobalDBcollections());
+  PSglobalProvenanceDBclient provdb_client(pdb_setup->getGlobalDBcollections());
 #endif
 
   try {

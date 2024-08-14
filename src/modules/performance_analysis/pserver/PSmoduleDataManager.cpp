@@ -20,7 +20,7 @@ void PSmoduleDataManager::appendStatSenderPayloads(PSstatSender &sender){
   sender.add_payload(new PSstatSenderGlobalAnomalyMetricsCombinePayload(m_global_anom_metrics));
 }
 
-void PSmoduleDataManager::sendFinalModuleDataToProvDB(PSProvenanceDBclient &pdb_client, const std::string &prov_outputpath, const PSparamManager &model){
+void PSmoduleDataManager::sendFinalModuleDataToProvDB(PSglobalProvenanceDBclient &pdb_client, const std::string &prov_outputpath, const PSparamManager &model){
   int nt = this->getNnetWorkers();
   GlobalCounterStats tmp_cstats; for(int i=0;i<nt;i++) tmp_cstats += m_global_counter_stats[i];
   nlohmann::json global_counter_stats_j = tmp_cstats.get_json_state();

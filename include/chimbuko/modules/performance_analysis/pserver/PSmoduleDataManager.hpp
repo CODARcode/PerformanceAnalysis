@@ -36,7 +36,7 @@ namespace chimbuko{
 	 * @param prov_outputpath A string giving a path for writing provenance data directly to disk, used as an alternative if the provDB is not in use. Blank string indicates no output needed
 	 * @param model The final AD model
 	 */
-	void sendFinalModuleDataToProvDB(PSProvenanceDBclient &pdb_client, const std::string &prov_outputpath, const PSparamManager &model) override;
+	void sendFinalModuleDataToProvDB(PSglobalProvenanceDBclient &pdb_client, const std::string &prov_outputpath, const PSparamManager &model) override;
     
 	/**
 	 * @brief Write and restore the AD model along with the function name map as the model indices may change between runs

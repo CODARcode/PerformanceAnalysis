@@ -10,7 +10,7 @@
 #include<chimbuko/core/util/string.hpp>
 #include<chimbuko/core/util/json.hpp>
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
-#include<chimbuko/core/pserver/PSProvenanceDBclient.hpp>
+#include<chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
 #include<chimbuko/modules/factory.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -145,7 +145,7 @@ void execute(std::vector<std::unique_ptr<ADProvenanceDBclient> > &clients,
   std::cout << result.dump(4) << std::endl;
 }
 
-void filter_global(PSProvenanceDBclient &client, const ProvDBmoduleSetupCore &setup,
+void filter_global(PSglobalProvenanceDBclient &client, const ProvDBmoduleSetupCore &setup,
 		   int nargs, char** args){
   if(nargs != 2) throw std::runtime_error("Filter received unexpected number of arguments");
 
@@ -238,7 +238,7 @@ int main(int argc, char** argv){
     //Actions on global database
     else if(mode == "filter-global"){
       std::string db_name = "provdb.global";
-      PSProvenanceDBclient client(module_setup->getGlobalDBcollections());
+      PSglobalProvenanceDBclient client(module_setup->getGlobalDBcollections());
       client.setEnableHandshake(false);
 
       std::string config = chimbuko::stringize("{ \"path\" : \"./%s.unqlite\" }", db_name.c_str());
