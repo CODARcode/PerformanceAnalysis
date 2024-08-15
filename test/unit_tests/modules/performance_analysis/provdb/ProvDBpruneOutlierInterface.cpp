@@ -48,13 +48,21 @@ TEST(TestProvDBpruneOutlierInterface, basic){
   EXPECT_EQ( main_client.retrieveAllData("anomalies").size(), 3 );
 
   ADOutlier::AlgoParams ap; ap.sstd_sigma = 5;
-  ProvDBpruneOutliers("sstd", ap, param.serialize(), pdb.getShard(0));  
+  //ProvDBpruneOutliers("sstd", ap, param.serialize(), pdb.getShard(0)); 
+  {
+    std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,"sstd",ap));
+    ad->setGlobalParameters(param.serialize()); //input model
+    ad->setGlobalModelSyncFrequency(0); //fix model
+    ProvDBpruneOutlierInterface pi(*ad, pdb.getShard(0));
+    ad->run(pi);
+  }
 
   auto all_data = main_client.retrieveAllData("anomalies");
   EXPECT_EQ(all_data.size(), 2);
   for(auto const &e : all_data){
     nlohmann::json je = nlohmann::json::parse(e);
     EXPECT_GE(je["runtime_exclusive"].template get<double>(), 1000);
+    std::cout << je.dump(4) << std::endl;
   }
 
 }

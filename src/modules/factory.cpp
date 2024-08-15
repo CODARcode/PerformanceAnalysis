@@ -2,6 +2,7 @@
 #include<chimbuko/modules/performance_analysis/chimbuko.hpp>
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #include<chimbuko/modules/performance_analysis/pserver/PSmoduleDataManager.hpp>
+#include<chimbuko/modules/performance_analysis/provdb/ProvDBprune.hpp>
 #include<chimbuko/core/util/error.hpp>
 
 std::unique_ptr<chimbuko::ChimbukoBase> chimbuko::modules::factoryInstantiateChimbuko(const std::string &module, int argc, char** argv){
@@ -27,6 +28,15 @@ std::unique_ptr<chimbuko::PSmoduleDataManagerCore> chimbuko::modules::factoryIns
     fatal_error("Unknown module");
   }
 }
+
+std::unique_ptr<chimbuko::ProvDBpruneCore> chimbuko::modules::factoryInstantiateProvDBprune(const std::string &module){
+  if(module == "performance_analysis"){
+    return std::unique_ptr<ProvDBpruneCore>(new performance_analysis::ProvDBprune);
+  }else{
+    fatal_error("Unknown module");
+  }
+}
+
 
 std::vector<std::string> chimbuko::modules::factoryListModules(){
   return { "performance_analysis" };

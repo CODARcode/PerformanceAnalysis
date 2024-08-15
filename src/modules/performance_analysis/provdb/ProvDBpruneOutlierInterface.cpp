@@ -1,10 +1,12 @@
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneOutlierInterface.hpp>
+#include<chimbuko/core/provdb/ProvDButils.hpp>
 #include<chimbuko/core/util/error.hpp>
+#include<chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ProvDBpruneOutlierInterface::ProvDBpruneOutlierInterface(sonata::Database &db): m_database(db), ADDataInterface(){
+ProvDBpruneOutlierInterface::ProvDBpruneOutlierInterface(const ADOutlier &ad, sonata::Database &db): m_database(db), m_ad(ad), ADDataInterface(){
   m_collection.reset(new sonata::Collection(db.open("anomalies")));
   //To avoid loading all items into memory we must loop over the database using its jx9 interface
   std::string script = R"(
@@ -32,15 +34,6 @@ while( ($rec = db_fetch('anomalies')) != NULL ){
     double val = e[2].template get<double>();
     m_data[fid].push_back(std::pair<size_t,double>(id,val) );
   }
-
-    //m_data[ strToAny<unsigned long>(e[0]) ].push_back(std::pair<size_t,double>(strToAny<size_t>(e[1]), strToAny<double>(e[2])));
-  
-  for(auto const &d : m_data){
-    std::cout << d.first << ":";
-    for(auto const &e : d.second) std::cout << "(" << e.first << "," << e.second << ")" << " ";
-    std::cout << std::endl;
-  }
-
   this->setNdataSets(m_data.size());
 }
 
@@ -56,27 +49,39 @@ std::vector<ADDataInterface::Elem> ProvDBpruneOutlierInterface::getDataSet(size_
 
 void ProvDBpruneOutlierInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index){
   std::vector<uint64_t> to_prune;
+  std::vector<uint64_t> to_update;
+  std::vector<double> update_scores;
 
   for(auto const &e: data){ //we used the record id as the index, which is unique
     if(e.label == ADDataInterface::EventType::Normal){
-      std::cout << "Pruning record " << e.index << " with value " << e.value << " and score " << e.score << std::endl;
+      verboseStream << "Pruning record " << e.index << " with value " << e.value << " and score " << e.score << std::endl;
       to_prune.push_back(e.index);
+    }else{
+      to_update.push_back(e.index);
+      update_scores.push_back(e.score);
     }
   }
+  progressStream << "Pruning " << to_prune.size() << " of " << data.size() << " records in shard" << std::endl;
+
   m_collection->erase_multi(to_prune.data(), to_prune.size(), true); //last entry tells database to commit change
+
+  //Grab records to update in batches
+  progressStream << "Updating scores and models for " << to_update.size() << " records" << std::endl;
+  std::unordered_map<uint64_t, nlohmann::json> json_param_cache;
+  batchAmendRecords(*m_collection, to_update, [&](nlohmann::json &rec, size_t i){  
+      //Update score
+      rec["outlier_score"] = update_scores[i]; //update the score
+
+      //Update algo_params
+      uint64_t fid = rec["fid"].template get<uint64_t>();
+      auto fit = json_param_cache.find(fid);
+      if(fit == json_param_cache.end())
+	fit = json_param_cache.insert({fid, m_ad.get_global_parameters()->get_algorithm_params(fid)}).first;
+      
+      rec["algo_params"] = fit->second;
+    }); 
 }
 
 size_t ProvDBpruneOutlierInterface::getDataSetModelIndex(size_t dset_index) const{
   return std::next(m_data.begin(), dset_index)->first;
 }
-
-
-void chimbuko::modules::performance_analysis::ProvDBpruneOutliers(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, 
-								  const std::string &params_ser, sonata::Database &db){
-  std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,algorithm,algo_params));
-  ad->setGlobalParameters(params_ser); //input model
-  ad->setGlobalModelSyncFrequency(0); //fix model
-  ProvDBpruneOutlierInterface pi(db);
-  ad->run(pi);
-}
-  

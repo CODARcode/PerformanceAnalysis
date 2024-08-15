@@ -149,6 +149,12 @@ namespace chimbuko{
      */
     sonata::Collection & getCollection(const std::string &name);
     const sonata::Collection & getCollection(const std::string &name) const;
+
+    /**
+     * @brief Get the Sonata database object
+     */
+    sonata::Database & getDatabase(){ return m_database; }
+    const sonata::Database & getDatabase() const{ return m_database; }
 		
     /**
      * @brief Send data JSON objects synchronously to the database (blocking)

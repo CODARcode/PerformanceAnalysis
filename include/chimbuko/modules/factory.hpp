@@ -2,6 +2,7 @@
 #include<chimbuko_config.h>
 #include<chimbuko/core/chimbuko.hpp>
 #include<chimbuko/core/provdb/ProvDBmoduleSetupCore.hpp>
+#include<chimbuko/core/provdb/ProvDBpruneCore.hpp>
 #include<chimbuko/core/pserver/PSmoduleDataManagerCore.hpp>
 
 namespace chimbuko{
@@ -15,6 +16,11 @@ namespace chimbuko{
      *@brief A factory function for ProvDBmoduleSetup instances
      */
     std::unique_ptr<ProvDBmoduleSetupCore> factoryInstantiateProvDBmoduleSetup(const std::string &module);
+
+    /**
+     *@brief A factory function for ProvDBpruneCore instances
+     */   
+    std::unique_ptr<ProvDBpruneCore> factoryInstantiateProvDBprune(const std::string &module); 
 
     /**
      *@brief A factory function for PSmoduleDataManager instances
