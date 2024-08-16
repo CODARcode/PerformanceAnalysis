@@ -7,7 +7,7 @@ using namespace chimbuko::modules::performance_analysis;
 
 void ProvDBprune::pruneImplementation(ADOutlier &ad, sonata::Database &db){
   //Prune the outliers and update scores / model on remaining
-  ProvDBpruneInterface pi(ad, db);
+  ProvDBpruneInterface pi(ad, db, ADDataInterface::EventType::Outlier);
   ad.run(pi);
 
   //Prune normal execs and update scores / model on remaining

@@ -16,6 +16,7 @@ namespace chimbuko{
     std::vector<std::string> db_shard_names;
     std::vector<sonata::Database> db;
     sonata::Database glob_db;
+    std::vector<std::string> filenames;
   public:
     ProvDBtester(int nshards, const ProvDBmoduleSetupCore &setup);
 

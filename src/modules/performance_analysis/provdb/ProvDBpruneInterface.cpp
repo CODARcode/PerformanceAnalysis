@@ -6,12 +6,13 @@
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ProvDBpruneInterface::ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db): m_database(db), m_ad(ad), ADDataInterface(){
-  m_collection.reset(new sonata::Collection(db.open("anomalies")));
+ProvDBpruneInterface::ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db, ADDataInterface::EventType prune_type): m_database(db), m_ad(ad), m_prune_type(prune_type), ADDataInterface(){
+  std::string coll = m_prune_type == ADDataInterface::EventType::Outlier ? "anomalies" : "normalexecs";
+  m_collection.reset(new sonata::Collection(db.open(coll)));
   //To avoid loading all items into memory we must loop over the database using its jx9 interface
   std::string script = R"(
 $ret = [];
-while( ($rec = db_fetch('anomalies')) != NULL ){
+while( ($rec = db_fetch(')" + coll + R"(')) != NULL ){
   $r = [ $rec.__id, $rec.fid, $rec.runtime_exclusive ];
   array_push($ret, $r);
 }
@@ -52,8 +53,10 @@ void ProvDBpruneInterface::recordDataSetLabelsInternal(const std::vector<Elem> &
   std::vector<uint64_t> to_update;
   std::vector<double> update_scores;
 
+  ADDataInterface::EventType type_to_remove = m_prune_type == ADDataInterface::EventType::Outlier ? ADDataInterface::EventType::Normal : ADDataInterface::EventType::Outlier;
+
   for(auto const &e: data){ //we used the record id as the index, which is unique
-    if(e.label == ADDataInterface::EventType::Normal){
+    if(e.label == type_to_remove){
       verboseStream << "Pruning record " << e.index << " with value " << e.value << " and score " << e.score << std::endl;
       to_prune.push_back(e.index);
     }else{

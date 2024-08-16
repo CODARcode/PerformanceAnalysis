@@ -15,7 +15,11 @@ namespace chimbuko {
        */
       class ProvDBpruneInterface: public ADDataInterface{
       public:
-	ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db);
+	/**
+	 * @brief Constructor
+	 * @param prune_type The class/type of recorded event that is being pruned. Events *not* of this type will be removed from the collection after reevaluation
+	 */
+	ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db, ADDataInterface::EventType prune_type);
 
 	/**
 	 * @brief Get the values associated with each recorded anomaly
@@ -39,6 +43,7 @@ namespace chimbuko {
 	std::unique_ptr<sonata::Collection> m_collection;
 	std::unordered_map<unsigned long, std::vector<std::pair<uint64_t, double> > > m_data; //[fid] -> [  (record_id, value), ... ]
 	const ADOutlier &m_ad; //the outlier algorithm to allow access to the model data when updating records
+	ADDataInterface::EventType m_prune_type; //which type to prune
       };    
 
     }

@@ -3,6 +3,7 @@
 #include<chimbuko/core/util/string.hpp>
 #include<unistd.h>
 #include<sys/types.h>
+#include<stdio.h>
 
 using namespace chimbuko;
 
@@ -17,7 +18,8 @@ ProvDBtester::ProvDBtester(int nshards, const ProvDBmoduleSetupCore &setup){
   pid_t pid = getpid();
 
   std::string glob_db_name = "provdb.global";
-  std::string glob_db_config = stringize("{ \"path\" : \"/tmp/%s.%lu.unqlite\" }", glob_db_name.c_str(),pid);
+  std::string fn = stringize("/tmp/%s.%lu.unqlite", glob_db_name.c_str(),pid); filenames.push_back(fn);
+  std::string glob_db_config = stringize("{ \"path\" : \"%s\" }", fn.c_str());
   admin->createDatabase(addr, 0, glob_db_name, "unqlite", glob_db_config);
 	    
   db_shard_names.resize(nshards);
@@ -25,7 +27,8 @@ ProvDBtester::ProvDBtester(int nshards, const ProvDBmoduleSetupCore &setup){
   for(int s=0;s<nshards;s++){
     shard_providers[s] = new sonata::Provider(engine, s+1); 
     std::string db_name = stringize("provdb.%d",s);
-    std::string config = stringize("{ \"path\" : \"/tmp/%s.%lu.unqlite\" }", db_name.c_str(),pid);
+    fn = stringize("/tmp/%s.%lu.unqlite", db_name.c_str(),pid); filenames.push_back(fn);
+    std::string config = stringize("{ \"path\" : \"%s\" }", fn.c_str());
     admin->createDatabase(addr, s+1, db_name, "unqlite", config);
     db_shard_names[s] = db_name;
   }
@@ -50,4 +53,5 @@ ProvDBtester::~ProvDBtester(){
   delete admin;
   delete glob_provider;
   for(int i=0;i<shard_providers.size();i++) delete shard_providers[i];
+  for(auto const &fn : filenames) assert(remove(fn.c_str()) == 0);
 }
