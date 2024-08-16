@@ -1,4 +1,4 @@
-#include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneOutlierInterface.hpp>
+#include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneInterface.hpp>
 #include<chimbuko/core/provdb/ProvDButils.hpp>
 #include<chimbuko/core/util/error.hpp>
 #include<chimbuko/core/verbose.hpp>
@@ -6,7 +6,7 @@
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ProvDBpruneOutlierInterface::ProvDBpruneOutlierInterface(const ADOutlier &ad, sonata::Database &db): m_database(db), m_ad(ad), ADDataInterface(){
+ProvDBpruneInterface::ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db): m_database(db), m_ad(ad), ADDataInterface(){
   m_collection.reset(new sonata::Collection(db.open("anomalies")));
   //To avoid loading all items into memory we must loop over the database using its jx9 interface
   std::string script = R"(
@@ -37,7 +37,7 @@ while( ($rec = db_fetch('anomalies')) != NULL ){
   this->setNdataSets(m_data.size());
 }
 
-std::vector<ADDataInterface::Elem> ProvDBpruneOutlierInterface::getDataSet(size_t dset_index) const{
+std::vector<ADDataInterface::Elem> ProvDBpruneInterface::getDataSet(size_t dset_index) const{
   auto it = std::next(m_data.begin(), dset_index);
   std::vector<ADDataInterface::Elem> out(it->second.size(), ADDataInterface::Elem(0,0));
   for(size_t i=0;i<out.size();i++){
@@ -47,7 +47,7 @@ std::vector<ADDataInterface::Elem> ProvDBpruneOutlierInterface::getDataSet(size_
   return out;
 }
 
-void ProvDBpruneOutlierInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index){
+void ProvDBpruneInterface::recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index){
   std::vector<uint64_t> to_prune;
   std::vector<uint64_t> to_update;
   std::vector<double> update_scores;
@@ -82,6 +82,6 @@ void ProvDBpruneOutlierInterface::recordDataSetLabelsInternal(const std::vector<
     }); 
 }
 
-size_t ProvDBpruneOutlierInterface::getDataSetModelIndex(size_t dset_index) const{
+size_t ProvDBpruneInterface::getDataSetModelIndex(size_t dset_index) const{
   return std::next(m_data.begin(), dset_index)->first;
 }

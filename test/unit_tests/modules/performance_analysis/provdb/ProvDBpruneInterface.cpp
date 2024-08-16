@@ -1,4 +1,4 @@
-#include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneOutlierInterface.hpp>
+#include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneInterface.hpp>
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
 
@@ -48,12 +48,11 @@ TEST(TestProvDBpruneOutlierInterface, basic){
   EXPECT_EQ( main_client.retrieveAllData("anomalies").size(), 3 );
 
   ADOutlier::AlgoParams ap; ap.sstd_sigma = 5;
-  //ProvDBpruneOutliers("sstd", ap, param.serialize(), pdb.getShard(0)); 
   {
     std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,"sstd",ap));
     ad->setGlobalParameters(param.serialize()); //input model
     ad->setGlobalModelSyncFrequency(0); //fix model
-    ProvDBpruneOutlierInterface pi(*ad, pdb.getShard(0));
+    ProvDBpruneInterface pi(*ad, pdb.getShard(0));
     ad->run(pi);
   }
 

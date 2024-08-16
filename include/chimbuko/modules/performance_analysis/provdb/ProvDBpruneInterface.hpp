@@ -13,9 +13,9 @@ namespace chimbuko {
       /**
        * @brief The interface class between the provDB data and the AD algorithm
        */
-      class ProvDBpruneOutlierInterface: public ADDataInterface{
+      class ProvDBpruneInterface: public ADDataInterface{
       public:
-	ProvDBpruneOutlierInterface(const ADOutlier &ad, sonata::Database &db);
+	ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db);
 
 	/**
 	 * @brief Get the values associated with each recorded anomaly
