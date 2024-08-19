@@ -6,7 +6,8 @@
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ProvDBpruneInterface::ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db, ADDataInterface::EventType prune_type): m_database(db), m_ad(ad), m_prune_type(prune_type), ADDataInterface(){
+ProvDBpruneInterface::ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db, ADDataInterface::EventType prune_type,
+					   std::unordered_map<unsigned long, ProvDBpruneGlobalStats>* regen_stats): m_database(db), m_ad(ad), m_prune_type(prune_type), m_regen_stats(regen_stats), ADDataInterface(){
   std::string coll = m_prune_type == ADDataInterface::EventType::Outlier ? "anomalies" : "normalexecs";
   m_collection.reset(new sonata::Collection(db.open(coll)));
   //To avoid loading all items into memory we must loop over the database using its jx9 interface
@@ -82,6 +83,9 @@ void ProvDBpruneInterface::recordDataSetLabelsInternal(const std::vector<Elem> &
 	fit = json_param_cache.insert({fid, m_ad.get_global_parameters()->get_algorithm_params(fid)}).first;
       
       rec["algo_params"] = fit->second;
+
+      //Update global statistics (optional)
+      if(m_regen_stats) (*m_regen_stats)[fid].push(rec);     
     }); 
 }
 
