@@ -22,6 +22,17 @@ namespace chimbuko{
      * @param addr_file_dir The directory containing the address files created by the provDB
      */
     void connectShard(const std::string &addr_file_dir, int shard, int nshards, int ninstances);
+
+    /**
+     * @brief No handshake is needed
+     */
+    void handshakeHello(thallium::engine &eng, thallium::endpoint &server) override{};
+
+    /**
+     * @brief No handshake is needed.
+     */
+    void handshakeGoodbye(thallium::engine &eng, thallium::endpoint &server) override{};
+
   };
 
 }

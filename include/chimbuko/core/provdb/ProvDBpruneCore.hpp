@@ -10,7 +10,9 @@ namespace chimbuko {
   
   class ProvDBpruneCore{
   public:
-    void prune(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &params_ser, sonata::Database &db);
+    ProvDBpruneCore(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser);
+
+    void prune(sonata::Database &db);
     
     /**
      * @brief Module implementation of pruning given the database shard. This same instance of ProvDBpruneCore will be called in turn for all shards
@@ -23,6 +25,8 @@ namespace chimbuko {
      */
     virtual void finalize(sonata::Database &global_db){}
 
+  public:
+    std::unique_ptr<ADOutlier> m_outlier;
   };  
 
 }

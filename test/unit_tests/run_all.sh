@@ -46,6 +46,7 @@ set -o pipefail
 ./modules/performance_analysis/ad/COPODOutlier
 ./modules/performance_analysis/ad/FuncAnomalyMetrics
 ./modules/performance_analysis/provdb/ProvDBpruneInterface
+./modules/performance_analysis/provdb/ProvDBprune
 ./modules/performance_analysis/pserver/GlobalCounterStats
 ./modules/performance_analysis/pserver/GlobalAnomalyStats
 ./modules/performance_analysis/pserver/GlobalAnomalyMetrics

@@ -19,8 +19,12 @@ namespace chimbuko{
 
     /**
      *@brief A factory function for ProvDBpruneCore instances
+     *@param algorithm The AD algorithm
+     *@param algo_params Parameters for the algoritm
+     *@param model_ser The serialized model
      */   
-    std::unique_ptr<ProvDBpruneCore> factoryInstantiateProvDBprune(const std::string &module); 
+    std::unique_ptr<ProvDBpruneCore> factoryInstantiateProvDBprune(const std::string &module, 
+								   const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser); 
 
     /**
      *@brief A factory function for PSmoduleDataManager instances
