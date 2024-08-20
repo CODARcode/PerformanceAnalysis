@@ -11,6 +11,7 @@
 #include "chimbuko/core/ad/ADNetClient.hpp"
 #include "chimbuko/core/util/PerfStats.hpp"
 #include "chimbuko/core/ad/ADDataInterface.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
 
 namespace chimbuko { 
   /**
@@ -57,6 +58,31 @@ namespace chimbuko {
        * @brief Equivalence operator
        */
       bool operator==(const AlgoParams &r) const;
+
+      /**
+       * @brief Parser object that reads the data from a json file with provided filename
+       */
+      class cmdlineParser: public optionalCommandLineArgBase{
+      private:
+	std::string m_arg; /**< The argument, format "-a" */
+	std::string m_help_str; /**< The help string */
+	AlgoParams &member;
+      public:
+	cmdlineParser(AlgoParams &member, const std::string &arg, const std::string &help_str): m_arg(arg), m_help_str(help_str), member(member){}
+
+	/**
+	 * @brief If the first string matches the internal arg string (eg "-help"), a number of strings are consumed from the array 'vals' and that number returned. 
+	 * A value of -1 indicates the argument did not match.
+	 *
+	 * @param vals An array of strings
+	 * @param vals_size The length of the string array
+	 */
+	int parse(const std::string &arg, const char** vals, const int vals_size) override;
+	/**
+	 * @brief Print the help string for this argument to the ostream
+	 */
+	void help(std::ostream &os) const override;
+      };
     };
 
 
@@ -120,6 +146,10 @@ namespace chimbuko {
      */
     void setGlobalModelSyncFrequency(int to){ m_global_model_sync_freq = to; }
 
+    /**
+     * @brief Return the algorithm name
+     */
+    virtual std::string getAlgorithmName() const = 0;
   protected:
     /** @brief Synchronize the input model with the global model    
      *
@@ -175,6 +205,11 @@ namespace chimbuko {
     void set_sigma(double sigma) { m_sigma = sigma; }
 
     void run(ADDataInterface &data, int step=0) override;
+
+    /**
+     * @brief Return the algorithm name
+     */
+    std::string getAlgorithmName() const override{ return "sstd"; }
 
   protected:
 
@@ -233,6 +268,11 @@ namespace chimbuko {
 
  
     void run(ADDataInterface &data, int step=0) override;
+
+    /**
+     * @brief Return the algorithm name
+     */
+    std::string getAlgorithmName() const override{ return "hbos"; }
 
     /**
      * @brief Override the default threshold for a particular function
@@ -306,6 +346,11 @@ namespace chimbuko {
     void set_alpha(double alpha) { m_alpha = alpha; }
 
     void run(ADDataInterface &data, int step=0) override;
+
+    /**
+     * @brief Return the algorithm name
+     */
+    std::string getAlgorithmName() const override{ return "copod"; }
 
     /**
      * @brief Override the default threshold for a particular function

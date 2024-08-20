@@ -61,6 +61,25 @@ nlohmann::json ADOutlier::AlgoParams::getJson() const{
 #undef JSON_SET
 }
 
+int ADOutlier::AlgoParams::cmdlineParser::parse(const std::string &arg, const char** vals, const int vals_size){
+  std::cout << "TEST ARG " << arg << "==" << m_arg << std::endl;
+  if(arg == m_arg){
+    std::cout << "TEST ARG FOUND ARG " << arg << std::endl;
+    if(vals_size < 1) return -1;
+
+    try{
+      member.loadJsonFile(vals[0]);
+    }catch(const std::exception &exc){
+      return -1;
+    }
+    return 1;
+  }
+  return -1;
+}
+void ADOutlier::AlgoParams::cmdlineParser::help(std::ostream &os) const{
+  os << m_arg << " : " << m_help_str;
+}
+
 
 
 /* ---------------------------------------------------------------------------

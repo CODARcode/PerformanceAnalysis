@@ -12,13 +12,8 @@ using namespace chimbuko;
 ChimbukoBaseParams::ChimbukoBaseParams(): rank(-1234),  //not set!
 				  ana_obj_idx(0),
 				  verbose(true),
-				  outlier_sigma(6.),
                                   net_recv_timeout(30000),
 				  pserver_addr(""), hpserver_nthr(1),
-				  ad_algorithm("hbos"),
-				  hbos_threshold(0.99),
-				  hbos_use_global_threshold(true),
-				  hbos_max_bins(200),
 #ifdef ENABLE_PROVDB
 				  provdb_addr_dir(""), nprovdb_shards(1), nprovdb_instances(1), provdb_mercury_auth_key(""),
 #endif
@@ -38,15 +33,12 @@ ChimbukoBaseParams::ChimbukoBaseParams(): rank(-1234),  //not set!
 
 
 void ChimbukoBaseParams::print() const{
-  std::cout << "AD Algorithm: " << ad_algorithm
+  std::cout << "AD Algorithm: " << algo_params.algorithm
 	    << "\nAnalysis Objective Idx: " << ana_obj_idx
 	    << "\nRank       : " << rank
 #ifdef _USE_ZMQNET
 	    << "\nPS Addr    : " << pserver_addr
 #endif
-	    << "\nSigma      : " << outlier_sigma
-	    << "\nHBOS/COPOD Threshold: " << hbos_threshold
-	    << "\nUsing Global threshold: " << hbos_use_global_threshold
 	    << "\nInterval   : " << interval_msec << " msec"
             << "\nNetClient Receive Timeout : " << net_recv_timeout << "msec"
 	    << "\nPerf. metric outpath : " << perf_outputpath
@@ -143,15 +135,10 @@ void ChimbukoBase::init_net_client(){
 
 
 void ChimbukoBase::init_outlier(){
-  ADOutlier::AlgoParams params;
-  params.algorithm = m_base_params.ad_algorithm;
-  params.hbos_thres = m_base_params.hbos_threshold;
-  params.glob_thres = m_base_params.hbos_use_global_threshold;
-  params.sstd_sigma = m_base_params.outlier_sigma;
-  params.hbos_max_bins = m_base_params.hbos_max_bins;
+  headProgressStream(m_base_params.rank) << "driver rank " << m_base_params.rank << " initializing outlier algorith with params:\n" << m_base_params.algo_params.getJson().dump(4) << std::endl;
   //params.func_threshold_file = m_base_params.func_threshold_file;
 
-  m_outlier = ADOutlier::set_algorithm(m_base_params.rank, params);
+  m_outlier = ADOutlier::set_algorithm(m_base_params.rank, m_base_params.algo_params);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
   m_outlier->setGlobalModelSyncFrequency(m_base_params.global_model_sync_freq);

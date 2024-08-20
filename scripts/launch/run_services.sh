@@ -78,6 +78,17 @@ echo "==========================================="
 echo "Starting Chimbuko services with module: ${module}"
 echo "==========================================="
 
+#Generate the AlgoParams JSON script from the inputs
+algo_params_file=${var_dir}/algo_params.json
+cat <<EOF > ${algo_params_file}
+{
+  "algorithm" : "${ad_alg}",
+  "glob_thres" : true,
+  "hbos_max_bins" : 200,
+  "hbos_thres" : ${ad_outlier_hbos_threshold},
+  "sstd_sigma" : ${ad_outlier_sstd_sigma}
+}
+EOF
 
 #Provenance database
 extra_args=${ad_extra_args}
@@ -445,14 +456,11 @@ fi
 #echo "Chimbuko Services: Processes are: " $(ps)
 
 #Check that the variables passed to the AD from the config file are defined
-testit=${ad_outlier_sstd_sigma}
 testit=${ad_win_size}
-testit=${ad_alg}
-testit=${ad_outlier_hbos_threshold}
 
 ############################################
 #Generate the command to launch the AD module
-ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sstd_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg} -hbos_threshold ${ad_outlier_hbos_threshold}"
+ad_opts="${extra_args} -err_outputpath ${log_dir} -algo_params_file ${algo_params_file} -anom_win_size ${ad_win_size}"
 
 if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
     echo "The user has specified a workflow comprising multiple components. Chimbuko will generate separate files containing pre-generated launch commands."

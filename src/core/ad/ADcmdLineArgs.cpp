@@ -1,15 +1,11 @@
 #include<chimbuko/core/ad/ADcmdLineArgs.hpp>
+#include<chimbuko/core/ad/ADOutlier.hpp>
 #include<chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 
 void chimbuko::setupBaseOptionalArgs(commandLineParser &parser, ChimbukoBaseParams &into){
-  addOptionalCommandLineArgWithDefault(parser, into, ad_algorithm, "hbos", "Set an AD algorithm to use: hbos or sstd (default \"hbos\").");
-  addOptionalCommandLineArgWithDefault(parser, into, hbos_threshold, 0.99, "Set Threshold for HBOS anomaly detection filter (default 0.99).");
-  addOptionalCommandLineArgWithDefault(parser, into, hbos_use_global_threshold, true, "Set true to use a global threshold in HBOS algorithm (default true).");
-  addOptionalCommandLineArgWithDefault(parser, into, hbos_max_bins, 200, "Set the maximum number of bins for histograms in the HBOS algorithm (default 200).");
   addOptionalCommandLineArgOptArgWithDefault(parser, into, ana_obj_idx, program_idx, 0, "Set the index associated with the instrumented program. Use to label components of a workflow. (default 0)");
-  addOptionalCommandLineArgWithDefault(parser, into, outlier_sigma, 6.0, "Set the number of standard deviations that defines an anomalous event (default 6)");
   addOptionalCommandLineArgWithDefault(parser, into, net_recv_timeout, 30000, "Timeout (in ms) for blocking receives on client from parameter server (default 30000)");
   addOptionalCommandLineArgWithDefault(parser, into, pserver_addr, "", "Set the address of the parameter server. If empty (default) the pserver will not be used.");
   addOptionalCommandLineArgWithDefault(parser, into, hpserver_nthr, 1, "Set the number of threads used by the hierarchical PS. This parameter is used to compute a port offset for the particular endpoint that this AD rank connects to (default 1)");
@@ -39,4 +35,6 @@ void chimbuko::setupBaseOptionalArgs(commandLineParser &parser, ChimbukoBasePara
   addOptionalCommandLineArgWithDefault(parser, into, prov_io_freq, 1, "Set the frequency in steps at which provenance data is writen/sent to the provDB (default 1)");
   addOptionalCommandLineArgWithDefault(parser, into, analysis_step_freq, 1, "Set the frequency in IO steps between analyzing the data. Data will be accumulated over intermediate steps. (default 1)");
   parser.addOptionalArg(progressHeadRank()=0, "-logging_head_rank", "Set the head rank upon which progress logging will be output (default 0)");
+
+  parser.addOptionalArg(new ADOutlier::AlgoParams::cmdlineParser(into.algo_params, "-algo_params_file", "Set the filename containing the algorithm name and hyperparameters."));
 }

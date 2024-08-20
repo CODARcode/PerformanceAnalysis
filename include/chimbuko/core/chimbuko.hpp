@@ -24,16 +24,9 @@ namespace chimbuko {
     int prov_record_stopstep; /**< If != -1, the IO step on which to stop recording provenance information for anomalies */
     int prov_io_freq; /**< The frequency, in steps, at which provenance data is written/sent to the provDB. For steps between it is buffered.*/
 
-
     //Parameters associated with the outlier detection algorithm
-    std::string ad_algorithm; /**< Algorithm for Anomaly Detection. Set in config file*/
-
-    double outlier_sigma; /**< The number of sigma (standard deviations) away from the mean runtime for an event to be considered anomalous */
-
-    double hbos_threshold; /**< Threshold used by HBOS algorithm to filter outliers. Set in config file*/
-    bool hbos_use_global_threshold; /**< Global threshold flag in HBOS*/
-    int hbos_max_bins; /**< Maximum number of bins to use in HBOS algorithm histograms*/
-
+    ADOutlier::AlgoParams algo_params; /**< The algorithm parameters */
+    
     int global_model_sync_freq; /**< How often (in steps) the global model is updated (default 1)*/
 
     //Parameters associated with communicating with the parameter server

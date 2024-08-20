@@ -448,7 +448,7 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
     else{ fatal_error("Invalid statistic"); }
     
     ADExecDataInterface *data_iface = new ADExecDataInterface(m_event->getExecDataMap(), stat);
-    if( (this->getBaseParams().ad_algorithm == "sst" || this->getBaseParams().ad_algorithm == "SST") && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
+    if( this->getAD().getAlgorithmName() == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
       data_iface->setIgnoreFirstFunctionCall(&m_func_seen);
     iface.reset(data_iface);
   }

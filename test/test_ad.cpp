@@ -76,12 +76,13 @@ TEST_F(ADTest, BpfileTest)
 
     params.base_params.prov_outputpath = "./temp"; //have to output somewhere if provdb not in use
 
-    params.base_params.outlier_sigma = 6.0;
+    params.base_params.algo_params.sstd_sigma = 6.0;
+    params.base_params.algo_params.algorithm = "sstd";
     params.base_params.only_one_frame = true; //just analyze first IO frame
 
     params.anom_win_size = 0;
 
-    params.base_params.ad_algorithm = "sstd";
+
 
     Chimbuko driver;
     int step;
@@ -249,10 +250,10 @@ TEST_F(ADTest, BpfileWithNetTest)
     params.base_params.perf_step = 1;
 #endif
 
-    params.base_params.only_one_frame = true;
-    params.base_params.outlier_sigma = 6.0;
+    params.base_params.algo_params.sstd_sigma = 6.0;
+    params.base_params.algo_params.algorithm = "sstd";
 
-    params.base_params.ad_algorithm = "sstd";
+    params.base_params.only_one_frame = true;
 
     Chimbuko driver;
 

@@ -28,9 +28,9 @@ TEST(ADTestWithProvDB, BpfileTest)
 
     params.base_params.prov_outputpath = ""; //don't output
 
-    params.base_params.outlier_sigma = 6.0;
+    params.base_params.algo_params.sstd_sigma = 6.0;
     params.base_params.only_one_frame = true; //just analyze first IO frame
-    params.base_params.ad_algorithm = "sstd";
+    params.base_params.algo_params.algorithm = "sstd";
 
     params.base_params.provdb_addr_dir = addr_file_dir;
     params.base_params.nprovdb_shards = nshards;
