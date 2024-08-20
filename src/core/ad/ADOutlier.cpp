@@ -10,11 +10,57 @@
 #include <boost/math/distributions/normal.hpp>
 #include <boost/math/distributions/empirical_cumulative_distribution_function.hpp>
 #include <limits>
-
+#include <fstream>
 using namespace chimbuko;
 
     
-ADOutlier::AlgoParams::AlgoParams(): sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200){}  //, func_threshold_file("")
+ADOutlier::AlgoParams::AlgoParams(): algorithm("hbos"), sstd_sigma(6.0), hbos_thres(0.99), glob_thres(true), hbos_max_bins(200){}  //, func_threshold_file("")
+
+bool ADOutlier::AlgoParams::operator==(const AlgoParams &r) const{ return algorithm == r.algorithm && sstd_sigma == r.sstd_sigma && hbos_thres == r.hbos_thres && glob_thres == r.glob_thres && hbos_max_bins == r.hbos_max_bins; }
+
+void ADOutlier::AlgoParams::setJson(const nlohmann::json &in){
+#define JSON_CHECK(to) if(!in.contains(#to)) fatal_error("Expected key " #to);
+#define JSON_GET(to) if(in.contains(#to)) to = in[#to].template get<decltype(to)>()
+  //Check for required
+  JSON_CHECK(algorithm);
+  if(algorithm == "sstd"){
+    JSON_CHECK(sstd_sigma);
+  }else if(algorithm == "hbos"){
+    JSON_CHECK(glob_thres);
+    JSON_CHECK(hbos_max_bins);
+  }
+  if(algorithm == "hbos" || algorithm == "copod"){
+    JSON_CHECK(hbos_thres);
+  }
+  //Get all available
+  JSON_GET(algorithm);
+  JSON_GET(sstd_sigma);
+  JSON_GET(glob_thres);
+  JSON_GET(hbos_max_bins);
+  JSON_GET(hbos_thres);
+#undef JSON_CHECK
+#undef JSON_GET
+
+}
+
+void ADOutlier::AlgoParams::loadJsonFile(const std::string &filename){
+  std::ifstream f(filename);
+  nlohmann::json j; f >> j;
+  setJson(j);
+}
+
+nlohmann::json ADOutlier::AlgoParams::getJson() const{
+  nlohmann::json out;
+#define JSON_SET(key) out[#key] = key
+  JSON_SET(algorithm);
+  JSON_SET(sstd_sigma);
+  JSON_SET(hbos_thres);
+  JSON_SET(glob_thres);
+  JSON_SET(hbos_max_bins);
+  return out;
+#undef JSON_SET
+}
+
 
 
 /* ---------------------------------------------------------------------------
@@ -50,22 +96,22 @@ ADOutlier::~ADOutlier() {
 // }
 
 
-ADOutlier *ADOutlier::set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params) {
-  if (algorithm == "sstd" || algorithm == "SSTD") {
+ADOutlier *ADOutlier::set_algorithm(int rank, const AlgoParams &params) {
+  if (params.algorithm == "sstd" || params.algorithm == "SSTD") {
     return new ADOutlierSSTD(rank,params.sstd_sigma);
   }
-  else if (algorithm == "hbos" || algorithm == "HBOS") {
+  else if (params.algorithm == "hbos" || params.algorithm == "HBOS") {
     ADOutlierHBOS* alg = new ADOutlierHBOS(rank,params.hbos_thres, params.glob_thres, params.hbos_max_bins);
     //loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;
   }
-  else if (algorithm == "copod" || algorithm == "COPOD") {
+  else if (params.algorithm == "copod" || params.algorithm == "COPOD") {
     ADOutlierCOPOD* alg = new ADOutlierCOPOD(rank,params.hbos_thres);
     //loadPerFunctionThresholds(alg,params.func_threshold_file);
     return alg;   
   }
   else{
-    fatal_error("Invalid algorithm: " + algorithm);
+    fatal_error("Invalid algorithm: " + params.algorithm);
   }
 }
 

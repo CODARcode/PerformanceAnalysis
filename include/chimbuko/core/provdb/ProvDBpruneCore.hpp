@@ -10,7 +10,7 @@ namespace chimbuko {
   
   class ProvDBpruneCore{
   public:
-    ProvDBpruneCore(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser);
+    ProvDBpruneCore(const ADOutlier::AlgoParams &algo_params, const std::string &model_ser);
 
     void prune(sonata::Database &db);
     

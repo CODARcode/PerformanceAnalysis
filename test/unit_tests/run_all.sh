@@ -6,6 +6,7 @@ set -o pipefail
 
 ./core/ad/utils
 ./core/ad/ADio
+./core/ad/ADOutlier
 ./core/param/sstd_param
 ./core/param/hbos_param
 ./core/param/copod_param

@@ -4,7 +4,7 @@
 
 using namespace chimbuko;
 
-ProvDBpruneCore::ProvDBpruneCore(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser): m_outlier(ADOutlier::set_algorithm(0,algorithm,algo_params)){
+ProvDBpruneCore::ProvDBpruneCore(const ADOutlier::AlgoParams &algo_params, const std::string &model_ser): m_outlier(ADOutlier::set_algorithm(0,algo_params)){
   m_outlier->setGlobalParameters(model_ser); //input model
   m_outlier->setGlobalModelSyncFrequency(0); //fix model
 }

@@ -1,7 +1,9 @@
 #pragma once
 #include <chimbuko_config.h>
-#include<array>
-#include<unordered_set>
+#include <array>
+#include <unordered_set>
+#include <nlohmann/json.hpp>
+
 #include "chimbuko/core/util/RunStats.hpp"
 #include "chimbuko/core/param.hpp"
 #include "chimbuko/core/param/sstd_param.hpp"
@@ -21,6 +23,8 @@ namespace chimbuko {
      * @brief Unified structure for passing the parameters of the AD algorithms to the factory method
      */
     struct AlgoParams{
+      std::string algorithm; /**< The string name of the algorithm: "sstd", "hbos", "copod" */
+      
       //SSTD
       double sstd_sigma; /**< The number of sigma that defines an outlier*/
     
@@ -33,6 +37,26 @@ namespace chimbuko {
       int hbos_max_bins; /**< The maximum number of bins in a histogram */
 
       AlgoParams();
+
+      /**
+       * @brief Read the parameters from a json object. Note, only "algorithm" and the entries associated with the specific algorithm need to be set
+       */
+      void setJson(const nlohmann::json &in);
+
+      /**
+       * @brief Read the parameters from a json file. Note, only "algorithm" and the entries associated with the specific algorithm need to be set
+       */     
+      void loadJsonFile(const std::string &filename);
+
+      /**
+       * @brief Return the parameters as a json object
+       */
+      nlohmann::json getJson() const;
+
+      /**
+       * @brief Equivalence operator
+       */
+      bool operator==(const AlgoParams &r) const;
     };
 
 
@@ -50,7 +74,7 @@ namespace chimbuko {
     /**
      * @brief Factory method to select AD algorithm at runtime
      */
-    static ADOutlier *set_algorithm(int rank, const std::string & algorithm, const AlgoParams &params);
+    static ADOutlier *set_algorithm(int rank, const AlgoParams &params);
 
     /**
      * @brief check if the parameter server is in use

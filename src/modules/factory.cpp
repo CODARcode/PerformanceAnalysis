@@ -30,9 +30,9 @@ std::unique_ptr<chimbuko::PSmoduleDataManagerCore> chimbuko::modules::factoryIns
 }
 
 std::unique_ptr<chimbuko::ProvDBpruneCore> chimbuko::modules::factoryInstantiateProvDBprune(const std::string &module, 
-											    const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser){
+											    const ADOutlier::AlgoParams &algo_params, const std::string &model_ser){
   if(module == "performance_analysis"){
-    return std::unique_ptr<ProvDBpruneCore>(new performance_analysis::ProvDBprune(algorithm,algo_params,model_ser) );
+    return std::unique_ptr<ProvDBpruneCore>(new performance_analysis::ProvDBprune(algo_params,model_ser) );
   }else{
     fatal_error("Unknown module");
   }

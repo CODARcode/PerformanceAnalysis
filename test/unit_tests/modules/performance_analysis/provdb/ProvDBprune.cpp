@@ -82,10 +82,10 @@ TEST(TestProvDBprune, works){
   param[1234].set_eta(mean);
   param[1234].set_rho(pow(stddev,2) * (count-1) );
   param[1234].set_count(count);
-  ADOutlier::AlgoParams ap; ap.sstd_sigma = 5;
+  ADOutlier::AlgoParams ap; ap.algorithm = "sstd"; ap.sstd_sigma = 5;
 
   //Do the business
-  ProvDBprune pruner("sstd", ap, param.serialize());
+  ProvDBprune pruner(ap, param.serialize());
   for(int i=0;i<nshards;i++) pruner.prune(shard_clients[i]->getDatabase());
   pruner.finalize(glob_client.getDatabase());
 

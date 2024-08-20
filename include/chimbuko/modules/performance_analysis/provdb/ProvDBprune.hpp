@@ -14,7 +14,7 @@ namespace chimbuko {
 
       class ProvDBprune: public ProvDBpruneCore{
       public:  
-	ProvDBprune(const std::string &algorithm, const ADOutlier::AlgoParams &algo_params, const std::string &model_ser): ProvDBpruneCore(algorithm,algo_params,model_ser){}
+	ProvDBprune(const ADOutlier::AlgoParams &algo_params, const std::string &model_ser): ProvDBpruneCore(algo_params,model_ser){}
 
 	/**
 	 * @brief Prune the database shard. Both the anomalies and normalexecs will be updated

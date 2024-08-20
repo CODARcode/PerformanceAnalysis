@@ -59,9 +59,9 @@ TEST(TestProvDBpruneOutlierInterface, pruneNormalFromAnomalies){
 
   std::unordered_map<unsigned long, ProvDBpruneGlobalStats> anom_metrics; //test anomaly metrics gather
 
-  ADOutlier::AlgoParams ap; ap.sstd_sigma = 5;
+  ADOutlier::AlgoParams ap; ap.algorithm = "sstd"; ap.sstd_sigma = 5;
   {
-    std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,"sstd",ap));
+    std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,ap));
     ad->setGlobalParameters(param.serialize()); //input model
     ad->setGlobalModelSyncFrequency(0); //fix model
     ProvDBpruneInterface pi(*ad, pdb.getShard(0), ADDataInterface::EventType::Outlier, &anom_metrics);
@@ -140,9 +140,9 @@ TEST(TestProvDBpruneOutlierInterface, pruneAnomaliesFromNormal){
   
   EXPECT_EQ( main_client.retrieveAllData("normalexecs").size(), 3 );
 
-  ADOutlier::AlgoParams ap; ap.sstd_sigma = 5;
+  ADOutlier::AlgoParams ap; ap.algorithm = "sstd"; ap.sstd_sigma = 5;
   {
-    std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,"sstd",ap));
+    std::unique_ptr<ADOutlier> ad(ADOutlier::set_algorithm(0,ap));
     ad->setGlobalParameters(param.serialize()); //input model
     ad->setGlobalModelSyncFrequency(0); //fix model
     ProvDBpruneInterface pi(*ad, pdb.getShard(0), ADDataInterface::EventType::Normal);

@@ -144,13 +144,14 @@ void ChimbukoBase::init_net_client(){
 
 void ChimbukoBase::init_outlier(){
   ADOutlier::AlgoParams params;
+  params.algorithm = m_base_params.ad_algorithm;
   params.hbos_thres = m_base_params.hbos_threshold;
   params.glob_thres = m_base_params.hbos_use_global_threshold;
   params.sstd_sigma = m_base_params.outlier_sigma;
   params.hbos_max_bins = m_base_params.hbos_max_bins;
   //params.func_threshold_file = m_base_params.func_threshold_file;
 
-  m_outlier = ADOutlier::set_algorithm(m_base_params.rank, m_base_params.ad_algorithm, params);
+  m_outlier = ADOutlier::set_algorithm(m_base_params.rank, params);
   if(m_net_client) m_outlier->linkNetworkClient(m_net_client);
   m_outlier->linkPerf(&m_perf);
   m_outlier->setGlobalModelSyncFrequency(m_base_params.global_model_sync_freq);
