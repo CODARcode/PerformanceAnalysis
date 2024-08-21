@@ -21,7 +21,16 @@ mkdir -p temp perf
 
 export CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND=1
 
-mpirun --allow-run-as-root --oversubscribe -n 1 ${appdir}/pserver performance_analysis -logdir "./perf/" -ad "sstd" -model_force_update 1 &
+cat <<EOF > /tmp/algo_params.json
+{
+  "algorithm" : "sstd",
+  "sstd_sigma" : 6.0
+}
+EOF
+
+cat /tmp/algo_params.json
+echo "Starting pserver"
+mpirun --allow-run-as-root --oversubscribe -n 1 ${appdir}/pserver performance_analysis -logdir "./perf/" -algo_params_file "/tmp/algo_params.json" -model_force_update 1 &
 ps_wid=$!
 
 sleep 5

@@ -23,6 +23,8 @@ void ADOutlier::AlgoParams::setJson(const nlohmann::json &in){
 #define JSON_GET(to) if(in.contains(#to)) to = in[#to].template get<decltype(to)>()
   //Check for required
   JSON_CHECK(algorithm);
+  JSON_GET(algorithm);
+
   if(algorithm == "sstd"){
     JSON_CHECK(sstd_sigma);
   }else if(algorithm == "hbos"){
@@ -33,7 +35,6 @@ void ADOutlier::AlgoParams::setJson(const nlohmann::json &in){
     JSON_CHECK(hbos_thres);
   }
   //Get all available
-  JSON_GET(algorithm);
   JSON_GET(sstd_sigma);
   JSON_GET(glob_thres);
   JSON_GET(hbos_max_bins);
@@ -62,9 +63,7 @@ nlohmann::json ADOutlier::AlgoParams::getJson() const{
 }
 
 int ADOutlier::AlgoParams::cmdlineParser::parse(const std::string &arg, const char** vals, const int vals_size){
-  std::cout << "TEST ARG " << arg << "==" << m_arg << std::endl;
   if(arg == m_arg){
-    std::cout << "TEST ARG FOUND ARG " << arg << std::endl;
     if(vals_size < 1) return -1;
 
     try{

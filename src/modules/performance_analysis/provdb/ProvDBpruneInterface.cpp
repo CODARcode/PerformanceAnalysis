@@ -26,10 +26,7 @@ while( ($rec = db_fetch(')" + coll + R"(')) != NULL ){
   
   nlohmann::json rj = nlohmann::json::parse(r->second);
   if(!rj.is_array()) fatal_error("Expected an array type");
-  
-  for(int i=0;i<rj.size();i++)
-    std::cout << i << " " << rj[i][0] << " " << rj[i][1] << " " << rj[i][2] << std::endl;
-  
+   
   for(auto const &e: rj){
     uint64_t id = e[0].template get<uint64_t>();
     unsigned long fid = e[1].template get<unsigned long>();
@@ -54,6 +51,7 @@ void ProvDBpruneInterface::recordDataSetLabelsInternal(const std::vector<Elem> &
   std::vector<uint64_t> to_update;
   std::vector<double> update_scores;
 
+  int fid = this->getDataSetModelIndex(dset_index);
   ADDataInterface::EventType type_to_remove = m_prune_type == ADDataInterface::EventType::Outlier ? ADDataInterface::EventType::Normal : ADDataInterface::EventType::Outlier;
 
   for(auto const &e: data){ //we used the record id as the index, which is unique
@@ -65,12 +63,12 @@ void ProvDBpruneInterface::recordDataSetLabelsInternal(const std::vector<Elem> &
       update_scores.push_back(e.score);
     }
   }
-  progressStream << "Pruning " << to_prune.size() << " of " << data.size() << " records in shard" << std::endl;
-
+  progressStream << "Pruning " << to_prune.size() << " of " << data.size() << " records in shard for function index " << fid << std::endl;
+  
   m_collection->erase_multi(to_prune.data(), to_prune.size(), true); //last entry tells database to commit change
 
   //Grab records to update in batches
-  progressStream << "Updating scores and models for " << to_update.size() << " records" << std::endl;
+  progressStream << "Updating scores and models for " << to_update.size() << " records with function index " << fid << std::endl;
   std::unordered_map<uint64_t, nlohmann::json> json_param_cache;
   batchAmendRecords(*m_collection, to_update, [&](nlohmann::json &rec, size_t i){  
       //Update score

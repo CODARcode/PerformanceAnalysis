@@ -204,7 +204,7 @@ if (( ${use_provdb} == 1 )); then
     done
 
     extra_args+=" -provdb_addr_dir ${provdb_addr_dir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
-    ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir}"
+    ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
 
@@ -370,7 +370,7 @@ if (( ${use_pserver} == 1 )); then
 
     pserver_alg=${ad_alg} #Pserver AD algorithm choice must match that used for the driver
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
-    cmd="pserver ${module} -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &"
+    cmd="pserver ${module} -algo_params_file ${algo_params_file} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &"
     if [[ ! -z "${pserver_numa_bind:-}" ]]; then
 	echo "Chimbuko Services binding pserver to NUMA domain ${pserver_numa_bind}"
 	cmd="numactl -N ${pserver_numa_bind} ${cmd}"

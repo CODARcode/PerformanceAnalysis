@@ -1,6 +1,7 @@
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBprune.hpp>
 #include<chimbuko/modules/performance_analysis/provdb/ProvDBpruneInterface.hpp>
 #include<chimbuko/core/util/error.hpp>
+#include<chimbuko/core/verbose.hpp>
 #include<limits>
 
 using namespace chimbuko;
@@ -10,11 +11,13 @@ void ProvDBprune::pruneImplementation(ADOutlier &ad, sonata::Database &db){
   //Prune the outliers and update scores / model on remaining. Also gather new anomaly statistics
   {
     ProvDBpruneInterface po(ad, db, ADDataInterface::EventType::Outlier, &m_anom_metrics);
+    progressStream << "Pruning normal events from 'anomalies' database with " << po.nDataSets() << " function indices" << std::endl;
     ad.run(po);
   }
   //Prune normal execs and update scores / model on remaining
   {
     ProvDBpruneInterface pn(ad, db, ADDataInterface::EventType::Normal);
+    progressStream << "Pruning outlier events from 'normal_execs' database with " << pn.nDataSets() << " function indices" << std::endl;
     ad.run(pn);
   }
 }

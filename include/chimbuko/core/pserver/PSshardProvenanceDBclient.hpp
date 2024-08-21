@@ -21,7 +21,7 @@ namespace chimbuko{
      * @brief Connect the client the appropriate provenance database server instance / shard using the default setup
      * @param addr_file_dir The directory containing the address files created by the provDB
      */
-    void connectShard(const std::string &addr_file_dir, int shard, int nshards, int ninstances);
+    void connectShard(int shard, const std::string &addr_file_dir, const int nshards, const int ninstances);
 
     /**
      * @brief No handshake is needed

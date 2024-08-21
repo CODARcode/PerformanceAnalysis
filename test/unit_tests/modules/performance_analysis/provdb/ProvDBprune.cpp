@@ -22,7 +22,7 @@ TEST(TestProvDBprune, works){
   std::vector<std::unique_ptr<PSshardProvenanceDBclient> > shard_clients(nshards);
   for(int i=0;i<nshards;i++){
     shard_clients[i].reset(new PSshardProvenanceDBclient(setup.getMainDBcollections()));
-    shard_clients[i]->connectShard("/tmp",i,nshards,1);
+    shard_clients[i]->connectShard(i,"/tmp",nshards,1);
   }
   
   PSglobalProvenanceDBclient glob_client(setup.getGlobalDBcollections());

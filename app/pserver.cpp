@@ -10,13 +10,15 @@
 
 #ifdef ENABLE_PROVDB
 #include <chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSshardProvenanceDBclient.hpp>
 #endif
 
 #include <chimbuko/core/param/sstd_param.hpp>
 #include <chimbuko/core/util/commandLineParser.hpp>
 #include <chimbuko/core/util/error.hpp>
 #include <fstream>
-#include "chimbuko/core/verbose.hpp"
+#include <chimbuko/core/verbose.hpp>
+#include <chimbuko/core/ad/ADOutlier.hpp>
 
 #include <chimbuko/modules/factory.hpp>
 
@@ -40,10 +42,11 @@ struct pserverArgs{
   int stat_send_freq;
 
   std::string stat_outputdir;
-  std::string ad;
 
   int model_update_freq; //frequency in ms at which the global model is updated
   bool model_force_update; //force the global model to be updated every time a worker thread updates its model
+
+  ADOutlier::AlgoParams algo_params; //The AD algorithm hyperparameters and type/name
 
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
@@ -53,17 +56,20 @@ struct pserverArgs{
 
 #ifdef ENABLE_PROVDB
   std::string provdb_addr_dir;
+  int nprovdb_shards; /**< Number of database shards*/
+  int nprovdb_instances; /**< Number of instances of the provenance database server*/
   std::string provdb_mercury_auth_key; //An authorization key for initializing Mercury (optional, default "")
+  bool provdb_post_prune; //perform post-pruning on the provenance database
 #endif
 
   std::string prov_outputpath;
 
-  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath(""), model_update_freq(1000), model_force_update(false)
+  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath(""), model_update_freq(1000), model_force_update(false)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr_dir(""), provdb_mercury_auth_key("")
+	       , provdb_addr_dir(""), provdb_mercury_auth_key(""), provdb_post_prune(true), nprovdb_shards(1), nprovdb_instances(1)
 #endif
   {}
 
@@ -71,7 +77,6 @@ struct pserverArgs{
     static bool init = false;
     static commandLineParser p;
     if(!init){
-      addOptionalCommandLineArg(p, instance, ad, "Set AD algorithm to use.");
       addOptionalCommandLineArg(p, instance, nt, "Set the number of RPC handler threads (max-2 by default)");
       addOptionalCommandLineArg(p, instance, logdir, "Set the output log directory (default: job directory)");
       addOptionalCommandLineArg(p, instance, port, "Set the pserver port (default: 5559)");
@@ -89,11 +94,15 @@ struct pserverArgs{
 #ifdef ENABLE_PROVDB
       addOptionalCommandLineArg(p, instance, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
       addOptionalCommandLineArg(p, instance, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+      addOptionalCommandLineArg(p, instance, provdb_post_prune, "If enabled the pserver will automatically \"prune\" the provenance database at the end of the run (default: true)");
+      addOptionalCommandLineArgWithDefault(p, instance, nprovdb_shards, 1, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+      addOptionalCommandLineArgWithDefault(p, instance, nprovdb_instances, 1, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
 #endif
       addOptionalCommandLineArg(p, instance, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
       addOptionalCommandLineArg(p, instance, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
       addOptionalCommandLineArg(p, instance, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
 
+      p.addOptionalArg(new ADOutlier::AlgoParams::cmdlineParser(instance.algo_params, "-algo_params_file", "Set the filename containing the algorithm name and hyperparameters (ensure consistent with OAD)."));
       init = true;
     }
     return p;
@@ -132,7 +141,7 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  PSparamManager param(args.nt, args.ad); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
+  PSparamManager param(args.nt, args.algo_params.algorithm); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
   param.enableForceUpdate(args.model_force_update); //decide whether the model is forced to be updated every time a worker updates its model
 
   std::unique_ptr<ProvDBmoduleSetupCore> pdb_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
@@ -270,6 +279,22 @@ int main (int argc, char ** argv){
   if(args.save_params_set){
     progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
     ps_module_data_man->writeModel(args.save_params, param);
+  }
+
+
+  //Post-prune the provenance database
+  if(args.provdb_post_prune && args.provdb_addr_dir.size()){
+    progressStream << "PServer: Pruning the provenance database" << std::endl;
+    std::unique_ptr<ProvDBpruneCore> pruner = modules::factoryInstantiateProvDBprune(module, args.algo_params, param.getGlobalParamsCopy()->serialize());
+
+    for(int s=0;s<args.nprovdb_shards;s++){
+      progressStream << "PServer: Pruning shard " << s+1 << " of " << args.nprovdb_shards << std::endl;
+      PSshardProvenanceDBclient shard_client(pdb_setup->getMainDBcollections());
+      shard_client.connectShard(s, args.provdb_addr_dir, args.nprovdb_shards, args.nprovdb_instances);
+      pruner->prune(shard_client.getDatabase());
+    }
+    progressStream << "PServer: Updating global function stats" << std::endl;
+    pruner->finalize(provdb_client.getDatabase());
   }
 
   progressStream << "Pserver: finished" << std::endl;

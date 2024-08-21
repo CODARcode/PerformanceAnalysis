@@ -8,7 +8,7 @@ using namespace chimbuko;
 
 PSshardProvenanceDBclient::~PSshardProvenanceDBclient(){ disconnect(); } //call disconnect in derived class to ensure derived class is still alive when disconnect is called
 
-void PSshardProvenanceDBclient::connectShard(const std::string &addr_file_dir, int shard, int nshards, int ninstances){
+void PSshardProvenanceDBclient::connectShard(int shard, const std::string &addr_file_dir, const int nshards, const int ninstances){
   ProvDBsetup setup(nshards, ninstances);
 
   int instance = setup.getShardInstance(shard);
