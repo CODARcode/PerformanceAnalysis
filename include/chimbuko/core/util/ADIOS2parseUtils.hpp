@@ -8,6 +8,7 @@
 #include <thread>
 #include <set>
 #include <regex>
+#include <cstring>
 #include <chimbuko/core/util/string.hpp>
 
 namespace chimbuko{
