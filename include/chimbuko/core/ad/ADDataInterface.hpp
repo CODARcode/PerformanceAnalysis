@@ -1,5 +1,6 @@
 #pragma once
 #include <chimbuko_config.h>
+#include <cstdlib>
 #include <vector>
 
 namespace chimbuko {
