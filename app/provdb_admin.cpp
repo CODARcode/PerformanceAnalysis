@@ -153,8 +153,19 @@ struct ProvdbArgs{
 		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true), db_mercury_auth_key(""){}
 };
 
-
-
+//Assumes global margo_id has been set!
+tl::pool getPool(uint32_t pool_idx){
+#ifdef USE_MARGO_DEPRECATED_GET_POOL_BY_INDEX
+  ABT_pool p;
+  assert(margo_get_pool_by_index(margo_id, pool_idx, &p) == 0);
+  return tl::pool(p);
+#else
+  margo_pool_info p;
+  assert(margo_find_pool_by_index(margo_id, pool_idx, &p) == 0);
+  return tl::pool(p.pool);
+#endif
+}    
+		 
 int main(int argc, char** argv) {
   {
     //Parse environment variables
@@ -169,6 +180,10 @@ int main(int argc, char** argv) {
     //Using an empty string will cause it to default to Mochi's default ip/port
     ProvdbArgs args;
     commandLineParser parser;
+    
+    std::string module;
+    
+    parser.addMandatoryArg(module, "Specify the module name");
     addMandatoryCommandLineArg(parser, args, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
     addOptionalCommandLineArg(parser, args, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
     addOptionalCommandLineArg(parser, args, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
@@ -185,14 +200,12 @@ int main(int argc, char** argv) {
     addOptionalCommandLineArg(parser, args, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
     addOptionalCommandLineArgMultiValue(parser, args, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
-    if(argc < 2 || argc-2 < parser.nMandatoryArgs() || (argc == 3 && std::string(argv[2]) == "-help")){
+    if(argc < 1 || argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
       return 0;
     }
 
-    std::string module = argv[1];   
-
-    parser.parseCmdLineArgs(argc-1, argv+1);
+    parser.parseCmdLineArgs(argc, argv);
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
@@ -305,20 +318,14 @@ int main(int argc, char** argv) {
     margo_args.json_config   = new_config.c_str();
     margo_id = margo_init_ext(eng_opt.c_str(), MARGO_SERVER_MODE, &margo_args);
 
+
+    
     //Get the thallium pools to pass to the providers
     tl::pool glob_pool;
-    if(instance_do_global_db){
-      ABT_pool p;
-      assert(margo_get_pool_by_index(margo_id, glob_pool_idx, &p) == 0);
-      glob_pool = tl::pool(p);
-    }
+    if(instance_do_global_db) glob_pool = getPool(glob_pool_idx);
 
     std::vector<tl::pool> shard_pools(nshard_instance);
-    for(int s=0;s<nshard_instance;s++){
-      ABT_pool p;
-      assert(margo_get_pool_by_index(margo_id, s+shard_pool_offset, &p) == 0);
-      shard_pools[s] = tl::pool(p);
-    }
+    for(int s=0;s<nshard_instance;s++) shard_pools[s] = getPool(s+shard_pool_offset);
 
     tl::engine engine(margo_id); 
 

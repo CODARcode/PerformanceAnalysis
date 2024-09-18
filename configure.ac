@@ -192,6 +192,23 @@ AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")
 if test "$enable_provenancedb" != "no"; then
    AC_MSG_NOTICE([Provenance DB will be built])
    AC_DEFINE([ENABLE_PROVDB], [1], [Enable the provenance database])
+
+   #In Margo 0.18.0 they deprecated calls to margo_get_pool_by_index
+   AC_COMPILE_IFELSE(
+ 	[
+		AC_LANG_PROGRAM(
+			[[ #include<margo.h>
+                            ]], [[ ABT_pool p; margo_get_pool_by_index(0,0,&p);
+			    	 ]]
+			)
+	], [use_deprecated_margo_call=yes], [use_deprecated_margo_call=no]
+	)
+   if test "x${use_deprecated_margo_call}" = "xyes"; then
+      AC_MSG_NOTICE([Allowing deprecated margo_get_pool_by_index calls])
+      AC_DEFINE([USE_MARGO_DEPRECATED_GET_POOL_BY_INDEX], [1], [Allow calls to margo_get_pool_by_index])
+   else
+      AC_MSG_NOTICE([Disallowing deprecated margo_get_pool_by_index calls])
+   fi
 fi
 
 
