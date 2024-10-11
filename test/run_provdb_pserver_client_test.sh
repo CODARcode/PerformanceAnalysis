@@ -24,7 +24,7 @@ if [ -f "../bin/provdb_admin" ]; then
     port=1234
     shards=1
 
-    ../bin/provdb_admin ${ip}:${port}  -autoshutdown true -nshards 1 -engine "${protocol}" &
+    ../bin/provdb_admin performance_analysis ${ip}:${port}  -autoshutdown true -nshards 1 -engine "${protocol}" &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"

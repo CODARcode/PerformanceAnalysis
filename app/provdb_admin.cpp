@@ -4,10 +4,11 @@
 #ifndef ENABLE_PROVDB
 #error "Provenance DB build is not enabled"
 #endif
-#include "chimbuko/provdb/setup.hpp"
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/time.hpp"
+#include "chimbuko/core/provdb/setup.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/time.hpp"
+#include "chimbuko/modules/factory.hpp"
 #include <iostream>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
@@ -21,7 +22,7 @@
 #include <nlohmann/json.hpp>
 
 #include <spdlog/spdlog.h>
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include <thallium/serialization/stl/string.hpp>
 
 namespace tl = thallium;
@@ -152,8 +153,19 @@ struct ProvdbArgs{
 		db_use_aggregator(false), db_batch_size(64), db_bypass_unqlite(true), db_mercury_auth_key(""){}
 };
 
-
-
+//Assumes global margo_id has been set!
+tl::pool getPool(uint32_t pool_idx){
+#ifdef USE_MARGO_DEPRECATED_GET_POOL_BY_INDEX
+  ABT_pool p;
+  assert(margo_get_pool_by_index(margo_id, pool_idx, &p) == 0);
+  return tl::pool(p);
+#else
+  margo_pool_info p;
+  assert(margo_find_pool_by_index(margo_id, pool_idx, &p) == 0);
+  return tl::pool(p.pool);
+#endif
+}    
+		 
 int main(int argc, char** argv) {
   {
     //Parse environment variables
@@ -163,33 +175,37 @@ int main(int argc, char** argv) {
       spdlog::set_level(spdlog::level::trace); //enable logging of Sonata
     }
 
-    //argv[1] should specify the ip address and port (the only way to fix the port that I'm aware of)
+    //argv[2] should specify the ip address and port (the only way to fix the port that I'm aware of)
     //Should be of form <ip address>:<port>   eg. 127.0.0.1:1234
     //Using an empty string will cause it to default to Mochi's default ip/port
-    commandLineParser<ProvdbArgs> parser;
-    addMandatoryCommandLineArg(parser, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
-    addOptionalCommandLineArg(parser, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
-    addOptionalCommandLineArg(parser, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
-    addOptionalCommandLineArg(parser, nshards, "Specify the number of database shards (default 1)");
-    addOptionalCommandLineArg(parser, db_type, "Specify the Sonata database type (default \"unqlite\")");
-    addOptionalCommandLineArg(parser, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
-    addOptionalCommandLineArg(parser, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
-    addOptionalCommandLineArg(parser, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
-    addOptionalCommandLineArg(parser, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
-    addOptionalCommandLineArg(parser, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
-    addOptionalCommandLineArg(parser, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
-    addOptionalCommandLineArg(parser, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
-    addOptionalCommandLineArgMultiValue(parser, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
+    ProvdbArgs args;
+    commandLineParser parser;
+    
+    std::string module;
+    
+    parser.addMandatoryArg(module, "Specify the module name");
+    addMandatoryCommandLineArg(parser, args, ip, "Specify the ip address and port in the format \"${ip}:${port}\". Using an empty string will cause it to default to Mochi's default ip/port.");
+    addOptionalCommandLineArg(parser, args, engine, "Specify the Thallium/Margo engine type (default \"ofi+tcp\")");
+    addOptionalCommandLineArg(parser, args, autoshutdown, "If enabled the provenance DB server will automatically shutdown when all of the clients have disconnected (default true)");
+    addOptionalCommandLineArg(parser, args, nshards, "Specify the number of database shards (default 1)");
+    addOptionalCommandLineArg(parser, args, db_type, "Specify the Sonata database type (default \"unqlite\")");
+    addOptionalCommandLineArg(parser, args, db_commit_freq, "Specify the frequency at which the database flushes to disk in ms (default 10000). 0 disables the flush until the end.");
+    addOptionalCommandLineArg(parser, args, db_write_dir, "Specify the directory in which the database shards will be written (default \".\")");
+    addOptionalCommandLineArg(parser, args, db_in_mem, "Use an in-memory database rather than writing to disk (*unqlite backend only*) (default false)");
+    addOptionalCommandLineArg(parser, args, db_base_config, "Provide the *absolute path* to a JSON file to use as the base configuration of the Sonata databases. The database path will be appended automatically (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_margo_config, "Provide the *absolute path* to a JSON file containing the Margo configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_mercury_auth_key, "Provide an authentication key for the Mercury configuration (default \"\" - not used)");
+    addOptionalCommandLineArg(parser, args, db_use_aggregator, "Use the \"aggregator\" backend layer (default false)");
+    addOptionalCommandLineArg(parser, args, db_batch_size, "Provide the batch size for the \"aggregator\" backend if in use (default 64)");
+    addOptionalCommandLineArg(parser, args, db_bypass_unqlite, "Use Sonata's bypass method for faster unqlite stores (default true)");    
+    addOptionalCommandLineArgMultiValue(parser, args, server_instance, "Provide the index of the server instance and the total number of instances (if using more than 1) in the format \"$instance $ninstances\" (default \"0 1\")", server_instance, ninstances);
 
-    if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
+    if(argc < 1 || argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
       parser.help(std::cout);
       return 0;
     }
 
-    ProvdbArgs args;
-    parser.parseCmdLineArgs(args, argc, argv);
+    parser.parseCmdLineArgs(argc, argv);
 
     //Check arguments
     if(args.nshards < 1) throw std::runtime_error("Must have at least 1 database shard");
@@ -302,20 +318,14 @@ int main(int argc, char** argv) {
     margo_args.json_config   = new_config.c_str();
     margo_id = margo_init_ext(eng_opt.c_str(), MARGO_SERVER_MODE, &margo_args);
 
+
+    
     //Get the thallium pools to pass to the providers
     tl::pool glob_pool;
-    if(instance_do_global_db){
-      ABT_pool p;
-      assert(margo_get_pool_by_index(margo_id, glob_pool_idx, &p) == 0);
-      glob_pool = tl::pool(p);
-    }
+    if(instance_do_global_db) glob_pool = getPool(glob_pool_idx);
 
     std::vector<tl::pool> shard_pools(nshard_instance);
-    for(int s=0;s<nshard_instance;s++){
-      ABT_pool p;
-      assert(margo_get_pool_by_index(margo_id, s+shard_pool_offset, &p) == 0);
-      shard_pools[s] = tl::pool(p);
-    }
+    for(int s=0;s<nshard_instance;s++) shard_pools[s] = getPool(s+shard_pool_offset);
 
     tl::engine engine(margo_id); 
 
@@ -388,14 +398,14 @@ int main(int argc, char** argv) {
 	//Create the collections
 	{ //scope in which client is active
 	  sonata::Client client(engine);
+	  std::unique_ptr<ProvDBmoduleSetupCore> pdb_module_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
 
 	  //Initialize the provdb shards
 	  std::vector<sonata::Database> db(nshard_instance);
 	  for(int s=0;s<nshard_instance;s++){
 	    db[s] = client.open(addr, shard_provider_indices[s], db_shard_names[s]);
-	    db[s].create("anomalies");
-	    db[s].create("metadata");
-	    db[s].create("normalexecs");
+	    for(auto const &c : pdb_module_setup->getMainDBcollections())
+	      db[s].create(c);
 	  }
 
 	  PSprogressStream << "initialized shard collections" << std::endl;
@@ -404,9 +414,8 @@ int main(int argc, char** argv) {
 	  std::unique_ptr<sonata::Database> glob_db;
 	  if(instance_do_global_db){
 	    glob_db.reset(new sonata::Database(client.open(addr, glob_provider_idx, glob_db_name)));
-	    glob_db->create("func_stats");
-	    glob_db->create("counter_stats");
-	    glob_db->create("ad_model");
+	    for(auto const &c : pdb_module_setup->getGlobalDBcollections())
+	      glob_db->create(c);
 	    PSprogressStream << "initialized global DB collections" << std::endl;
 	  }
 

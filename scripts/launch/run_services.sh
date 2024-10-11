@@ -74,6 +74,22 @@ ps_dir=${base}/chimbuko/pserver
 #Run the Chimbuko head node services
 ####################################
 
+echo "==========================================="
+echo "Starting Chimbuko services with module: ${module}"
+echo "==========================================="
+
+#Generate the AlgoParams JSON script from the inputs
+algo_params_file=${var_dir}/algo_params.json
+cat <<EOF > ${algo_params_file}
+{
+  "algorithm" : "${ad_alg}",
+  "glob_thres" : true,
+  "hbos_max_bins" : 200,
+  "hbos_thres" : ${ad_outlier_hbos_threshold},
+  "sstd_sigma" : ${ad_outlier_sstd_sigma}
+}
+EOF
+
 #Provenance database
 extra_args=${ad_extra_args}
 ps_extra_args=${pserver_extra_args}
@@ -162,7 +178,7 @@ if (( ${use_provdb} == 1 )); then
 	    provdb_addr="${provdb_domain}/${provdb_addr}"
 	fi
 	echo "Chimbuko services launching provDB instance ${i} of ${provdb_ninstances} on address '${provdb_addr}' and engine '${provdb_engine}'"
-	cmd="provdb_admin "${provdb_addr}" ${provdb_extra_args} -engine '${provdb_engine}' -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &"
+	cmd="provdb_admin ${module} "${provdb_addr}" ${provdb_extra_args} -engine '${provdb_engine}' -nshards ${provdb_nshards} -db_write_dir ${provdb_writedir} -db_commit_freq 0 -server_instance ${i} ${provdb_ninstances} 2>&1 | tee ${log_dir}/provdb_${i}.log &"
 	if [[ ${do_numa_bind} -eq 1 ]]; then
 	    numa=${numas[i]}
 	    echo "Chimbuko services binding provDB instance ${i} to NUMA domain ${numa}"
@@ -188,7 +204,7 @@ if (( ${use_provdb} == 1 )); then
     done
 
     extra_args+=" -provdb_addr_dir ${provdb_addr_dir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
-    ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir}"
+    ps_extra_args+=" -provdb_addr_dir ${provdb_addr_dir} -nprovdb_instances ${provdb_ninstances} -nprovdb_shards ${provdb_nshards}"
     echo "Chimbuko Services: Enabling provenance database with arg: ${extra_args}"
     cd -
 
@@ -354,7 +370,7 @@ if (( ${use_pserver} == 1 )); then
 
     pserver_alg=${ad_alg} #Pserver AD algorithm choice must match that used for the driver
     pserver_addr="tcp://${ip}:${pserver_port}"  #address for parameter server in format "tcp://IP:PORT"
-    cmd="pserver -ad ${pserver_alg} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &"
+    cmd="pserver ${module} -algo_params_file ${algo_params_file} -nt ${pserver_nt} -logdir ${log_dir} -port ${pserver_port} -save_params ${ps_dir}/global_model.json ${ps_extra_args} 2>&1 | tee ${log_dir}/pserver.log  &"
     if [[ ! -z "${pserver_numa_bind:-}" ]]; then
 	echo "Chimbuko Services binding pserver to NUMA domain ${pserver_numa_bind}"
 	cmd="numactl -N ${pserver_numa_bind} ${cmd}"
@@ -440,20 +456,17 @@ fi
 #echo "Chimbuko Services: Processes are: " $(ps)
 
 #Check that the variables passed to the AD from the config file are defined
-testit=${ad_outlier_sstd_sigma}
 testit=${ad_win_size}
-testit=${ad_alg}
-testit=${ad_outlier_hbos_threshold}
 
 ############################################
 #Generate the command to launch the AD module
-ad_opts="${extra_args} -err_outputpath ${log_dir} -outlier_sigma ${ad_outlier_sstd_sigma} -anom_win_size ${ad_win_size} -ad_algorithm ${ad_alg} -hbos_threshold ${ad_outlier_hbos_threshold}"
+ad_opts="${extra_args} -err_outputpath ${log_dir} -algo_params_file ${algo_params_file} -anom_win_size ${ad_win_size}"
 
 if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
     echo "The user has specified a workflow comprising multiple components. Chimbuko will generate separate files containing pre-generated launch commands."
     for i in ${!EXE_NAME[@]}; do
 	exe=${EXE_NAME[$i]}
-	ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i} ${ad_opts} 2>&1 | tee ${log_dir}/ad.${exe}.log"
+	ad_cmd="driver ${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i} ${ad_opts} 2>&1 | tee ${log_dir}/ad.${exe}.log"
 	echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.${exe}.var
 
 	echo "---------------------------"
@@ -464,12 +477,12 @@ if [[ "$(declare -p EXE_NAME)" =~ "declare -a" ]]; then
 	echo "Or equivalent"
 
 	#For use in other scripts, output the AD cmdline options to file
-	echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i}" > ${var_dir}/chimbuko_ad_args.${exe}.var
+	echo "${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${exe} -program_idx ${i}" > ${var_dir}/chimbuko_ad_args.${exe}.var
     done
     #AD option set is generic
     echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var    
 else
-    ad_cmd="driver ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
+    ad_cmd="driver ${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME} ${ad_opts} 2>&1 | tee ${log_dir}/ad.log"
     echo ${ad_cmd} > ${var_dir}/chimbuko_ad_cmdline.var
 
     echo "Command to launch AD module: " ${ad_cmd}
@@ -479,7 +492,7 @@ else
     echo "Or equivalent"
 
     #For use in other scripts, output the AD cmdline options to file
-    echo "${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
+    echo "${module} ${TAU_ADIOS2_ENGINE} ${TAU_ADIOS2_PATH} ${TAU_ADIOS2_FILE_PREFIX}-${EXE_NAME}" > ${var_dir}/chimbuko_ad_args.var
     echo ${ad_opts} > ${var_dir}/chimbuko_ad_opts.var
 fi
 

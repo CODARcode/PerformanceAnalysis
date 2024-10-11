@@ -3,14 +3,15 @@
 #ifdef USE_MPI
 #include<mpi.h>
 #endif
-#include "chimbuko/AD.hpp"
+#include "chimbuko/modules/performance_analysis/AD.hpp"
 #include <chrono>
 #include <map>
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/error.hpp"
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 using namespace std::chrono;
 
 struct SinkerArgs{
@@ -88,15 +89,16 @@ int main(int argc, char ** argv){
   bool error = false;
   try
     {
-      commandLineParser<SinkerArgs> cmdline;
-      addOptionalCommandLineArg(cmdline, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
-      addOptionalCommandLineArg(cmdline, beginstep_timeout, "Specify the SST beginStep timeout in seconds (Default 30s)");
-      addOptionalCommandLineArg(cmdline, dump_events, "Request that the parsed events be dumped to a file \"${BPFILENAME}.dump\". Requires \"fetch\" to be true. (Default false)");
-      addOptionalCommandLineArg(cmdline, dump_runtimes, "Request that the parsed function execution (exclusive) runtimes be dumped to a file \"${BPFILENAME}.runtimes\". Requires \"fetch\" to be true. (Default false)");
-      addOptionalCommandLineArg(cmdline, rank_override, "Manually override the rank index obtained from MPI. (Default: -1  (do nothing) )");
+      SinkerArgs args;
+      commandLineParser cmdline;
+      addOptionalCommandLineArg(cmdline, args, timeout, "Specify the SST connect timeout in seconds (Default 60s)");
+      addOptionalCommandLineArg(cmdline, args, beginstep_timeout, "Specify the SST beginStep timeout in seconds (Default 30s)");
+      addOptionalCommandLineArg(cmdline, args, dump_events, "Request that the parsed events be dumped to a file \"${BPFILENAME}.dump\". Requires \"fetch\" to be true. (Default false)");
+      addOptionalCommandLineArg(cmdline, args, dump_runtimes, "Request that the parsed function execution (exclusive) runtimes be dumped to a file \"${BPFILENAME}.runtimes\". Requires \"fetch\" to be true. (Default false)");
+      addOptionalCommandLineArg(cmdline, args, rank_override, "Manually override the rank index obtained from MPI. (Default: -1  (do nothing) )");
 
 #ifndef USE_MPI
-      addOptionalCommandLineArg(cmdline, rank, "Specify the rank of the application (Default 0)");
+      addOptionalCommandLineArg(cmdline, args, rank, "Specify the rank of the application (Default 0)");
 #endif
 
       if(argc < 5 || (argc == 2 && std::string(argv[1]) == "-help")){
@@ -112,8 +114,7 @@ int main(int argc, char ** argv){
       std::string prefix = argv[3]; // "tau-metrics-nwchem"
       int fetch_data = atoi(argv[4]);
 
-      SinkerArgs args;
-      cmdline.parse(args, argc-5, (const char**)(argv+5) );
+      cmdline.parse(argc-5, (const char**)(argv+5) );
 
       if(args.dump_events && !fetch_data) fatal_error("dump_events option requires fetch=1");
       

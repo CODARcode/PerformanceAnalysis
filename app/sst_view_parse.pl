@@ -62,7 +62,7 @@ for($i=0;$i<scalar @lines;$i++){
     #FOUND NEW ATTRIBUTE: counter 0 {Elements:1 Type:string Value:"Correlation ID" }    
     }elsif($line=~m/counter\s(\d+)\s.*Value:\"Correlation ID\"/){
 	$corid_cidx=$1;
-
+	print "Correlation id maps to counter $corid_cidx\n";
 	
     #Parse GPU device/context
     #FOUND NEW ATTRIBUTE: MetaData:0:7:CUDA Context {Elements:1 Type:string Value:"1" }
@@ -160,15 +160,17 @@ for($i=0;$i<scalar @lines;$i++){
 	$cval = $3;
 	$ts = $4;
 
-	if(exists($corids{$cval})){
-	    print "Found matching corid $cval\n";
-	    delete $corids{$cval};
-	    $ncorid_matched++;
-	}else{
-	    print "Found new corid $cval\n";
-	    $corids{$cval} = [$thread, $cid, $cval, $ts];
+	if($cid == $corid_cidx){
+	    if(exists($corids{$cval})){
+		print "Found matching corid $cval\n";
+		delete $corids{$cval};
+		$ncorid_matched++;
+	    }else{
+		print "Found new corid $cval\n";
+		$corids{$cval} = [$thread, $cid, $cval, $ts];
+	    }
 	}
-
+	
 	$counter_n++;
 	if($counter_n == $counter_nrows){
 	    $counter_active = 0;

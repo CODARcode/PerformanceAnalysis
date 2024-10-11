@@ -1,9 +1,9 @@
 #include <chimbuko_config.h>
-#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
-#include "chimbuko/pserver/GlobalCounterStats.hpp"
-#include "chimbuko/pserver/PSstatSender.hpp"
-#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
-#include "chimbuko/ad/ADLocalCounterStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp"
+#include "chimbuko/core/pserver/PSstatSender.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalCounterStatistics.hpp"
 #include <gtest/gtest.h>
 #ifdef USE_MPI
 #include <mpi.h>
@@ -11,9 +11,10 @@
 #include <thread>
 #include <chrono>
 #include "unit_tests/unit_test_common.hpp"
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 namespace chimbuko{
 /**
@@ -78,26 +79,31 @@ TEST(PSstatSenderTest, StatSenderPseudoTestBounce)
 
 
 namespace chimbuko{
-/**
- * @brief A payload used to test the data sent by CURL is correctly formatted
- */
-struct PSstatSenderGlobalAnomalyStatsCallbackPayload: public PSstatSenderGlobalAnomalyStatsPayload{
-  int *calls;
-  PSstatSenderGlobalAnomalyStatsCallbackPayload(GlobalAnomalyStats *stats, int *_calls): PSstatSenderGlobalAnomalyStatsPayload(stats), calls(_calls){}
+  namespace modules{
+    namespace performance_analysis{
 
-  bool do_fetch() const override{ return true; }
-  void process_callback(const std::string &packet, const std::string &returned) const override{
-    ++(*calls);
-    std::cout << "CALLBACK PROCESS" << std::endl;
-    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
-    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
-    nlohmann::json p = nlohmann::json::parse(packet);
-    nlohmann::json r = nlohmann::json::parse(returned);
+      /**
+       * @brief A payload used to test the data sent by CURL is correctly formatted
+       */
+      struct PSstatSenderGlobalAnomalyStatsCallbackPayload: public PSstatSenderGlobalAnomalyStatsPayload{
+	int *calls;
+	PSstatSenderGlobalAnomalyStatsCallbackPayload(GlobalAnomalyStats *stats, int *_calls): PSstatSenderGlobalAnomalyStatsPayload(stats), calls(_calls){}
 
-    if(p != r) throw std::runtime_error("test failed");
+	bool do_fetch() const override{ return true; }
+	void process_callback(const std::string &packet, const std::string &returned) const override{
+	  ++(*calls);
+	  std::cout << "CALLBACK PROCESS" << std::endl;
+	  std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+	  std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+	  nlohmann::json p = nlohmann::json::parse(packet);
+	  nlohmann::json r = nlohmann::json::parse(returned);
+
+	  if(p != r) throw std::runtime_error("test failed");
+	}
+      };
+
+    }
   }
-};
-
 }
 
 TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
@@ -110,19 +116,21 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   CallList_t call_list;
   auto it1 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 100, 200) );
   auto it2 = call_list.insert(call_list.end(), createFuncExecData_t(pid,rid,tid,func_id,func_name, 300, 400) );
-  it1->set_label(-1);
-  it2->set_label(-1);
-  Anomalies anom;
-  anom.recordAnomaly(it1);
-  anom.recordAnomaly(it2);
 
   ExecDataMap_t dmap;
   dmap[func_id].push_back(it1);
   dmap[func_id].push_back(it2);
 
+  ADExecDataInterface iface(&dmap);
+  {
+    auto d = iface.getDataSet(0);
+    d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
+    iface.recordDataSetLabels(d,0);
+  }
+
   ADLocalFuncStatistics loc(pid,rid,0);
   loc.gatherStatistics(&dmap);
-  loc.gatherAnomalies(anom);
+  loc.gatherAnomalies(iface);
 
   GlobalAnomalyStats glob;
   glob.add_anomaly_data(loc);
@@ -142,26 +150,31 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
 
 
 namespace chimbuko{
-/**
- * @brief A payload used to test the data sent by CURL is correctly formatted
- */
-struct PSstatSenderGlobalCounterStatsCallbackPayload: public PSstatSenderGlobalCounterStatsPayload{
-  int *calls;
-  PSstatSenderGlobalCounterStatsCallbackPayload(GlobalCounterStats *stats, int *_calls): PSstatSenderGlobalCounterStatsPayload(stats), calls(_calls){}
+  namespace modules{
+    namespace performance_analysis{
 
-  bool do_fetch() const override{ return true; }
-  void process_callback(const std::string &packet, const std::string &returned) const override{
-    ++(*calls);
-    std::cout << "CALLBACK PROCESS" << std::endl;
-    std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
-    std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
-    nlohmann::json p = nlohmann::json::parse(packet);
-    nlohmann::json r = nlohmann::json::parse(returned);
+      /**
+       * @brief A payload used to test the data sent by CURL is correctly formatted
+       */
+      struct PSstatSenderGlobalCounterStatsCallbackPayload: public PSstatSenderGlobalCounterStatsPayload{
+	int *calls;
+	PSstatSenderGlobalCounterStatsCallbackPayload(GlobalCounterStats *stats, int *_calls): PSstatSenderGlobalCounterStatsPayload(stats), calls(_calls){}
 
-    if(p != r) throw std::runtime_error("test failed");
+	bool do_fetch() const override{ return true; }
+	void process_callback(const std::string &packet, const std::string &returned) const override{
+	  ++(*calls);
+	  std::cout << "CALLBACK PROCESS" << std::endl;
+	  std::cout << "PACKET   (size " << packet.size() << ") :\"" << packet << "\"" << std::endl;
+	  std::cout << "RETURNED (size " << returned.size() << ") :\"" << returned << "\"" << std::endl;
+	  nlohmann::json p = nlohmann::json::parse(packet);
+	  nlohmann::json r = nlohmann::json::parse(returned);
+
+	  if(p != r) throw std::runtime_error("test failed");
+	}
+      };
+
+    }
   }
-};
-
 }
 
 TEST(PSstatSenderTest, StatSenderGlobalCounterStatsBounce)

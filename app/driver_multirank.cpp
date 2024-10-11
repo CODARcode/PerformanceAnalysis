@@ -1,12 +1,15 @@
+#if 0 //DISABLED DURING REFACTOR
+
+
 #include<chimbuko_config.h>
 #ifdef USE_MPI
 #include<mpi.h>
 #endif
-#include "chimbuko/chimbuko.hpp"
-#include "chimbuko/verbose.hpp"
-#include "chimbuko/util/string.hpp"
-#include "chimbuko/util/commandLineParser.hpp"
-#include "chimbuko/util/error.hpp"
+#include "chimbuko/core/chimbuko.hpp"
+#include "chimbuko/core/verbose.hpp"
+#include "chimbuko/core/util/string.hpp"
+#include "chimbuko/core/util/commandLineParser.hpp"
+#include "chimbuko/core/util/error.hpp"
 #include <chrono>
 #include <cstdlib>
 
@@ -348,3 +351,12 @@ int main(int argc, char ** argv){
   headProgressStream(params.base_rank) << "Multi-rank driver, base rank " << params.base_rank << " is exiting" << std::endl;
   return error ? 1 : 0;
 }
+
+
+#else
+
+int main(void){
+  return 0;
+}
+
+#endif

@@ -1,15 +1,16 @@
 //A test application that mocks part of the anomaly detection modules, acting as a client for the parameter server and sending it function statistics information
 #include <chimbuko_config.h>
 
-#include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/message.hpp"
-#include "chimbuko/ad/AnomalyData.hpp"
-#include "chimbuko/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
+#include "chimbuko/core/message.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADLocalFuncStatistics.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/PScommon.hpp"
 
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #endif
 
 #ifdef USE_MPI
@@ -21,6 +22,7 @@
 #include <random>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 int main (int argc, char** argv)
 {
@@ -52,10 +54,10 @@ int main (int argc, char** argv)
     //Handshake
     {
       Message msg;
-      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
-      msg.set_msg("");
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)BuiltinMessageKind::DEFAULT);
+      msg.setContent("");
       std::string strmsg;
-      ZMQNet::send(socket, msg.data());
+      ZMQNet::send(socket, msg.serializeMessage());
       ZMQNet::recv(socket, strmsg);
     }
 #endif
@@ -86,22 +88,20 @@ int main (int argc, char** argv)
         // create message
         msg.clear();
         msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::ANOMALY_STATS, step);
-        msg.set_msg(
-		    fstat.net_serialize(), false
-        );
+        msg.setContent(fstat.net_serialize());
 
 #ifdef _USE_MPINET
 	throw std::runtime_error("Not implemented yet.");
 #else
         // send message to parameter server
-        ZMQNet::send(socket, msg.data());
+        ZMQNet::send(socket, msg.serializeMessage());
         // std::cout << "Rank: " << rank << " sent " << step << "-th message!" << std::endl;
 
         // receive reply
         msg.clear();
         strmsg.clear();
         ZMQNet::recv(socket, strmsg);
-        msg.set_msg(strmsg, true);
+        msg.deserializeMessage(strmsg);
         // std::cout << "Rank: " << rank << " receive " << step << "-th reply" << std::endl;
 #endif
 
@@ -117,10 +117,10 @@ int main (int argc, char** argv)
     throw std::runtime_error("Not implemented yet.");
 #else
     msg.clear();
-    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
-    msg.set_msg("");
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
+    msg.setContent("");
     std::cout << "pclient_stats rank " << rank << " sending disconnect notification" << std::endl;
-    ZMQNet::send(socket, msg.data());
+    ZMQNet::send(socket, msg.serializeMessage());
     std::cout << "pclient_stats rank " << rank << " waiting for disconnect notification response" << std::endl;
     ZMQNet::recv(socket, strmsg);
     std::cout << "pclient_stats rank " << rank << " exiting" << std::endl;

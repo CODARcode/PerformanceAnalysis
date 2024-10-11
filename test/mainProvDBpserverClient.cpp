@@ -4,50 +4,53 @@
 #include <chimbuko_config.h>
 #include <gtest/gtest.h>
 #include <cassert>
-#include <chimbuko/ad/ADProvenanceDBclient.hpp>
-#include <chimbuko/pserver/PSProvenanceDBclient.hpp>
-#include <chimbuko/verbose.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
+#include <chimbuko/core/verbose.hpp>
+#include <chimbuko/core/util/string.hpp>
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 //For these tests the provenance DB admin must be running
 std::string addr;
 int rank;
 std::string rank_str;
+ProvDBmoduleSetup setup;
 
-TEST(PSProvenanceDBclientTest, Connects){
+TEST(PSglobalProvenanceDBclientTest, Connects){
   bool connect_fail = false;
-  PSProvenanceDBclient client;
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr);
+    client.connectServer(addr);
   }catch(const std::exception &ex){
     connect_fail = true;
   }
   EXPECT_EQ(connect_fail, false);
 }
 
-TEST(PSProvenanceDBclientTest, SendReceiveData){
+TEST(PSglobalProvenanceDBclientTest, SendReceiveData){
 
   bool fail = false;
-  PSProvenanceDBclient client;
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr);
+    client.connectServer(addr);
 
     {
       nlohmann::json obj;
       obj["hello"] = "world";
       std::cout << "Sending " << obj.dump() << std::endl;
-      uint64_t rid = client.sendData(obj, GlobalProvenanceDataType::FunctionStats);
+      uint64_t rid = client.sendData(obj, "func_stats");
       EXPECT_NE(rid, -1);
 
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, rid, GlobalProvenanceDataType::FunctionStats), true );
+      EXPECT_EQ( client.retrieveData(check, rid, "func_stats"), true );
       bool same = check["hello"] == "world";
       std::cout << "JSON objects are the same? " << same << std::endl;
       EXPECT_EQ(same, true);
@@ -56,11 +59,11 @@ TEST(PSProvenanceDBclientTest, SendReceiveData){
       nlohmann::json obj;
       obj["what's"] = "up";
       std::cout << "Sending " << obj.dump() << std::endl;
-      uint64_t rid = client.sendData(obj, GlobalProvenanceDataType::CounterStats);
+      uint64_t rid = client.sendData(obj, "counter_stats");
       EXPECT_NE(rid, -1);
 
       nlohmann::json check;
-      EXPECT_EQ( client.retrieveData(check, rid, GlobalProvenanceDataType::CounterStats), true );
+      EXPECT_EQ( client.retrieveData(check, rid, "counter_stats"), true );
       bool same = check["what's"] == "up";
       std::cout << "JSON objects are the same? " << same << std::endl;
       EXPECT_EQ(same, true);
@@ -73,13 +76,13 @@ TEST(PSProvenanceDBclientTest, SendReceiveData){
 }
 
 
-TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
+TEST(PSglobalProvenanceDBclientTest, SendReceiveMultipleData){
 
   bool fail = false;
-  PSProvenanceDBclient client;
+  PSglobalProvenanceDBclient client(setup.getGlobalDBcollections());
   std::cout << "Client attempting connection" << std::endl;
   try{
-    client.connect(addr);
+    client.connectServer(addr);
 
     {
       nlohmann::json obj = nlohmann::json::array();
@@ -94,14 +97,14 @@ TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
       obj.push_back(o2);
 
       std::cout << "Sending " << obj.dump() << std::endl;
-      std::vector<uint64_t> rid = client.sendMultipleData(obj, GlobalProvenanceDataType::FunctionStats);
+      std::vector<uint64_t> rid = client.sendMultipleData(obj, "func_stats");
       EXPECT_EQ(rid.size(),2);
       EXPECT_NE(rid[0], -1);
       EXPECT_NE(rid[1], -1);
 
       {
 	nlohmann::json check;
-	EXPECT_EQ( client.retrieveData(check, rid[0], GlobalProvenanceDataType::FunctionStats), true );
+	EXPECT_EQ( client.retrieveData(check, rid[0], "func_stats"), true );
 	bool same = check["hello"] == "world";
 	std::cout << "JSON objects are the same? " << same << std::endl;
 	EXPECT_EQ(same, true);
@@ -109,7 +112,7 @@ TEST(PSProvenanceDBclientTest, SendReceiveMultipleData){
 
       {
 	nlohmann::json check;
-	EXPECT_EQ( client.retrieveData(check, rid[1], GlobalProvenanceDataType::FunctionStats), true );
+	EXPECT_EQ( client.retrieveData(check, rid[1], "func_stats"), true );
 	bool same = check["what's"] == "up";
 	std::cout << "JSON objects are the same? " << same << std::endl;
 	EXPECT_EQ(same, true);
@@ -150,19 +153,21 @@ int main(int argc, char** argv)
 #ifdef USE_MPI
     std::cout << "Rank 0 complete, waiting at barrier" << std::endl;
     MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "Rank 0 passed barrier, exiting" << std::endl;
 #endif
   }else{
     std::cout << "Rank " << rank << " acting as AD client and connecting to database on " << addr << std::endl;
-    ADProvenanceDBclient client(rank); 
-    client.connectSingleServer(addr,1);
-    std::cout << "Rank " << rank << " waiting at barrier" << std::endl;
+    ADProvenanceDBclient client(setup.getMainDBcollections(),rank); 
+    client.connectSingleServer(addr,1);    
 #ifdef USE_MPI
+    std::cout << "Rank " << rank << " waiting at barrier" << std::endl;
     MPI_Barrier(MPI_COMM_WORLD); //wait for rank 0 to do its business
+    std::cout << "Rank " << rank << " passed barrier, exiting" << std::endl;
 #endif
     ret = 0;
   }
 #ifdef USE_MPI
   MPI_Finalize();
-#endif
+#endif  
   return ret;
 }

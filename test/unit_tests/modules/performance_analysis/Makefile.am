@@ -1,0 +1,1 @@
+SUBDIRS = ad pserver provdb

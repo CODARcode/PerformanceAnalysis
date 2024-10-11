@@ -1,25 +1,26 @@
 //The parameter server main program. This program collects statistics from the node-instances of the anomaly detector
 #include <csignal>
 #include <chimbuko_config.h>
-#include <chimbuko/pserver.hpp>
 
 #ifdef _USE_MPINET
-#include <chimbuko/net/mpi_net.hpp>
+#include <chimbuko/core/net/mpi_net.hpp>
 #else
-#include <chimbuko/net/zmq_net.hpp>
+#include <chimbuko/core/net/zmq_net.hpp>
 #endif
 
 #ifdef ENABLE_PROVDB
-#include <chimbuko/pserver/PSProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
+#include <chimbuko/core/pserver/PSshardProvenanceDBclient.hpp>
 #endif
 
-#include <chimbuko/param/sstd_param.hpp>
-#include <chimbuko/util/commandLineParser.hpp>
-#include <chimbuko/util/error.hpp>
+#include <chimbuko/core/param/sstd_param.hpp>
+#include <chimbuko/core/util/commandLineParser.hpp>
+#include <chimbuko/core/util/error.hpp>
 #include <fstream>
-#include "chimbuko/verbose.hpp"
+#include <chimbuko/core/verbose.hpp>
+#include <chimbuko/core/ad/ADOutlier.hpp>
 
-
+#include <chimbuko/modules/factory.hpp>
 
 using namespace chimbuko;
 
@@ -41,10 +42,11 @@ struct pserverArgs{
   int stat_send_freq;
 
   std::string stat_outputdir;
-  std::string ad;
 
   int model_update_freq; //frequency in ms at which the global model is updated
   bool model_force_update; //force the global model to be updated every time a worker thread updates its model
+
+  ADOutlier::AlgoParams algo_params; //The AD algorithm hyperparameters and type/name
 
 #ifdef _USE_ZMQNET
   int max_pollcyc_msg;
@@ -54,47 +56,53 @@ struct pserverArgs{
 
 #ifdef ENABLE_PROVDB
   std::string provdb_addr_dir;
+  int nprovdb_shards; /**< Number of database shards*/
+  int nprovdb_instances; /**< Number of instances of the provenance database server*/
   std::string provdb_mercury_auth_key; //An authorization key for initializing Mercury (optional, default "")
+  bool provdb_post_prune; //perform post-pruning on the provenance database
 #endif
 
   std::string prov_outputpath;
 
-  pserverArgs(): ad("hbos"), nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath(""), model_update_freq(1000), model_force_update(false)
+  pserverArgs(): nt(-1), logdir("."), ws_addr(""), load_params_set(false), save_params_set(false), freeze_params(false), stat_send_freq(1000), stat_outputdir(""), port(5559), prov_outputpath(""), model_update_freq(1000), model_force_update(false)
 #ifdef _USE_ZMQNET
 	       , max_pollcyc_msg(10), zmq_io_thr(1), autoshutdown(true)
 #endif
 #ifdef ENABLE_PROVDB
-	       , provdb_addr_dir(""), provdb_mercury_auth_key("")
+	       , provdb_addr_dir(""), provdb_mercury_auth_key(""), provdb_post_prune(true), nprovdb_shards(1), nprovdb_instances(1)
 #endif
   {}
 
-  static commandLineParser<pserverArgs> &getParser(){
+  static commandLineParser &getParser(pserverArgs &instance){
     static bool init = false;
-    static commandLineParser<pserverArgs> p;
+    static commandLineParser p;
     if(!init){
-      addOptionalCommandLineArg(p, ad, "Set AD algorithm to use.");
-      addOptionalCommandLineArg(p, nt, "Set the number of RPC handler threads (max-2 by default)");
-      addOptionalCommandLineArg(p, logdir, "Set the output log directory (default: job directory)");
-      addOptionalCommandLineArg(p, port, "Set the pserver port (default: 5559)");
-      addOptionalCommandLineArg(p, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
-      addOptionalCommandLineArg(p, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
-      addOptionalCommandLineArgWithFlag(p, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
-      addOptionalCommandLineArgWithFlag(p, save_params, save_params_set, "Save anomaly algorithm parameters to file");
-      addOptionalCommandLineArg(p, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
-      addOptionalCommandLineArg(p, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
+      addOptionalCommandLineArg(p, instance, nt, "Set the number of RPC handler threads (max-2 by default)");
+      addOptionalCommandLineArg(p, instance, logdir, "Set the output log directory (default: job directory)");
+      addOptionalCommandLineArg(p, instance, port, "Set the pserver port (default: 5559)");
+      addOptionalCommandLineArg(p, instance, ws_addr, "Provide the address of the visualization module (aka webserver). If not provided no information will be sent to the visualization");
+      addOptionalCommandLineArg(p, instance, stat_outputdir, "Optionally provide a directory where the stat data will be written alongside/in place of sending to the viz module (default: unused");
+      addOptionalCommandLineArgWithFlag(p, instance, load_params, load_params_set, "Load previously computed anomaly algorithm parameters from file");
+      addOptionalCommandLineArgWithFlag(p, instance, save_params, save_params_set, "Save anomaly algorithm parameters to file");
+      addOptionalCommandLineArg(p, instance, freeze_params, "Fix the anomaly algorithm parameters, preventing updates from the AD. Use in conjunction with -load_params. Value should be 'true' or 'false' (or 0/1)");
+      addOptionalCommandLineArg(p, instance, stat_send_freq, "The frequency in ms at which statistics are sent to the visualization (default 1000ms)");
 #ifdef _USE_ZMQNET
-      addOptionalCommandLineArg(p, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
-      addOptionalCommandLineArg(p, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
-      addOptionalCommandLineArg(p, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
+      addOptionalCommandLineArg(p, instance, max_pollcyc_msg, "Set the maximum number of messages that the router thread will route front->back and back->front per poll cycle (default: 10)");
+      addOptionalCommandLineArg(p, instance, zmq_io_thr, "Set the number of io threads used by ZeroMQ (default: 1)");
+      addOptionalCommandLineArg(p, instance, autoshutdown, "If enabled the pserver will automatically shutdown when all clients have disconnected (default: true)");
 #endif
 #ifdef ENABLE_PROVDB
-      addOptionalCommandLineArg(p, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
-      addOptionalCommandLineArg(p, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+      addOptionalCommandLineArg(p, instance, provdb_addr_dir, "The directory containing the address file written out by the provDB server. An empty string will disable the connection to the global DB.  (default empty, disabled)");
+      addOptionalCommandLineArg(p, instance, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+      addOptionalCommandLineArg(p, instance, provdb_post_prune, "If enabled the pserver will automatically \"prune\" the provenance database at the end of the run (default: true)");
+      addOptionalCommandLineArgWithDefault(p, instance, nprovdb_shards, 1, "Number of provenance database shards. Clients connect to shards round-robin by rank (default 1)");
+      addOptionalCommandLineArgWithDefault(p, instance, nprovdb_instances, 1, "Number of provenance database instances. Shards are divided uniformly over instances. (default 1)");
 #endif
-      addOptionalCommandLineArg(p, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
-      addOptionalCommandLineArg(p, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
-      addOptionalCommandLineArg(p, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
+      addOptionalCommandLineArg(p, instance, prov_outputpath, "Output global provenance data to this directory. Can be used in place of or in conjunction with the provenance database. An empty string \"\" (default) disables this output");
+      addOptionalCommandLineArg(p, instance, model_update_freq, "The frequency in ms at which the global AD model is updated (default 1000ms)");
+      addOptionalCommandLineArg(p, instance, model_force_update, "Force the global AD model to be updated every time a worker thread updates its model (default false)");
 
+      p.addOptionalArg(new ADOutlier::AlgoParams::cmdlineParser(instance.algo_params, "-algo_params_file", "Set the filename containing the algorithm name and hyperparameters (ensure consistent with OAD)."));
       init = true;
     }
     return p;
@@ -110,11 +118,17 @@ void termSignalHandler( int signum ){
 
 int main (int argc, char ** argv){
   pserverArgs args;
-  if(argc == 2 && std::string(argv[1]) == "-help"){
-    pserverArgs::getParser().help(std::cout);
+  bool do_help = argc < 2;
+  for(int i=1;i<argc;i++) if(std::string(argv[i])=="-help"){ do_help = true; break; }
+
+  if(do_help){
+    pserverArgs::getParser(args).help(std::cout);
     return 0;
   }
-  pserverArgs::getParser().parse(args, argc-1, (const char**)(argv+1));
+  
+  std::string module = argv[1];
+
+  pserverArgs::getParser(args).parse(argc-2, (const char**)(argv+2));
 
   //If number of threads is not specified, choose a sensible number
   if (args.nt <= 0){
@@ -127,18 +141,16 @@ int main (int argc, char ** argv){
     enableVerboseLogging() = true;
   }
 
-  PSparamManager param(args.nt, args.ad); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
+  PSparamManager param(args.nt, args.algo_params.algorithm); //the AD model; independent models for each worker thread that are aggregated periodically to a global model
   param.enableForceUpdate(args.model_force_update); //decide whether the model is forced to be updated every time a worker updates its model
 
-  std::vector<GlobalAnomalyStats> global_func_stats(args.nt); //global anomaly statistics
-  std::vector<GlobalCounterStats> global_counter_stats(args.nt); //global counter statistics
-  std::vector<GlobalAnomalyMetrics> global_anom_metrics(args.nt); //global anomaly metrics
-  PSglobalFunctionIndexMap global_func_index_map; //mapping of function name to global index
-
+  std::unique_ptr<ProvDBmoduleSetupCore> pdb_setup = modules::factoryInstantiateProvDBmoduleSetup(module);
+  std::unique_ptr<PSmoduleDataManagerCore> ps_module_data_man = modules::factoryInstantiatePSmoduleDataManager(module, args.nt);
+  
   //Optionally load previously-computed AD algorithm statistics
   if(args.load_params_set){
     progressStream << "Pserver: Loading parameters from input file " << args.load_params << std::endl;
-    restoreModel(global_func_index_map,  param, args.load_params);
+    ps_module_data_man->restoreModel(param, args.load_params);
   }
 
   //Start the aggregator thread for the global model
@@ -162,10 +174,9 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
   if(args.provdb_mercury_auth_key != ""){
     progressStream << "Pserver: setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
-    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+    ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
-  
-  PSProvenanceDBclient provdb_client;
+  PSglobalProvenanceDBclient provdb_client(pdb_setup->getGlobalDBcollections());
 #endif
 
   try {
@@ -194,19 +205,17 @@ int main (int argc, char ** argv){
     for(int i=0;i<args.nt;i++){
       net.add_payload(new NetPayloadUpdateParamManager(&param, i, args.freeze_params), i);
       net.add_payload(new NetPayloadGetParamsFromManager(&param),i);
-      net.add_payload(new NetPayloadRecvCombinedADdataArray(&global_func_stats[i], &global_counter_stats[i], &global_anom_metrics[i]),i); //each worker thread writes to a separate stats object which are aggregated only at viz send time
-      net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&global_func_index_map),i);
       net.add_payload(new NetPayloadPing,i);
+      ps_module_data_man->appendNetWorkerPayloads(net, i);
     }
 
     net.init(nullptr, nullptr, args.nt);
 
     //Start sending anomaly statistics to viz
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyStatsCombinePayload(global_func_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalCounterStatsCombinePayload(global_counter_stats));
-    stat_sender.add_payload(new PSstatSenderGlobalAnomalyMetricsCombinePayload(global_anom_metrics));
     stat_sender.add_payload(new PSstatSenderCreatedAtTimestampPayload); //add 'created_at' timestamp
-    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'created_at' timestamp
+    stat_sender.add_payload(new PSstatSenderVersionPayload); //add 'version' timestamp
+    ps_module_data_man->appendStatSenderPayloads(stat_sender);
+
     stat_sender.run_stat_sender(args.ws_addr, args.stat_outputdir);
 
     //Register a signal handler that prevents the application from exiting on SIGTERM; instead this signal will be handled by ZeroMQ and will cause the pserver to shutdown gracefully
@@ -231,41 +240,12 @@ int main (int argc, char ** argv){
 
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
-    if(provdb_client.isConnected() || args.prov_outputpath.size() > 0){
-      GlobalCounterStats tmp_cstats; for(int i=0;i<args.nt;i++) tmp_cstats += global_counter_stats[i];
-      nlohmann::json global_counter_stats_j = tmp_cstats.get_json_state();
-
-      GlobalAnomalyStats tmp_fstats; for(int i=0;i<args.nt;i++) tmp_fstats += global_func_stats[i];
-      GlobalAnomalyMetrics tmp_metrics; for(int i=0;i<args.nt;i++) tmp_metrics += global_anom_metrics[i];
-
-      //Generate the function profile
-      FunctionProfile profile;
-      tmp_fstats.get_profile_data(profile);
-      tmp_metrics.get_profile_data(profile);
-      nlohmann::json profile_j = profile.get_json();
-      
-      //Get the AD model
-      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
-      p->assign(param.getSerializedGlobalModel());
-      nlohmann::json ad_model_j = p->get_algorithm_params(global_func_index_map.getFunctionIndexMap());
-
-      if(provdb_client.isConnected()){
-	progressStream << "Pserver: sending final statistics to provDB" << std::endl;
-	provdb_client.sendMultipleData(profile_j, GlobalProvenanceDataType::FunctionStats);
-	provdb_client.sendMultipleData(global_counter_stats_j, GlobalProvenanceDataType::CounterStats);
-	provdb_client.sendMultipleData(ad_model_j, GlobalProvenanceDataType::ADModel);
-	progressStream << "Pserver: disconnecting from provDB" << std::endl;
-	provdb_client.disconnect();
-      }
-      if(args.prov_outputpath.size() > 0){
-	progressStream << "Pserver: writing final statistics to disk at path " << args.prov_outputpath << std::endl;
-	std::ofstream gf(args.prov_outputpath + "/global_func_stats.json");
-	std::ofstream gc(args.prov_outputpath + "/global_counter_stats.json");
-	std::ofstream ad(args.prov_outputpath + "/ad_model.json");
-	gf << profile_j.dump();
-	gc << global_counter_stats_j.dump();
-	ad << ad_model_j.dump();
-      }
+    if(provdb_client.isConnected() || args.prov_outputpath.size() > 0) 
+      ps_module_data_man->sendFinalModuleDataToProvDB(provdb_client, args.prov_outputpath, param);
+    
+    if(provdb_client.isConnected()){
+      progressStream << "Pserver: disconnecting from provDB" << std::endl;
+      provdb_client.disconnect();
     }
 #endif
 
@@ -274,9 +254,7 @@ int main (int argc, char ** argv){
     //Write params to a file
     std::ofstream o(args.logdir + "/parameters.txt");
     if (o.is_open()){
-      std::unique_ptr<ParamInterface> p(ParamInterface::set_AdParam(args.ad));
-      p->assign(param.getSerializedGlobalModel());
-      p->show(o);
+      param.getGlobalParamsCopy()->show(o);
     }
   }
   catch (std::invalid_argument &e)
@@ -300,7 +278,23 @@ int main (int argc, char ** argv){
   //Optionally save the final AD algorithm parameters
   if(args.save_params_set){
     progressStream << "PServer: Saving parameters to output file " << args.save_params << std::endl;
-    writeModel(args.save_params, global_func_index_map, param);
+    ps_module_data_man->writeModel(args.save_params, param);
+  }
+
+
+  //Post-prune the provenance database
+  if(args.provdb_post_prune && args.provdb_addr_dir.size()){
+    progressStream << "PServer: Pruning the provenance database" << std::endl;
+    std::unique_ptr<ProvDBpruneCore> pruner = modules::factoryInstantiateProvDBprune(module, args.algo_params, param.getGlobalParamsCopy()->serialize());
+
+    for(int s=0;s<args.nprovdb_shards;s++){
+      progressStream << "PServer: Pruning shard " << s+1 << " of " << args.nprovdb_shards << std::endl;
+      PSshardProvenanceDBclient shard_client(pdb_setup->getMainDBcollections());
+      shard_client.connectShard(s, args.provdb_addr_dir, args.nprovdb_shards, args.nprovdb_instances);
+      pruner->prune(shard_client.getDatabase());
+    }
+    progressStream << "PServer: Updating global function stats" << std::endl;
+    pruner->finalize(provdb_client.getDatabase());
   }
 
   progressStream << "Pserver: finished" << std::endl;

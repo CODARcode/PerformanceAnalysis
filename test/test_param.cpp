@@ -1,10 +1,13 @@
-#include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/core/message.hpp"
 #include <gtest/gtest.h>
 #include <random>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
+
+using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class ParamTest : public ::testing::Test
 {
@@ -22,8 +25,6 @@ protected:
 
 TEST_F(ParamTest, SstdUpdateTest)
 {
-    using namespace chimbuko;
-
     const int n_functions = 1000;
     const int n_rolls = 10000;
 
@@ -63,19 +64,17 @@ TEST_F(ParamTest, SstdUpdateTest)
 
 TEST_F(ParamTest, MessageTest)
 {
-    using namespace chimbuko;
-
     Message msg, c_msg;
     Message::Header c_head;
     std::string dummy{"Hello World!"}, dummy2;
 
-    msg.set_info(0, 1, MessageType::REQ_ADD, MessageKind::PARAMETERS, 10);
-    msg.set_msg(dummy, false);
+    msg.set_info(0, 1, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS, 10);
+    msg.setContent(dummy);
 
     EXPECT_EQ(0, msg.src());
     EXPECT_EQ(1, msg.dst());
     EXPECT_EQ(MessageType::REQ_ADD, msg.type());
-    EXPECT_EQ(MessageKind::PARAMETERS, msg.kind());
+    EXPECT_EQ(BuiltinMessageKind::PARAMETERS, msg.kind());
     EXPECT_EQ(10, msg.frame());
     EXPECT_EQ((int)dummy.size(), msg.size());
  
@@ -84,18 +83,16 @@ TEST_F(ParamTest, MessageTest)
     EXPECT_EQ(1, c_msg.src());
     EXPECT_EQ(0, c_msg.dst());
     EXPECT_EQ(MessageType::REP_ADD, c_msg.type());
-    EXPECT_EQ(MessageKind::PARAMETERS, c_msg.kind());
+    EXPECT_EQ(BuiltinMessageKind::PARAMETERS, c_msg.kind());
     EXPECT_EQ(10, c_msg.frame());
 
-    dummy2 = msg.buf();
+    dummy2 = msg.getContent();
     EXPECT_STREQ(dummy.c_str(), dummy2.c_str());
-    EXPECT_STREQ(msg.buf().c_str(), dummy2.c_str());
+    EXPECT_STREQ(msg.getContent().c_str(), dummy2.c_str());
 }
 
 TEST_F(ParamTest, SstdMessageTest)
 {
-    using namespace chimbuko;
-
     const int n_functions = 4;
     const double mean[n_functions] = {1.0, 10.0, 100.0, 1000.0};
     const double std[n_functions] = {0.1, 1.0, 10.0, 100.0};
@@ -121,18 +118,18 @@ TEST_F(ParamTest, SstdMessageTest)
         // set message
         msg.set_info(1, 2, 
             (int)chimbuko::MessageType::REQ_ADD, 
-            (int)chimbuko::MessageKind::PARAMETERS, iFrame);
-        msg.set_msg(l_param.serialize(), false);
+            (int)chimbuko::BuiltinMessageKind::PARAMETERS, iFrame);
+        msg.setContent(l_param.serialize());
         
         EXPECT_EQ(1, msg.src());
         EXPECT_EQ(2, msg.dst());
         EXPECT_EQ(chimbuko::MessageType::REQ_ADD, msg.type());
-        EXPECT_EQ(chimbuko::MessageKind::PARAMETERS, msg.kind());
+        EXPECT_EQ(chimbuko::BuiltinMessageKind::PARAMETERS, msg.kind());
         EXPECT_EQ((int)l_param.serialize().size(), msg.size());
         EXPECT_EQ(iFrame, msg.frame());
 
-        dummy = msg.data();
-        c_msg.set_msg(dummy, true);
+        dummy = msg.serializeMessage();
+        c_msg.deserializeMessage(dummy);
 
         EXPECT_EQ(msg.src(), c_msg.src());
         EXPECT_EQ(msg.dst(), c_msg.dst());
@@ -140,11 +137,11 @@ TEST_F(ParamTest, SstdMessageTest)
         EXPECT_EQ(msg.kind(), c_msg.kind());
         EXPECT_EQ(msg.size(), c_msg.size());
         EXPECT_EQ(msg.frame(), c_msg.frame());
-        EXPECT_STREQ(msg.data().c_str(), c_msg.data().c_str());
-        EXPECT_STREQ(msg.buf().c_str(), c_msg.buf().c_str());
+        EXPECT_STREQ(msg.serializeMessage().c_str(), c_msg.serializeMessage().c_str());
+        EXPECT_STREQ(msg.getContent().c_str(), c_msg.getContent().c_str());
 
         c_param.update(l_param);
-        dummy = g_param.update(msg.buf(), true);
+        dummy = g_param.update(msg.getContent(), true);
         EXPECT_STREQ(c_param.serialize().c_str(), dummy.c_str());
     }
 }
@@ -152,8 +149,6 @@ TEST_F(ParamTest, SstdMessageTest)
 
 TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 {
-    using namespace chimbuko;
-
     GlobalAnomalyStats param;
 
     // empty case
@@ -280,8 +275,6 @@ TEST(GlobalAnomalyStatsTest, AnomalyStatTest1)
 
 TEST(GlobalAnomalyStatsTest, AnomalyStatTest2)
 {
-    using namespace chimbuko;
-
     GlobalAnomalyStats param;
 
     // empty case

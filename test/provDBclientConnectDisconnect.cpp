@@ -1,8 +1,9 @@
 #include <chimbuko_config.h>
 #include <cassert>
-#include <chimbuko/ad/ADProvenanceDBclient.hpp>
-#include <chimbuko/verbose.hpp>
-#include <chimbuko/util/string.hpp>
+#include <chimbuko/core/ad/ADProvenanceDBclient.hpp>
+#include <chimbuko/core/verbose.hpp>
+#include <chimbuko/core/util/string.hpp>
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBmoduleSetup.hpp>
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
@@ -10,6 +11,7 @@
 #include <thread>
 
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 //This test program just connects to the provDB, waits a short period and disconnects
 //It is used to test options of the provdb_admin
@@ -29,8 +31,8 @@ int main(int argc, char** argv) {
 #ifdef USE_MPI
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
-
-  ADProvenanceDBclient client(rank);
+  ProvDBmoduleSetup setup;
+  ADProvenanceDBclient client(setup.getMainDBcollections(),rank);
   std::cout << "Client with rank " << rank << " attempting connection" << std::endl;
   client.connectSingleServer(addr, shards);
 

@@ -11,14 +11,14 @@ namespace chimbuko_sim{
     double hbos_thres;
     bool glob_thres;
     double sstd_sigma;
-    ADOutlier::OutlierStatistic stat;
+    ADExecDataInterface::OutlierStatistic stat;
     
-    ADalgParams(const std::string &algorithm, double hbos_thres, bool glob_thres, double sstd_sigma, ADOutlier::OutlierStatistic stat): algorithm(algorithm), hbos_thres(hbos_thres), glob_thres(glob_thres), sstd_sigma(sstd_sigma), stat(stat){}
+    ADalgParams(const std::string &algorithm, double hbos_thres, bool glob_thres, double sstd_sigma, ADExecDataInterface::OutlierStatistic stat): algorithm(algorithm), hbos_thres(hbos_thres), glob_thres(glob_thres), sstd_sigma(sstd_sigma), stat(stat){}
 
     /**
      * @brief Default parameters
      */
-    ADalgParams(): algorithm("none"), hbos_thres(0.99), glob_thres(true), sstd_sigma(12.0), stat(ADOutlier::ExclusiveRuntime){}
+    ADalgParams(): algorithm("none"), hbos_thres(0.99), glob_thres(true), sstd_sigma(12.0), stat(ADExecDataInterface::ExclusiveRuntime){}
   };
   
   /**

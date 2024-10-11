@@ -23,7 +23,7 @@ if [ -f "../bin/provdb_admin" ]; then
     port=1234
     shards=1
 
-    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards} &
+    ../bin/provdb_admin performance_analysis ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards} &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -44,7 +44,7 @@ if [ -f "../bin/provdb_admin" ]; then
     rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=2
 
-    ../bin/provdb_admin ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards}  &
+    ../bin/provdb_admin performance_analysis ${ip}:${port} -engine "${protocol}" -autoshutdown false -nshards ${shards}  &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
@@ -64,7 +64,7 @@ if [ -f "../bin/provdb_admin" ]; then
     rm -f provdb.*.unqlite*  provider.address*  margo_dump*.state
     shards=1
 
-    ../bin/provdb_admin "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
+    ../bin/provdb_admin performance_analysis "" -engine "na+sm" -autoshutdown false  -nshards ${shards} &
     admin=$!
     while [ ! -f provider.address.0 ]; do
 	echo "Waiting for provider address"
