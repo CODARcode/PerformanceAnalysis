@@ -1,0 +1,51 @@
+FROM chimbuko/chimbuko-spack-env:ubuntu18.04
+
+RUN apt-get update && apt-get install -y emacs-nox gdb tmux vim
+
+WORKDIR /src
+
+RUN echo 0.0.5
+
+RUN git clone https://github.com/CODARcode/PerformanceAnalysis.git \
+        --branch ckelly_develop_ddb \
+    && git -C PerformanceAnalysis checkout ckelly_develop_ddb \
+    && cp -r PerformanceAnalysis/spack/repo/chimbuko /sds/ \
+    && cp -r PerformanceAnalysis/benchmark_suite . \
+    && rm -rf PerformanceAnalysis
+
+ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
+
+WORKDIR /bld/benchmark_suite/func_multimodal
+
+RUN cp -s /src/benchmark_suite/func_multimodal/main.C . \
+    && cp /src/benchmark_suite/func_multimodal/*.sh . \
+    && cp /src/benchmark_suite/func_multimodal/Makefile .
+
+RUN source /spack/spack/share/spack/setup-env.sh \
+    && cd /opt/spack-environment && spack env activate . \
+    && cd - \
+    && make
+
+COPY docker/ubuntu18.04/openmpi4.0.4/all_spack/env.yaml \
+    /opt/spack-environment/spack.yaml
+
+RUN source /spack/spack/share/spack/setup-env.sh \
+    && cd /opt/spack-environment \
+    && spack env activate . \
+    && spack concretize -f \
+    && spack install \
+    && spack gc -y \
+    && spack clean -a
+
+COPY docker/ubuntu18.04/openmpi4.0.4/all_spack/chimbuko_config.sh \
+    /bld/benchmark_suite/func_multimodal/
+
+COPY scripts/docker/spack_dev_ddb.sh /build.spack.sh
+RUN /build.spack.sh
+
+COPY scripts/docker/spack_dev_ddb.rcfile.sh /rcfile.sh
+
+# ENTRYPOINT ["/bin/bash"]  # see Dockerfile.spack_env
+
+CMD ["--rcfile", "/rcfile.sh"]
+
