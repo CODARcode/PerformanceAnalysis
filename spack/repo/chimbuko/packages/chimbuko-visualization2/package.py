@@ -14,7 +14,7 @@ class ChimbukoVisualization2(Package):
 
     depends_on('python@3.8')
     depends_on('py-mochi-sonata', type=('build', 'run'))
-    depends_on('py-celery@4.4.7:4.4', type=('build', 'run'))
+    depends_on('py-celery@5.2.2:', type=('build', 'run'))
     # depends_on('py-certifi@2024.7.4:2024.7', type=('build', 'run'))
     depends_on('py-certifi', type=('build', 'run'))
     # depends_on('py-dnspython@2.6.1:2.6', type=('build', 'run'))
@@ -31,7 +31,7 @@ class ChimbukoVisualization2(Package):
     depends_on('py-idna', type=('build', 'run'))
     # depends_on('py-jinja2@3.0.3:3.0', type=('build', 'run'))
     depends_on('py-jinja2', type=('build', 'run'))
-    depends_on('py-redis@4.5.1:4.5', type=('build', 'run'))
+    # depends_on('py-redis@4.5.4:4.5', type=('build', 'run'))
     # depends_on('py-requests@2.32.3:', type=('build','run'))
     depends_on('py-requests', type=('build','run'))
     depends_on('py-runstats@1.8.0:', type=('build', 'run'))
