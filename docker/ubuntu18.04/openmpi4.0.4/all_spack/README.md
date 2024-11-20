@@ -1,6 +1,6 @@
 # Dockerfiles
 
-## `Dockerfile.spack_dev_ddb`
+## `Dockerfile.cv2`
 
 This Dockerfile defines an image which can be used to validate the visualization
 package upgrades. The build will clone the `chimbuko-visualization2` (CV2) repository
@@ -17,8 +17,8 @@ test changes to CV2:
 
 ```sh
 docker build \
-    -f docker/ubuntu18.04/openmpi4.0.4/all_spack/Dockerfile.spack_dev_ddb \
-    -t chimbuko/chimbuko-spack-dev-ddb:ubuntu18.04 \
+    -f docker/ubuntu18.04/openmpi4.0.4/all_spack/Dockerfile.cv2 \
+    -t chimbuko/chimbuko-cv2:ubuntu18.04 \
     .
 ```
 
@@ -28,7 +28,7 @@ docker build \
 docker run --rm -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
     -p $HOST_PORT:5002 \
     -v $(pwd):$(pwd) \
-    -name ddb-csd \
+    -name test-cv2 \
     chimbuko/chimbuko-spack-dev:ubuntu18.04
 ```
 

@@ -4,14 +4,11 @@ RUN apt-get update && apt-get install -y emacs-nox gdb tmux vim
 
 WORKDIR /src
 
-RUN echo 0.1.2
-
 RUN git clone https://github.com/CODARcode/PerformanceAnalysis.git \
         --branch ckelly_develop_ddb \
     && git -C PerformanceAnalysis checkout ckelly_develop_ddb \
     && cp -r PerformanceAnalysis/spack/repo/chimbuko /sds/ \
-    && cp -r PerformanceAnalysis/benchmark_suite . \
-    && rm -rf PerformanceAnalysis
+    && cp -r PerformanceAnalysis/benchmark_suite .
 
 ENV TAU_OPTIONS="-optShared -optRevert -optVerbose -optCompInst"
 
@@ -37,15 +34,30 @@ RUN source /spack/spack/share/spack/setup-env.sh \
     && spack gc -y \
     && spack clean -a
 
+RUN echo 0.1.9
+# Save build time while working on non-spack dependencies
+RUN git config --global user.email "dblair@bnl.gov" \
+    && git config --global user.name "Dakota Blair"
+RUN git -C /src/PerformanceAnalysis pull --strategy-option=theirs
+
 COPY docker/ubuntu18.04/openmpi4.0.4/all_spack/chimbuko_config.sh \
     /bld/benchmark_suite/func_multimodal/
 
-COPY scripts/docker/spack_dev_ddb.sh /build.spack.sh
+COPY scripts/docker/cv2/build.sh /build.spack.sh
 RUN /build.spack.sh
 
-COPY scripts/docker/spack_dev_ddb.rcfile.sh /rcfile.sh
+COPY scripts/docker/cv2/pip.sh /build.pip.sh
+RUN /build.pip.sh
+
+COPY scripts/docker/cv2/rcfile.sh /rcfile.sh
 
 # ENTRYPOINT ["/bin/bash"]  # see Dockerfile.spack_env
 
-CMD ["--rcfile", "/rcfile.sh"]
+CMD [ \
+    "--rcfile", \
+    "/rcfile.sh", \
+    "-i", \
+    "-c", \
+    "/bld/benchmark_suite/func_multimodal/run.sh" \
+]
 
