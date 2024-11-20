@@ -8,6 +8,3 @@ spack env activate .
 spack develop chimbuko-visualization2 @git.dependency_upgrades=dev
 spack concretize -f
 spack install
-cd /opt/spack-environment/chimbuko-visualization2
-# git checkout dependency_upgrades
-# spack install
