@@ -241,12 +241,7 @@ int main (int argc, char ** argv){
 #ifdef ENABLE_PROVDB
     //Send final statistics to the provenance database and/or disk
     if(provdb_client.isConnected() || args.prov_outputpath.size() > 0) 
-      ps_module_data_man->sendFinalModuleDataToProvDB(provdb_client, args.prov_outputpath, param);
-    
-    if(provdb_client.isConnected()){
-      progressStream << "Pserver: disconnecting from provDB" << std::endl;
-      provdb_client.disconnect();
-    }
+      ps_module_data_man->sendFinalModuleDataToProvDB(provdb_client, args.prov_outputpath, param);    
 #endif
 
     progressStream << "Pserver: Shutdown parameter server ..." << std::endl;
@@ -281,7 +276,7 @@ int main (int argc, char ** argv){
     ps_module_data_man->writeModel(args.save_params, param);
   }
 
-
+#ifdef ENABLE_PROVDB
   //Post-prune the provenance database
   if(args.provdb_post_prune && args.provdb_addr_dir.size()){
     progressStream << "PServer: Pruning the provenance database" << std::endl;
@@ -296,7 +291,12 @@ int main (int argc, char ** argv){
     progressStream << "PServer: Updating global function stats" << std::endl;
     pruner->finalize(provdb_client.getDatabase());
   }
-
+  if(provdb_client.isConnected()){
+    progressStream << "Pserver: disconnecting from provDB" << std::endl;
+    provdb_client.disconnect();
+  }
+#endif
+  
   progressStream << "Pserver: finished" << std::endl;
 
   return 0;
