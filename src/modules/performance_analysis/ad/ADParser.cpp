@@ -707,7 +707,10 @@ std::vector<Event_t> ADParser::getEvents() const{
       }else if(func_event_type == EXIT && counter_is_correlation_id){
 	//Correlation IDs are associated only with function ENTRY events; if an EXIT event coincides with a CorrelationID the EXIT takes priority over counter events
 	//Functions are still greedy with comm events however
-	SET_PRIO(COMM, FUNC, COUNTER);
+	//SET_PRIO(COMM, FUNC, COUNTER);
+
+	//EDIT 4/10/25: This no longer appears to be the case; at least for my recent testing on CUDA 12.4 and recent TAU, the correlation ID is associated with the function exit. To check, run sstSinker on a GPU program and look where the kernel-side correlation ID appears relative to the stimestamps. Will need to check this on other versions / ROCM.
+	SET_PRIO(COMM, COUNTER, FUNC);
       }else{
 	//Otherwise funcData takes lowest priority so comm and counter events are included in the function execution
 	SET_PRIO(COMM, COUNTER, FUNC);
