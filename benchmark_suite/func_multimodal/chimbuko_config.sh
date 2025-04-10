@@ -3,7 +3,7 @@
 
 #IMPORTANT NOTE: Variables that cannot be left as default are marked as <------------ ***SET ME***
 
-service_node_iface=eth0 #network interface upon which communication to the service node is performed <------------ ***SET ME***
+module="performance_analysis"
 
 ####################################
 #Options for visualization module
@@ -12,7 +12,7 @@ use_viz=0 #enable or disable the visualization
 viz_root=$(spack location -i chimbuko-visualization2)    #the root directory of the visualization module  <------------ ***SET ME (if using viz)***
 viz_worker_port=6379  #the port on which to run the redis server for the visualization backend
 viz_port=5002 #the port on which to run the webserver
-export C_FORCE_ROOT=1 #required only for docker runs, allows celery to execute properly as root user  <----------------- *** SET ME (if using Docker)
+#export C_FORCE_ROOT=1 #required only for docker runs, allows celery to execute properly as root user  <----------------- *** SET ME (if using Docker)
 
 ############################################################
 #General options for Chimbuko backend (pserver, ad, provdb)
@@ -27,7 +27,7 @@ use_provdb=1 #enable or disable the provDB. If disabled the provenance data will
 provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
 provdb_ninstances=1 #number of database server instances. Shards are distributed over instances
-provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
+provdb_engine="sockets"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database. For >1 instance the port of instance i will be provdb_port+i 
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
