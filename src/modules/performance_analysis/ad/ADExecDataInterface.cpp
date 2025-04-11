@@ -69,7 +69,7 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
       }
     }
   }
-  verboseStream << "ADExecDataInterface::getDataSet for dset_index=" << dset_index << " got " << out.size() << " data" << std::endl;
+  verboseStream << "ADExecDataInterface::getDataSet for dset_index=" << dset_index << " (fid=model_idx=" << fid << " fname=\"" << fname << "\") got " << out.size() << " data" << std::endl;
   m_dset_cache[dset_index] = out; //store *unlabeled* data
   return out;
 }

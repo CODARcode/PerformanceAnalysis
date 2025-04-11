@@ -371,7 +371,7 @@ void ADOutlierHBOS::run(ADDataInterface &data, int step) {
 
 
 void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
-  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << std::endl;
+  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << " and model idx " << model_idx << std::endl;
 
   if(data_vals.size() == 0) return;
 
