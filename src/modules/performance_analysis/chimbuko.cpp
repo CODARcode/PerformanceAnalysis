@@ -393,6 +393,21 @@ void Chimbuko::sendPSdataImplementation(ADNetClient &net_client, const int step)
   }
 }
 
+
+static void setupInterface(std::unique_ptr<ADDataInterface> &iface, const std::string &outlier_statistic, const std::string &algorithm,
+			   ADExecDataInterface::FunctionsSeenType &func_seen, ExecDataMap_t const* exec_data_map){
+  ADExecDataInterface::OutlierStatistic stat;
+  if(outlier_statistic == "exclusive_runtime") stat = ADExecDataInterface::ExclusiveRuntime;
+  else if(outlier_statistic == "inclusive_runtime") stat = ADExecDataInterface::InclusiveRuntime;
+  else{ fatal_error("Invalid statistic"); }
+    
+  ADExecDataInterface *data_iface = new ADExecDataInterface(exec_data_map, stat);
+  if( algorithm == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
+    data_iface->setIgnoreFirstFunctionCall(&func_seen);
+  iface.reset(data_iface);
+}
+
+
 bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
   if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
   int rank = this->getRank();
@@ -404,54 +419,59 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
   
   int step = this->getStep();
 
-  if(!parseInputStep(n_func_events_step, n_comm_events_step, n_counter_events_step, step)) return false;
-
-  //Increment total events
-  m_run_stats.n_func_events += n_func_events_step;
-  m_run_stats.n_comm_events += n_comm_events_step;
-  m_run_stats.n_counter_events += n_counter_events_step;
+  //Parse data
+  if( parseInputStep(n_func_events_step, n_comm_events_step, n_counter_events_step, step) ){
+    //Increment total events
+    m_run_stats.n_func_events += n_func_events_step;
+    m_run_stats.n_comm_events += n_comm_events_step;
+    m_run_stats.n_counter_events += n_counter_events_step;
   
-  m_accum_prd.n_func_events += n_func_events_step;
-  m_accum_prd.n_comm_events += n_comm_events_step;
-  m_accum_prd.n_counter_events += n_counter_events_step;
+    m_accum_prd.n_func_events += n_func_events_step;
+    m_accum_prd.n_comm_events += n_comm_events_step;
+    m_accum_prd.n_counter_events += n_counter_events_step;
 
-  //Decide whether to report step progress
-  bool do_step_report = this->doStepReport(step);
+    //Decide whether to report step progress
+    bool do_step_report = this->doStepReport(step);
   
-  if(do_step_report){ headProgressStream(rank) << "driver rank " << rank << " starting step " << step
-							<< ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
-							<< " counter=" << n_counter_events_step << std::endl; }
-  //Extract counters and put into counter manager
-  timer.start();
-  extractCounters(rank, step);
-  perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
+    if(do_step_report){ headProgressStream(rank) << "driver rank " << rank << " starting step " << step
+						 << ". Event count: func=" << n_func_events_step << " comm=" << n_comm_events_step
+						 << " counter=" << n_counter_events_step << std::endl; }
+    //Extract counters and put into counter manager
+    timer.start();
+    extractCounters(rank, step);
+    perf.add("ad_run_extract_counters_time_ms", timer.elapsed_ms());
 
-  //Extract the node state
-  extractNodeState();
+    //Extract the node state
+    extractNodeState();
   
-  //Extract parsed events into event manager
-  timer.start();
-  extractEvents(io_step_first_event_ts, io_step_last_event_ts, step);
-  perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
+    //Extract parsed events into event manager
+    timer.start();
+    extractEvents(io_step_first_event_ts, io_step_last_event_ts, step);
+    perf.add("ad_run_extract_events_time_ms", timer.elapsed_ms());
     
-  //Update the timestamp bounds for the analysis
-  m_execdata_last_event_ts = io_step_last_event_ts;
-  if(!m_execdata_first_event_ts_set){
-    m_execdata_first_event_ts = io_step_first_event_ts;
-    m_execdata_first_event_ts_set = true;
+    //Update the timestamp bounds for the analysis
+    m_execdata_last_event_ts = io_step_last_event_ts;
+    if(!m_execdata_first_event_ts_set){
+      m_execdata_first_event_ts = io_step_first_event_ts;
+      m_execdata_first_event_ts_set = true;
+    }
   }
 
-  if(this->doAnalysisOnStep(step)){ //only need to generate the interface if we are going to run an analysis
-    ADExecDataInterface::OutlierStatistic stat;
-    if(m_params.outlier_statistic == "exclusive_runtime") stat = ADExecDataInterface::ExclusiveRuntime;
-    else if(m_params.outlier_statistic == "inclusive_runtime") stat = ADExecDataInterface::InclusiveRuntime;
-    else{ fatal_error("Invalid statistic"); }
+  //Check if we have any data to analyze (some might be remaining from previous steps)
+  bool have_data = false;
+  for(auto &fid_p : *m_event->getExecDataMap())
+    if(fid_p.second.size() > 0){
+      have_data = true;
+      break;
+    }
+  verboseStream << "driver rank " << rank << " step " << step << " have_data=" << have_data << std::endl;
+  
+  if(!have_data)
+    return false;
+  
+  if(this->doAnalysisOnStep(step)) //only need an interface if we will be running the analysis on this step
+    setupInterface(iface, m_params.outlier_statistic, this->getAD().getAlgorithmName(), m_func_seen, m_event->getExecDataMap());
     
-    ADExecDataInterface *data_iface = new ADExecDataInterface(m_event->getExecDataMap(), stat);
-    if( this->getAD().getAlgorithmName() == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
-      data_iface->setIgnoreFirstFunctionCall(&m_func_seen);
-    iface.reset(data_iface);
-  }
   return true;
 }
 
@@ -469,6 +489,60 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
 
    //Enable update of analysis time window bound on next step (analysis may be performed on multiple step's worth of data)
    m_execdata_first_event_ts_set = false;
+
+   if(enableVerboseLogging()){
+     size_t cexec = 0;
+     for(auto &fid_p : *m_event->getExecDataMap())
+       cexec += fid_p.second.size();
+
+     size_t nunlabeled =0;
+     size_t nlocked = 0;
+     size_t nincomplete = 0;
+     size_t nunknown = 0;
+     const CallListMap_p_t &call_list = m_event->getCallListMap();
+     const ExecDataMap_t* exec_data = m_event->getExecDataMap();
+
+     bool stream_has_ended = !m_parser->getStatus();
+     
+     for (auto const& it_p : call_list) {
+       for (auto const& it_r : it_p.second) {
+	 for (auto const& it_t: it_r.second) {
+	   CallList_t const& cl = it_t.second;
+	   for(auto const &call : cl){
+	     if(call.get_exit() == -1) ++nincomplete;
+	     else if(call.get_label() == 0){
+	       ++nunlabeled;
+      
+	       //Check the unlabeled event is in the execdata map
+	       auto emit = exec_data->find(call.get_fid());
+	       if(emit == exec_data->end()) std::cout << "WARNING: for event " << call.get_json().dump(2) << ", associated exec-data for fid " << call.get_fid() << " does not exist!" << std::endl;
+	       else{
+		 bool found = false;
+		 for(auto const &cit : emit->second){
+		   if(cit->get_id() == call.get_id()){
+		     found = true;
+		     break;
+		   }
+		 }
+		 if(!found) std::cout << "WARNING: event " << call.get_json().dump(2) << " does not exist in exec-data!" << std::endl;
+	       }
+	     }
+	     else if(call.reference_count()){
+	       ++nlocked;
+
+	       //If the stream has ended, output debug information on events that remain locked
+	       if(stream_has_ended) std::cout << "WARNING, stream has ended and event remains locked: " << call.get_json().dump(2) << std::endl;
+	       
+	     }
+	     else ++nunknown;
+	   }
+	 }
+       }
+     }   	        
+     std::cout << "At step end, " << m_event->getCallListSize() << " events remain in the call list (unlabeled=" << nunlabeled << " locked=" << nlocked
+	       << " incomplete=" << nincomplete << " unknown=" << nunknown << ") and " << cexec << " in the list of unlabeled entries" << std::endl;
+   }
+   
  }
 
  void Chimbuko::recordResetPeriodicPerfData(PerfPeriodic &perf_prd){
@@ -478,6 +552,7 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
    perf_prd.add("call_list_kept_protected", purge_report.n_kept_protected);
    perf_prd.add("call_list_kept_incomplete", purge_report.n_kept_incomplete);
    perf_prd.add("call_list_kept_window", purge_report.n_kept_window);
+   perf_prd.add("call_list_kept_unlabeled", purge_report.n_kept_unlabeled);
 
    //Write accumulated event counts
    perf_prd.add("event_count_func", m_accum_prd.n_func_events);

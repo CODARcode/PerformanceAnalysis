@@ -8,10 +8,11 @@ void ADDataInterface::DataSetAnomalies::recordEvent(const Elem &event){
     //Store a max of one normal event. Select that with the lower score (more normal)
     if(m_normal_events.size() == 0) m_normal_events.push_back(event);    
     else if(event.score < m_normal_events[0].score) m_normal_events[0] = event;
-  }else{ //Outlier
+    ++m_labeled_events; //increment even if not recorded
+  }else if(event.label == EventType::Outlier){ //Outlier
     m_anomalies.push_back(event);
+    ++m_labeled_events; //increment even if not recorded
   }
-  ++m_labeled_events; //increment even if not recorded
 }
 
 size_t ADDataInterface::nEventsRecorded(EventType type) const{
@@ -29,9 +30,6 @@ size_t ADDataInterface::nEvents() const{
 }
 
 void ADDataInterface::recordDataSetLabels(const std::vector<Elem> &data, size_t dset_index){
-  //Check first for unassigned labels before we modify anything
-  for(auto const &e : data) if(e.label == EventType::Unassigned){ fatal_error("Encountered unassigned label when recording; the AD algorithm should label all data points assigned!"); }
-
   auto &danom = m_dset_anom[dset_index];
   for(auto const &e : data) danom.recordEvent(e);
   this->recordDataSetLabelsInternal(data,dset_index);

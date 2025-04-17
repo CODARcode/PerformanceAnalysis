@@ -248,7 +248,7 @@ namespace chimbuko {
 	 * throws a runtime error if the call is not present in the call-list
 	 */
 	CallListIterator_t getCallData(const eventID &event_id) const override;
-
+	
 	/**
 	 * @brief Get a pair of iterators marking the start and one-past-the-end of a window of size (up to) win_size events
 	 *        on either size around the given event occurring on the same thread
@@ -329,6 +329,7 @@ namespace chimbuko {
 	  size_t n_kept_protected; /**< Number of calls maintained because they have been protected*/
 	  size_t n_kept_incomplete; /**< Number of calls maintained because they have not yet completed*/
 	  size_t n_kept_window; /**< Number of calls maintained because they may be needed for provenance window capture on next io step*/
+	  size_t n_kept_unlabeled; /**< Number of calls maintained because they have not yet been labeled*/
 	};
 
 
@@ -414,7 +415,7 @@ namespace chimbuko {
 	/**
 	 * @brief map of function index to an array of complete calls to this function during this IO step
 	 *
-	 * In practise this map is cleared every IO step by calls to trimCallList
+	 * In practise, labeled events are cleared every IO step by calls to purgeCallList
 	 */
 	ExecDataMap_t     m_execDataMap;
 
@@ -440,6 +441,12 @@ namespace chimbuko {
 	 */
 	std::unordered_set<std::string> m_ignoreCorrelationID;
 
+
+	/**
+	 * @brief Set of events that have been stack locked because they weren't able to be labeled
+	 */
+	std::unordered_set<eventID> m_stackLockedUnlabeled;
+	
 	/**
 	 * @brief verbose
 	 *

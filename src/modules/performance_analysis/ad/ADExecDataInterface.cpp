@@ -80,7 +80,8 @@ void ADExecDataInterface::recordDataSetLabelsInternal(const std::vector<Elem> &d
   for(auto const &e: data){
     CallListIterator_t eint = it->second[e.index];
     eint->set_outlier_score(e.score);
-    if(e.label == EventType::Unassigned){ fatal_error("Encountered an unassigned label when recording"); }
-    eint->set_label( e.label == EventType::Outlier ? -1 : 1 );
+    if(e.label != EventType::Unassigned){
+      eint->set_label( e.label == EventType::Outlier ? -1 : 1 );
+    }
   }
 }

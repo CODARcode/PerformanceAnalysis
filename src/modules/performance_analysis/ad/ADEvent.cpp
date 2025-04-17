@@ -46,18 +46,25 @@ void ADEvent::stackProtectGC(CallListIterator_t it){
   verboseStream << "ADEvent::stackProtectGC incrementing register count of " << it->get_id().toString() << " to " << it->reference_count()+1 << std::endl;
   it->register_reference();
 
-  eventID parent = it->get_parent();
-  while(parent != eventID::root()){
-    CallListIterator_t pit;
-    try{
-      pit = getCallData(parent);
-    }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
-      break;
+  std::vector<eventID> parents(1, it->get_parent());
+  //Also lock GPU event parents
+  if(m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid()) && it->n_GPU_correlationID_partner() == 1){
+    parents.push_back(it->get_GPU_correlationID_partner(0));
+  }
+  
+  for(auto parent : parents){
+    while(parent != eventID::root()){
+      CallListIterator_t pit;
+      try{
+	pit = getCallData(parent);
+      }catch(const std::exception &e){
+	recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
+	break;
+      }
+      verboseStream << "ADEvent::stackProtectGC incrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()+1 << std::endl;
+      pit->register_reference();
+      parent = pit->get_parent();
     }
-    verboseStream << "ADEvent::stackProtectGC incrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()+1 << std::endl;
-    pit->register_reference();
-    parent = pit->get_parent();
   }
 }
 
@@ -65,18 +72,25 @@ void ADEvent::stackUnProtectGC(CallListIterator_t it){
   verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << it->get_id().toString() << " to " << it->reference_count()-1 << std::endl;
   it->deregister_reference();
 
-  eventID parent = it->get_parent();
-  while(parent != eventID::root()){
-    CallListIterator_t pit;
-    try{
-      pit = getCallData(parent);
-    }catch(const std::exception &e){
-      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
-      break;
+  std::vector<eventID> parents(1, it->get_parent());
+  //Also unlock GPU event parents
+  if(m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid()) && it->n_GPU_correlationID_partner() == 1){
+    parents.push_back(it->get_GPU_correlationID_partner(0));
+  }
+  
+  for(auto parent : parents){
+    while(parent != eventID::root()){
+      CallListIterator_t pit;
+      try{
+	pit = getCallData(parent);
+      }catch(const std::exception &e){
+	recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
+	break;
+      }
+      verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()-1 << std::endl;
+      pit->deregister_reference();
+      parent = pit->get_parent();
     }
-    verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()-1 << std::endl;
-    pit->deregister_reference();
-    parent = pit->get_parent();
   }
 }
 
@@ -366,6 +380,17 @@ static unsigned long nested_map_size(const T& m) {
   return n_elements;
 }
 
+static void clearUnlabeled(ExecDataMap_t &execDataMap){
+  for(auto &fid_p : execDataMap){
+    std::vector<CallListIterator_t> keep;
+    for(const CallListIterator_t &cit : fid_p.second)
+      if(cit->get_label() == 0) keep.push_back(cit);
+    fid_p.second = std::move(keep);
+    verboseStream << "clearUnlabeled kept " << fid_p.second.size() << " unlabeled points for fid " << fid_p.first << std::endl;
+  }
+}
+
+
 CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
   //Remove completed entries from the call list
   CallListMap_p_t* cpListMap = new CallListMap_p_t;
@@ -400,13 +425,13 @@ CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
       }
     }
   }
-  m_execDataMap.clear();
+  clearUnlabeled(m_execDataMap);
   return cpListMap;
 }
 
 
 void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
-  size_t n_purged=0, n_kept_protected=0, n_kept_incomplete=0, n_kept_window=0;
+  size_t n_purged=0, n_kept_protected=0, n_kept_incomplete=0, n_kept_window=0, n_kept_unlabeled=0;
 
   //Remove completed entries from the call list
   for (auto& it_p : m_callList) {
@@ -425,6 +450,14 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
 	auto one_past_last = std::prev(cl.end(),n_keep_thread);
 
 	while (it != one_past_last) {
+	  //Check if entry and stack was locked due to being unlabeled, and if now labeled, unlock
+	  std::unordered_set<eventID>::iterator sl_it;
+	  if(it->get_label() != 0 && (sl_it = m_stackLockedUnlabeled.find(it->get_id()) ) != m_stackLockedUnlabeled.end()){
+	    verboseStream << "Previously unlabeled event " << it->get_id().toString() << " has now been labeled, unlocking stack" << std::endl;
+	    stackUnProtectGC(it);
+	    m_stackLockedUnlabeled.erase(sl_it);
+	  }
+	  
 	  if (it->can_delete() && it->get_exit() != 0) {
 	    //Remove completed event from map of event index string to call list
 	    m_callIDMap.erase(it->get_id());
@@ -434,7 +467,16 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
 	  }
 	  else {
 	    if(it->get_exit() == 0) ++n_kept_incomplete;
-	    else if(!it->can_delete()) ++n_kept_protected;	    
+	    else if(!it->can_delete()){
+	      if(it->get_label() == 0 && m_stackLockedUnlabeled.count(it->get_id()) == 0){
+		//Lock the stack to ensure that events referred to don't get erased
+		verboseStream << "Event " << it->get_id().toString() << " is not labeled, locking stack" << std::endl;
+		stackProtectGC(it);
+		m_stackLockedUnlabeled.insert(it->get_id());		
+		++n_kept_unlabeled;
+	      }
+	      else ++n_kept_protected;
+	    }
 	    it++;
 	  }
 	}
@@ -446,9 +488,9 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
     report->n_kept_protected = n_kept_protected;
     report->n_kept_incomplete = n_kept_incomplete;
     report->n_kept_window = n_kept_window;
+    report->n_kept_unlabeled = n_kept_unlabeled;
   }
-
-  m_execDataMap.clear();
+  clearUnlabeled(m_execDataMap);
 }
 
 size_t ADEvent::getCallListSize() const{

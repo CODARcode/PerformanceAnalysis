@@ -269,32 +269,22 @@ double ADOutlierSSTD::computeScore(double value, size_t model_idx, const SstdPar
   double std_dev = it->second.stddev();
   if(std_dev == 0.) std_dev = 1e-10; //distribution throws an error if std.dev = 0
 
-  //boost::math::normal_distribution<double> dist(mean, std_dev);
-  //double cdf_val = boost::math::cdf(dist, runtime); // P( X <= x ) for random variable X
-  //double score = std::min(cdf_val, 1-cdf_val); //two-tailed
-
-  //Using the CDF gives scores ~0 for basically any global outlier
-  //Instead we will use the difference in runtime compared to the avg in units of the standard deviation
+   //We use the difference in runtime compared to the avg in units of the standard deviation
   double score = fabs( value - mean ) / std_dev;
   return score;
 }
 
 
 void ADOutlierSSTD::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
-
-  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << std::endl;
-
+  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << " and model idx " << model_idx << std::endl;
+  
   if(data_vals.size() == 0) return;
 
   SstdParam& param = *(SstdParam*)m_param;
   auto & fparam = param[model_idx];
 
-  if (fparam.count() < 2){
-    verboseStream << "Less than 2 events in stats associated with data set, stats not complete" << std::endl;
-    for(auto &e : data_vals){ //still need to label all events
-      e.label = ADDataInterface::EventType::Normal;
-      e.score = 0;
-    }
+  if (fparam.count() < 2){ //TODO: This will probably cause problems if we only ever see <2 calls to the function!
+    verboseStream << "Less than 2 events in stats associated with data set, stats not complete, delaying evaluation" << std::endl;
     return;
   }
 
@@ -387,9 +377,8 @@ void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, siz
   //Check that the histogram contains bins
   if(nbin == 0){
     //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this data set
-    //Given that the model at this stage is unreliable anyway, we simply skip the set and label the data as normal
+    //To combat this, we hold off on labeling the data until we get a global model back
     verboseStream << "Global model is empty, skipping outlier evaluation for data set " << dset_idx << std::endl;
-    for(auto &e : data_vals) e.label = ADDataInterface::EventType::Normal;
     return;
   }
 
@@ -628,8 +617,7 @@ inline double copod_score(const double value_i, const Histogram &hist, const His
 
 
 void ADOutlierCOPOD::labelData(std::vector<ADDataInterface::Elem> &data_vals, size_t dset_idx, size_t model_idx){
-  verboseStream << "Finding outliers in events for data set " << dset_idx << std::endl;
-  verboseStream << "data Size: " << data_vals.size() << std::endl;
+  verboseStream << "Finding outliers in events for data set " << dset_idx << " of size " << data_vals.size() << " and model idx " << model_idx << std::endl;
 
   if(data_vals.size() == 0) return;
 
@@ -648,9 +636,8 @@ void ADOutlierCOPOD::labelData(std::vector<ADDataInterface::Elem> &data_vals, si
   //Check that the histogram contains bins
   if(nbin == 0){
     //As the pserver global model update is delayed, initially the clients may receive an empty model from the pserver for this function
-    //Given that the model at this stage is unreliable anyway, we simply skip the function and label the data as normal
+    //To combat this we delay evaluation of the score until we get some data
     verboseStream << "Global model is empty, skipping outlier evaluation for data set " << dset_idx << std::endl;
-    for(auto &e : data_vals) e.label = ADDataInterface::EventType::Normal;
     return;
   }
 

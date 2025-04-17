@@ -602,7 +602,7 @@ namespace chimbuko {
 	/**
 	 * @brief Determine whether the event can be deleted by the garbage collection at the end of the io step
 	 */
-	inline bool can_delete() const{ return m_references == 0;}
+	inline bool can_delete() const{ return m_references == 0 && m_label != 0;}
 
 	/**
 	 * @brief Increment the external reference counter, preventing object deletion
