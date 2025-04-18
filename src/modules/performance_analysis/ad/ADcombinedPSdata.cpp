@@ -1,6 +1,7 @@
 #include<chimbuko/modules/performance_analysis/ad/ADcombinedPSdata.hpp>
 #include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include<chimbuko/core/util/serialize.hpp>
+#include<chimbuko/core/verbose.hpp>
 
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
@@ -87,6 +88,13 @@ std::pair<size_t, size_t> ADcombinedPSdataArray::send(ADNetClient &net_client) c
     latest_step = std::max(step, latest_step);
   }
 
+  if(enableVerboseLogging()){
+    for(ADLocalFuncStatistics const &f : m_func_stats){
+      std::cout << "ADcombinedPSdataArray::send sending func stats\n" << f.get_json().dump(2) << std::endl;
+    }
+
+  }
+  
   Message msg;
   msg.set_info(net_client.get_client_rank(), net_client.get_server_rank(), MessageType::REQ_ADD, MessageKind::AD_PS_COMBINED_STATS, latest_step);
   msg.setContent(net_serialize());

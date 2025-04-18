@@ -9,6 +9,12 @@ ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, Outli
   size_t dset_idx = 0;
   for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it)
     m_dset_fid_map[dset_idx++] = it->first;
+
+  if(enableVerboseLogging()){
+    std::cout << "ADExecDataInterface created with #datasets=" << this->nDataSets() << " (exec-data map size " << execDataMap->size() << ")" << " with dset_idx:fid mapping ";
+    for(int d=0;d<this->nDataSets();d++) std::cout << d << ":" << m_dset_fid_map[d] << " ";
+    std::cout << std::endl;
+  }
 }
 
 double ADExecDataInterface::getStatisticValue(const ExecData_t &e) const{
@@ -30,6 +36,14 @@ void ADExecDataInterface::setIgnoreFunction(const std::string &func){
   m_func_ignore.insert(func);
 }
 
+size_t ADExecDataInterface::getDataSetModelIndex(size_t dset_index) const{
+  if(dset_index >= m_dset_fid_map.size()){
+    std::string err = "Invalid dset_index " +std::to_string(dset_index);
+    fatal_error(err);
+  }
+  return m_dset_fid_map[dset_index];
+}
+
 size_t ADExecDataInterface::getDataSetIndexOfFunction(size_t fid) const{
   for(size_t dset_idx = 0; dset_idx < m_dset_fid_map.size(); dset_idx++)
     if(m_dset_fid_map[dset_idx] == fid) return dset_idx;
@@ -39,6 +53,7 @@ size_t ADExecDataInterface::getDataSetIndexOfFunction(size_t fid) const{
 CallListIterator_t ADExecDataInterface::getExecDataEntry(size_t dset_index, size_t elem_index) const{
   auto it = m_execDataMap->find(m_dset_fid_map[dset_index]);
   if(it == m_execDataMap->end()){ fatal_error("Invalid dset_idx"); }
+  if(elem_index >= it->second.size()){ fatal_error("Invalid elem_index"); }
   return it->second[elem_index];
 }
 
@@ -78,6 +93,7 @@ void ADExecDataInterface::recordDataSetLabelsInternal(const std::vector<Elem> &d
   auto it = m_execDataMap->find(m_dset_fid_map[dset_index]);
   if(it == m_execDataMap->end()){ fatal_error("Invalid dset_idx"); }
   for(auto const &e: data){
+    if(e.index >= it->second.size()){ fatal_error("Invalid element index"); }
     CallListIterator_t eint = it->second[e.index];
     eint->set_outlier_score(e.score);
     if(e.label != EventType::Unassigned){

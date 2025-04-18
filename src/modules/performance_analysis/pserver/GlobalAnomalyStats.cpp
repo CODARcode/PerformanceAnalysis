@@ -72,6 +72,9 @@ void GlobalAnomalyStats::add_anomaly_data(const ADLocalFuncStatistics& data){
 
   for (auto const &fp: data.getFuncStats()) {
     const FuncStats &f = fp.second;
+
+    verboseStream << "GlobalAnomalyStats adding FuncStats " << f.get_json().dump(2) << std::endl;
+    
     update_func_stat(f.pid, f.id, f.name, f.n_anomaly, f.inclusive, f.exclusive);
   }
 }  

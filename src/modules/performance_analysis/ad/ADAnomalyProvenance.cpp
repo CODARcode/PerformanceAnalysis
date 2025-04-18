@@ -236,6 +236,8 @@ void ADAnomalyProvenance::getProvenanceEntries(std::vector<nlohmann::json> &anom
     for(auto const &e : iface.getResults(dset_idx).getEventsRecorded(ADDataInterface::EventType::Outlier)){
       timer2.start();
       auto anom_it = iface.getExecDataEntry(dset_idx, e.index);
+
+      //verboseStream << "Collecting provenance for anomaly on dset " << dset_idx << " index " << e.index << " with content:\n" << anom_it->get_json().dump(2) << std::endl;
       
       if(anom_it->get_exclusive() < m_min_anom_time) continue; //skip executions with too short runtimes to avoid filling the database with irrelevant anomalies
 

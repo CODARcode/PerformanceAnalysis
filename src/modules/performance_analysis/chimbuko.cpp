@@ -358,6 +358,10 @@ void Chimbuko::bufferStorePSdata(const ADDataInterface &anomalies,  const int st
     ADLocalFuncStatistics func_stats(m_program_idx, rank, step, &perf);
     func_stats.gatherStatistics(m_event->getExecDataMap());
     func_stats.gatherAnomalies(ei);
+
+    verboseStream << "Chimbuko::bufferStorePSdata func_stats has " << func_stats.getFuncStats().size() << " entries" << std::endl;
+    verboseStream << "Chimbuko::bufferStorePSdata generated func_stats " << func_stats.get_json().dump(2) << std::endl;
+    
     m_funcstats_buf.emplace_back(std::move(func_stats));
     perf.add("ad_gather_ps_data_gather_profile_stats_time_ms", timer.elapsed_ms());
 
@@ -374,6 +378,8 @@ void Chimbuko::bufferStorePSdata(const ADDataInterface &anomalies,  const int st
     m_anom_metrics_buf.emplace_back(std::move(metrics));
     perf.add("ad_gather_ps_data_gather_metrics_time_ms", timer.elapsed_ms());
     perf.add("ad_gather_ps_data_total_time_ms", timer.elapsed_ms());
+
+    verboseStream << "Chimbuko::bufferStorePSdata buffered func_stats " << m_funcstats_buf.back().get_json().dump(2) << std::endl;
   }
 }
 

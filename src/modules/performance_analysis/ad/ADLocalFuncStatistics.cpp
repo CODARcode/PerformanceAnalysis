@@ -2,6 +2,7 @@
 #include <chimbuko/modules/performance_analysis/ad/AnomalyData.hpp>
 #include <chimbuko/modules/performance_analysis/pserver/PScommon.hpp>
 #include <chimbuko/core/util/serialize.hpp>
+#include <chimbuko/core/verbose.hpp>
 #include <climits>
 #include <algorithm>
 
@@ -23,7 +24,7 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
     //Create new entry if it doesn't exist
     if(fstats_it == m_funcstats.end()){
       const std::string &name = it.second.front()->get_funcname(); //it.second has already been checked to have size >= 1
-      fstats_it = m_funcstats.insert( std::unordered_map<unsigned long, FuncStats>::value_type(func_id, FuncStats(m_anom_data.get_app(), func_id, name)) ).first;
+      fstats_it = m_funcstats.insert( std::unordered_map<unsigned long, FuncStats>::value_type(func_id, FuncStats(m_anom_data.get_app(), func_id, name)) ).first;     
     }
 
     for (auto itt : it.second) { //loop over events for that function
@@ -33,6 +34,8 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
       min_ts = std::min(min_ts, static_cast<unsigned long>(itt->get_entry()) );
       max_ts = std::max(max_ts, static_cast<unsigned long>(itt->get_exit()));
     }
+
+    verboseStream << "ADLocalFuncStatistics::gatherStatistics generated stats for func_id " << func_id << ":\n" << fstats_it->second.get_json().dump(2) << std::endl;
   }
 
   m_anom_data.set_min_ts(min_ts);
@@ -42,13 +45,29 @@ void ADLocalFuncStatistics::gatherStatistics(const ExecDataMap_t* exec_data){
 void ADLocalFuncStatistics::gatherAnomalies(const ADExecDataInterface &iface){
   //Gather information on the number of anomalies and stats on their scores
   size_t nanom_tot = 0;
+  verboseStream << "ADLocalFuncStatistics::gatherAnomalies processing anomalies for " << iface.nDataSets() << std::endl;
+  
   for(size_t dset_idx =0 ; dset_idx < iface.nDataSets(); dset_idx++){
     size_t fid = iface.getDataSetModelIndex(dset_idx);
     auto const & r = iface.getResults(dset_idx);
+
+    //Because some data sets may be empty or contain events that don't get labeled this step we should skip those data sets
+    //This is particularly important for empty data sets as these do not have entries in m_funcstats, hence trying to push anomaly counts (even 0) will lead to uninitialized entries
+    if(r.nEventsRecorded(ADDataInterface::EventType::Outlier) == 0 && r.nEventsRecorded(ADDataInterface::EventType::Normal) == 0)
+      continue;    
+    
     auto const &anom = r.getEventsRecorded(ADDataInterface::EventType::Outlier);
     size_t nanom = anom.size();
     nanom_tot += nanom;
-    m_funcstats[fid].n_anomaly += nanom; //increment func anomalies count                                                                                                                                                             
+
+    verboseStream << "ADLocalFuncStatistics::gatherAnomalies for dset_idx=" << dset_idx << " and fid=" << fid << " with " << nanom << " anomalies" << std::endl;
+
+    auto fit = m_funcstats.find(fid);
+    if(fit == m_funcstats.end()){
+      std::stringstream ss; ss << "ADLocalFuncStatistics::gatherAnomalies cannot find funcstats entry for function index " << fid << " with " << nanom << " anomalies";
+      fatal_error(ss.str());
+    }    
+    fit->second.n_anomaly += nanom; //increment func anomalies count                                                                                                                                                             
     for(auto const &e : anom) m_anom_data.add_outlier_score(e.score);
   }
   m_anom_data.incr_n_anomalies(nanom_tot);
@@ -64,6 +83,7 @@ nlohmann::json ADLocalFuncStatistics::get_json() const{
     g_info["func"].push_back(e.second.get_json());
   }
   g_info["anomaly"] = m_anom_data.get_json();
+
   return g_info;
 }
 

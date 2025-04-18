@@ -335,7 +335,7 @@ bool ChimbukoBase::runFrame(){
 #endif
 
     int nout = iface->nEventsRecorded(ADDataInterface::EventType::Outlier);
-    int nnormal = iface->nEvents() - nout; //this is the total number of normal events, not just of those that were recorded
+    int nnormal = iface->nEvents() - nout; //this is the total number of normal events (also unlabeled events), not just of those that were recorded
     m_run_stats.n_outliers += nout;
     m_accum_prd.n_outliers += nout;
 
