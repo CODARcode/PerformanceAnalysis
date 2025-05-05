@@ -8,24 +8,27 @@ class ChimbukoVisualization2(Package):
     """The Visualization component of Chimbuko"""
 
     homepage = "https://github.com/CODARcode/ChimbukoVisualizationII"
-    git = "https://github.com/CODARcode/ChimbukoVisualizationII"
+    git = "https://github.com/dakotablair/ChimbukoVisualizationII"
 
-    version('master', branch='master')
+    version('dependency_upgrades', branch='dependency_upgrades')
 
-    depends_on('python@3:')
+    depends_on('python@3.8')
     depends_on('py-mochi-sonata', type=('build', 'run'))
-    depends_on('py-flask', type=('build', 'run'))
-    depends_on('py-flask-script', type=('build', 'run'))
-    depends_on('py-flask-sqlalchemy', type=('build', 'run'))
-    depends_on('py-flask-socketio', type=('build', 'run'))
-    depends_on('py-sqlalchemy', type=('build', 'run'))
-    depends_on('py-werkzeug', type=('build', 'run'))
-    depends_on('py-celery', type=('build', 'run'))
-    depends_on('py-gevent', type=('build', 'run'))
+    depends_on('py-celery@5.2.2:', type=('build', 'run'))
+    depends_on('py-certifi', type=('build', 'run'))
+    depends_on('py-dnspython', type=('build', 'run'))
     depends_on('py-eventlet', type=('build', 'run'))
-    depends_on('py-runstats', type=('build', 'run'))
-    depends_on('py-redis', type=('build', 'run'))
+    depends_on('py-flask-script', type=('build', 'run'))
+    depends_on('py-flask-socketio@2.9.6:2.9', type=('build', 'run'))
+    depends_on('py-flask-sqlalchemy@2.5.1:2.5', type=('build', 'run'))
+    depends_on('py-flask@=1.1.2', type=('build', 'run'))
+    depends_on('py-gevent@23.7.0:', type=('build', 'run'))
+    depends_on('py-idna', type=('build', 'run'))
+    depends_on('py-jinja2', type=('build', 'run'))
     depends_on('py-requests', type=('build','run'))
+    depends_on('py-runstats@1.8.0:', type=('build', 'run'))
+    depends_on('py-sqlalchemy@1.4.45:1.4', type=('build', 'run'))
+    depends_on('py-werkzeug@0.16.0:', type=('build', 'run'))
     depends_on('redis', type='run')
     depends_on('curl', type='run')
 
