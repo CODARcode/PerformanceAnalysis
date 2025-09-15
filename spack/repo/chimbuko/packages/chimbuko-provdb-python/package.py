@@ -18,6 +18,7 @@ class ChimbukoProvdbPython(PythonPackage):
 
     depends_on('python@3:')
     depends_on('py-mochi-sonata', type=('build', 'run'))
+    depends_on('py-setuptools', type=('build'))
 
     @property
     def build_directory(self):

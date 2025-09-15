@@ -3,16 +3,16 @@
 
 #IMPORTANT NOTE: Variables that cannot be left as default are marked as <------------ ***SET ME***
 
-service_node_iface=eth0 #network interface upon which communication to the service node is performed <------------ ***SET ME***
+module="performance_analysis"
 
 ####################################
 #Options for visualization module
 ####################################
-use_viz=1 #enable or disable the visualization
-viz_root=/opt/chimbuko/viz    #the root directory of the visualization module  <------------ ***SET ME (if using viz)***
+use_viz=0 #enable or disable the visualization
+viz_root=$(spack location -i chimbuko-visualization2)    #the root directory of the visualization module  <------------ ***SET ME (if using viz)***
 viz_worker_port=6379  #the port on which to run the redis server for the visualization backend
 viz_port=5002 #the port on which to run the webserver
-export C_FORCE_ROOT=1 #required only for docker runs, allows celery to execute properly as root user  <----------------- *** SET ME (if using Docker)
+#export C_FORCE_ROOT=1 #required only for docker runs, allows celery to execute properly as root user  <----------------- *** SET ME (if using Docker)
 
 ############################################################
 #General options for Chimbuko backend (pserver, ad, provdb)
@@ -27,13 +27,31 @@ use_provdb=1 #enable or disable the provDB. If disabled the provenance data will
 provdb_extra_args="" #any extra command line arguments to pass
 provdb_nshards=4  #number of database shards
 provdb_ninstances=1 #number of database server instances. Shards are distributed over instances
-provdb_engine="ofi+tcp;ofi_rxm"  #the OFI libfabric provider used for the Mochi stack
+provdb_engine="sockets"  #the OFI libfabric provider used for the Mochi stack
 provdb_port=5000 #the port of the provenance database. For >1 instance the port of instance i will be provdb_port+i 
 provdb_writedir=chimbuko/provdb #the directory in which the provenance database is written. Chimbuko creates chimbuko/provdb which can be used as a default
 provdb_commit_freq=10000   #frequency ms at which the provenance database is committed to disk. If set to 0 it will commit only at the end
 
-#With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
-provdb_domain=mlx5_0 #only needed for verbs provider   <------------ ***SET ME (if using verbs)***
+#provdb_interface : network interface upon which communication to the provdb is performed. <------------ ***SET ME***
+# This variable has several options:
+#  auto                             - let Mercury automatically choose an interface for all instances
+#  <iface>                          - a single interface used for all instances
+#  <iface1>:<iface2>:<iface3> ....  - a colon-separated list of interfaces, one per instance
+# Obtain a list of interfaces from, e.g. "ip link show" (cf https://www.cyberciti.biz/faq/linux-list-network-interfaces-names-command/).
+provdb_interface=auto
+
+#provdb_domain : With "verbs" provider (used for infiniband, iWarp, etc) we need to also specify the domain, which can be found by running fi_info (on a compute node)
+#  If left blank it will be chosen automatically. <------------ ***SET ME (if using verbs)***
+provdb_domain=
+
+#provdb_numa_bind : specify NUMA domain binding for the provdb instances (requires numactl)
+# This variable has several options:
+# <blank>  - if left blank, no binding will be performed
+# <index>  - a single NUMA domain for all instances
+# <idx1>:<idx2>:<idx3> ...  - a colon-separated list of NUMA domains, one per instance
+provdb_numa_bind=
+
+commit_extra_args="" #extra arguments for the committer
 
 export FI_UNIVERSE_SIZE=1600  # Defines the expected number of provenance DB clients per instance <------------- *** SET ME (should be larger than the number of clients/instance)
 export FI_MR_CACHE_MAX_COUNT=0   # disable MR cache in libfabric; still problematic as of libfabric 1.10.1
@@ -44,8 +62,10 @@ export FI_OFI_RXM_USE_SRX=1 # use shared recv context in RXM; should improve sca
 ####################################
 use_pserver=1 #enable or disable the pserver
 pserver_extra_args="" #any extra command line arguments to pass
+pserver_interface=eth0 #network interface upon which communication to the pserver is performed. Obtain from, e.g. "ip link show" (cf https://www.cyberciti.biz/faq/linux-list-network-interfaces-names-command/). <------------ ***SET ME***
 pserver_port=5559  #port for parameter server
 pserver_nt=2 #number of worker threads
+pserver_numa_bind= #specify NUMA domain binding for the pserver (requires numactl). If left blank, no binding will be performed
 ####################################
 #Options for the AD module
 ####################################
@@ -67,7 +87,7 @@ export TAU_ADIOS2_PERIOD=1000000  #period in us between ADIOS2 io steps
 export TAU_THREAD_PER_GPU_STREAM=1  #force GPU streams to appear as different TAU virtual threads
 export TAU_THROTTLE=0  #enable/disable throttling of short-running functions
 
-export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use. If using a TAU installation built by Spack, this variable is already set in the environment and can be commented out here <------------ ***SET ME***
+#export TAU_MAKEFILE=/opt/tau2/x86_64/lib/Makefile.tau-papi-mpi-pthread-pdt-adios2  #The TAU makefile to use. If using a TAU installation built by Spack, this variable is already set in the environment and can be commented out here <------------ ***SET ME***
 
 tau_monitoring_conf="default" #Provide a configuration file for the TAU monitoring plugin. It will be copied to the work directory as "tau_monitoring.json" (unless it is already there!). If set to default, Chimbuko will generate one automatically
 

@@ -1,3 +1,4 @@
 breathe
 blockdiag
 sphinxcontrib-blockdiag
+sphinx-rtd-theme

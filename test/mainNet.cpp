@@ -3,7 +3,7 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
-#include <chimbuko/verbose.hpp>
+#include <chimbuko/core/verbose.hpp>
 
 int main(int argc, char** argv)
 {

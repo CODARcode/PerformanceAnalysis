@@ -265,7 +265,7 @@ for func in functions:
     #Use perfstubs, which automatically collects the function info
     toins = "PERFSTUBS_SCOPED_TIMER_FUNC();"
     if func.name == "main":
-        toins = "PERFSTUBS_INITIALIZE(); " + toins
+        toins = "PS_SCOPED_INIT(); " + toins
     
     orig = flines[iline]   
     #print("Line %d char %d is %s,  expect {" % (iline,icol,orig[icol]))
@@ -279,11 +279,22 @@ for func in functions:
         line_offsets[line] += len(toins)
     else:
         line_offsets[line] = len(toins)
-
+        
 
 f = open(filename + '.inst', 'w')
 f.write('#include "perfstubs_api/timer.h"\n')
-f.write('#ifdef __HIP_DEVICE_COMPILE__\n#undef PERFSTUBS_SCOPED_TIMER_FUNC\n#define PERFSTUBS_SCOPED_TIMER_FUNC()\n#endif\n')
+f.write('#if defined(__HIP_DEVICE_COMPILE__) || defined(__SYCL_DEVICE_ONLY__)\n#undef PERFSTUBS_SCOPED_TIMER_FUNC\n#define PERFSTUBS_SCOPED_TIMER_FUNC()\n#endif\n')
+f.write('''
+struct _ps_scoped_init{
+    _ps_scoped_init(){
+      PERFSTUBS_INITIALIZE();
+    }
+    ~_ps_scoped_init(){
+      PERFSTUBS_FINALIZE();
+    }
+};
+#define PS_SCOPED_INIT() _ps_scoped_init ___ps_scoped_init
+''')
 for line in flines:
     f.write(line)
 f.close()

@@ -1,0 +1,19 @@
+FROM chimbuko/chimbuko-spack-release:ubuntu18.04
+
+RUN apt-get update && apt-get install -y vim emacs-nox gdb
+
+WORKDIR /src
+
+RUN git clone https://github.com/CODARcode/PerformanceAnalysis.git -b ckelly_develop --single-branch && mv PerformanceAnalysis/benchmark_suite . && rm -rf PerformanceAnalysis
+
+ENV TAU_OPTIONS "-optShared -optRevert -optVerbose -optCompInst"
+
+WORKDIR /bld/benchmark_suite/func_multimodal
+
+RUN cp -s /src/benchmark_suite/func_multimodal/main.C . && cp /src/benchmark_suite/func_multimodal/*.sh . && cp /src/benchmark_suite/func_multimodal/Makefile . 
+
+RUN source /etc/profile.d/z10_spack_environment.sh && make
+
+COPY chimbuko_config.sh /bld/benchmark_suite/func_multimodal/
+
+ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l"]

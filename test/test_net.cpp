@@ -1,19 +1,19 @@
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #endif
-#include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/ad/AnomalyData.hpp"
-#include "chimbuko/pserver/GlobalAnomalyStats.hpp"
-#include "chimbuko/pserver/PSstatSender.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
+#include "chimbuko/modules/performance_analysis/ad/AnomalyData.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp"
+#include "chimbuko/core/pserver/PSstatSender.hpp"
 #include <gtest/gtest.h>
 #include <mpi.h>
 #include <thread>
 #include <chrono>
 
-
 using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class NetTest : public ::testing::Test
 {

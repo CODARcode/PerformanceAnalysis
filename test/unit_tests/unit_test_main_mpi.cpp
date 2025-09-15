@@ -4,7 +4,7 @@
 #ifdef USE_MPI
 #include<mpi.h>
 #endif
-#include "chimbuko/verbose.hpp"
+#include "chimbuko/core/verbose.hpp"
 #include "unit_test_cmdline.hpp"
 
 int _argc;

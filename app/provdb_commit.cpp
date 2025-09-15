@@ -3,12 +3,12 @@
 #include<thread>
 #include<cassert>
 #include<csignal>
-#include<chimbuko/ad/ADProvenanceDBengine.hpp>
-#include<chimbuko/verbose.hpp>
-#include<chimbuko/util/string.hpp>
-#include<chimbuko/util/commandLineParser.hpp>
+#include<chimbuko/core/provdb/ProvDBengine.hpp>
+#include<chimbuko/core/verbose.hpp>
+#include<chimbuko/core/util/string.hpp>
+#include<chimbuko/core/util/commandLineParser.hpp>
 #include <thallium/serialization/stl/string.hpp>
-#include<chimbuko/provdb/setup.hpp>
+#include<chimbuko/core/provdb/setup.hpp>
 
 using namespace chimbuko;
 
@@ -58,20 +58,21 @@ struct Args{
 int main(int argc, char** argv){  
 #ifdef ENABLE_PROVDB
 
-  commandLineParser<Args> parser;
-  addMandatoryCommandLineArg(parser, addr_file_dir, "Specify the directory containing the address file");
-  addOptionalCommandLineArg(parser, instance, "Specify the server instance (default 0)");
-  addOptionalCommandLineArg(parser, ninstances, "Specify the number of server instances (default 1)");
-  addOptionalCommandLineArg(parser, nshards, "Specify the total number of database shards (default 1)");
-  addOptionalCommandLineArg(parser, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
-  addOptionalCommandLineArg(parser, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
+  commandLineParser parser;
+  Args args;
+  addMandatoryCommandLineArg(parser, args, addr_file_dir, "Specify the directory containing the address file");
+  addOptionalCommandLineArg(parser, args, instance, "Specify the server instance (default 0)");
+  addOptionalCommandLineArg(parser, args, ninstances, "Specify the number of server instances (default 1)");
+  addOptionalCommandLineArg(parser, args, nshards, "Specify the total number of database shards (default 1)");
+  addOptionalCommandLineArg(parser, args, freq_ms, "Specify the frequency in ms at which commit is called (default 30000)");
+  addOptionalCommandLineArg(parser, args, provdb_mercury_auth_key, "Set the Mercury authorization key for connection to the provDB (default \"\")");
   
   if(argc-1 < parser.nMandatoryArgs() || (argc == 2 && std::string(argv[1]) == "-help")){
     parser.help(std::cout);
     return 0;    
   }
-  Args args;
-  parser.parseCmdLineArgs(args, argc, argv);
+
+  parser.parseCmdLineArgs(argc, argv);
 
   instance = args.instance;
 
@@ -82,7 +83,7 @@ int main(int argc, char** argv){
 
   if(args.provdb_mercury_auth_key != ""){
     CprogressStream << "setting Mercury authorization key to \"" << args.provdb_mercury_auth_key << "\"" << std::endl;
-    ADProvenanceDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
+    ProvDBengine::setMercuryAuthorizationKey(args.provdb_mercury_auth_key);
   }
   
   ProvDBsetup setup(args.nshards, args.ninstances);
@@ -91,15 +92,15 @@ int main(int argc, char** argv){
   int nshard_instance = setup.getNshardsInstance(args.instance);
   bool do_global_db = args.instance == setup.getGlobalDBinstance();
 
-  std::string protocol = ADProvenanceDBengine::getProtocolFromAddress(addr);
-  if(ADProvenanceDBengine::getProtocol().first != protocol){
-    int mode = ADProvenanceDBengine::getProtocol().second;
+  std::string protocol = ProvDBengine::getProtocolFromAddress(addr);
+  if(ProvDBengine::getProtocol().first != protocol){
+    int mode = ProvDBengine::getProtocol().second;
     CverboseStream << "DB client reinitializing engine with protocol \"" << protocol << "\"" << std::endl;
-    ADProvenanceDBengine::finalize();
-    ADProvenanceDBengine::setProtocol(protocol,mode);      
+    ProvDBengine::finalize();
+    ProvDBengine::setProtocol(protocol,mode);      
   }      
 
-  thallium::engine &eng = ADProvenanceDBengine::getEngine();
+  thallium::engine &eng = ProvDBengine::getEngine();
 
   thallium::endpoint server = eng.lookup(addr);
 

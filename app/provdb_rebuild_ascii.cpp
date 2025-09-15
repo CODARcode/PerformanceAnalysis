@@ -5,11 +5,11 @@
 #endif
 
 #include<nlohmann/json.hpp>
-#include<chimbuko/verbose.hpp>
-#include<chimbuko/util/string.hpp>
-#include<chimbuko/util/error.hpp>
-#include<chimbuko/ad/ADProvenanceDBclient.hpp>
-#include<chimbuko/pserver/PSProvenanceDBclient.hpp>
+#include<chimbuko/core/verbose.hpp>
+#include<chimbuko/core/util/string.hpp>
+#include<chimbuko/core/util/error.hpp>
+#include<chimbuko/core/ad/ADProvenanceDBclient.hpp>
+#include<chimbuko/core/pserver/PSglobalProvenanceDBclient.hpp>
 #include <sonata/Admin.hpp>
 #include <sonata/Provider.hpp>
 #include<sstream>
@@ -119,8 +119,8 @@ int rebuildGlobalDB(int nargs, char** args){
   std::ifstream global_func_stats_strm(args[0]);
   std::ifstream global_counter_stats_strm(args[1]);
 
-  ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
-  auto &engine = ADProvenanceDBengine::getEngine();
+  ProvDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
+  auto &engine = ProvDBengine::getEngine();
   
   sonata::Provider *provider;
   sonata::Admin *admin;
@@ -244,8 +244,8 @@ int rebuildProvDB(int nargs, char** args){
 
   int nshards = std::stoi(args[0]);
 
-  ADProvenanceDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
-  auto &engine = ADProvenanceDBengine::getEngine();
+  ProvDBengine::setProtocol("na+sm", THALLIUM_SERVER_MODE);
+  auto &engine = ProvDBengine::getEngine();
   
   sonata::Provider *provider;
   sonata::Admin *admin;

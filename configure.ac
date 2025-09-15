@@ -192,6 +192,23 @@ AM_CONDITIONAL(ENABLE_PROVDB, test "$enable_provenancedb" != "no")
 if test "$enable_provenancedb" != "no"; then
    AC_MSG_NOTICE([Provenance DB will be built])
    AC_DEFINE([ENABLE_PROVDB], [1], [Enable the provenance database])
+
+   #In Margo 0.18.0 they deprecated calls to margo_get_pool_by_index
+   AC_COMPILE_IFELSE(
+ 	[
+		AC_LANG_PROGRAM(
+			[[ #include<margo.h>
+                            ]], [[ ABT_pool p; margo_get_pool_by_index(0,0,&p);
+			    	 ]]
+			)
+	], [use_deprecated_margo_call=yes], [use_deprecated_margo_call=no]
+	)
+   if test "x${use_deprecated_margo_call}" = "xyes"; then
+      AC_MSG_NOTICE([Allowing deprecated margo_get_pool_by_index calls])
+      AC_DEFINE([USE_MARGO_DEPRECATED_GET_POOL_BY_INDEX], [1], [Allow calls to margo_get_pool_by_index])
+   else
+      AC_MSG_NOTICE([Disallowing deprecated margo_get_pool_by_index calls])
+   fi
 fi
 
 
@@ -216,8 +233,8 @@ AC_CHECK_HEADERS([boost/math/distributions/normal.hpp], [],    [AC_MSG_ERROR(Boo
 AC_CONFIG_HEADERS([chimbuko_config.h])
 AC_SUBST([PS_FLAGS])
 
-AC_CONFIG_SRCDIR([src/chimbuko.cpp])
-AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/ad/Makefile test/unit_tests/util/Makefile test/unit_tests/pserver/Makefile test/unit_tests/net/Makefile test/unit_tests/param/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
+AC_CONFIG_SRCDIR([src/dummy])
+AC_CONFIG_FILES([Makefile src/Makefile app/Makefile sphinx/Makefile include/Makefile 3rdparty/Makefile test/Makefile test/unit_tests/Makefile test/unit_tests/modules/Makefile test/unit_tests/modules/performance_analysis/Makefile test/unit_tests/modules/performance_analysis/ad/Makefile test/unit_tests/modules/performance_analysis/pserver/Makefile  test/unit_tests/modules/performance_analysis/provdb/Makefile test/unit_tests/core/Makefile test/unit_tests/core/param/Makefile test/unit_tests/core/net/Makefile test/unit_tests/core/util/Makefile test/unit_tests/core/ad/Makefile scripts/Makefile scripts/launch/Makefile sim/Makefile sim/src/Makefile sim/main/Makefile sim/include/Makefile])
 
 AC_CONFIG_FILES([app/ws_flask_stat.py:app/ws_flask_stat.py app/sst_view_parse.pl:app/sst_view_parse.pl])
 AC_CONFIG_FILES([run_test.sh:run_test.sh test/run_all.sh:test/run_all.sh test/run_ad.sh:test/run_ad.sh test/run_net.sh:test/run_net.sh test/run_provdb_client_test.sh:test/run_provdb_client_test.sh test/run_provdb_autoshutdown_test.sh:test/run_provdb_autoshutdown_test.sh test/unit_tests/run_all.sh:test/unit_tests/run_all.sh test/run_ad_with_provdb.sh:test/run_ad_with_provdb.sh test/run_stat_sender.sh:test/run_stat_sender.sh scripts/launch/run_services.sh:scripts/launch/run_services.sh], [chmod u+x $(echo $ac_tag | sed s/.*\://)])

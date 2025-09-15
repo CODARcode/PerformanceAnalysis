@@ -1,13 +1,13 @@
 //A test application that mocks part of the anomaly detection modules, acting as a client for the parameter server and sending it anomaly information
 #include <chimbuko_config.h>
 
-#include "chimbuko/param/sstd_param.hpp"
-#include "chimbuko/message.hpp"
+#include "chimbuko/core/param/sstd_param.hpp"
+#include "chimbuko/core/message.hpp"
 
 #ifdef _USE_MPINET
-#include "chimbuko/net/mpi_net.hpp"
+#include "chimbuko/core/net/mpi_net.hpp"
 #else
-#include "chimbuko/net/zmq_net.hpp"
+#include "chimbuko/core/net/zmq_net.hpp"
 #endif
 
 #ifdef USE_MPI
@@ -60,10 +60,10 @@ s     */
     //Handshake
     {
       Message msg;
-      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)MessageKind::DEFAULT);
-      msg.set_msg("");
+      msg.set_info(rank, 0, (int)MessageType::REQ_ECHO, (int)BuiltinMessageKind::DEFAULT);
+      msg.setContent("");
       std::string strmsg;
-      ZMQNet::send(socket, msg.data());
+      ZMQNet::send(socket, msg.serializeMessage());
       ZMQNet::recv(socket, strmsg);
     }
 #endif
@@ -92,12 +92,12 @@ s     */
         }
         // set message
         msg.clear();
-        msg.set_info(rank, 0, MessageType::REQ_ADD, MessageKind::PARAMETERS, iFrame);
-        msg.set_msg(l_param.serialize(), false);
+        msg.set_info(rank, 0, MessageType::REQ_ADD, BuiltinMessageKind::PARAMETERS, iFrame);
+        msg.setContent(l_param.serialize());
 
 #ifdef _USE_MPINET
         // send to server
-        MPINet::send(server, msg.data(), 0, MessageType::REQ_ADD, msg.count());
+        MPINet::send(server, msg.serializeMessage(), 0, MessageType::REQ_ADD, msg.count());
         
     	// receive reply
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
@@ -105,17 +105,14 @@ s     */
         std::cout << "receive reply from server\n";
     	MPI_Get_count(&status, MPI_BYTE, &count);
         msg.clear();
-        msg.set_msg(
-            MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count),
-            true
-        );
+        msg.deserializeMessage(MPINet::recv(server, status.MPI_SOURCE, status.MPI_TAG, count));
 #else
-        ZMQNet::send(socket, msg.data());
+        ZMQNet::send(socket, msg.serializeMessage());
 
         msg.clear();
         std::string strmsg;
         ZMQNet::recv(socket, strmsg);
-        msg.set_msg(strmsg, true);
+        msg.deserializeMessage(strmsg);
 #endif
         //g_param.assign(msg.data_buffer());
     }
@@ -127,8 +124,8 @@ s     */
 #ifdef _USE_MPINET
     if (rank == 0) {
         msg.clear();
-        msg.set_info(rank, 0, (int)MessageType::REQ_GET, MessageKind::SSTD);
-        MPINet::send(server, msg.data(), 0, MessageType::REQ_GET, msg.count());
+        msg.set_info(rank, 0, (int)MessageType::REQ_GET, BuiltinMessageKind::SSTD);
+        MPINet::send(server, msg.serializeMessage(), 0, MessageType::REQ_GET, msg.count());
 
         // receive reply
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, server, &status);
@@ -142,17 +139,17 @@ s     */
         c_param.update(msg.data_buffer(), false);
 
         msg.clear();
-        msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
+        msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
         msg.set_msg(MessageCmd::QUIT);
         MPINet::send(server, msg.data(), 0, MessageType::REQ_QUIT, msg.count());
     }
 #else
     msg.clear();
-    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)MessageKind::DEFAULT);
-    msg.set_msg("");
+    msg.set_info(rank, 0, (int)MessageType::REQ_QUIT, (int)BuiltinMessageKind::DEFAULT);
+    msg.setContent("");
     std::string strmsg;
     std::cout << "pclient rank " << rank << " sending disconnect notification" << std::endl;
-    ZMQNet::send(socket, msg.data());
+    ZMQNet::send(socket, msg.serializeMessage());
     std::cout << "pclient rank " << rank << " waiting for disconnect notification response" << std::endl;
     ZMQNet::recv(socket, strmsg);
     std::cout << "pclient rank " << rank << " exiting" << std::endl;

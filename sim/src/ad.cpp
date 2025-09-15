@@ -70,12 +70,11 @@ void ADsim::init(int window_size, int pid, int rid, unsigned long program_start,
   auto const & p = adAlgorithmParams();
   if(p.algorithm != "none"){    
     ADOutlier::AlgoParams params;
-    params.stat = p.stat;
     params.hbos_thres = p.hbos_thres;
     params.glob_thres = p.glob_thres;
     params.sstd_sigma = p.sstd_sigma;
 
-    m_outlier = ADOutlier::set_algorithm(p.algorithm, params);
+    m_outlier = ADOutlier::set_algorithm(rid, p.algorithm, params);
     getPserver(); //force construction of pserver
     m_net_client = new ADThreadNetClient(true); //use local comms
     m_net_client->connect_ps(m_rid);
@@ -262,8 +261,9 @@ void ADsim::step(const unsigned long step){
   if(adAlgorithmParams().algorithm != "none"){
     if(!m_outlier) fatal_error("ad_algorithm is set to " + adAlgorithmParams().algorithm + " but the outlier algorithm has not been initialized. User should call ADsim::setupADalgorithm first");
 
-    m_outlier->linkExecDataMap(&this_step_func_execs);
-    anom = m_outlier->run(step);
+    ADExecDataInterface iface(&this_step_func_execs, adAlgorithmParams().stat);
+    m_outlier->run(iface,step);
+    anom.import(iface);
   }else{
     //Collect outliers and 1 normal event/func into Anomalies object (Anomalies object decides which to keep)
     for(const auto &exec_it : this_step_execs){

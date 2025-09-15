@@ -1,0 +1,53 @@
+#pragma once
+#include <chimbuko_config.h>
+#include <chimbuko/core/ad/ADDataInterface.hpp>
+#include <chimbuko/core/ad/ADOutlier.hpp>
+#include <chimbuko/modules/performance_analysis/provdb/ProvDBpruneGlobalStats.hpp>
+
+#include<string>
+#include <sonata/Database.hpp>
+
+namespace chimbuko {
+  namespace modules{
+    namespace performance_analysis{
+      /**
+       * @brief The interface class between the provDB data and the AD algorithm
+       */
+      class ProvDBpruneInterface: public ADDataInterface{
+      public:
+	/**
+	 * @brief Constructor
+	 * @param prune_type The class/type of recorded event that is being pruned. Events *not* of this type will be removed from the collection after reevaluation
+	 * @param regen_stats Optionally provide a map of function index to ProvDBpruneGlobalStats to regenerate the global statistics
+	 */
+	ProvDBpruneInterface(const ADOutlier &ad, sonata::Database &db, ADDataInterface::EventType prune_type, 
+			     std::unordered_map<unsigned long, ProvDBpruneGlobalStats>* regen_stats = nullptr);
+
+	/**
+	 * @brief Get the values associated with each recorded anomaly
+	 */
+	std::vector<Elem> getDataSet(size_t dset_index) const override;
+	
+	/**
+	 * @brief Check the newly assigned label is still anomaly, otherwise erase the element from the database
+	 */
+	void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) override;
+
+	
+	/**
+	 * @brief Return the function index (a unique index associated with a program index/function name combination) associated with a given dataset index
+	 */
+	size_t getDataSetModelIndex(size_t dset_index) const;
+
+      private:
+	sonata::Database &m_database;
+	std::unique_ptr<sonata::Collection> m_collection;
+	std::unordered_map<unsigned long, std::vector<std::pair<uint64_t, double> > > m_data; //[fid] -> [  (record_id, value), ... ]
+	const ADOutlier &m_ad; //the outlier algorithm to allow access to the model data when updating records
+	ADDataInterface::EventType m_prune_type; //which type to prune
+	std::unordered_map<unsigned long, ProvDBpruneGlobalStats>* m_regen_stats;
+      };    
+
+    }
+  }
+}

@@ -1,11 +1,15 @@
-#include "chimbuko/util/threadPool.hpp"
-#include "chimbuko/util/RunStats.hpp"
-#include "chimbuko/pserver/AggregateAnomalyData.hpp"
+#include "chimbuko/core/util/threadPool.hpp"
+#include "chimbuko/core/util/RunStats.hpp"
+#include "chimbuko/modules/performance_analysis/pserver/AggregateAnomalyData.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <random>
 #include <sstream>
 #include <unordered_map>
+
+using namespace std::chrono;
+using namespace chimbuko;
+using namespace chimbuko::modules::performance_analysis;
 
 class UtilTest : public ::testing::Test
 {
@@ -23,8 +27,6 @@ protected:
 
 TEST_F(UtilTest, ThreadPoolScaleTest)
 {
-    using namespace std::chrono;
-
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
     threadPool tpool(7);
@@ -46,8 +48,6 @@ TEST_F(UtilTest, ThreadPoolScaleTest)
 
 TEST_F(UtilTest, RunStatSimpleTest)
 {
-    using namespace chimbuko;
-
     const int nrolls = 10000;
     const double mean = 5.0;
     const double std = 2.0;
@@ -79,8 +79,6 @@ TEST_F(UtilTest, RunStatSimpleTest)
 
 TEST_F(UtilTest, RunStatMergeTest)
 {
-    using namespace chimbuko;
-
     const int nrolls = 10000;
     const double mean[2] = {5.0, 10.0};
     const double std[2] = {2.0, 4.0};
@@ -114,8 +112,6 @@ TEST_F(UtilTest, RunStatMergeTest)
 
 TEST_F(UtilTest, RunStatSerializeTest)
 {
-    using namespace chimbuko;
-
     RunStats stat, c_stat;
     std::vector<double> data;
     for (int i = 0; i < 100; i++) {
@@ -140,8 +136,6 @@ TEST_F(UtilTest, RunStatSerializeTest)
 
 TEST_F(UtilTest, AnomalyDataSerializeTest)
 {
-    using namespace chimbuko;
-
     AnomalyData d, d2;
 
     d.set(1, 1000, 2000, 1234567890, 912345678, 123);
@@ -159,8 +153,6 @@ TEST_F(UtilTest, AnomalyDataSerializeTest)
 
 TEST_F(UtilTest, AggregateAnomalyDataMultiThreadsTest)
 {
-    using namespace chimbuko;
-
     const std::vector<int> N_RANKS = {20, 30, 50};
     const int MIN_STEPS = 1000;
     const int MAX_STEPS = 2000;
