@@ -12,7 +12,7 @@ Comprehensive documentation on the installation and running of Chimbuko, as well
 
 # Releases
 
-- Latest release: v6.5.0
+- Latest release: v7.0.0
 
 # Directory layout
 
@@ -43,5 +43,7 @@ If you find a bug, please open an [issue on PerformanceAnalysis github repositot
 # Citations
 
 For citing Chimbuko, please use:
+
+Kelly C., Xu W., Pouchard L.C., et al. "Performance analysis and data reduction for exascale scientific workflows". The International Journal of High Performance Computing Applications. 2025;39(4):553-578. doi: 10.1177/10943420251316253
 
 C. Kelly et al., “Chimbuko: A Workflow-Level Scalable Performance Trace Analysis Tool,” in ICPS Proceedings, in ISAV’20. online: Association for Computing Machinery, Nov. 2020, pp. 15–19. doi: 10.1145/3426462.3426465.
