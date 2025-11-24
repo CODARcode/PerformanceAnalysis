@@ -16,7 +16,7 @@
 #        fi
 #        echo "Instrumenting $file"
 #
-#        python3.6 instrument_file.py $file
+#        python3.6 instrument_file_cpp.py $file
 #        mv "${file}.inst" $file
 #    done
 #  done
@@ -94,6 +94,7 @@ template_trib_depth=None   #triangular brackets depth of template argument list 
 
 cname="" #class name
 class_open=False  #are we inside a class definition body
+class_postargs_open=False #are we between a class name and its body
 class_brace_depth=None #depth of braces of class definition open
 
 paren_depth = 0   #how many ( ( (  deep are we?
@@ -149,11 +150,15 @@ for i in range(2, len(all_tokens)):
     #Track classes and structs   
     if template_open == False and ( tok.token_value == "class" or tok.token_value == "struct" ):
         cname = all_tokens[i+1].token_value
-        class_open = True
         class_brace_depth = brace_depth
-        print("Found class/struct \"%s\" open on line %d" % (cname,tok.line))
+        class_postargs_open = True
+        print("Found class/struct \"%s\" definition on line %d" % (cname,tok.line))
+    elif class_postargs_open == True and brace_depth == class_brace_depth+1:
+        print("Found class/struct \"%s\" body open on line %d" % (cname,tok.line))
+        class_postargs_open=False
+        class_open = True        
     elif class_open == True and tok.token_value == '}' and brace_depth == class_brace_depth:
-        print("Found class/struct \"%s\" close on line %d" % (cname,tok.line))
+        print("Found class/struct \"%s\" body close on line %d" % (cname,tok.line))
         class_open = False
             
     #Main function logic
@@ -186,7 +191,7 @@ for i in range(2, len(all_tokens)):
 
             
         #If it is not an initializer list or auto return type we should not encounter any identifier
-        elif func_postargs_initializer_list == False and func_postargs_auto_type == False and tok.token_type == sctokenizer.TokenType.IDENTIFIER:
+        elif func_postargs_initializer_list == False and func_postargs_auto_type == False and tok.token_type == sctokenizer.TokenType.IDENTIFIER and tok.token_value != 'override':
             print("Encountered unexpected identifier in function postargs, line", tok.line)
             func_postargs_open = False
         
@@ -222,6 +227,10 @@ for i in range(2, len(all_tokens)):
         found_keyword, keyword_idx = func_keyword_check(i-2, all_tokens, ['constexpr','global__','device__'])  #todo: rather than checking back for keywords we can record currently open keywords and flush the list on encountering a function body
         if found_keyword  == True:
             print("Found skipped keyword %s" % (all_tokens[keyword_idx].token_value))
+        elif class_postargs_open == True:
+            print("Skipping as inside class postargs")
+        elif template_open == True:
+            print("Skipping because inside a template triangular bracket pair")
         else:
             #Found a potential function
             fname=prev.token_value
@@ -237,6 +246,7 @@ for i in range(2, len(all_tokens)):
             fargs=tok.token_value
             func_arg_open=True
             func_paren_depth = paren_depth-1  #depth outside of parentheses
+            print("Appears to be a function, \"%s\"" % fname)
 
 f = open(filename,'r')
 flines = f.readlines()
@@ -282,9 +292,11 @@ for func in functions:
         
 
 f = open(filename + '.inst', 'w')
+f.write('#define PERFSTUBS_USE_TIMERS\n')
 f.write('#include "perfstubs_api/timer.h"\n')
-f.write('#if defined(__HIP_DEVICE_COMPILE__) || defined(__SYCL_DEVICE_ONLY__)\n#undef PERFSTUBS_SCOPED_TIMER_FUNC\n#define PERFSTUBS_SCOPED_TIMER_FUNC()\n#endif\n')
+f.write('#if defined(__HIP_DEVICE_COMPILE__) || defined(__SYCL_DEVICE_ONLY__) || defined(__CUDA_ARCH__)\n#undef PERFSTUBS_SCOPED_TIMER_FUNC\n#define PERFSTUBS_SCOPED_TIMER_FUNC()\n#endif\n')
 f.write('''
+#ifndef PS_SCOPED_INIT
 struct _ps_scoped_init{
     _ps_scoped_init(){
       PERFSTUBS_INITIALIZE();
@@ -294,6 +306,7 @@ struct _ps_scoped_init{
     }
 };
 #define PS_SCOPED_INIT() _ps_scoped_init ___ps_scoped_init
+#endif
 ''')
 for line in flines:
     f.write(line)
