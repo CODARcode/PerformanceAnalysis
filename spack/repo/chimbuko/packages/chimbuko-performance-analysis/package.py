@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack import *
+from spack.package import *
 
 
 class ChimbukoPerformanceAnalysis(AutotoolsPackage):
@@ -18,7 +18,6 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
 
     variant('perf-metric', default=True, description='Build with performance monitoring')
     variant('mpi', default=True, description='Enable building Chimbuko with MPI. If disabled the user must manually provide the rank index to the OAD.')
-    variant('pkg-config', default=True, description='Enable the configuration script to use pkg-config to aid in the configuration of dependencies')
 
     depends_on('mpi', when="+mpi")
     depends_on('cereal')
@@ -33,13 +32,16 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
     depends_on('automake', type='build')
     depends_on('libtool',  type='build')
     depends_on('m4',       type='build')
-    depends_on('pkgconfig', when='+pkg-config', type='build')
+    depends_on('pkgconfig', type=('build', 'link') )
 
 
     def setup_build_environment(self, env):
         if '+mpi' in self.spec:
+            print("MPI compiler is ",self.spec['mpi'].mpicxx)
             env.set('CXX', self.spec['mpi'].mpicxx)
-
+            env.set("CC", self.spec["mpi"].mpicc)
+            env.set("CXXLD", self.spec["mpi"].mpicxx)
+            
     def configure_args(self):
         args = ["--with-network=ZMQ", "--with-adios2=%s" % self.spec['adios2'].prefix ]
 
@@ -47,8 +49,6 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
                args.append('--with-perf-metric')
         if '+mpi' not in self.spec:
                args.append('--disable-mpi')
-        if '+pkg-config' in self.spec:
-               args.append('--with-pkg-config')
-
-               
+              
         return args
+    

@@ -63,10 +63,20 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
 
   std::vector<ADDataInterface::Elem> out;  
   size_t fid = m_dset_fid_map[dset_index];
-  auto const &data = m_execDataMap->find(fid)->second;
+  auto dit = m_execDataMap->find(fid);
+  if(dit == m_execDataMap->end()){
+    std::string err = "No dataset exists in execDataMap with fid=" + std::to_string(fid);    
+    fatal_error(err);
+  }  
+  auto const &data = dit->second;
 
   if(data.size() == 0) return out;
   const std::string &fname = data.front()->get_funcname();
+  if(fname.length() > 50000){
+    std::string err = "Function name is >50k characters, suggests memory corruption. 1st 100 chars: " + fname.substr(0,100);
+    fatal_error(err);
+  }
+  
   bool ignore_func = ignoringFunction(fname);
 
   std::array<unsigned long, 4> fkey;

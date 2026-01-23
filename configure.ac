@@ -6,45 +6,46 @@ AC_PROG_CXX
 AM_PROG_AR
 LT_INIT
 
-#Enable pkg-config
-AC_ARG_WITH([pkg-config], AS_HELP_STRING([--with-pkg-config], [Use pkg-config to determine configuration of some dependencies]),[use_pkgconfig="yes"],[use_pkgconfig="no"])
-
 #Check if pkg-config is installed
-no_pkgconfig=1
-if test "x$use_pkgconfig" != "xno"; then
-    no_pkgconfig=$(echo $(pkg-config 2>&1) | grep -c "not found")
-    if [[ "${no_pkgconfig}" -eq 0 ]]; then
+no_pkgconfig=$(echo $(pkg-config 2>&1) | grep -c "not found")
+if [[ "${no_pkgconfig}" -eq 0 ]]; then
 	AC_MSG_NOTICE([pkg-config was detected])
-    fi
+else
+	AC_MSG_FAILURE([pkg-config NOT found])
 fi
 
 #spdlog propagates its compile flags through cmake targets and pkg-config but doesn't for autotools
-#thus if pkg-config is available we try to get the flags there
-if [[ "${no_pkgconfig}" -eq 0 ]]; then
-   SPDLOG_CFLAGS=$(pkg-config --cflags spdlog 2>&1)
-   if [[ $(echo ${SPDLOG_CFLAGS} | grep -c "not found") -eq 1 ]]; then
-       AC_MSG_NOTICE(["Cannot find spdlog configuration with pkg-config; will attempt to build anyway"])
-   else
-       CXXFLAGS+=" ${SPDLOG_CFLAGS} "
-       SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
-       LDFLAGS+=" ${SPDLOG_LDFLAGS} " 
-       AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
-   fi
+SPDLOG_CFLAGS=$(pkg-config --cflags spdlog 2>&1)
+if [[ $(echo ${SPDLOG_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+    AC_MSG_FAILURE(["Cannot find spdlog configuration with pkg-config"])
+else
+    CXXFLAGS+=" ${SPDLOG_CFLAGS} "
+    SPDLOG_LDFLAGS=$(pkg-config --libs spdlog 2>&1)
+    LDFLAGS+=" ${SPDLOG_LDFLAGS} " 
+    AC_MSG_NOTICE([Retrieved configuration for spdlog from pkg-config])
 fi
 
 #on the IC the incorrect build of zmq is being used despite spack. Here we explicitly set the paths using pkg-config
-if [[ "${no_pkgconfig}" -eq 0 ]]; then
-   ZMQ_CFLAGS=$(pkg-config --cflags libzmq 2>&1)
-   if [[ $(echo ${ZMQ_CFLAGS} | grep -c "not found") -eq 1 ]]; then
-       AC_MSG_NOTICE(["Cannot find libzmq configuration with pkg-config; will attempt to build anyway"])
-   else
-       CXXFLAGS+=" ${ZMQ_CFLAGS} "
-       ZMQ_LDFLAGS=$(pkg-config --libs libzmq 2>&1)
-       LDFLAGS+=" ${ZMQ_LDFLAGS} " 
-       AC_MSG_NOTICE([Retrieved configuration for libzmq from pkg-config])
-   fi
+ZMQ_CFLAGS=$(pkg-config --cflags libzmq 2>&1)
+if [[ $(echo ${ZMQ_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+    AC_MSG_FAILURE(["Cannot find libzmq configuration with pkg-config"])
+else
+    CXXFLAGS+=" ${ZMQ_CFLAGS} "
+    ZMQ_LDFLAGS=$(pkg-config --libs libzmq 2>&1)
+    LDFLAGS+=" ${ZMQ_LDFLAGS} " 
+   AC_MSG_NOTICE([Retrieved configuration for libzmq from pkg-config])
 fi
 
+#Google-test
+GTEST_CFLAGS=$(pkg-config --cflags gtest 2>&1)
+if [[ $(echo ${GTEST_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+    AC_MSG_FAILURE(["Cannot find gtest configuration with pkg-config"])
+else
+    CXXFLAGS+=" ${GTEST_CFLAGS} "
+    GTEST_LDFLAGS=$(pkg-config --libs gtest 2>&1)
+    LDFLAGS+=" ${GTEST_LDFLAGS} " 
+   AC_MSG_NOTICE([Retrieved configuration for gtest from pkg-config])
+fi
 
 
 # Check if compiling to generate a coverage report using gcov
@@ -176,8 +177,24 @@ AC_ARG_ENABLE([provenancedb],
   [:],
   [enable_provenancedb=check])
 
+AC_ARG_WITH([cereal], AS_HELP_STRING([--with-cereal], [Specify Cereal install directory (not needed if building with the provenance database)]),[],[])
+if test "x$with_cereal" != "x"; then
+   CXXFLAGS+=" -I${with_cereal}/include"
+fi
+
 #Build provenance DB unless explicitly disabled or cannot link to MOCHI libraries
 if test "$enable_provenancedb" != "no"; then
+
+   SONATA_CFLAGS=$(pkg-config --cflags sonata-admin 2>&1)
+   if [[ $(echo ${SONATA_CFLAGS} | grep -c "not found") -eq 1 ]]; then
+      AC_MSG_FAILURE(["Cannot find Sonata configuration with pkg-config"])
+   else
+       CXXFLAGS+=" ${SONATA_CFLAGS} "
+       SONATA_LDFLAGS=$(pkg-config --libs sonata-admin 2>&1)
+       LDFLAGS+=" ${SONATA_LDFLAGS} -lsonata-client -lsonata-server" 
+       AC_MSG_NOTICE([Retrieved configuration for Sonata from pkg-config])
+   fi
+
    AC_CHECK_LIB([sonata-client], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([sonata-server], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
    AC_CHECK_LIB([sonata-admin], [_init], [],  [AC_MSG_WARN([Could not link to Sonata: Provenance DB will not be built]); enable_provenancedb=no]  )
@@ -210,6 +227,18 @@ if test "$enable_provenancedb" != "no"; then
       AC_MSG_NOTICE([Disallowing deprecated margo_get_pool_by_index calls])
    fi
 fi
+
+#Check cereal
+AC_LINK_IFELSE(
+ [
+   AC_LANG_PROGRAM(
+	[[ #include<cereal/archives/portable_binary.hpp>  ]],
+	[[ ]]
+   )
+ ],
+ [],
+ [  AC_MSG_FAILURE([Build with Cereal did not work])  ]
+)
 
 
 #Enable performance metrics dump

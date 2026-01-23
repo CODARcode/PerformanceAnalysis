@@ -20,13 +20,13 @@ int main(int argc, char** argv){
     std::cout << "Usage sst_view <bp filename (without .sst extension)> <options>" << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "-nsteps_show_variable_values  Set the number of io steps for which the data will be displayed, after which output will be suppressed. Use -1 for all steps. (Default -1)" << std::endl;
-    std::cout << "-offline Rather than connecting online via SST, read the BP file offline (use TAU_ADIOS2_ENGINE=BPFile when running main program)" << std::endl;
+    std::cout << "-engine Set the ADIOS2 engine (default SST for online analysis)" << std::endl;
     exit(0);
   }
   std::string filename = argv[1];
 
   //Options
-  bool offline = false; //if TAU_ADIOS2_ENGINE=BPFile the main program will store a BP file for offline analysis. Use this option to read the BP file
+  std::string engine = "SST";
   size_t nsteps_show_variable_values = -1; //the number of steps for which the values of updated variables will be dumped to output. Use -1 for all steps
   int arg = 2;
   while(arg < argc){
@@ -34,9 +34,9 @@ int main(int argc, char** argv){
     if(sarg == "-nsteps_show_variable_values"){
       nsteps_show_variable_values = strToAny<size_t>(argv[arg+1]);
       arg+=2;
-    }else if(sarg == "-offline"){
-      offline = true;
-      arg++;
+    }else if(sarg == "-engine"){
+      engine = argv[arg+1];
+      arg+=2;
     }else{
       std::cerr << "Unknown argument " << sarg;
       exit(-1);
@@ -50,12 +50,12 @@ int main(int argc, char** argv){
 
   ad = adios2::ADIOS();
   io = ad.DeclareIO("tau-metrics");
-  if(!offline) io.SetEngine("SST");
+  io.SetEngine(engine);
   io.SetParameters({
 		       {"MarshalMethod", "BP"},{"DataTransport", "RDMA"}
     });
 
-  std::cout << "sst_view is connecting to file " << filename << " on mode " << (offline ? "BPFile" : "SST") << std::endl;
+  std::cout << "sst_view is connecting to file " << filename << " on mode " << engine << std::endl;
   
   eng = io.Open(filename, adios2::Mode::Read);
   
