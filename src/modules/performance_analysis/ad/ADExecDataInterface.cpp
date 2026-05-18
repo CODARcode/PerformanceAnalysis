@@ -58,18 +58,24 @@ CallListIterator_t ADExecDataInterface::getExecDataEntry(size_t dset_index, size
 }
 
 std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_index) const{
+  verboseStream << "ADExecDataInterface::getDataSet with dset_index=" << dset_index << std::endl;
+  if(dset_index >= m_dset_fid_map.size()) fatal_error("Invalid dset_index " + std::to_string(dset_index));
+      
   auto it = m_dset_cache.find(dset_index);
   if(it != m_dset_cache.end()) return it->second;
 
   std::vector<ADDataInterface::Elem> out;  
   size_t fid = m_dset_fid_map[dset_index];
+  verboseStream << "ADExecDataInterface::getDataSet found function id " << fid << std::endl;
+  
   auto dit = m_execDataMap->find(fid);
   if(dit == m_execDataMap->end()){
     std::string err = "No dataset exists in execDataMap with fid=" + std::to_string(fid);    
     fatal_error(err);
   }  
   auto const &data = dit->second;
-
+  verboseStream << "ADExecDataInterface::getDataSet data set contains " << data.size() << " entries" << std::endl;
+  
   if(data.size() == 0) return out;
   const std::string &fname = data.front()->get_funcname();
   if(fname.length() > 50000){

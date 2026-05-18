@@ -903,18 +903,44 @@ TEST(ADParserTest, CorrelationIDeventOrderCorrectly){
 
   int pid=0, tid=0, rid=0;
 
-  std::vector<Event_t> events = {
-    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
-    createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
-    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 110),
-    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 111),
-    createCounterEvent_t(pid, rid, tid, CORRID, 1454, 111),  //correlation ID associated with function
-    createCounterEvent_t(pid, rid, tid, OTHERCOUNTER, 444, 120),  //a different counter at the same time as the function exit, should be included in this execution
-    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 120),
-    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
-    createCounterEvent_t(pid, rid, tid, CORRID, 14844, 120),  //correlation ID associated with function but with same timestamp as exit of previous function. Should not be included in the previous function
-    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 130)
+  // std::vector<Event_t> events = {
+  //   createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
+  //   createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
+  //   createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 110),
+  //   createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 111),
+  //   createCounterEvent_t(pid, rid, tid, CORRID, 1454, 111),  //correlation ID associated with function
+  //   createCounterEvent_t(pid, rid, tid, OTHERCOUNTER, 444, 120),  //a different counter at the same time as the function exit, should be included in this execution
+  //   createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 120),
+  //   createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120),
+  //   createCounterEvent_t(pid, rid, tid, CORRID, 14844, 120),  //correlation ID associated with function but with same timestamp as exit of previous function. Should not be included in the previous function
+  //   createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 130)
+  // };
+
+  //Based on 4/10/25 observation of correlation IDs on CUDA12.4, it seems they are now associated with function EXIT
+  std::vector<Event_t> events = { //by insertion order
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //0
+    createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //1  correlation ID associated with function
+    
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 110), //2
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 111), //3
+
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 120), //4
+    createCounterEvent_t(pid, rid, tid, CORRID, 1454, 120),  //5 correlation ID associated with function
+    createCounterEvent_t(pid, rid, tid, CORRID, 14844, 120),  //6  correlation ID associated with function but with same timestamp as exit of previous function. Should be included in the function
+    createCounterEvent_t(pid, rid, tid, OTHERCOUNTER, 444, 120), //7 a different counter at the same time as the function exit, should be included in this execution
+
+    createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 120), //8
+
+    
+    createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 130) //9
   };
+  std::vector<int> expect_order = {0,1,2,3,5,6,7,4,8,9};
+  std::map<int, std::vector<Event_t*> > thread_events; //store expected events by thread in time order
+  for(int i=0;i<events.size();i++){
+    int eidx = expect_order[i];    
+    thread_events[events[eidx].tid()].push_back( &events[eidx] );
+  }
+  
 
   ADParser parser("",0,rid,"BPFile");
   parser.setFuncDataCapacity(100);
@@ -924,10 +950,7 @@ TEST(ADParserTest, CorrelationIDeventOrderCorrectly){
   parser.setEventTypeMap(event_types);
   parser.setCounterMap(counter_names);
 
-  std::map<int, std::vector<Event_t*> > thread_events; //store events by thread in time order
-
   for(int i=0;i<events.size();i++){
-    thread_events[events[i].tid()].push_back( &events[i] );
 
     if(events[i].type() == EventDataType::FUNC)
       parser.addFuncData(events[i].get_ptr());
@@ -961,112 +984,112 @@ TEST(ADParserTest, CorrelationIDeventOrderCorrectly){
 
 
 
+//No longer relevant since 4/10/25 observation above
+// TEST(ADParserTest, CorrelationIDeventEdgeCases){
+//   std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
+//   std::unordered_map<int, std::string> func_names = { {12,"MYFUNC"}, {13,"OTHERFUNC"} };
+//   std::unordered_map<int, std::string> counter_names = { {99,"Correlation ID"} };
 
-TEST(ADParserTest, CorrelationIDeventEdgeCases){
-  std::unordered_map<int, std::string> event_types = { {0,"ENTRY"}, {1,"EXIT"}, {2,"SEND"}, {3,"RECV"} };
-  std::unordered_map<int, std::string> func_names = { {12,"MYFUNC"}, {13,"OTHERFUNC"} };
-  std::unordered_map<int, std::string> counter_names = { {99,"Correlation ID"} };
+//   int ENTRY = 0;
+//   int EXIT = 1;
+//   int SEND = 2;
+//   int RECV = 3;
+//   int CORRID = 99;
+//   int MYFUNC = 12;
+//   int OTHERFUNC = 13;
 
-  int ENTRY = 0;
-  int EXIT = 1;
-  int SEND = 2;
-  int RECV = 3;
-  int CORRID = 99;
-  int MYFUNC = 12;
-  int OTHERFUNC = 13;
-
-  int pid=0, tid=0, rid=0;
+//   int pid=0, tid=0, rid=0;
 
 
-  {
-    std::cout << "Show that a function will claim a correlation ID if ENTRY, EXIT and COUNTER all have the same timestamp" << std::endl;
-    //    Usually an EXIT event will be prioritized over a COUNTER if they have the same timestamp and the counter is a corid
-    //    because corids are associated with ENTRY events, but the basic logic doesn't work for the case when all 3 have the same timestamp
-    //    We deal with this edge case explicitly
+//   {
+//     std::cout << "Show that a function will claim a correlation ID if ENTRY, EXIT and COUNTER all have the same timestamp" << std::endl;
+//     //    Usually an EXIT event will be prioritized over a COUNTER if they have the same timestamp and the counter is a corid
+//     //    because corids are associated with ENTRY events, but the basic logic doesn't work for the case when all 3 have the same timestamp
+//     //    We deal with this edge case explicitly
 
-    std::vector<Event_t> events = {
-      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
-      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100),
-      createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
-      createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 101),
-      createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 102)
-    };
+//     std::vector<Event_t> events = {
+//       createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100),
+//       createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100),
+//       createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100),  //correlation ID associated with function
+//       createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 101),
+//       createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 102)
+//     };
 
-    ADParser parser("",0,rid,"BPFile");
-    parser.setFuncDataCapacity(100);
-    parser.setCommDataCapacity(100);
-    parser.setCounterDataCapacity(100);
-    parser.setFuncMap(func_names);
-    parser.setEventTypeMap(event_types);
-    parser.setCounterMap(counter_names);
+//     ADParser parser("",0,rid,"BPFile");
+//     parser.setFuncDataCapacity(100);
+//     parser.setCommDataCapacity(100);
+//     parser.setCounterDataCapacity(100);
+//     parser.setFuncMap(func_names);
+//     parser.setEventTypeMap(event_types);
+//     parser.setCounterMap(counter_names);
 
-    for(int i=0;i<events.size();i++){
-      if(events[i].type() == EventDataType::FUNC)
-	parser.addFuncData(events[i].get_ptr());
-      else if(events[i].type() == EventDataType::COMM)
-	parser.addCommData(events[i].get_ptr());
-      else if(events[i].type() == EventDataType::COUNT)
-	parser.addCounterData(events[i].get_ptr());
-      else
-	FAIL() << "Invalid EventDataType";
-    }
+//     for(int i=0;i<events.size();i++){
+//       if(events[i].type() == EventDataType::FUNC)
+// 	parser.addFuncData(events[i].get_ptr());
+//       else if(events[i].type() == EventDataType::COMM)
+// 	parser.addCommData(events[i].get_ptr());
+//       else if(events[i].type() == EventDataType::COUNT)
+// 	parser.addCounterData(events[i].get_ptr());
+//       else
+// 	FAIL() << "Invalid EventDataType";
+//     }
   
-    std::vector<Event_t> events_out = parser.getEvents();
+//     std::vector<Event_t> events_out = parser.getEvents();
     
-    EXPECT_EQ(events_out.size(), events.size());
+//     EXPECT_EQ(events_out.size(), events.size());
 
-    std::vector<int> order = {0,2,1,3,4};
-    for(int i=0;i<5;i++){
-      std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
-      EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
-    }
-  }
+//     std::vector<int> order = {0,2,1,3,4};
+//     for(int i=0;i<5;i++){
+//       std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
+//       EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
+//     }
+//   }
 
-  {
-    std::cout << "Show that if an ENTRY, CORID, EXIT and the next ENTRY, CORID all coindice, the first function will claim only one of the CORIDs" << std::endl;
-    std::vector<Event_t> events = {
-      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //0
-      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //1
-      createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 100), //2
-      createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 100), //3
-      createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //4
-      createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //5
-      createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100), //6
-      createCounterEvent_t(pid, rid, tid, CORRID, 1257, 100), //7
-      createCounterEvent_t(pid, rid, tid, CORRID, 1258, 100) //8
-    };
+//   {
+//     std::cout << "Show that if an ENTRY, CORID, EXIT and the next ENTRY, CORID all coindice, the first function will claim only one of the CORIDs" << std::endl;
+//     std::vector<Event_t> events = {
+//       createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //0
+//       createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //1
+//       createFuncEvent_t(pid, rid, tid, ENTRY, OTHERFUNC, 100), //2
+//       createFuncEvent_t(pid, rid, tid, EXIT, OTHERFUNC, 100), //3
+//       createFuncEvent_t(pid, rid, tid, ENTRY, MYFUNC, 100), //4
+//       createFuncEvent_t(pid, rid, tid, EXIT, MYFUNC, 100), //5
+//       createCounterEvent_t(pid, rid, tid, CORRID, 1256, 100), //6
+//       createCounterEvent_t(pid, rid, tid, CORRID, 1257, 100), //7
+//       createCounterEvent_t(pid, rid, tid, CORRID, 1258, 100) //8
+//     };
 
-    ADParser parser("",0,rid,"BPFile");
-    parser.setFuncDataCapacity(100);
-    parser.setCommDataCapacity(100);
-    parser.setCounterDataCapacity(100);
-    parser.setFuncMap(func_names);
-    parser.setEventTypeMap(event_types);
-    parser.setCounterMap(counter_names);
+//     ADParser parser("",0,rid,"BPFile");
+//     parser.setFuncDataCapacity(100);
+//     parser.setCommDataCapacity(100);
+//     parser.setCounterDataCapacity(100);
+//     parser.setFuncMap(func_names);
+//     parser.setEventTypeMap(event_types);
+//     parser.setCounterMap(counter_names);
 
-    for(int i=0;i<events.size();i++){
-      if(events[i].type() == EventDataType::FUNC)
-	parser.addFuncData(events[i].get_ptr());
-      else if(events[i].type() == EventDataType::COMM)
-	parser.addCommData(events[i].get_ptr());
-      else if(events[i].type() == EventDataType::COUNT)
-	parser.addCounterData(events[i].get_ptr());
-      else
-	FAIL() << "Invalid EventDataType";
-    }
+//     for(int i=0;i<events.size();i++){
+//       if(events[i].type() == EventDataType::FUNC)
+// 	parser.addFuncData(events[i].get_ptr());
+//       else if(events[i].type() == EventDataType::COMM)
+// 	parser.addCommData(events[i].get_ptr());
+//       else if(events[i].type() == EventDataType::COUNT)
+// 	parser.addCounterData(events[i].get_ptr());
+//       else
+// 	FAIL() << "Invalid EventDataType";
+//     }
   
-    std::vector<Event_t> events_out = parser.getEvents();
+//     std::vector<Event_t> events_out = parser.getEvents();
     
-    EXPECT_EQ(events_out.size(), events.size());
+//     EXPECT_EQ(events_out.size(), events.size());
 
-    std::vector<int> order = {0,6,1,2,7,3,4,8,5};
-    for(int i=0;i<order.size();i++){
-      std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
-      EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
-    }
-  }
-
-
+//     std::vector<int> order = {0,6,1,2,7,3,4,8,5};
+//     for(int i=0;i<order.size();i++){
+//       std::cout << "Expect " << events[order[i]].get_json().dump() << " got " << events_out[i].get_json().dump() << std::endl;
+//       EXPECT_TRUE(  same_up_to_id_string(events_out[i], events[order[i]]) );
+//     }
+//   }
 
 
-}
+
+
+// }

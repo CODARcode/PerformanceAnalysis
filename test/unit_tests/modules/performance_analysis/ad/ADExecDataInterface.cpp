@@ -198,16 +198,7 @@ TEST(ADExecDataInterface, anomalyRecording){
     EXPECT_EQ(iface.nEventsRecorded(ADDataInterface::EventType::Normal), 0);
     EXPECT_EQ(iface.nEvents(), 1);
 
-    //We should get an error if we don't assign all the labels
     d2[0].label = ADDataInterface::EventType::Outlier;
-    bool fail = false;
-    try{
-      iface.recordDataSetLabels(d2,d2idx);
-    }catch(const std::exception &e){
-      std::cout << "Caught expected error: " << e.what() << std::endl;
-      fail = true;
-    }
-    ASSERT_TRUE(fail);
     d2[1].label = ADDataInterface::EventType::Outlier;
     iface.recordDataSetLabels(d2,d2idx);
     

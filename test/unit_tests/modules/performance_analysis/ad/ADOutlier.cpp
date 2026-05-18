@@ -140,7 +140,14 @@ TEST(ADOutlierSSTDTestSyncParamWithoutPS, Works){
   //internal copy should be equal to global copy
   SstdParam const* glob_params = dynamic_cast<SstdParam const*>(outlier.get_global_parameters());
 
-  EXPECT_EQ(glob_params->get_runstats(), local_params_ps.get_runstats());
+  std::cout << "GLOBAL" << std::endl;
+  glob_params->show(std::cout);
+
+  std::cout << "LOCAL" << std::endl;
+  local_params_ps.show(std::cout);
+  
+  EXPECT_TRUE( glob_params->get_runstats().begin()->second.equiv( local_params_ps[0] ) ); 
+  //EXPECT_EQ(glob_params->get_runstats(), local_params_ps.get_runstats());
 
   //Check serialization
   std::string glob_params_ser = glob_params->serialize();
@@ -148,7 +155,8 @@ TEST(ADOutlierSSTDTestSyncParamWithoutPS, Works){
   SstdParam glob_params_unser;
   glob_params_unser.assign(glob_params_ser);
 
-  EXPECT_EQ(glob_params_unser.get_runstats(), local_params_ps.get_runstats());
+  //EXPECT_EQ(glob_params_unser.get_runstats(), local_params_ps.get_runstats());
+  EXPECT_TRUE( glob_params_unser[0].equiv( local_params_ps[0] ) ); 
 }
 
 

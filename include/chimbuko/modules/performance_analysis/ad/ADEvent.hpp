@@ -236,7 +236,7 @@ namespace chimbuko {
 	 */
 	const CallListMap_p_t * getCallListMap() const { return &m_callList; }
 	/**
-	 * @brief Get the Call List Map object
+	 * @brief Get the Call List Map object  ( [process][rank][thread] -> list<ExecData_t> )
 	 *
 	 * @return CallListMap_p_t& pointer to CallListMap_p_t object
 	 */
@@ -307,14 +307,6 @@ namespace chimbuko {
 	 */
 	CallListIterator_t addCall(const ExecData_t &exec);
 
-
-	/**
-	 * @brief trim out all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
-	 * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
-	 * @return CallListMap_p_t* trimed function calls
-	 */
-	CallListMap_p_t* trimCallList(int n_keep_thread = 0);
-
 	/**
 	 * @brief Get the total number of function events in the call list over all pid/rid/tid
 	 */
@@ -337,8 +329,6 @@ namespace chimbuko {
 	 * @brief purge all function calls that are completed (i.e. a pair of ENTRY and EXIT events are observed)
 	 * @param n_keep_thread The amount of events per thread to maintain [if they exist] (allows window view to extend into previous io step)
 	 * @param report If non-null, information on the number of events purged/maintained will be recorded
-	 *
-	 * Functionality is the same as trimCallList only it doesn't return the trimmed function calls
 	 */
 	void purgeCallList(int n_keep_thread = 0, purgeReport* report = nullptr);
 
@@ -359,7 +349,7 @@ namespace chimbuko {
 	 */
 	void ignoreCorrelationIDsForFunction(const std::string &func){ m_ignoreCorrelationID.insert(func); }
     
-      private:
+      protected:
 	/**
 	 * @brief pointer to map of function index to function name
 	 *
@@ -441,12 +431,6 @@ namespace chimbuko {
 	 */
 	std::unordered_set<std::string> m_ignoreCorrelationID;
 
-
-	/**
-	 * @brief Set of events that have been stack locked because they weren't able to be labeled
-	 */
-	std::unordered_set<eventID> m_stackLockedUnlabeled;
-	
 	/**
 	 * @brief verbose
 	 *
@@ -461,14 +445,22 @@ namespace chimbuko {
 
 	/**
 	 * @brief Flag the call and all it's parental line such that they are protected from deletion by the garbage collection
+	 * @return A bool indicating whether the CPU parent stack of a GPU event was also locked
 	 */
-	void stackProtectGC(CallListIterator_t it);
+	bool stackProtectGC(CallListIterator_t it);
 
 	/**
 	 * @brief Flag the call and all it's parental line such that they are not protected from deletion by the garbage collection,
 	 *        stopping if a call with an unmatched correlation ID is encountered
+	 * @param it The iterator to the call list entry
+	 * @param unlock_cpu_parent_stack Indicate whether a GPU event's CPU-parent stack should also be unlocked (if applicable)
 	 */
-	void stackUnProtectGC(CallListIterator_t it);
+	void stackUnProtectGC(CallListIterator_t it, bool unlock_cpu_parent_stack);
+
+	/**
+	 * @brief Internal logic for handling locking/unlocking of unlabeled event stacks during purge stage
+	 */
+	size_t purgeHandleUnlabeledEvents();
       };
 
     } // end of AD namespace

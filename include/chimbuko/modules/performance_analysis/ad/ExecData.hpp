@@ -613,7 +613,7 @@ namespace chimbuko {
 	 * @brief Decrement the external reference counter, allowing object deletion if 0
 	 */
 	void deregister_reference();
-
+	
 	/**
 	 * @brief Get the number of external references registered
 	 */
@@ -642,6 +642,19 @@ namespace chimbuko {
 	 */
 	const eventID & get_GPU_correlationID_partner(const size_t i) const;
 
+	/**
+	 * @brief When a step ends and an event remains unlabeled, we lock it and its stack to prevent deletion until labeling. We set this flag so that we know that
+	 *        we need to unlock the stack again once the labeling has been performed
+	 */
+	bool & get_stack_locked_as_unlabeled(){ return m_stack_locked_as_unlabeled; }
+
+	/**
+	 * @brief Same as the above but for the GPU-event's CPU parent stack. We track this separately because there are occasions when the GPU parent stack is not available at lock time
+	 *        but *is* available at unlock time, so we need to know if we actually locked it or not
+	 *        
+	 */
+	bool & get_cpu_parent_stack_locked_as_unlabeled(){ return m_cpu_parent_stack_locked_as_unlabeled; }
+	
       private:
 	eventID m_id;                        /**< execution id */
 	std::string m_funcname;              /**< function name */
@@ -663,7 +676,11 @@ namespace chimbuko {
 	std::deque<CommData_t> m_messages;  /**< a vector of all messages */
 	std::deque<CounterData_t> m_counters; /**< a vector of all counters */
 	unsigned long m_references; /**< track number of external references to object. When 0 the object can be deleted */
+
 	std::vector<eventID> m_gpu_correlation_id_partner;  /**< The event ids partner events linked by a correlation ID, either the launching CPU event or the GPU kernel event */
+
+	bool m_stack_locked_as_unlabeled; /**< This event's stack has been locked as it was unlabeled at the end of an IO step*/
+	bool m_cpu_parent_stack_locked_as_unlabeled; /**< This GPU event's CPU-parent stack has been locked as it was unlabeled at the end of an IO step*/
       };
 
 

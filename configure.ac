@@ -244,6 +244,13 @@ AC_LINK_IFELSE(
 #Enable performance metrics dump
 AC_ARG_WITH([perf-metric], AS_HELP_STRING([--with-perf-metric], [Specify use of performance metrics]),[AC_DEFINE([_PERF_METRIC],[1],[Use performance metrics])],[])
 
+#Enable ASAN
+AC_ARG_WITH([asan], AS_HELP_STRING([--with-asan], [Compile with ASAN for debugging]),[
+       AC_MSG_NOTICE([Compiling with asan])
+       CPPFLAGS+=" -fno-omit-frame-pointer -fsanitize=address"
+       LDFLAGS+=" -fno-omit-frame-pointer -fsanitize=address"
+],[])
+
 #Enable ProvdDB margo state dump (currently requires master branch of margo)
 AC_ARG_ENABLE([margo-state-dump],
   [AS_HELP_STRING([--enable-margo-state-dump], [Enable ProvdDB margo state dump (currently requires master branch of margo)] )],

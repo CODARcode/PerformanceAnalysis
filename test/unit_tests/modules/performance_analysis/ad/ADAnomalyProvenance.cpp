@@ -185,7 +185,9 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   ADEvent event_man;
   CallListIterator_t exec_cpu_parent_it = event_man.addCall(exec_cpu_parent);
   CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
-
+  exec_cpu_parent_it->set_label(1);
+  exec_cpu_it->set_label(1);
+  
   //Check both CPU calls picked up
   const CallListMap_p_t &calls = event_man.getCallListMap();
   CallList_t const* calls_p_r_t_cpu_ptr = getElemPRT(0,1,0, calls);
@@ -225,7 +227,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
   }
 
   //Parent function exec should not be trimmed out even though it is not the immediate partner event
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ(calls_p_r_t_cpu.size(), 2);
 
   CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
@@ -240,7 +242,7 @@ TEST(TestADAnomalyProvenance, detectsGPUevents){
     EXPECT_EQ(output["gpu_location"]["stream"], 1);
   }
 
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ(calls_p_r_t_cpu.size(), 0);
 }
 
@@ -347,14 +349,15 @@ TEST(TestADAnomalyProvenance, gracefullyFailsIfCorrelationIDissues){
     
     CallListIterator_t exec_cpu_it = event_man.addCall(exec_cpu);
     CallListIterator_t exec_gpu_it = event_man.addCall(exec_gpu);
-
+    exec_cpu_it->set_label(1);    
+    
     //Both events should be trimmable
     ASSERT_EQ(exec_cpu_it->reference_count(),0);
     ASSERT_EQ(exec_gpu_it->reference_count(),0);
     
     //Trim out the parent
     exec_gpu_it->register_reference(); //protect GPU event
-    delete event_man.trimCallList();
+    event_man.purgeCallList();
     
     ASSERT_EQ(event_man.getCallListSize(),1);
     std::cout << "Trimmed out event " << exec_cpu.get_id().toString() << std::endl;

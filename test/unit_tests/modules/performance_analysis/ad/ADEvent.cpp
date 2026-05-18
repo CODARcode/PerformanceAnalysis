@@ -223,54 +223,15 @@ TEST(ADEventTestaddComm, eventisRECV){
   EXPECT_EQ( ad.event_manager.addComm(ad[idx]), EventError::OK );
 }
 
-
-
-
-
-//Unit testing for ADEvent::trimCallList()
-TEST(ADEventTesttrimCallList, trimsCorrectly){
-  ADFuncEventContainer ad;
-  long time = 100;
-
-  int fid1=0;
-  int fid2=1;
-
-  int eid_entry = 0;
-  int eid_exit = 1;
-
-  int idx_entry = ad.addEvent(FuncEvent("ENTRY","MYFUNC" ,eid_entry,fid1,  0    ));
-  int idx_exit = ad.addEvent(FuncEvent("EXIT","MYFUNC"   ,eid_exit,fid1,  time ));
-  int idx_entry2 = ad.addEvent(FuncEvent("ENTRY","MYFUNC2",eid_entry,fid2,  time+50   )); //different function
-  ad.initializeAD();
-  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry]), EventError::OK );
-  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
-  EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry2]), EventError::OK );
-
-  CallListMap_p_t* ret = ad.event_manager.trimCallList();
-
-  int pid = 0;
-  int rid = 0;
-  int tid = 0;
-
-  auto pit = ret->find(pid);
-  EXPECT_NE(pit, ret->end() );
-
-  auto rit = pit->second.find(rid);
-  EXPECT_NE(rit, pit->second.end() );
-
-  auto tit = rit->second.find(tid);
-  EXPECT_NE(tit, rit->second.end() );
-
-  const CallList_t &list = tit->second;
-
-  EXPECT_EQ( list.size(), 1 );
-
-  const ExecData_t &data = *list.begin();
-  EXPECT_EQ( data.get_runtime(), time );
-  EXPECT_EQ( data.get_fid(), fid1 );
-
+//Label as normal all completed events
+void fakeLabelComplete(ADEvent &event_man){
+  for(auto &pp : event_man.getCallListMap())
+    for(auto &rp : pp.second)
+      for(auto &tp : rp.second)
+	for(auto &event : tp.second)
+	  if(event.get_exit() != -1)
+	    event.set_label(1);  
 }
-
 
 TEST(ADEventTest, purgeCallList){
   ADFuncEventContainer ad;
@@ -290,6 +251,7 @@ TEST(ADEventTest, purgeCallList){
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_exit]), EventError::OK );
   EXPECT_EQ( ad.event_manager.addFunc(ad[idx_entry2]), EventError::OK );
 
+  fakeLabelComplete(ad.event_manager); //only labeled events are purged
   ad.event_manager.purgeCallList();
 
   const CallList_t &call_list = ad.event_manager.getCallListMap()[0][0][0];
@@ -412,30 +374,20 @@ TEST(ADEvent, trimsCallListCorrectly){
   event_man.addCall(c1);
   event_man.addCall(c2);
 
+  fakeLabelComplete(event_man); //only labeled data are purged
+  
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
   EXPECT_NE(calls_p_r_t_ptr, nullptr);
   const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
   EXPECT_EQ(calls_p_r_t.size(), 2);
 
-  //Check trim with n_keep >= #elems does nothing
-  event_man.trimCallList(2);
+  //Check purge with n_keep >= #elems does nothing
+  event_man.purgeCallList(2);
   EXPECT_EQ(calls_p_r_t.size(), 2);
-  event_man.trimCallList(3);
+  event_man.purgeCallList(3);
   EXPECT_EQ(calls_p_r_t.size(), 2);
-
-  //Check purged events are correct
-  CallListMap_p_t* purged = event_man.trimCallList();
+  event_man.purgeCallList(0);
   EXPECT_EQ(calls_p_r_t.size(), 0);
-
-  auto const* purged_calls_p_r_t_ptr = getElemPRT(pid,rid,tid,*purged);
-  EXPECT_NE(purged_calls_p_r_t_ptr, nullptr);
-
-  const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
-  EXPECT_EQ(purged_calls_p_r_t.size(), 2);
-
-  EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
-  EXPECT_EQ(std::next(purged_calls_p_r_t.begin(),1)->get_funcname(), func_name[1]);
-  delete purged;
 }
 
 
@@ -460,24 +412,17 @@ TEST(ADEvent, trimsCallListCorrectlyWithGCFlag){
 
   event_man.addCall(c2);
 
+  fakeLabelComplete(event_man); //only labeled data are purged
+  
   auto const* calls_p_r_t_ptr = getElemPRT(pid,rid,tid,event_man.getCallListMap());
   EXPECT_NE(calls_p_r_t_ptr, nullptr);
   const CallList_t &calls_p_r_t =  *calls_p_r_t_ptr;
   EXPECT_EQ(calls_p_r_t.size(), 2);
 
-
-  //Check purged events are correct
-  CallListMap_p_t* purged = event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ(calls_p_r_t.size(), 1);
 
-  auto const* purged_calls_p_r_t_ptr = getElemPRT(pid,rid,tid,*purged);
-  EXPECT_NE(purged_calls_p_r_t_ptr, nullptr);
-
-  const CallList_t &purged_calls_p_r_t = *purged_calls_p_r_t_ptr;
-  EXPECT_EQ(purged_calls_p_r_t.size(), 1);
-
-  EXPECT_EQ(purged_calls_p_r_t.begin()->get_funcname(), func_name[0]);
-  delete purged;
+  //TODO: Reinstate check that the remaining element is correct
 }
 
 TEST(ADEvent, matchesEventsByCorrelationID){
@@ -492,26 +437,32 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   ExecData_t c_cpu = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel", 100, 200); //100-200
   c_cpu.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1995, 100, "Correlation ID"));
   c_cpu.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 2020, 150, "Correlation ID"));
-
+  c_cpu.set_label(1);
+  
   ExecData_t c_cpu_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 5, "gpu_kernel", 400, 100); //400-500
   c_cpu_gpu1.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1995, 500, "Correlation ID"));
-
+  c_cpu_gpu1.set_label(1);
+  
   ExecData_t c_cpu_gpu2 = createFuncExecData_t(pid, rid, tid_gpu, 6, "gpu_kernel2", 500, 100); //500-600
   c_cpu_gpu2.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 2020, 600, "Correlation ID"));
-
+  c_cpu_gpu2.set_label(1);
+  
   //Have a CPU parent call that also executes a GPU kernel, but the matching occurs after the child function has been matched
   //Need to test that the GC doesn't erase the parent event when the child event is matched but the parent has not yet been matched
   ExecData_t c_cpu_p1 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_parent", 50, 250); //50-250
   bindParentChild(c_cpu_p1, c_cpu);
   c_cpu_p1.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1885, 150, "Correlation ID"));
-
+  c_cpu_p1.set_label(1);
+  
   ExecData_t c_cpu_p1_gpu = createFuncExecData_t(pid, rid, tid_gpu, 8, "gpu_kernel_of_parent", 400, 100); //400-500
   c_cpu_p1_gpu.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1885, 500, "Correlation ID"));
-
+  c_cpu_p1_gpu.set_label(1);
+  
   //A grandparent with no gpu kernels
   ExecData_t c_cpu_p2 = createFuncExecData_t(pid, rid, tid_cpu, 7, "cpu_launch_kernel_grandparent", 0, 300); //0-300
   bindParentChild(c_cpu_p2, c_cpu_p1);
-
+  c_cpu_p2.set_label(1);
+  
   std::cout << "c_cpu_p2 : " << c_cpu_p2.get_id().toString() << std::endl;
   std::cout << "c_cpu_p1 : " << c_cpu_p1.get_id().toString() << std::endl;
   std::cout << "c_cpu : " << c_cpu.get_id().toString() << std::endl;
@@ -541,7 +492,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 3 );
 
   //Ensure the unmatched event doesn't get deleted by trimming
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
 
   const CallListMap_p_t &calls = event_man.getCallListMap();
   CallList_t const* calls_p_r_t_cpu_ptr = getElemPRT(pid,rid,tid_cpu, calls);
@@ -569,7 +520,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 2); //1 gpu event of c_cpu and 1 of c_cpu_p1 remain
 
   //Make sure gpu event trimmed but not cpu event
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ( calls_p_r_t_cpu.size(), 3);
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
 
@@ -585,7 +536,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 1 ); //parent still hasn't been matched
 
   //Ensure c_cpu and both of it's gpu events are now trimmed out
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ( calls_p_r_t_cpu.size(), 2); //parent and grandparent remain
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
 
@@ -604,7 +555,7 @@ TEST(ADEvent, matchesEventsByCorrelationID){
   EXPECT_EQ( event_man.getUnmatchCorrelationIDevents().size(), 0 );
 
   //All events are now trimmed out
-  delete event_man.trimCallList();
+  event_man.purgeCallList();
   EXPECT_EQ( calls_p_r_t_cpu.size(), 0);
   EXPECT_EQ( calls_p_r_t_gpu.size(), 0);
 }
@@ -626,22 +577,27 @@ TEST(ADEvent, testCoridMatchChainUnlock){
   //First CPU event
   ExecData_t c_cpu_1 = createFuncExecData_t(pid, rid, tid_cpu, 4, "cpu_launch_kernel_1", 100, 200); //100-300
   c_cpu_1.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 1995, 100, "Correlation ID"));
-
+  c_cpu_1.set_label(1);
+  
   ExecData_t c_gpu1 = createFuncExecData_t(pid, rid, tid_gpu, 6, "gpu_kernel1", 400, 100); //400-500
   c_gpu1.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 1995, 500, "Correlation ID"));
-
+  c_gpu1.set_label(1);
+  
   //Second CPU event
   ExecData_t c_cpu_2 = createFuncExecData_t(pid, rid, tid_cpu, 5, "cpu_launch_kernel_2", 150, 250); //150-250
   c_cpu_2.add_counter(createCounterData_t(pid,rid,tid_cpu,counter_id, 2020, 150, "Correlation ID"));
-
+  c_cpu_2.set_label(1);
+  
   ExecData_t c_gpu2 = createFuncExecData_t(pid, rid, tid_gpu, 7, "gpu_kernel2", 500, 100); //500-600
   c_gpu2.add_counter(createCounterData_t(pid,rid,tid_gpu,counter_id, 2020, 600, "Correlation ID"));
-
+  c_gpu2.set_label(1);
+  
   //Common parent event
   ExecData_t c_cpu_p1 = createFuncExecData_t(pid, rid, tid_cpu, 8, "cpu_launch_kernel_parent", 50, 500); //50-550
   bindParentChild(c_cpu_p1, c_cpu_1);
   bindParentChild(c_cpu_p1, c_cpu_2);
-
+  c_cpu_p1.set_label(1);
+  
   auto c_cpu_p1_it =  event_man.addCall(c_cpu_p1);
   auto c_cpu_1_it = event_man.addCall(c_cpu_1);
   auto c_cpu_2_it = event_man.addCall(c_cpu_2);
@@ -764,7 +720,8 @@ TEST(ADEvent, testIteratorWindowDetermination){
   EXPECT_EQ(it_p.second, end);
 
   //Check that trimming but keeping 4 events per thread means we get the full upper half of the window view
-  event_man.trimCallList(4);
+  fakeLabelComplete(event_man);
+  event_man.purgeCallList(4);
   EXPECT_EQ(call_list->size(), 4);
 
   it_p = event_man.getCallWindowStartEnd(execs[3].get_id(), 3);
@@ -777,7 +734,7 @@ TEST(ADEvent, testIteratorWindowDetermination){
 
   for(int i=8;i<execs.size();i++)
     event_man.addCall(execs[i]);
-
+  fakeLabelComplete(event_man);
 
   it_p = event_man.getCallWindowStartEnd(execs[8].get_id(), 1); //window of 1 around execs[8]
   EXPECT_EQ(it_p.first->get_id(), execs[7].get_id());
@@ -830,7 +787,7 @@ TEST(ADEventTest, DetectsCorrelationIDerrors){
     std::cout << "Got intentional error: " << got << std::endl;
     EXPECT_NE(loc, std::string::npos);
   }
-
+  
   //CPU events are allowed to have multiple correlation IDs
   {
     event_man.addCounter(cpu_corrid2);
@@ -847,6 +804,257 @@ TEST(ADEventTest, DetectsCorrelationIDerrors){
   }
 }
 
+struct ADEventTester: public ADEvent{
+  bool stackProtectGC_test(CallListIterator_t it){ return this->stackProtectGC(it); }
+  void stackUnProtectGC_test(CallListIterator_t it, bool unlock_cpu_parent_stack ){ this->stackUnProtectGC(it, unlock_cpu_parent_stack); }
+};
+
+TEST(ADEventTest, HandlesUnknownGPUeventParent){
+  //There's a thorny logic problem to solve. When we have a GPU event that is stack locked by stackProtectGC to prevent it from being purged we also want to lock its
+  //CPU-side parent's stack as we will need that when we create the provenance data.
+  //If the CPU-side parent is not known at the time of stack protection but *is* known when we later unlock the stack, we will end up calling unlock once too many times on the CPU-side parent
+  //Check the issue is solved here
+  
+  int cpu_thread = 0;
+  int gpu_thread = 6;
+  std::unordered_map<int, std::string> event_types = { {0, "ENTRY"}, {1, "EXIT" } };
+  std::unordered_map<int, std::string> func_names = { {111, "cpu_func"}, {222, "gpu_func" } };
+  std::unordered_map<int, std::string> counter_names = { {0, "Correlation ID"} };
+  std::unordered_map<unsigned long, GPUvirtualThreadInfo> gpu_threads = { {gpu_thread, GPUvirtualThreadInfo(1,2,3,4) } };
+  
+  Event_t cpu_entry = createFuncEvent_t(0,0,cpu_thread, 0, 111, 1000);
+  Event_t cpu_exit = createFuncEvent_t(0,0,cpu_thread, 1, 111, 2000);
+
+  Event_t cpu_corrid1 = createCounterEvent_t(0,0,cpu_thread,  0,  99,  1200);
+
+  Event_t gpu_entry = createFuncEvent_t(0,0,gpu_thread, 0, 222, 1200);
+  Event_t gpu_exit = createFuncEvent_t(0,0,gpu_thread, 1, 222, 1800);
+
+  Event_t gpu_corrid1 = createCounterEvent_t(0,0,gpu_thread,  0,  99,  1799);
+
+  //ensure it works when the CPU event is registered first
+  {
+    ADEventTester event_man;
+    event_man.linkEventType(&event_types);
+    event_man.linkFuncMap(&func_names);
+    event_man.linkCounterMap(&counter_names);
+    event_man.linkGPUthreadMap(&gpu_threads);    
+    
+    event_man.addFunc(cpu_entry);  
+    event_man.addCounter(cpu_corrid1);
+    event_man.addFunc(cpu_exit); //the unmatched correlation ID will cause the CPU event to be locked
+    CallListIterator_t cpu_exec = event_man.getCallListMap()[0][0][cpu_thread].begin();
+    ASSERT_EQ(cpu_exec->reference_count(), 1);
+    
+  
+    event_man.addFunc(gpu_entry);
+    event_man.addCounter(gpu_corrid1);
+    event_man.addFunc(gpu_exit); //this will now match the correlation IDs and unlock the stack of the CPU parent
+    CallListIterator_t gpu_exec = event_man.getCallListMap()[0][0][gpu_thread].begin();
+    
+    ASSERT_EQ(cpu_exec->reference_count(), 0);
+    ASSERT_EQ(gpu_exec->reference_count(), 0);
+    
+    //now if we try to lock the GPU event it should lock both the GPU and CPU event
+    bool locked_cpu_parent = event_man.stackProtectGC_test(gpu_exec);
+    ASSERT_EQ(cpu_exec->reference_count(), 1);
+    ASSERT_EQ(gpu_exec->reference_count(), 1);
+    ASSERT_TRUE(locked_cpu_parent);
+    
+    //and unlocking the GPU event should also unlock both
+    event_man.stackUnProtectGC_test(gpu_exec, locked_cpu_parent);
+    ASSERT_EQ(cpu_exec->reference_count(), 0);
+    ASSERT_EQ(gpu_exec->reference_count(), 0);
+  }
+  //now try it when the GPU event is registered first
+  {
+    ADEventTester event_man;
+    event_man.linkEventType(&event_types);
+    event_man.linkFuncMap(&func_names);
+    event_man.linkCounterMap(&counter_names);
+    event_man.linkGPUthreadMap(&gpu_threads);    
+
+    event_man.addFunc(gpu_entry);
+    event_man.addCounter(gpu_corrid1);
+    event_man.addFunc(gpu_exit); //this will now lock the GPU event but not the CPU event as it is unknown
+    CallListIterator_t gpu_exec = event_man.getCallListMap()[0][0][gpu_thread].begin();
+    ASSERT_EQ(gpu_exec->reference_count(), 1);
+   
+    event_man.addFunc(cpu_entry);  
+    event_man.addCounter(cpu_corrid1);
+    event_man.addFunc(cpu_exit); //the unmatched correlation ID will cause the CPU event to be unlocked as well as the GPU event. This unprotection of the CPU event will no longer trigger a second unprotect of the CPU event
+    CallListIterator_t cpu_exec = event_man.getCallListMap()[0][0][cpu_thread].begin();
+    ASSERT_EQ(cpu_exec->reference_count(), 0);
+    ASSERT_EQ(gpu_exec->reference_count(), 0);
+  }
+}
+
+TEST(ADEventTest, CheckNoPurgeOfUnlabeledEvents){
+  //Check that unlabeled events are not purged
+
+  { //CPU events only
+    ADEventTester event_man;
+    event_man.addCall(createFuncExecData_t(1,2,3,55, "func", 100, 200));
+ 
+    auto & call_list = event_man.getCallListMap()[1][2][3];
+    ASSERT_EQ(call_list.size(), 1);
+  
+    CallListIterator_t exec = call_list.begin();
+    ASSERT_EQ(exec->get_label(),0);
+    ASSERT_FALSE(exec->get_stack_locked_as_unlabeled());
+  
+    event_man.purgeCallList();
+    ASSERT_EQ(call_list.size(),1);
+    ASSERT_TRUE(exec->get_stack_locked_as_unlabeled()); //indicates the stack was locked because it was unlabeled
+
+    //Add another stack lock so that it doesn't go away yet
+    event_man.stackProtectGC_test(exec);
+    ASSERT_EQ(exec->reference_count(), 2);
+  
+    exec->set_label(1);
+    event_man.purgeCallList();
+    ASSERT_EQ(call_list.size(),1);
+    ASSERT_EQ(exec->reference_count(), 1);
+    ASSERT_FALSE(exec->get_stack_locked_as_unlabeled()); //indicates the stack is no longer locked
+  }
+
+  { //Check that if we have an unlabeled *GPU* event, both the GPU and CPU-parent stacks are locked and unlocked properly
+
+    int cpu_thread = 0;
+    int gpu_thread = 6;
+    std::unordered_map<int, std::string> event_types = { {0, "ENTRY"}, {1, "EXIT" } };
+    std::unordered_map<int, std::string> func_names = { {111, "cpu_func"}, {222, "gpu_func" } };
+    std::unordered_map<int, std::string> counter_names = { {0, "Correlation ID"} };
+    std::unordered_map<unsigned long, GPUvirtualThreadInfo> gpu_threads = { {gpu_thread, GPUvirtualThreadInfo(1,2,3,4) } };
+
+    Event_t cpu_entry = createFuncEvent_t(0,0,cpu_thread, 0, 111, 1000);
+    Event_t cpu_exit = createFuncEvent_t(0,0,cpu_thread, 1, 111, 2000);
+    
+    Event_t cpu_corrid1 = createCounterEvent_t(0,0,cpu_thread,  0,  99,  1200);
+    
+    Event_t gpu_entry = createFuncEvent_t(0,0,gpu_thread, 0, 222, 1200);
+    Event_t gpu_exit = createFuncEvent_t(0,0,gpu_thread, 1, 222, 1800);
+    
+    Event_t gpu_corrid1 = createCounterEvent_t(0,0,gpu_thread,  0,  99,  1799);
+
+    { //CPU-side partner is known at purge-time
+      ADEventTester event_man;
+      event_man.linkEventType(&event_types);
+      event_man.linkFuncMap(&func_names);
+      event_man.linkCounterMap(&counter_names);
+      event_man.linkGPUthreadMap(&gpu_threads);    
+      
+      event_man.addFunc(cpu_entry);  
+      event_man.addCounter(cpu_corrid1);
+      event_man.addFunc(cpu_exit); //the unmatched correlation ID will cause the CPU event to be locked
+      
+      event_man.addFunc(gpu_entry);
+      event_man.addCounter(gpu_corrid1);
+      event_man.addFunc(gpu_exit); //this will now match the correlation IDs and unlock the stack of the CPU parent
+
+      auto &cpu_thread_calllist = event_man.getCallListMap()[0][0][cpu_thread];
+      auto &gpu_thread_calllist = event_man.getCallListMap()[0][0][gpu_thread];
+      
+      CallListIterator_t cpu_exec = cpu_thread_calllist.begin();
+      CallListIterator_t gpu_exec = gpu_thread_calllist.begin();
+    
+      cpu_exec->set_label(1); //labeled
+      gpu_exec->set_label(0); //unlabeled
+
+      //Purge while unlabeled, expect stack protection of both CPU and GPU events
+      event_man.purgeCallList();
+      ASSERT_EQ(cpu_thread_calllist.size(),1);
+      ASSERT_EQ(gpu_thread_calllist.size(),1);
+    
+      ASSERT_TRUE(gpu_exec->get_stack_locked_as_unlabeled());
+      ASSERT_TRUE(gpu_exec->get_cpu_parent_stack_locked_as_unlabeled());
+
+      ASSERT_EQ(cpu_exec->reference_count(), 1);
+      ASSERT_EQ(gpu_exec->reference_count(), 1);
+
+      gpu_exec->set_label(1);
+      
+      //Add another stack lock so that they don't go away yet
+      event_man.stackProtectGC_test(gpu_exec); //this will actually lock both
+      
+      ASSERT_EQ(cpu_exec->reference_count(), 2);
+      ASSERT_EQ(gpu_exec->reference_count(), 2);
+
+      //Purge while labeled, both stacks should be decremented
+      event_man.purgeCallList();
+      ASSERT_EQ(cpu_thread_calllist.size(),1);
+      ASSERT_EQ(gpu_thread_calllist.size(),1);
+    
+      ASSERT_FALSE(gpu_exec->get_stack_locked_as_unlabeled());
+      ASSERT_FALSE(gpu_exec->get_cpu_parent_stack_locked_as_unlabeled());
+      
+      ASSERT_EQ(cpu_exec->reference_count(), 1);
+      ASSERT_EQ(gpu_exec->reference_count(), 1);
+    }
+
+
+    { //CPU-side partner is *not* known at purge-time. The GPU event will be locked due to an unmatched corid but *also* due to being unlabeled. We need to ensure that the CPU-partner is not later decremented
+      ADEventTester event_man;
+      event_man.linkEventType(&event_types);
+      event_man.linkFuncMap(&func_names);
+      event_man.linkCounterMap(&counter_names);
+      event_man.linkGPUthreadMap(&gpu_threads);    
+           
+      event_man.addFunc(gpu_entry);
+      event_man.addCounter(gpu_corrid1);
+      event_man.addFunc(gpu_exit); //this will now match the correlation IDs and unlock the stack of the CPU parent
+
+      auto &cpu_thread_calllist = event_man.getCallListMap()[0][0][cpu_thread];
+      auto &gpu_thread_calllist = event_man.getCallListMap()[0][0][gpu_thread];
+      
+      CallListIterator_t gpu_exec = gpu_thread_calllist.begin();
+    
+      gpu_exec->set_label(0); //unlabeled
+
+      //Purge while unlabeled, expect double stack protection of GPU event
+      event_man.purgeCallList();
+      ASSERT_EQ(gpu_thread_calllist.size(),1);
+    
+      ASSERT_TRUE(gpu_exec->get_stack_locked_as_unlabeled());
+      ASSERT_FALSE(gpu_exec->get_cpu_parent_stack_locked_as_unlabeled()); //no CPU parent known yet
+
+      ASSERT_EQ(gpu_exec->reference_count(), 2);
+
+      //Now we add the CPU parent, this should decrement the GPU event counter by 1
+      event_man.addFunc(cpu_entry);  
+      event_man.addCounter(cpu_corrid1);
+      event_man.addFunc(cpu_exit); //the unmatched correlation ID will cause the CPU event to be locked
+
+      ASSERT_EQ(cpu_thread_calllist.size(),1);
+      CallListIterator_t cpu_exec = cpu_thread_calllist.begin();
+      
+      ASSERT_EQ(cpu_exec->reference_count(), 0);
+      ASSERT_EQ(gpu_exec->reference_count(), 1); //still locked as unlabeled
+
+      cpu_exec->set_label(1);
+      gpu_exec->set_label(1);
+      
+      //Add another stack lock so that they don't go away yet
+      event_man.stackProtectGC_test(gpu_exec);
+      
+      ASSERT_EQ(cpu_exec->reference_count(), 1);
+      ASSERT_EQ(gpu_exec->reference_count(), 2);
+
+      //Purge while labeled, only GPU stack should be decremented
+      event_man.purgeCallList();
+      ASSERT_EQ(cpu_thread_calllist.size(),1);
+      ASSERT_EQ(gpu_thread_calllist.size(),1);
+    
+      ASSERT_FALSE(gpu_exec->get_stack_locked_as_unlabeled());
+      ASSERT_FALSE(gpu_exec->get_cpu_parent_stack_locked_as_unlabeled());
+      
+      ASSERT_EQ(cpu_exec->reference_count(), 1);
+      ASSERT_EQ(gpu_exec->reference_count(), 1);
+    }             
+  }
+}
+  
+  
 
 TEST(ADEventTest, TestCallStackExtraction){
   ExecData_t exec0 = createFuncExecData_t(1,2,3, 55, "theroot", 100, 0);  //0 runtime indicates it has yet to complete

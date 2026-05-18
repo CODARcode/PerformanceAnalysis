@@ -18,7 +18,8 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
 
     variant('perf-metric', default=True, description='Build with performance monitoring')
     variant('mpi', default=True, description='Enable building Chimbuko with MPI. If disabled the user must manually provide the rank index to the OAD.')
-
+    variant('asan',default=False, description="Enable the address sanitizer for debugging")
+    
     depends_on('mpi', when="+mpi")
     depends_on('cereal')
     depends_on('adios2')
@@ -49,6 +50,9 @@ class ChimbukoPerformanceAnalysis(AutotoolsPackage):
                args.append('--with-perf-metric')
         if '+mpi' not in self.spec:
                args.append('--disable-mpi')
-              
+        if '+asan' in self.spec:
+               args.append('--with-asan')
+
+               
         return args
     

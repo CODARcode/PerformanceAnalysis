@@ -42,21 +42,12 @@ EventError ADEvent::addEvent(const Event_t& event) {
     }
 }
 
-void ADEvent::stackProtectGC(CallListIterator_t it){
-  verboseStream << "ADEvent::stackProtectGC incrementing register count of " << it->get_id().toString() << " to " << it->reference_count()+1 << std::endl;
-  it->register_reference();
-
-  std::vector<eventID> parents(1, it->get_parent());
-  //Also lock GPU event parents
-  if(m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid()) && it->n_GPU_correlationID_partner() == 1){
-    parents.push_back(it->get_GPU_correlationID_partner(0));
-  }
-  
-  for(auto parent : parents){
-    while(parent != eventID::root()){
+//Lock a parent event and all its parents in the stack
+static void lockParentStack(eventID parent, const ADEvent &events){
+  while(parent != eventID::root()){
       CallListIterator_t pit;
       try{
-	pit = getCallData(parent);
+	pit = events.getCallData(parent);
       }catch(const std::exception &e){
 	recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
 	break;
@@ -64,33 +55,56 @@ void ADEvent::stackProtectGC(CallListIterator_t it){
       verboseStream << "ADEvent::stackProtectGC incrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()+1 << std::endl;
       pit->register_reference();
       parent = pit->get_parent();
+   }
+}
+  
+
+bool ADEvent::stackProtectGC(CallListIterator_t it){
+  verboseStream << "ADEvent::stackProtectGC incrementing register count of " << it->get_id().toString() << " to " << it->reference_count()+1 << std::endl;
+  it->register_reference();
+  lockParentStack(it->get_parent(), *this);
+
+  //Also lock GPU event's CPU parents if known
+  bool locked_gpu_parent_stack = false;
+  if(m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid())) //is GPU event
+    if(it->n_GPU_correlationID_partner() != 1){ //for some reason we do not know the CPU parent yet
+      verboseStream << "ADEvent::stackProtectGC GPU event's CPU-side parent is unknown at this time" << std::endl;      
+    }else{
+      eventID cpu_parent = it->get_GPU_correlationID_partner(0);
+      verboseStream << "ADEvent::stackProtectGC locking stack of GPU event's CPU-side parent, " << cpu_parent.toString() << std::endl;
+      lockParentStack(cpu_parent, *this);
+      locked_gpu_parent_stack = true;
     }
+  return locked_gpu_parent_stack;
+}
+
+static void unlockParentStack(eventID parent, const ADEvent &events){
+  while(parent != eventID::root()){
+    CallListIterator_t pit;
+    try{
+      pit = events.getCallData(parent);
+    }catch(const std::exception &e){
+      recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
+      break;
+    }
+
+    verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()-1 << std::endl;
+    pit->deregister_reference();
+    parent = pit->get_parent();
   }
 }
 
-void ADEvent::stackUnProtectGC(CallListIterator_t it){
+  
+void ADEvent::stackUnProtectGC(CallListIterator_t it, bool unlock_cpu_parent_stack){
   verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << it->get_id().toString() << " to " << it->reference_count()-1 << std::endl;
   it->deregister_reference();
+  unlockParentStack(it->get_parent(), *this);
 
-  std::vector<eventID> parents(1, it->get_parent());
-  //Also unlock GPU event parents
-  if(m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid()) && it->n_GPU_correlationID_partner() == 1){
-    parents.push_back(it->get_GPU_correlationID_partner(0));
-  }
-  
-  for(auto parent : parents){
-    while(parent != eventID::root()){
-      CallListIterator_t pit;
-      try{
-	pit = getCallData(parent);
-      }catch(const std::exception &e){
-	recoverable_error("Could not find parent " + parent.toString() + " in call list due to : " + e.what());
-	break;
-      }
-      verboseStream << "ADEvent::stackUnProtectGC decrementing register count of " << pit->get_id().toString() << " to " << pit->reference_count()-1 << std::endl;
-      pit->deregister_reference();
-      parent = pit->get_parent();
-    }
+  //Also unlock GPU event's CPU parents
+  if(unlock_cpu_parent_stack && m_gpu_thread_Map != nullptr && m_gpu_thread_Map->count(it->get_tid()) && it->n_GPU_correlationID_partner() == 1){
+    eventID cpu_parent = it->get_GPU_correlationID_partner(0);
+    verboseStream << "ADEvent::stackUnProtectGC adding GPU event's CPU-side parent, " << cpu_parent.toString() << " to unlock list" << std::endl;
+    unlockParentStack(cpu_parent, *this);
   }
 }
 
@@ -115,7 +129,7 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 
       //Does a partner already exist?
       auto m = m_unmatchedCorrelationID.find(cid);
-      if(m != m_unmatchedCorrelationID.end()){
+      if(m != m_unmatchedCorrelationID.end()){ //found a match
 	eventID partner_event_id = m->second->get_id();
 
 	//Check partner event hasn't been accidentally deleted (thus invalidating its iterator)
@@ -123,14 +137,27 @@ void ADEvent::checkAndMatchCorrelationID(CallListIterator_t it){
 
 	it->set_GPU_correlationID_partner(partner_event_id);
 	m->second->set_GPU_correlationID_partner(current_event_id);
-
+	
 	verboseStream << "Current event " << current_event_id.toString() << " is partnered with previous unmatched event " << partner_event_id.toString() << " with correlation ID " << cid << std::endl;
-	stackUnProtectGC(m->second);
+	stackUnProtectGC(m->second, false); //Unlock *partner event*. See logic below for control flag
 	m_unmatchedCorrelationID.erase(cid); //remove now-matched correlation ID
-      }else{
+	verboseStream << "Removed stack protection of partner " << partner_event_id.toString() << std::endl;
+      }else{ //no match yet exists
 	//Ensure the event and it's parental line can't be deleted and put it in the map of unmatched events
 	verboseStream << "Found as-yet unpartnered event " << current_event_id.toString() << " with correlation ID " << cid << std::endl;
-	stackProtectGC(it);
+
+	//Logic for stack locking
+	//GPU event registered first, CPU event second:
+	//  On GPU event: GPU event stack is locked, CPU event stack is *not* locked (because GPU event can only have one, CPU-side, partner and it is not yet known)
+	//  On CPU event: Must unlock only GPU stack
+	//                Control flag of stackUnProtectGC called on GPU event must be *false* to prevent unlocking of CPU stack
+	
+	//CPU event registered first, GPU event second:
+	//  On CPU event: CPU event stack is locked, GPU event stack is *not* locked (because stackProtect only has special logic for CPU-side partners of GPU events)
+	//  On GPU event: Must unlock only CPU stack
+	//                Control flag of stackUnProtectGC called on CPU event is ignored, stack protect/unprotect does not treat GPU-side partners of CPU events
+	
+	stackProtectGC(it); //Lock *this event*
 	m_unmatchedCorrelationID[cid] = it;
       }
       n_cid++;
@@ -380,60 +407,63 @@ static unsigned long nested_map_size(const T& m) {
   return n_elements;
 }
 
-static void clearUnlabeled(ExecDataMap_t &execDataMap){
+static void clearLabeledFromExecDataMap(ExecDataMap_t &execDataMap){
   for(auto &fid_p : execDataMap){
     std::vector<CallListIterator_t> keep;
     for(const CallListIterator_t &cit : fid_p.second)
       if(cit->get_label() == 0) keep.push_back(cit);
     fid_p.second = std::move(keep);
-    verboseStream << "clearUnlabeled kept " << fid_p.second.size() << " unlabeled points for fid " << fid_p.first << std::endl;
+    verboseStream << "clearLabeledFromExecDataMap kept " << fid_p.second.size() << " unlabeled points for fid " << fid_p.first << std::endl;
   }
 }
 
-
-CallListMap_p_t* ADEvent::trimCallList(int n_keep_thread) {
-  //Remove completed entries from the call list
-  CallListMap_p_t* cpListMap = new CallListMap_p_t;
+size_t ADEvent::purgeHandleUnlabeledEvents(){
+  size_t n_kept_unlabeled = 0;
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {
       for (auto& it_t: it_r.second) {
 	CallList_t& cl = it_t.second;
-
-	//Are we keeping all events for this thread?
-	if(n_keep_thread >= cl.size())
-	  continue;
-	CallList_t cpList;
-
-	auto it = cl.begin();
-	auto one_past_last = std::prev(cl.end(),n_keep_thread);
-
-	while (it != one_past_last) {
-	  if (it->can_delete() && it->get_exit() != 0) {
-	    //Add copy of completed event to output
-	    cpList.push_back(*it);
-	    //Remove completed event from map of event index string to call list
-	    m_callIDMap.erase(it->get_id());
-	    //Remove completed event from call list
-	    it = cl.erase(it);
+	
+	for(auto it = cl.begin(); it != cl.end(); ++it){
+	  auto &entry = *it;
+	  
+	  //1) If the entry is unlabeled we need to lock its stack (but only once!)
+	  if(entry.get_label() == 0 && !entry.get_stack_locked_as_unlabeled()){  
+	    verboseStream << "Event " << entry.get_id().toString() << " is not labeled, locking stack" << std::endl;
+	    bool gpu_event_cpu_parent_stack_locked = stackProtectGC(it);
+	    entry.get_stack_locked_as_unlabeled() = true;
+	    entry.get_cpu_parent_stack_locked_as_unlabeled() = gpu_event_cpu_parent_stack_locked;
+	    ++n_kept_unlabeled;
 	  }
-	  else {
-	    it++;
+
+	  //2) If the entry and its stack was formerly locked due to being unlabeled, and if now labeled, unlock it so that it can be deleted
+	  if(entry.get_label() != 0 && entry.get_stack_locked_as_unlabeled()){
+	    verboseStream << "Previously unlabeled event " << entry.get_id().toString() << " has now been labeled, unlocking stack" << std::endl;
+	    stackUnProtectGC(it, entry.get_cpu_parent_stack_locked_as_unlabeled()); //only unlock CPU-parent stack if it was actually locked (in some edge cases it was not, e.g. if unknown at the time of locking)
+	    entry.get_stack_locked_as_unlabeled() = false;
+	    entry.get_cpu_parent_stack_locked_as_unlabeled() = false;
 	  }
+
+
 	}
-	if (cpList.size())
-	  (*cpListMap)[it_p.first][it_r.first][it_t.first] = std::move(cpList); //save a copy
+
       }
     }
   }
-  clearUnlabeled(m_execDataMap);
-  return cpListMap;
+  return n_kept_unlabeled;
 }
 
-
 void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
-  size_t n_purged=0, n_kept_protected=0, n_kept_incomplete=0, n_kept_window=0, n_kept_unlabeled=0;
+  //Before we delete anything, handle unlabeled events. These need to have their stacks locked so we maintain the needed provenance information
+  size_t n_kept_unlabeled = purgeHandleUnlabeledEvents();  
+  
+  //We used to delete the entire execDataMap (which holds functions that completed on this IO step), but now that we allow labeling to be deferred to future steps and thus keep some elements
+  //in execDataMap we need to be more careful.
+  clearLabeledFromExecDataMap(m_execDataMap); //note, this must be done before we remove the records from the callList else we cannot obtain the labels (essentially a dangling pointer issue)
+  
+  size_t n_purged=0, n_kept_protected=0, n_kept_incomplete=0, n_kept_window=0;
 
-  //Remove completed entries from the call list
+  //Remove completed, unlocked entries from the call list
   for (auto& it_p : m_callList) {
     for (auto& it_r : it_p.second) {
       for (auto& it_t: it_r.second) {
@@ -450,33 +480,18 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
 	auto one_past_last = std::prev(cl.end(),n_keep_thread);
 
 	while (it != one_past_last) {
-	  //Check if entry and stack was locked due to being unlabeled, and if now labeled, unlock
-	  std::unordered_set<eventID>::iterator sl_it;
-	  if(it->get_label() != 0 && (sl_it = m_stackLockedUnlabeled.find(it->get_id()) ) != m_stackLockedUnlabeled.end()){
-	    verboseStream << "Previously unlabeled event " << it->get_id().toString() << " has now been labeled, unlocking stack" << std::endl;
-	    stackUnProtectGC(it);
-	    m_stackLockedUnlabeled.erase(sl_it);
-	  }
-	  
 	  if (it->can_delete() && it->get_exit() != 0) {
-	    //Remove completed event from map of event index string to call list
+	    //Remove completed events from map of event index string to call list
 	    m_callIDMap.erase(it->get_id());
 	    //Remove completed event from call list
 	    it = cl.erase(it);
 	    ++n_purged;
 	  }
 	  else {
+	    //Bookkeeping
 	    if(it->get_exit() == 0) ++n_kept_incomplete;
-	    else if(!it->can_delete()){
-	      if(it->get_label() == 0 && m_stackLockedUnlabeled.count(it->get_id()) == 0){
-		//Lock the stack to ensure that events referred to don't get erased
-		verboseStream << "Event " << it->get_id().toString() << " is not labeled, locking stack" << std::endl;
-		stackProtectGC(it);
-		m_stackLockedUnlabeled.insert(it->get_id());		
-		++n_kept_unlabeled;
-	      }
-	      else ++n_kept_protected;
-	    }
+	    else if(!it->can_delete()) ++n_kept_protected;
+	      
 	    it++;
 	  }
 	}
@@ -490,7 +505,6 @@ void ADEvent::purgeCallList(int n_keep_thread, purgeReport* report) {
     report->n_kept_window = n_kept_window;
     report->n_kept_unlabeled = n_kept_unlabeled;
   }
-  clearUnlabeled(m_execDataMap);
 }
 
 size_t ADEvent::getCallListSize() const{
