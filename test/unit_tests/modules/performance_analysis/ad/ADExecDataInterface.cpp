@@ -165,8 +165,6 @@ TEST(ADExecDataInterface, Works){
   }
 }
 
-
-
 TEST(ADExecDataInterface, anomalyRecording){
   unsigned long fid1 = 11, fid2 = 22;
   std::list<ExecData_t> execs = { createFuncExecData_t(0,1,2,fid1,"func1",0,100),  createFuncExecData_t(3,4,5,fid2,"func2",0,100),  createFuncExecData_t(5,6,8,fid2,"func2",200,300) };
@@ -249,5 +247,120 @@ TEST(ADExecDataInterface, anomalyRecording){
     EXPECT_EQ(norm2[0].index, 1); //second element has lower score
   }
 
+
+}
+
+
+
+TEST(ADExecDataInterface, CounterAnomaly){
+  int fid1 = 987, fid2 = 345;
+  int cid1 = 1234, cid2 = 5678, cunknown=888;
+  std::list<ExecData_t> call_list;  //aka CallList_t
+  ExecDataMap_t execdata;
+
+  std::default_random_engine gen;
+  std::normal_distribution<double> dist(500.,100.), dist2(1000.,200.);
+  int N1 = 10, N2=13;
+
+  //func 1, counters 1,2
+  for(int i=0;i<N1;i++){
+    long val(dist(gen)); 
+    call_list.push_back( createFuncExecData_t(0,0,0,  fid1, "my_func", 1000*(i+1), 100) );
+
+	  CounterData_t cnt(0,0,0, cid1, "counter_1", val, 1000*(i+1)+50);
+    call_list.back().add_counter(cnt);
+    execdata[fid1].push_back(std::prev(call_list.end()));
+  }
+  for(int i=0;i<N2;i++){
+    long val(dist(gen)); 
+    call_list.push_back( createFuncExecData_t(0,0,0,  fid1, "my_func", 1000*(i+1), 100) );
+
+    CounterData_t cnt(0,0,0, cid2, "counter_2", val, 1000*(i+1)+50);
+    call_list.back().add_counter(cnt);
+    execdata[fid1].push_back(std::prev(call_list.end()));
+  }
+  //func 2, counters 1,2
+  for(int i=0;i<N1;i++){
+    long val(dist(gen)); 
+    call_list.push_back( createFuncExecData_t(0,0,0,  fid2, "my_func2", 1000*(i+1), 100) );
+
+	  CounterData_t cnt(0,0,0, cid1, "counter_1", val, 1000*(i+1)+50);
+    call_list.back().add_counter(cnt);
+    execdata[fid2].push_back(std::prev(call_list.end()));
+  }
+  for(int i=0;i<N2;i++){
+    long val(dist(gen)); 
+    call_list.push_back( createFuncExecData_t(0,0,0,  fid2, "my_func2", 1000*(i+1), 100) );
+
+    CounterData_t cnt(0,0,0, cid2, "counter_2", val, 1000*(i+1)+50);
+    call_list.back().add_counter(cnt);
+    execdata[fid2].push_back(std::prev(call_list.end()));
+  }
+
+  { //check no entries returned if not a known counter id
+    ADExecDataInterface iface(&execdata, {ADExecDataInterface::Counter, cunknown});
+
+    //Check we return the right amount of data; should have 1 data set per function
+    ASSERT_EQ(iface.nDataSets(), 2);
+
+    EXPECT_EQ(iface.getDataSet(0).size(), 0);
+    EXPECT_EQ(iface.getDataSet(1).size(), 0);
+  }
+ 
+  {  //first counter
+    ADExecDataInterface iface(&execdata, {ADExecDataInterface::Counter, cid1});
+    
+    //Check we return the right amount of data; should have 1 data set per function
+    ASSERT_EQ(iface.nDataSets(), 2);
+
+    //As ExecDataMap_t is unordered, the mapping of the internal dset index to the fid cannot be known in advance
+    size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
+    size_t dsetidx_map[2];
+    if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
+      dsetidx_map[0] = 0; dsetidx_map[1] = 1;
+    }else if(dset_fids[0] == fid2 && dset_fids[1] == fid1){
+      dsetidx_map[0] = 1; dsetidx_map[1] = 0;
+    }else{
+      FAIL();
+    }
+
+    //Check the dset_idx map correctly to fids
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[0]), fid1);
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[1]), fid2);
+
+    //Check data sets are of the correct size
+    auto set1 = iface.getDataSet(dsetidx_map[0]);
+    auto set2 = iface.getDataSet(dsetidx_map[1]);
+    EXPECT_EQ(set1.size(), N1);
+    EXPECT_EQ(set2.size(), N1);
+  }
+
+  {  //second counter
+    ADExecDataInterface iface(&execdata, {ADExecDataInterface::Counter, cid2});
+    
+    //Check we return the right amount of data; should have 1 data set per function
+    ASSERT_EQ(iface.nDataSets(), 2);
+
+    //As ExecDataMap_t is unordered, the mapping of the internal dset index to the fid cannot be known in advance
+    size_t dset_fids[2] = { iface.getDataSetModelIndex(0), iface.getDataSetModelIndex(1) };
+    size_t dsetidx_map[2];
+    if(dset_fids[0] == fid1 && dset_fids[1] == fid2){
+      dsetidx_map[0] = 0; dsetidx_map[1] = 1;
+    }else if(dset_fids[0] == fid2 && dset_fids[1] == fid1){
+      dsetidx_map[0] = 1; dsetidx_map[1] = 0;
+    }else{
+      FAIL();
+    }
+
+    //Check the dset_idx map correctly to fids
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[0]), fid1);
+    EXPECT_EQ(iface.getDataSetModelIndex(dsetidx_map[1]), fid2);
+
+    //Check data sets are of the correct size
+    auto set1 = iface.getDataSet(dsetidx_map[0]);
+    auto set2 = iface.getDataSet(dsetidx_map[1]);
+    EXPECT_EQ(set1.size(), N2);
+    EXPECT_EQ(set2.size(), N2);
+  }
 
 }

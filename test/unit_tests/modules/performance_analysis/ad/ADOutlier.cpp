@@ -456,7 +456,7 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
   //Check using the include runtime; the parent should also be anomalous
   {
     ADOutlierSSTDTest outlier;
-    ADExecDataInterface iface(&data_map,ADExecDataInterface::InclusiveRuntime);
+    ADExecDataInterface iface(&data_map, {ADExecDataInterface::InclusiveRuntime,0} );
     outlier.run(iface, 0);
 
     size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);

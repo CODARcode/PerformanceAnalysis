@@ -255,41 +255,43 @@ void ChimbukoBase::bufferStoreProvenanceData(const ADDataInterface &anomalies){
 }
 
 void ChimbukoBase::sendProvenance(bool force){
-  if(
-     (m_base_params.prov_outputpath.length() > 0
+  if (
+      (m_base_params.prov_outputpath.length() > 0
 #ifdef ENABLE_PROVDB
-      || m_provdb_client->isConnected()
+       || m_provdb_client->isConnected()
 #endif
-      )
-     && 
-     ( (m_step + m_base_params.rank) % m_base_params.prov_io_freq == 0 || force ) //stagger sends over ranks by offsetting by rank index
-     ){
+           ) &&
+      ((m_step + m_base_params.rank) % m_base_params.prov_io_freq == 0 || force) // stagger sends over ranks by offsetting by rank index
+  )
+  {
     int rank = m_base_params.rank;
 
-    //Get the provenance data
+    // Get the provenance data
     verboseStream << "Chimbuko rank " << rank << " performing send of provenance data on step " << m_step << std::endl;
-    
+
     PerfTimer timer;
-    //Write and send provenance data
-    for(auto const &b: m_provdata_buf){
+    // Write and send provenance data
+    for (auto const &b : m_provdata_buf)
+    {
       const std::string &coll = b.first;
       auto const &data = b.second;
-      if(data.size()){
-	timer.start();
-	m_io->writeJSON(data, m_step, coll);
-	m_perf.add("ad_send_prov_"+coll+"_data_io_write_ms", timer.elapsed_ms());
-	
+      if (data.size())
+      {
+        timer.start();
+        m_io->writeJSON(data, m_step, coll);
+        m_perf.add("ad_send_prov_" + coll + "_data_io_write_ms", timer.elapsed_ms());
+
 #ifdef ENABLE_PROVDB
-	timer.start();
-	m_provdb_client->sendMultipleDataAsync(data, coll); //non-blocking send
-	m_perf.add("ad_send_prov_"+coll+"_data_send_async_ms", timer.elapsed_ms());
-	m_perf.add("ad_send_prov_"+coll+"_data_count", data.size());
+        timer.start();
+        m_provdb_client->sendMultipleDataAsync(data, coll); // non-blocking send
+        m_perf.add("ad_send_prov_" + coll + "_data_send_async_ms", timer.elapsed_ms());
+        m_perf.add("ad_send_prov_" + coll + "_data_count", data.size());
 #endif
       }
-    }     
-    
+    }
+
     m_provdata_buf.clear();
-  }//isConnected
+  } // isConnected
 }
 
 void ChimbukoBase::sendPSdata(bool force){

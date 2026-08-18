@@ -486,17 +486,24 @@ void ADOutlierHBOS::labelData(std::vector<ADDataInterface::Elem> &data_vals, siz
     //handle when ad_score = 0
     //This is valid when there is only one bin as the probability is 1 and log(1) = 0
     //Note that the total number of bins can be > 1 providing the other bins have 0 counts
-    if (ad_score <= 0 ){
+    if (ad_score <= 0)
+    {
       int nbin_nonzero = 0;
-      for(unsigned int c : hist.counts())
-	if(c>0) ++nbin_nonzero;
-      if(nbin_nonzero != 1){
-	double prob;
-	if(bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram) prob = 1.0;
-	else prob = double(bin_counts[bin_ind])/tot_runtimes;
-	std::stringstream ss; ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Data set " << dset_idx << ", value " << val_i <<  
-				 ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
-	recoverable_error(ss.str());
+      for (unsigned int c : hist.counts())
+        if (c > 0)
+          ++nbin_nonzero;
+
+      if (nbin_nonzero != 1)
+      {
+        double prob;
+        if (bin_ind == Histogram::LeftOfHistogram || bin_ind == Histogram::RightOfHistogram)
+          prob = 1.0;
+        else
+          prob = double(bin_counts[bin_ind]) / tot_runtimes;
+          
+        std::stringstream ss;
+        ss << "ad_score " << ad_score << " <= 0 but #bins with non zero count, " << nbin_nonzero << " is not 1. Data set " << dset_idx << ", value " << val_i << ", prob " << prob << ", bin index " << bin_ind << " of hist with bounds " << hist.printBounds();
+        recoverable_error(ss.str());
       }
     }
 

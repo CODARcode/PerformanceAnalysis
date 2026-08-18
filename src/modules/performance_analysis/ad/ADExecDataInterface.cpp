@@ -4,7 +4,7 @@
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, OutlierStatistic stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()), m_ignore_first_func_call(false){
+ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, const std::pair<OutlierStatistic,unsigned long> &stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()), m_ignore_first_func_call(false){
   //Build a map between a data set index and the function indices
   size_t dset_idx = 0;
   for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it)
@@ -17,12 +17,19 @@ ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, Outli
   }
 }
 
-double ADExecDataInterface::getStatisticValue(const ExecData_t &e) const{
-  switch(m_statistic){
+std::pair<bool, double> ADExecDataInterface::getStatisticValue(const ExecData_t &e) const{
+  switch(this->m_statistic.first){
+  case None:
+    return {false,0};
   case ExclusiveRuntime:
-    return e.get_exclusive();
+    return {true, e.get_exclusive()};
   case InclusiveRuntime:
-    return e.get_inclusive();
+    return {true, e.get_inclusive()};
+  case Counter:
+    for(auto const &c : e.get_counters())
+      if(c.get_counterid() == this->m_statistic.second)
+        return {true, c.get_value()};
+      return {false, 0};
   default:
     throw std::runtime_error("Invalid statistic");
   }
@@ -61,9 +68,6 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
   verboseStream << "ADExecDataInterface::getDataSet with dset_index=" << dset_index << std::endl;
   if(dset_index >= m_dset_fid_map.size()) fatal_error("Invalid dset_index " + std::to_string(dset_index));
       
-  auto it = m_dset_cache.find(dset_index);
-  if(it != m_dset_cache.end()) return it->second;
-
   std::vector<ADDataInterface::Elem> out;  
   size_t fid = m_dset_fid_map[dset_index];
   verboseStream << "ADExecDataInterface::getDataSet found function id " << fid << std::endl;
@@ -87,21 +91,23 @@ std::vector<ADDataInterface::Elem> ADExecDataInterface::getDataSet(size_t dset_i
 
   std::array<unsigned long, 4> fkey;
 
-  for(size_t i=0;i<data.size();i++){ //loop over events for that function
+  for (size_t i = 0; i < data.size(); i++)
+  { // loop over events for that function
     auto &e = *data[i];
-    if(e.get_label() == 0){ //has not been analyzed previously
-      if(ignore_func) e.set_label(1); //label as normal event
-      else if(m_ignore_first_func_call && !m_local_func_exec_seen->count(fkey = {e.get_pid(), e.get_rid(), e.get_tid(), fid}) ){
-	//Note, because we cache the data sets, successive calls to getDataSet with the same dset_index will always return the same thing despite marking this function as seen
-	e.set_label(1);
-	m_local_func_exec_seen->insert(fkey);
+    if (e.get_label() == 0){ // has not been analyzed previously
+      if (ignore_func)
+        e.set_label(1); // label as normal event
+      else if (m_ignore_first_func_call && !m_local_func_exec_seen->count(fkey = {e.get_pid(), e.get_rid(), e.get_tid(), fid})){        
+        e.set_label(1);
+        m_local_func_exec_seen->insert(fkey);
       }else{
-	out.push_back(ADDataInterface::Elem(getStatisticValue(e),i));
+        auto v = getStatisticValue(e);
+        if(v.first)
+          out.push_back(ADDataInterface::Elem(v.second, i));
       }
     }
   }
   verboseStream << "ADExecDataInterface::getDataSet for dset_index=" << dset_index << " (fid=model_idx=" << fid << " fname=\"" << fname << "\") got " << out.size() << " data" << std::endl;
-  m_dset_cache[dset_index] = out; //store *unlabeled* data
   return out;
 }
 

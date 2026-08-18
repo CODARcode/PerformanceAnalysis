@@ -13,21 +13,22 @@ namespace chimbuko {
       class ADExecDataInterface: public ADDataInterface{
       public:
 	/**
-	 * @brief Enumeration of which statistic is used for outlier detection
+	 * @brief Enumeration of which statistic is used for outlier detection (None always returns an empty data set)
 	 */
-	enum OutlierStatistic { ExclusiveRuntime, InclusiveRuntime };
+	enum OutlierStatistic { None, ExclusiveRuntime, InclusiveRuntime, Counter };
 
-	ADExecDataInterface(ExecDataMap_t const* execDataMap, OutlierStatistic stat = ExclusiveRuntime);
+	ADExecDataInterface(ExecDataMap_t const* execDataMap, const std::pair<OutlierStatistic,unsigned long> &stat = {ExclusiveRuntime,0});
 
 	/**
 	 * @brief Set the statistic used for the anomaly detection
 	 */
-	void setStatistic(OutlierStatistic to){ m_statistic = to; }
+	void setStatistic(const std::pair<OutlierStatistic,unsigned long> &to){ m_statistic = to; }
 
 	/**
 	 * @brief Extract the appropriate statistic from an ExecData_t object
+	 * @return {true,value} if the statistic exists for this element, else {false,0}
 	 */
-	double getStatisticValue(const ExecData_t &e) const;
+	std::pair<bool,double> getStatisticValue(const ExecData_t &e) const;
 
 	/**
 	 * @brief Return true if the specified function is being ignored
@@ -73,14 +74,14 @@ namespace chimbuko {
 	void setIgnoreFirstFunctionCall(FunctionsSeenType *functions_seen){ m_ignore_first_func_call = true; m_local_func_exec_seen = functions_seen; }
 
       private:
-	OutlierStatistic m_statistic; /** Which statistic to use for outlier detection */
+	std::pair<OutlierStatistic,unsigned long> m_statistic; /** Which statistic to use for outlier detection. The index component is used for statistics that are specific to specific indexed quantities (e.g. the value of a specific counter indexed by a counter id) */
+
 	std::unordered_set<std::string> m_func_ignore; /**< A list of functions that are ignored by the anomaly detection (all flagged as normal events)*/
 	ExecDataMap_t const* m_execDataMap;     /**< execution data map */
 	std::vector<size_t> m_dset_fid_map; /**< Map of data set index to func idx*/
 
 	bool m_ignore_first_func_call;
-	FunctionsSeenType *m_local_func_exec_seen; /**< Map(program id, rank id, thread id, func id) exist if previously seen*/
-	mutable std::unordered_map<size_t, std::vector<ADDataInterface::Elem> > m_dset_cache; /** Cache previously-generated datasets to avoid extra work and ensure the same results for sucessive calls */ 
+	FunctionsSeenType *m_local_func_exec_seen; /**< Map(program id, rank id, thread id, func id) exist if previously seen*/	
       };
 
     };

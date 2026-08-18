@@ -5,6 +5,7 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
+#include<regex>
 
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
@@ -399,15 +400,41 @@ void Chimbuko::sendPSdataImplementation(ADNetClient &net_client, const int step)
   }
 }
 
+static std::pair<ADExecDataInterface::OutlierStatistic, unsigned long> getStatistic(const std::string &outlier_statistic, const std::unordered_map<int, std::string> &counter_map){
+  if (outlier_statistic == "exclusive_runtime")
+    return {ADExecDataInterface::ExclusiveRuntime, 0};
+
+  if (outlier_statistic == "inclusive_runtime")
+    return {ADExecDataInterface::InclusiveRuntime, 0};
+  
+  std::regex pattern(R"(([^:]+):([^:]+))");
+  std::smatch match;    
+  
+  if (std::regex_match(outlier_statistic, match, pattern))
+  {
+    std::string type = match[1].str();
+    std::string name = match[2].str();
+
+    if (type == "counter")
+    {      
+      for (auto const &e : counter_map)
+        if (e.second == name)        
+          return {ADExecDataInterface::Counter, e.first};
+                  
+      // if we haven't yet seen the counter, it's not an error
+      return {ADExecDataInterface::None, 0};
+    }
+  }
+  else{
+    fatal_error("Invalid statistic"); 
+  }
+}
+
 
 static void setupInterface(std::unique_ptr<ADDataInterface> &iface, const std::string &outlier_statistic, const std::string &algorithm,
-			   ADExecDataInterface::FunctionsSeenType &func_seen, ExecDataMap_t const* exec_data_map){
-  ADExecDataInterface::OutlierStatistic stat;
-  if(outlier_statistic == "exclusive_runtime") stat = ADExecDataInterface::ExclusiveRuntime;
-  else if(outlier_statistic == "inclusive_runtime") stat = ADExecDataInterface::InclusiveRuntime;
-  else{ fatal_error("Invalid statistic"); }
-    
-  ADExecDataInterface *data_iface = new ADExecDataInterface(exec_data_map, stat);
+			   ADExecDataInterface::FunctionsSeenType &func_seen, ExecDataMap_t const* exec_data_map,
+         const std::unordered_map<int, std::string> &counter_map){
+  ADExecDataInterface *data_iface = new ADExecDataInterface(exec_data_map, getStatistic(outlier_statistic, counter_map));
   if( algorithm == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
     data_iface->setIgnoreFirstFunctionCall(&func_seen);
   iface.reset(data_iface);
@@ -476,7 +503,7 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
     return false;
   
   if(this->doAnalysisOnStep(step)) //only need an interface if we will be running the analysis on this step
-    setupInterface(iface, m_params.outlier_statistic, this->getAD().getAlgorithmName(), m_func_seen, m_event->getExecDataMap());
+    setupInterface(iface, m_params.outlier_statistic, this->getAD().getAlgorithmName(), m_func_seen, m_event->getExecDataMap(), *m_event->getCounterMap() );
     
   return true;
 }
