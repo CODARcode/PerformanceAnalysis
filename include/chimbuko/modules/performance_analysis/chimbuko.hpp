@@ -144,6 +144,7 @@ namespace chimbuko {
 	void init_parser();
 	void init_event();
 	void init_counter();
+	void init_modelidx_map();
 
 	void init_provenance_gatherer();
 	void init_metadata_parser();
@@ -210,6 +211,7 @@ namespace chimbuko {
 	ADCounter * m_counter;     /**< counter event manager */
 	ADMetadataParser *m_metadata_parser; /**< parser for metadata */
 	ADAnomalyProvenance  *m_anomaly_provenance; /**< provenance information gatherer*/ 
+	ADglobalStringIndexMap *m_model_index_map; /**< Mapping of local -> global model index */
 
 	ADMonitoring *m_monitoring; /**< maintain the node state by parsing counters from TAU's monitoring plugin*/
 

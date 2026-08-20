@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
 #include "../../../unit_test_common.hpp"
 
-#include <chimbuko/modules/performance_analysis/ad/ADglobalFunctionIndexMap.hpp>
-#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/ad/ADglobalIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalIndexMap.hpp>
 
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
@@ -23,9 +23,9 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
       int nt = 4;  //4 workers
-      PSglobalFunctionIndexMap glob_map;
+      PSglobalIndexMap glob_map;
       ZMQNet ps;
-      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMap(&glob_map),i);
+      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalIndexMap(&glob_map, MessageKind::FUNCTION_INDEX),i);
       ps.init(&argc, &argv, nt);
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
@@ -43,7 +43,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
 	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(pid, &net_client);
+	ADglobalIndexMap local_map(pid, MessageKind::FUNCTION_INDEX, &net_client);
 	vals[0] = local_map.lookup(22, "hello");
 	vals[1] = local_map.lookup(55, "world");
 
@@ -51,7 +51,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexWithRealPS){
 	vals[3] = local_map.lookup(55, "");
 	
 	//Ensure that different program indices but the same function name are distinguished
-	ADglobalFunctionIndexMap local_map2(pid2, &net_client);
+	ADglobalIndexMap local_map2(pid2, MessageKind::FUNCTION_INDEX, &net_client);
 	vals[4] = local_map2.lookup(22, "hello");
 
 	std::cout << "AD thread terminating connection" << std::endl;
@@ -94,9 +94,9 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
       int nt = 4; //4 workers
-      PSglobalFunctionIndexMap glob_map;
+      PSglobalIndexMap glob_map;
       ZMQNet ps;
-      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map),i);
+      for(int i=0;i<nt;i++) ps.add_payload(new NetPayloadGlobalIndexMapBatched(&glob_map, MessageKind::FUNCTION_INDEX),i);
       ps.init(&argc, &argv, nt); 
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
@@ -117,12 +117,12 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedWithRealPS){
 	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(pid, &net_client);
+	ADglobalIndexMap local_map(pid, MessageKind::FUNCTION_INDEX, &net_client);
 	vals1 = local_map.lookup(loc_idx, func_names);
 	vals2 = local_map.lookup(loc_idx, func_names);
 	
 	//Ensure same function names but different program indices distinguished
-	ADglobalFunctionIndexMap local_map2(pid2, &net_client);
+	ADglobalIndexMap local_map2(pid2, MessageKind::FUNCTION_INDEX, &net_client);
 	vals3 = local_map2.lookup(loc_idx, func_names);
 	
 	std::cout << "AD thread terminating connection" << std::endl;
@@ -178,9 +178,9 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
   std::cout << "Initializing PS thread" << std::endl;
   std::thread ps_thr([&]{
       int nt = 4;  //4 workers
-      PSglobalFunctionIndexMap glob_map;
+      PSglobalIndexMap glob_map;
       ZMQNet ps;
-      for(int i=0;i<nt; i++) ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map),i);
+      for(int i=0;i<nt; i++) ps.add_payload(new NetPayloadGlobalIndexMapBatched(&glob_map, MessageKind::FUNCTION_INDEX),i);
       ps.init(&argc, &argv, nt);
       ps.run(".");
       std::cout << "PS thread waiting at barrier" << std::endl;
@@ -201,7 +201,7 @@ TEST(ADglobalFunctionIndexMapTest, RetrieveGlobalIndexBatchedOneFuncWithRealPS){
 	ADThreadNetClient net_client;
 	net_client.connect_ps(0, 0, sname);
 	
-	ADglobalFunctionIndexMap local_map(pid, &net_client);
+	ADglobalIndexMap local_map(pid, MessageKind::FUNCTION_INDEX, &net_client);
 	vals1 = local_map.lookup(loc_idx, func_names);
 	vals2 = local_map.lookup(loc_idx, func_names);
 	

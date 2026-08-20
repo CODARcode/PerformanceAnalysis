@@ -544,6 +544,10 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
     createFuncExecData_t(1,2,4, 11, "theotherparent", 1100, 200),
     createFuncExecData_t(1,2,4, 22, "theotherfunc", 1150, 50)
   };
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {55, "theparent"}, {33, "thefunc"}, {11, "theotherparent"}, {22, "theotherfunc"} });
+  std::unordered_map<int, std::string> cmap;
+
   bindParentChild(events[0],events[1]);
   bindParentChild(events[2],events[3]);
   
@@ -564,7 +568,7 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
   labels[event_its[3]->get_id()] = -1;
 
   {
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     ASSERT_EQ(iface.nDataSets(),2);
     setDataLabels(iface,labels);    
 
@@ -597,7 +601,7 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
     //Need to unlabel everything again
     for(auto &e : event_its) e->set_label(0);
 
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     ASSERT_EQ(iface.nDataSets(),2);
     setDataLabels(iface,labels);    
    
@@ -642,7 +646,7 @@ TEST(TestADAnomalyProvenance, getProvenanceEntries){
     //Need to unlabel everything again
     for(auto &e : event_its) e->set_label(0);
 
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     setDataLabels(iface,labels);    
     
     std::vector<nlohmann::json> anom_entries, normal_entries;        

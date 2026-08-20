@@ -2,10 +2,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty @PS_FLAGS@
 LDADD = $(top_builddir)/src/libchimbuko.la -lgtest -lstdc++fs 
 
 testdir = $(prefix)/test/unit_tests/modules/performance_analysis/pserver
-test_PROGRAMS = PSglobalFunctionIndexMap AggregateFuncStats AggregateAnomalyData GlobalAnomalyStats AggregateFuncAnomalyMetrics GlobalCounterStats GlobalAnomalyMetrics PSparamManager
+test_PROGRAMS = PSglobalIndexMap AggregateFuncStats AggregateAnomalyData GlobalAnomalyStats AggregateFuncAnomalyMetrics GlobalCounterStats GlobalAnomalyMetrics PSparamManager
 
-PSglobalFunctionIndexMap_SOURCES = PSglobalFunctionIndexMap.cpp ../../../unit_test_main_mpi.cpp
-PSglobalFunctionIndexMap_LDADD = $(LDADD)
+PSglobalIndexMap_SOURCES = PSglobalIndexMap.cpp ../../../unit_test_main_mpi.cpp
+PSglobalIndexMap_LDADD = $(LDADD)
 
 GlobalAnomalyStats_SOURCES = GlobalAnomalyStats.cpp ../../../unit_test_main_mpi.cpp
 GlobalAnomalyStats_LDADD = $(LDADD)

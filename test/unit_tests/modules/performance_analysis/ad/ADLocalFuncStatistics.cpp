@@ -11,6 +11,7 @@ struct TestSetup{
   CallList_t fake_execs;
   ExecDataMap_t fake_exec_map;
   ADExecDataInterface *iface;
+  ADglobalStringIndexMap model_idx_map; //unneeded
 
   int pid;
   int rank;
@@ -21,17 +22,21 @@ struct TestSetup{
 
   RunStats outlier_scores;
 
-  TestSetup(): pid(2), rank(1), thread(99), nfuncs(100), nevent(100), nanomalies_per_func(2), outlier_scores(true){
+  TestSetup(): pid(2), rank(1), thread(99), nfuncs(100), nevent(100), nanomalies_per_func(2), outlier_scores(true), model_idx_map(0, MessageKind::MODEL_INDEX){
+    std::unordered_map<int, std::string> function_idx_map;
+    std::unordered_map<int, std::string> counter_idx_map; //unused
     for(int i=0;i<nfuncs;i++){
+      function_idx_map[i] = "func"+anyToStr(i);
       for(int j=0;j<nevent;j++){
 	ExecData_t e = createFuncExecData_t(pid, rank, thread,
 					    i, "func"+anyToStr(i),
 					    100*i, 100);
 	auto it = fake_execs.insert(fake_execs.end(),e);
-	fake_exec_map[i].push_back(it);
+	fake_exec_map[i].push_back(it);  
       }
     }
-    iface = new ADExecDataInterface(&fake_exec_map);
+
+    iface = new ADExecDataInterface(&fake_exec_map, model_idx_map, function_idx_map, counter_idx_map);
     //To avoid floating point differences in statistics, we loop over functions in the internal order used by the interface
     for(size_t dset_idx=0;dset_idx<iface->nDataSets();dset_idx++){
       int i = iface->getDataSetModelIndex(dset_idx); //function index here

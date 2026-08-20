@@ -12,6 +12,7 @@ std::string chimbuko::modules::performance_analysis::toString(const MessageKind 
     KSTR(FUNCTION_INDEX);
     KSTR(ANOMALY_METRICS);
     KSTR(AD_PS_COMBINED_STATS);
+    KSTR(MODEL_INDEX);
     default: return "UNKNOWN";
   }
 #undef KSTR

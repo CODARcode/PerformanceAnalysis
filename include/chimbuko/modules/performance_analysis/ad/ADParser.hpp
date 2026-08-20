@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include "ExecData.hpp"
 #include "ADDefine.hpp"
-#include "ADglobalFunctionIndexMap.hpp"
+#include "ADglobalIndexMap.hpp"
 #include <chimbuko/core/util/PerfStats.hpp>
 
 namespace chimbuko {
@@ -332,7 +332,7 @@ namespace chimbuko {
 	size_t m_counter_count;                             /**< the number of counter events in the current step */
 	std::vector<unsigned long> m_counter_timestamps;    /**< array of all counter events in the current step */
 
-	ADglobalFunctionIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
+	ADglobalIndexMap m_global_func_idx_map;     /**< Maintains mapping of local function index to global function index (if pserver connected) */
 
 	PerfStats* m_perf;                                  /**< Performance monitoring */
 

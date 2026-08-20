@@ -65,7 +65,7 @@ namespace chimbuko{
 	std::pair<size_t, size_t> send(ADNetClient &client) const;
    
 	/**
-	 * @brief Get the data
+	 * @brief Get the map of function index to anomalies for that function
 	 */
 	const std::unordered_map<int, FuncAnomalyMetrics> & get_metrics() const{ return m_func_anom_metrics; }
 

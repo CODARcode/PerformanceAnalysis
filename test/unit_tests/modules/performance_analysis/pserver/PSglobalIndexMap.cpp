@@ -1,13 +1,13 @@
 #include "gtest/gtest.h"
 #include "../../../unit_test_common.hpp"
 
-#include <chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
+#include <chimbuko/modules/performance_analysis/pserver/PSglobalIndexMap.hpp>
 
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
 TEST(TestPSglobalFunctionIndexMap, CheckLookup){  
-  PSglobalFunctionIndexMap pm;
+  PSglobalIndexMap pm;
   EXPECT_EQ( pm.lookup(0, "hello_world"), 0 );
   EXPECT_EQ( pm.lookup(0, "hello_again"), 1 );
   EXPECT_EQ( pm.lookup(0, "hello_world"), 0 );
@@ -20,13 +20,13 @@ TEST(TestPSglobalFunctionIndexMap, CheckLookup){
 
 
 TEST(TestPSglobalFunctionIndexMap, CheckSerialization){  
-  PSglobalFunctionIndexMap pm;
+  PSglobalIndexMap pm;
   pm.lookup(0, "hello_world");
   pm.lookup(0, "hello_again");
   
   nlohmann::json ser = pm.serialize();
   
-  PSglobalFunctionIndexMap pmr;
+  PSglobalIndexMap pmr;
   pmr.deserialize(ser);
   EXPECT_EQ( pmr.contains(0, "hello_world"), true );
   EXPECT_EQ( pmr.contains(0, "hello_again"), true );

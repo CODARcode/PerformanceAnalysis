@@ -36,7 +36,11 @@ TEST(ADLocalAnomalyMetricsTest, TestGenerateAndState){
   exec_data[fid].push_back(calllist.begin());
   exec_data[fid].push_back(std::next(calllist.begin()));
 
-  ADExecDataInterface iface(&exec_data);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {fid, func} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
   {
     auto events = iface.getDataSet(0);
     events[0].label = events[1].label = ADDataInterface::EventType::Outlier;

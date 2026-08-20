@@ -4,15 +4,83 @@
 using namespace chimbuko;
 using namespace chimbuko::modules::performance_analysis;
 
-ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap, const std::pair<OutlierStatistic,unsigned long> &stat): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()), m_ignore_first_func_call(false){
-  //Build a map between a data set index and the function indices
-  size_t dset_idx = 0;
+std::string ADExecDataInterface::toString(OutlierStatistic s)
+{
+#define KSTR(A) case A: return #A
+  switch (s)
+  {
+    KSTR(None);
+    KSTR(ExclusiveRuntime);
+    KSTR(InclusiveRuntime);
+    KSTR(Counter);
+  default:
+    assert(0);
+  }
+}
+
+ADExecDataInterface::ADExecDataInterface(ExecDataMap_t const* execDataMap,                                                                         
+                                        ADglobalStringIndexMap &model_index_map,                                        
+                                        const std::unordered_map<int, std::string> &function_idx_map,
+                                        const std::unordered_map<int, std::string> &counter_idx_map,
+                                        const std::pair<OutlierStatistic,unsigned long> &stat,
+                                        ModelGranularity granularity                                        
+                                      ): m_execDataMap(execDataMap), m_statistic(stat), ADDataInterface(execDataMap->size()), m_dset_fid_map(execDataMap->size()),m_dset_modelidx_map(execDataMap->size()), m_ignore_first_func_call(false), m_granularity(granularity){
+  //Allow us to map a dataset index to the data in execDataMap                                        
+  size_t dset_idx = 0;                                        
   for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it)
     m_dset_fid_map[dset_idx++] = it->first;
 
+  //Data set indexing is up to the interface, so we will continue to have one dataset per function name. However we need to ensure that each dataset is mapped to the appropriate model, and that the model indexing is universal. 
+  //Model index needs to combine:  
+  //1) OutlierStatistic
+  //2) the index associated with the outlier statistic if appropriate
+  //3) an index of the model whose range depends on the granularity
+  //This cannot be achieved with a deterministic mapping, so we will need to coordinate with the pserver
+  
+  //model name format:  <OutlierStatistic>:<Data field index if applicable (e.g. counter index)>:<Granularity descriptor (e.g. function name)>
+  std::ostringstream os;
+  os << toString(stat.first) << ":";
+  if(stat.first == Counter){
+    auto cit = counter_idx_map.find(stat.second);
+    if(cit == counter_idx_map.end())
+      throw std::runtime_error("Counter index does not correspond to a known name");
+    os << cit->second;
+  }      
+  os << ":";
+
+  std::string model_name_base = os.str();
+  
+  //Build a map between a data set index and the model index  
+  if(granularity == SingleModel){    
+    int model_global_idx = model_index_map.lookup(model_name_base); //only one model
+    dset_idx = 0;
+    for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it)
+      m_dset_modelidx_map[dset_idx++] = model_global_idx;
+  }else{ //PerFunction
+    std::vector<std::string> tolookup_name(execDataMap->size());
+    
+    dset_idx = 0;
+    for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it){
+      int fid = it->first;
+      auto fit = function_idx_map.find(fid);
+      if(fit == function_idx_map.end())
+        throw std::runtime_error("Function index does not correspond to a known name"); 
+      std::string model_name = model_name_base + fit->second;      
+      tolookup_name[dset_idx] = std::move(model_name);
+      ++dset_idx;
+    }
+    std::vector<unsigned long> model_global_idx = model_index_map.lookup(tolookup_name);
+    dset_idx = 0;
+    for(auto it = execDataMap->begin(); it != execDataMap->end(); ++it){
+      m_dset_modelidx_map[dset_idx] = model_global_idx[dset_idx];
+      ++dset_idx;
+    } 
+
+  }
+
   if(enableVerboseLogging()){
-    std::cout << "ADExecDataInterface created with #datasets=" << this->nDataSets() << " (exec-data map size " << execDataMap->size() << ")" << " with dset_idx:fid mapping ";
-    for(int d=0;d<this->nDataSets();d++) std::cout << d << ":" << m_dset_fid_map[d] << " ";
+    std::cout << "ADExecDataInterface created with #datasets=" << this->nDataSets() << " (exec-data map size " << execDataMap->size() << ")" << " with dset_idx:model_idx mapping ";
+    for(int d=0;d<this->nDataSets();d++) std::cout << d << ":" << m_dset_modelidx_map[d] << " ";
     std::cout << std::endl;
   }
 }
@@ -44,12 +112,21 @@ void ADExecDataInterface::setIgnoreFunction(const std::string &func){
 }
 
 size_t ADExecDataInterface::getDataSetModelIndex(size_t dset_index) const{
+  if(dset_index >= m_dset_modelidx_map.size()){
+    std::string err = "Invalid dset_index " +std::to_string(dset_index);
+    fatal_error(err);
+  }
+  return m_dset_modelidx_map[dset_index];  
+}
+
+size_t ADExecDataInterface::getDataSetFunctionIndex(size_t dset_index) const{
   if(dset_index >= m_dset_fid_map.size()){
     std::string err = "Invalid dset_index " +std::to_string(dset_index);
     fatal_error(err);
   }
-  return m_dset_fid_map[dset_index];
+  return m_dset_fid_map[dset_index];  
 }
+
 
 size_t ADExecDataInterface::getDataSetIndexOfFunction(size_t fid) const{
   for(size_t dset_idx = 0; dset_idx < m_dset_fid_map.size(); dset_idx++)

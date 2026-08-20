@@ -29,7 +29,7 @@ set -o pipefail
 ./modules/performance_analysis/ad/ADMonitoring
 ./modules/performance_analysis/ad/ADEvent
 ./modules/performance_analysis/ad/COPODOutlierADs
-./modules/performance_analysis/ad/ADglobalFunctionIndexMap
+./modules/performance_analysis/ad/ADglobalIndexMap
 ./modules/performance_analysis/ad/ADExecDataInterface
 ./modules/performance_analysis/ad/AnomalyData
 ./modules/performance_analysis/ad/HBOSOutlierADs
@@ -51,7 +51,7 @@ set -o pipefail
 ./modules/performance_analysis/pserver/GlobalCounterStats
 ./modules/performance_analysis/pserver/GlobalAnomalyStats
 ./modules/performance_analysis/pserver/GlobalAnomalyMetrics
-./modules/performance_analysis/pserver/PSglobalFunctionIndexMap
+./modules/performance_analysis/pserver/PSglobalIndexMap
 ./modules/performance_analysis/pserver/PSparamManager
 ./modules/performance_analysis/pserver/AggregateFuncAnomalyMetrics
 ./modules/performance_analysis/pserver/AggregateAnomalyData

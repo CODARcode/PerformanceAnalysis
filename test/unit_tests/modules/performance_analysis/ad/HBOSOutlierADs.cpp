@@ -27,7 +27,11 @@ public:
     ExecDataMap_t execdata;
     execdata[func_id] = data;
     
-    ADExecDataInterface iface(&execdata);
+    ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+    std::unordered_map<int, std::string> fmap({ {func_id, "function"} });
+    std::unordered_map<int, std::string> cmap;
+
+    ADExecDataInterface iface(&execdata, mmap, fmap, cmap);
     auto dset = iface.getDataSet(0);
     this->labelData(dset,0,func_id);
     iface.recordDataSetLabels(dset,0);

@@ -36,6 +36,7 @@ Chimbuko::Chimbuko(): m_parser(nullptr), m_event(nullptr),
 		      m_anomaly_provenance(nullptr),
 		      m_metadata_parser(nullptr),
 		      m_monitoring(nullptr),
+          m_model_index_map(nullptr),
 		      m_is_initialized(false){}
 
 Chimbuko::~Chimbuko(){
@@ -75,6 +76,7 @@ void Chimbuko::initialize(const ChimbukoParams &params){
   init_counter(); //requires parser
   init_monitoring(); //requires parser
   init_provenance_gatherer(); //requires most components
+  init_modelidx_map();
 
   m_is_initialized = true;
 
@@ -158,6 +160,10 @@ void Chimbuko::init_provenance_gatherer(){
   m_ptr_registry.registerPointer(m_anomaly_provenance);
 }
 
+void Chimbuko::init_modelidx_map(){
+  m_model_index_map = new ADglobalStringIndexMap(m_program_idx, MessageKind::MODEL_INDEX, &this->getNetClient());
+  m_ptr_registry.registerPointer(m_model_index_map);
+}
 
 void Chimbuko::finalize()
 {
@@ -430,17 +436,6 @@ static std::pair<ADExecDataInterface::OutlierStatistic, unsigned long> getStatis
   }
 }
 
-
-static void setupInterface(std::unique_ptr<ADDataInterface> &iface, const std::string &outlier_statistic, const std::string &algorithm,
-			   ADExecDataInterface::FunctionsSeenType &func_seen, ExecDataMap_t const* exec_data_map,
-         const std::unordered_map<int, std::string> &counter_map){
-  ADExecDataInterface *data_iface = new ADExecDataInterface(exec_data_map, getStatistic(outlier_statistic, counter_map));
-  if( algorithm == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr )
-    data_iface->setIgnoreFirstFunctionCall(&func_seen);
-  iface.reset(data_iface);
-}
-
-
 bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
   if(!m_is_initialized) throw std::runtime_error("Chimbuko is not initialized");
   int rank = this->getRank();
@@ -501,10 +496,15 @@ bool Chimbuko::readStep(std::unique_ptr<ADDataInterface> &iface){
   
   if(!have_data)
     return false;
-  
-  if(this->doAnalysisOnStep(step)) //only need an interface if we will be running the analysis on this step
-    setupInterface(iface, m_params.outlier_statistic, this->getAD().getAlgorithmName(), m_func_seen, m_event->getExecDataMap(), *m_event->getCounterMap() );
-    
+
+  if (this->doAnalysisOnStep(step))
+  { // only need an interface if we will be running the analysis on this step
+    ADExecDataInterface *data_iface = new ADExecDataInterface(m_event->getExecDataMap(), *m_model_index_map, *m_event->getFuncMap(), *m_event->getCounterMap(), getStatistic(m_params.outlier_statistic, *m_event->getCounterMap()));
+    if (this->getAD().getAlgorithmName() == "sstd" && std::getenv("CHIMBUKO_DISABLE_CUDA_JIT_WORKAROUND") == nullptr)
+      data_iface->setIgnoreFirstFunctionCall(&m_func_seen);
+    iface.reset(data_iface);
+  }
+
   return true;
 }
 

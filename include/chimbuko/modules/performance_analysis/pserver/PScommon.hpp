@@ -12,7 +12,8 @@ namespace chimbuko{
 	COUNTER_STATS = 1,
 	FUNCTION_INDEX = 2,
 	ANOMALY_METRICS = 3,
-	AD_PS_COMBINED_STATS = 4
+	AD_PS_COMBINED_STATS = 4,
+  MODEL_INDEX = 5
       };
 
       std::string toString(const MessageKind m);

@@ -14,7 +14,7 @@
 #include "chimbuko/modules/performance_analysis/ad/ADcombinedPSdata.hpp"
 #include "chimbuko/core/ad/ADProvenanceDBclient.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADMetadataParser.hpp"
-#include "chimbuko/modules/performance_analysis/ad/ADglobalFunctionIndexMap.hpp"
+#include "chimbuko/modules/performance_analysis/ad/ADglobalIndexMap.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADNormalEventProvenance.hpp"
 #include "chimbuko/modules/performance_analysis/ad/ADMonitoring.hpp"
 #include "chimbuko/core/ad/utils.hpp"

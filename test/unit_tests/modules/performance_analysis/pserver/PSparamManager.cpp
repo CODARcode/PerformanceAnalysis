@@ -373,19 +373,21 @@ TEST(TestPSparamManager, ModelSaveRestore){
   PSparamManagerTest man1(1, "hbos");
   PSmoduleDataManager dm1(0);
 
+  int pid = 0;
   std::string fname = "my_func";
+  std::string model_name = "ExclusiveRuntime::" + fname;
 
   HbosParam w1;
-  unsigned fid = dm1.getIndexMap().lookup(0,fname); //populate index manager
+  auto model_id = dm1.getModelIndexMap().lookup(pid, model_name); //populate index manager
 
 
-    //Some fake data
+  //Some fake data
   std::vector<double> d1 = {1,2,3,4,5,6,7,8,9,10,11,12};
   HbosFuncParam hp1;
   hp1.setInternalGlobalThreshold(3.141);
   hp1.getHistogram() = Histogram(d1);
   
-  w1[fid] = hp1;
+  w1[model_id] = hp1;
 
   man1.updateWorkerModel(w1.serialize(), 0);
   man1.updateGlobalModel();
@@ -395,8 +397,8 @@ TEST(TestPSparamManager, ModelSaveRestore){
     HbosParam test;
     test.assign(man1.getSerializedGlobalModel());
     
-    EXPECT_TRUE(test.find(fid));
-    EXPECT_EQ(test[fid], hp1);
+    EXPECT_TRUE(test.find(model_id));
+    EXPECT_EQ(test[model_id], hp1);
   }
 
   std::string file = "model_save_restore_test.json";
@@ -412,24 +414,24 @@ TEST(TestPSparamManager, ModelSaveRestore){
 
   std::cout << "Running tests" << std::endl;
 
-  ASSERT_TRUE(dm2.getIndexMap().contains(0,fname));
-  EXPECT_EQ(dm2.getIndexMap().lookup(0,fname), fid);
+  ASSERT_TRUE(dm2.getModelIndexMap().contains(pid, model_name));
+  EXPECT_EQ(dm2.getModelIndexMap().lookup(pid, model_name), model_id);
 
   {
     //Check restored global model is as expected
     HbosParam test;
     test.assign(man2.getSerializedGlobalModel());
     
-    EXPECT_TRUE(test.find(fid));
-    EXPECT_EQ(test[fid], hp1);
+    EXPECT_TRUE(test.find(model_id));
+    EXPECT_EQ(test[model_id], hp1);
   }
   
   {
     //Check worker 0 has the restored model
     HbosParam test;
     test.assign(man2.getWorkerParamsPtr(0)->serialize());
-    EXPECT_TRUE(test.find(fid));
-    EXPECT_EQ(test[fid], hp1);
+    EXPECT_TRUE(test.find(model_id));
+    EXPECT_EQ(test[model_id], hp1);
   }
   {
     //Check worker 1 has an empty model

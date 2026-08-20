@@ -95,12 +95,18 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
-  ADExecDataInterface iface(&exec_data);
+
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, "my_func"} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
+
   unsigned long nout = outlier.compute_outliers_test(iface, func_id);
 
   std::cout << "# outliers detected: " << nout << std::endl;
   EXPECT_GE(nout, 1);
-  EXPECT_EQ(iface.getDataSetModelIndex(0), func_id);
+  EXPECT_EQ(iface.getDataSetModelIndex(0), 0); //only one model
   //Check the expected outlier is present
   EXPECT_TRUE(outlier.findOutlier(outlier_start, outlier_runtime, 0, iface));
 
@@ -124,7 +130,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list2.begin(); it != call_list2.end(); ++it)
     call_list_its2.push_back(it);
 
-  ADExecDataInterface iface2(&exec_data);
+  ADExecDataInterface iface2(&exec_data, mmap, fmap, cmap);      
   unsigned long nout2 = outlier.compute_outliers_test(iface2, func_id);
 
   std::cout << "# outliers detected: " << nout2 << std::endl;
@@ -152,7 +158,7 @@ TEST(HBOSADOutlierTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list3.begin(); it != call_list3.end(); ++it)
     call_list_its3.push_back(it);
 
-  ADExecDataInterface iface3(&exec_data); 
+  ADExecDataInterface iface3(&exec_data, mmap, fmap, cmap);
   enableVerboseLogging() = true;
   unsigned long nout3 = outlier.compute_outliers_test(iface3, func_id);
   enableVerboseLogging() = false;

@@ -279,8 +279,12 @@ TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     call_list_its.push_back(it);
 
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, "my_func"} });
+  std::unordered_map<int, std::string> cmap;
+
   {
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     unsigned long nout = outlier.compute_outliers_test(iface, func_id);
     
     std::cout << "# outliers detected: " << nout << std::endl;
@@ -290,7 +294,7 @@ TEST(ADOutlierSSTDTestComputeOutliersWithoutPS, Works){
   }
   {
     //Check that running again on the same data does not report new outliers
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     unsigned long nout = outlier.compute_outliers_test(iface, func_id);
     EXPECT_EQ(nout, 0);
   }
@@ -323,7 +327,11 @@ TEST(ADOutlierSSTDTestRunWithoutPS, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  ADExecDataInterface iface(&data_map);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, "my_func"} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&data_map, mmap, fmap, cmap);
   outlier.run(iface,0);
 
   size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
@@ -385,7 +393,11 @@ TEST(ADOutlierSSTDTestFuncIgnore, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  ADExecDataInterface iface(&data_map);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, fname1}, {func_id2, fname2} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&data_map, mmap, fmap, cmap);
   iface.setIgnoreFunction(fname1);
   EXPECT_TRUE(iface.ignoringFunction(fname1));
   EXPECT_FALSE(iface.ignoringFunction(fname2));
@@ -431,10 +443,14 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     data_map[it->get_fid()].push_back(it);
 
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id_par, "my_parent_func"}, {func_id_child, "my_child_func"} });
+  std::unordered_map<int, std::string> cmap;
+
   //Check using the exclusive runtime (default)
   {
     ADOutlierSSTDTest outlier;
-    ADExecDataInterface iface(&data_map);
+    ADExecDataInterface iface(&data_map, mmap, fmap, cmap);
     outlier.run(iface, 0);
 
     size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
@@ -456,7 +472,7 @@ TEST(ADOutlierSSTDTestRunWithoutPS, OutlierStatisticSelection){
   //Check using the include runtime; the parent should also be anomalous
   {
     ADOutlierSSTDTest outlier;
-    ADExecDataInterface iface(&data_map, {ADExecDataInterface::InclusiveRuntime,0} );
+    ADExecDataInterface iface(&data_map, mmap, fmap, cmap, {ADExecDataInterface::InclusiveRuntime,0} );
     outlier.run(iface, 0);
 
     size_t nout = iface.nEventsRecorded(ADDataInterface::EventType::Outlier);
@@ -538,11 +554,15 @@ TEST(ADOutlierHBOSTest, TestAnomalyDetection){
 
   outlier.setParams(p);
 
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {fid, "my_func"} });
+  std::unordered_map<int, std::string> cmap;
+
 #define RUN_TEST \
     ExecDataMap_t exec_data; \
     std::vector<CallListIterator_t> &data = exec_data[fid]; \
     data.push_back(events.begin()); \
-    ADExecDataInterface iface(&exec_data); \
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap); \
     unsigned long n = outlier.compute_outliers_test(iface, fid);
 
   //Check data point in peak bin is not an outlier
@@ -647,7 +667,11 @@ TEST(ADOutlierHBOSTestFuncIgnore, Works){
   for(CallListIterator_t it=call_list.begin(); it != call_list.end(); ++it)
     data_map[it->get_fid()].push_back(it);
 
-  ADExecDataInterface iface(&data_map);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, fname1}, {func_id2,fname2} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&data_map, mmap, fmap, cmap);
   iface.setIgnoreFunction(fname1);
   EXPECT_TRUE(iface.ignoringFunction(fname1));
   EXPECT_FALSE(iface.ignoringFunction(fname2));
@@ -686,11 +710,15 @@ TEST(ADOutlierCOPODTest, TestAnomalyDetection){
 
   outlier.setParams(p);
 
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {fid, "myfunc"} });
+  std::unordered_map<int, std::string> cmap;
+
 #define RUN_TEST \
     ExecDataMap_t exec_data; \
     std::vector<CallListIterator_t> &data = exec_data[fid]; \
     data.push_back(events.begin()); \
-    ADExecDataInterface iface(&exec_data); \
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap); \
     unsigned long n = outlier.compute_outliers_test(iface, fid);
 
   //Histogram above is right-skewed
@@ -766,7 +794,11 @@ TEST(ADOutlierCOPODTestFuncIgnore, Works){
 
   //run method generates statistics from input data map and merges with stored stats
   //thus including the outliers in the stats! Nevertheless with enough good events the stats shouldn't be poisoned too badly
-  ADExecDataInterface iface(&data_map);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, fname1}, {func_id2,fname2} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&data_map, mmap, fmap, cmap);
   iface.setIgnoreFunction(fname1);
   EXPECT_TRUE(iface.ignoringFunction(fname1));
   EXPECT_FALSE(iface.ignoringFunction(fname2));

@@ -11,7 +11,8 @@ void PSmoduleDataManager::appendNetWorkerPayloads(NetInterface &net, int worker_
   net.add_payload(new NetPayloadRecvCombinedADdataArray(&m_global_func_stats[worker_id], 
 							&m_global_counter_stats[worker_id], 
 							&m_global_anom_metrics[worker_id]),worker_id); //each worker thread writes to a separate stats object which are aggregated only at viz send time
-  net.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&m_global_func_index_map),worker_id);
+  net.add_payload(new NetPayloadGlobalIndexMapBatched(&m_global_func_index_map, MessageKind::FUNCTION_INDEX),worker_id);
+  net.add_payload(new NetPayloadGlobalIndexMapBatched(&m_global_model_index_map, MessageKind::MODEL_INDEX),worker_id);
 }
 
 void PSmoduleDataManager::appendStatSenderPayloads(PSstatSender &sender){
@@ -38,14 +39,15 @@ void PSmoduleDataManager::sendFinalModuleDataToProvDB(PSglobalProvenanceDBclient
   nlohmann::json ad_model_j = nlohmann::json::array();
   {
     auto model_map = model.getGlobalParamsCopy()->get_all_algorithm_params();
-    auto const &fidx_map = m_global_func_index_map.getFunctionIndexMap();
-    for(auto const &r : model_map){
-      auto fit = fidx_map.find(r.first);
-      if(fit == fidx_map.end()) fatal_error("Could not find function in input map");
+    auto const &model_idx_map = m_global_model_index_map.getIndexMap();
+    for(auto const &r : model_map){ 
+      int model_idx = r.first;
+      auto mit = model_idx_map.find(model_idx);    
+      if(mit == model_idx_map.end()) fatal_error("Could not find model in input map");
       nlohmann::json entry = nlohmann::json::object();
       entry["fid"] = r.first;
-      entry["pid"] = fit->second.first;
-      entry["func_name"] = fit->second.second;
+      entry["pid"] = mit->second.first;
+      entry["model_name"] = mit->second.second;
       entry["model"] = std::move(r.second);
       ad_model_j.push_back(std::move(entry));
     }
@@ -72,7 +74,7 @@ void PSmoduleDataManager::writeModel(const std::string &filename, const PSparamM
   std::ofstream out(filename);
   if(!out.good()) fatal_error("Could not write anomaly algorithm parameters to the file provided");
   nlohmann::json out_p;
-  out_p["func_index_map"] = m_global_func_index_map.serialize();
+  out_p["model_index_map"] = m_global_model_index_map.serialize();
   out_p["alg_params"] = model.getGlobalModelJSON();
   out << out_p;
 }
@@ -82,6 +84,6 @@ void PSmoduleDataManager::restoreModel(PSparamManager &model, const std::string 
   if(!in.good()) fatal_error("Could not load anomaly algorithm parameters from the file provided");
   nlohmann::json in_p;
   in >> in_p;
-  m_global_func_index_map.deserialize(in_p["func_index_map"]);
+  m_global_model_index_map.deserialize(in_p["model_index_map"]);
   model.restoreGlobalModelJSON(in_p["alg_params"]);
 }

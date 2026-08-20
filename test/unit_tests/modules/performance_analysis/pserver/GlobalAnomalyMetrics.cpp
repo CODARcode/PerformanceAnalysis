@@ -16,6 +16,10 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
   int fid = 4;
   std::string func = "myfunc";
 
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {fid, func} });
+  std::unordered_map<int, std::string> cmap;
+
   LocalNet net;
   ADLocalNetClient net_client;
   net_client.connect_ps(rid);
@@ -38,9 +42,8 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
     ExecDataMap_t exec_data;
     exec_data[fid].push_back(calllist.begin());
     exec_data[fid].push_back(std::next(calllist.begin()));
-
-    
-    ADExecDataInterface iface(&exec_data);
+   
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     auto d = iface.getDataSet(0);
     d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
     d[0].score = 3.14;
@@ -116,7 +119,7 @@ TEST(GlobalAnomalyMetricsTest, TestAggregation){
     exec_data[fid].push_back(std::next(calllist.begin()));
 
     
-    ADExecDataInterface iface(&exec_data);
+    ADExecDataInterface iface(&exec_data, mmap, fmap, cmap);
     auto d = iface.getDataSet(0);
     d[0].label = d[1].label = ADDataInterface::EventType::Outlier;
     d[0].score = 8.88;

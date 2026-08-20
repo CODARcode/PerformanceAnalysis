@@ -1,5 +1,5 @@
 #include<chimbuko/modules/performance_analysis/ad/ADParser.hpp>
-#include<chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/PSglobalIndexMap.hpp>
 #include "gtest/gtest.h"
 #include "../../../unit_test_common.hpp"
 
@@ -530,9 +530,9 @@ TEST(ADParserTestFuncDataIO, funcDataLocalToGlobalIndexReplacementWorks){
   std::thread psthr([&](){
       //The "pserver"
       std::cout << "TEST: Writer thread initializing pserver" << std::endl;
-      PSglobalFunctionIndexMap glob_map;
+      PSglobalIndexMap glob_map;
       ZMQNet ps;
-      ps.add_payload(new NetPayloadGlobalFunctionIndexMapBatched(&glob_map));
+      ps.add_payload(new NetPayloadGlobalIndexMapBatched(&glob_map, MessageKind::FUNCTION_INDEX));
       ps.init(&argc, &argv, 1); //1 worker
       ps.run(".");
 

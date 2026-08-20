@@ -2,6 +2,7 @@
 #include <chimbuko_config.h>
 #include "chimbuko/core/ad/ADOutlier.hpp"
 #include <chimbuko/modules/performance_analysis/ad/ADEvent.hpp>
+#include "ADglobalIndexMap.hpp"
 
 namespace chimbuko {
   namespace modules{
@@ -16,8 +17,21 @@ namespace chimbuko {
 	 * @brief Enumeration of which statistic is used for outlier detection (None always returns an empty data set)
 	 */
 	enum OutlierStatistic { None, ExclusiveRuntime, InclusiveRuntime, Counter };
+	static std::string toString(OutlierStatistic s);
 
-	ADExecDataInterface(ExecDataMap_t const* execDataMap, const std::pair<OutlierStatistic,unsigned long> &stat = {ExclusiveRuntime,0});
+	/**
+	 * @brief Enumeration of the model granularity. 
+	 * PerFunction: One model per function (name/index)	 
+	 * SingleModel: One model for all function executions (useful for anomaly detection on counters)
+	 */
+	enum ModelGranularity { PerFunction, SingleModel };
+
+	ADExecDataInterface(ExecDataMap_t const* execDataMap, 						
+						ADglobalStringIndexMap &model_index_map,
+						const std::unordered_map<int, std::string> &function_idx_map,
+                        const std::unordered_map<int, std::string> &counter_idx_map,
+						const std::pair<OutlierStatistic,unsigned long> &stat = {ExclusiveRuntime,0},
+						ModelGranularity granularity = PerFunction);
 
 	/**
 	 * @brief Set the statistic used for the anomaly detection
@@ -55,9 +69,14 @@ namespace chimbuko {
 	void recordDataSetLabelsInternal(const std::vector<Elem> &data, size_t dset_index) override;
     
 	/**
-	 * @brief Return the function index associated with a given data set
+	 * @brief Return the model index associated with a given data set
 	 */
 	size_t getDataSetModelIndex(size_t dset_index) const override;
+
+/**
+	 * @brief Return the function index associated with a given data set
+	 */
+	size_t getDataSetFunctionIndex(size_t dset_index) const;
 
 	/**
 	 * @brief Return the data set index associated with a given function index
@@ -76,12 +95,17 @@ namespace chimbuko {
       private:
 	std::pair<OutlierStatistic,unsigned long> m_statistic; /** Which statistic to use for outlier detection. The index component is used for statistics that are specific to specific indexed quantities (e.g. the value of a specific counter indexed by a counter id) */
 
+	std::vector<size_t> m_dset_fid_map; /**< Map of data set index to function index*/
+
+	ModelGranularity m_granularity; /** Controls the mapping of a function execution to a model index */
+
 	std::unordered_set<std::string> m_func_ignore; /**< A list of functions that are ignored by the anomaly detection (all flagged as normal events)*/
 	ExecDataMap_t const* m_execDataMap;     /**< execution data map */
-	std::vector<size_t> m_dset_fid_map; /**< Map of data set index to func idx*/
-
+	
 	bool m_ignore_first_func_call;
 	FunctionsSeenType *m_local_func_exec_seen; /**< Map(program id, rank id, thread id, func id) exist if previously seen*/	
+
+	std::vector<size_t> m_dset_modelidx_map; /**< Map of data set index to local model idx*/
       };
 
     };

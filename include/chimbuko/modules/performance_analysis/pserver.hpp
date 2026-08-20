@@ -1,7 +1,7 @@
 #include <chimbuko_config.h>
 #include "pserver/GlobalAnomalyStats.hpp"
 #include "pserver/GlobalCounterStats.hpp"
-#include "pserver/PSglobalFunctionIndexMap.hpp"
+#include "pserver/PSglobalIndexMap.hpp"
 #include "pserver/NetPayloadRecvCombinedADdata.hpp"
 #include "pserver/AggregateAnomalyData.hpp"
 #include "pserver/AggregateFuncStats.hpp"

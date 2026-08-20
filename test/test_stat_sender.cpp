@@ -121,7 +121,11 @@ TEST(PSstatSenderTest, StatSenderGlobalAnomalyStatsBounce)
   dmap[func_id].push_back(it1);
   dmap[func_id].push_back(it2);
 
-  ADExecDataInterface iface(&dmap);
+  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  std::unordered_map<int, std::string> fmap({ {func_id, func_name} });
+  std::unordered_map<int, std::string> cmap;
+
+  ADExecDataInterface iface(&dmap, mmap, fmap, cmap);
   {
     auto d = iface.getDataSet(0);
     d[0].label = d[1].label = ADDataInterface::EventType::Outlier;

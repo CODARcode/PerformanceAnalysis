@@ -5,7 +5,7 @@
 #include<chimbuko/modules/performance_analysis/pserver/GlobalAnomalyStats.hpp>
 #include<chimbuko/modules/performance_analysis/pserver/GlobalCounterStats.hpp>
 #include<chimbuko/modules/performance_analysis/pserver/GlobalAnomalyMetrics.hpp> 
-#include<chimbuko/modules/performance_analysis/pserver/PSglobalFunctionIndexMap.hpp>
+#include<chimbuko/modules/performance_analysis/pserver/PSglobalIndexMap.hpp>
 
 namespace chimbuko{ 
   namespace modules{
@@ -15,8 +15,9 @@ namespace chimbuko{
 	std::vector<GlobalAnomalyStats> m_global_func_stats; //global anomaly statistics
 	std::vector<GlobalCounterStats> m_global_counter_stats; //global counter statistics
 	std::vector<GlobalAnomalyMetrics> m_global_anom_metrics; //global anomaly metrics
-	PSglobalFunctionIndexMap m_global_func_index_map; //mapping of function name to global index
-    
+	PSglobalIndexMap m_global_func_index_map; //mapping of function name to global index
+    PSglobalIndexMap m_global_model_index_map; //mapping of model information to global index
+
       public:
 	PSmoduleDataManager(int net_nworker): m_global_func_stats(net_nworker), m_global_counter_stats(net_nworker), m_global_anom_metrics(net_nworker), PSmoduleDataManagerCore(net_nworker){}
 
@@ -47,7 +48,8 @@ namespace chimbuko{
 	/**
 	 * @brief External access to the index map, for testing
 	 */
-	PSglobalFunctionIndexMap & getIndexMap(){ return m_global_func_index_map; }
+	PSglobalIndexMap & getFunctionIndexMap(){ return m_global_func_index_map; }
+	PSglobalIndexMap & getModelIndexMap(){ return m_global_model_index_map; }
       };
 
     };

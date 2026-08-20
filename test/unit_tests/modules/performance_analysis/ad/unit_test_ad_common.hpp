@@ -25,7 +25,11 @@ namespace chimbuko{
 	  ExecDataMap_t execdata;
 	  execdata[func_id] = data;
     
-	  ADExecDataInterface iface(&execdata);
+  	  ADglobalStringIndexMap mmap(0, MessageKind::MODEL_INDEX);
+  	  std::unordered_map<int, std::string> fmap({ {func_id, "function"} });
+      std::unordered_map<int, std::string> cmap;
+
+	  ADExecDataInterface iface(&execdata, mmap, fmap, cmap);
 	  auto dset = iface.getDataSet(0);
 	  this->labelData(dset,0,func_id);
 	  iface.recordDataSetLabels(dset,0);
@@ -53,9 +57,11 @@ namespace chimbuko{
 
 	static bool findOutlier(double outlier_start, double outlier_runtime, size_t dset_idx, const ADExecDataInterface &iface){    
 	  auto const &outliers = iface.getResults(dset_idx).getEventsRecorded(ADDataInterface::EventType::Outlier);
+	  std::cout << "findOutlier probing " << outliers.size() << " outliers for start " << outlier_start << " runtime " << outlier_runtime << std::endl;
 	  for(auto const &e : outliers){
 	    auto c = iface.getExecDataEntry(dset_idx,e.index);
-	    if(c->get_entry() == outlier_start && c->get_runtime() == outlier_runtime)
+		std::cout << "Outlier " << c->get_entry() << " " << c->get_runtime() << std::endl;
+	    if( fabs(c->get_entry() - outlier_start) < 1e-9 && fabs(c->get_runtime() - outlier_runtime) < 1e-9 )
 	      return true;
 	  }
 	  return false;
@@ -65,7 +71,7 @@ namespace chimbuko{
 	  bool found = false;
 	  size_t dset_idx;
 	  for(size_t dd=0;dd<iface.nDataSets();dd++) 
-	    if(iface.getDataSetModelIndex(dd) == func_id){
+	    if(iface.getDataSetFunctionIndex(dd) == func_id){
 	      dset_idx = dd;
 	      found = true;
 	      break;
